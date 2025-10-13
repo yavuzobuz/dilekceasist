@@ -106,89 +106,80 @@ export const ArrowDownTrayIcon: React.FC<IconProps> = ({ className }) => (
     </svg>
 );
 
-// Modern AI + Justice + Document Logo - Şık ve Profesyonel
+// Modern Minimalist Artistic Logo - AI + Justice + Law
 export const AIJusticeLogo: React.FC<IconProps> = ({ className }) => (
-  <svg className={className} viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-    {/* Outer decorative circles */}
-    <circle cx="60" cy="60" r="57" stroke="currentColor" strokeWidth="0.5" opacity="0.15" />
-    <circle cx="60" cy="60" r="54" stroke="currentColor" strokeWidth="0.5" opacity="0.1" />
+  <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    {/* Abstract geometric shapes forming AI + Justice */}
     
-    {/* Document base - elegant paper */}
-    <g opacity="0.95">
+    {/* Main circle - unity */}
+    <circle cx="50" cy="50" r="45" stroke="currentColor" strokeWidth="2" opacity="0.2" />
+    
+    {/* Abstract Balance/Scale - minimalist interpretation */}
+    <g opacity="0.9">
+      {/* Left side - flowing curve */}
       <path 
-        d="M38 22 L70 22 L82 34 L82 90 C82 92 81 94 79 94 L40 94 C38 94 38 92 38 90 Z" 
-        fill="currentColor" 
-        opacity="0.08"
-      />
-      <path 
-        d="M38 22 L70 22 L82 34 L82 90 C82 92 81 94 79 94 L40 94 C38 94 38 92 38 90 Z M70 22 L70 34 L82 34" 
+        d="M 30 40 Q 20 45 25 55" 
         stroke="currentColor" 
-        strokeWidth="2.5"
-        strokeLinecap="round" 
-        strokeLinejoin="round"
+        strokeWidth="3" 
+        strokeLinecap="round"
+        fill="none"
+      />
+      
+      {/* Right side - flowing curve */}
+      <path 
+        d="M 70 40 Q 80 45 75 55" 
+        stroke="currentColor" 
+        strokeWidth="3" 
+        strokeLinecap="round"
+        fill="none"
+      />
+      
+      {/* Center pillar - connection */}
+      <line 
+        x1="50" y1="35" 
+        x2="50" y2="65" 
+        stroke="currentColor" 
+        strokeWidth="3.5" 
+        strokeLinecap="round"
+      />
+      
+      {/* Top connection - balance beam */}
+      <line 
+        x1="30" y1="40" 
+        x2="70" y2="40" 
+        stroke="currentColor" 
+        strokeWidth="2.5" 
+        strokeLinecap="round"
       />
     </g>
     
-    {/* Elegant document lines */}
-    <g opacity="0.5">
-      <line x1="46" y1="44" x2="74" y2="44" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <line x1="46" y1="52" x2="74" y2="52" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <line x1="46" y1="60" x2="66" y2="60" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    {/* AI Neural nodes - abstract dots */}
+    <g opacity="0.7">
+      <circle cx="35" cy="60" r="3" fill="currentColor" />
+      <circle cx="50" cy="55" r="3" fill="currentColor" />
+      <circle cx="65" cy="60" r="3" fill="currentColor" />
+      
+      {/* Subtle connections */}
+      <line x1="35" y1="60" x2="50" y2="55" stroke="currentColor" strokeWidth="1" opacity="0.3" />
+      <line x1="65" y1="60" x2="50" y2="55" stroke="currentColor" strokeWidth="1" opacity="0.3" />
     </g>
     
-    {/* AI Brain/Neural network in document */}
-    <g opacity="0.85" transform="translate(45, 66)">
-      {/* Central AI core */}
-      <circle cx="15" cy="10" r="4" fill="currentColor" opacity="0.3" />
-      <circle cx="15" cy="10" r="2.5" fill="currentColor" />
-      
-      {/* Neural network nodes */}
-      <circle cx="5" cy="5" r="2" fill="currentColor" opacity="0.7" />
-      <circle cx="25" cy="5" r="2" fill="currentColor" opacity="0.7" />
-      <circle cx="5" cy="15" r="2" fill="currentColor" opacity="0.7" />
-      <circle cx="25" cy="15" r="2" fill="currentColor" opacity="0.7" />
-      
-      {/* Connections */}
-      <line x1="5" y1="5" x2="15" y2="10" stroke="currentColor" strokeWidth="1.2" opacity="0.4" />
-      <line x1="25" y1="5" x2="15" y2="10" stroke="currentColor" strokeWidth="1.2" opacity="0.4" />
-      <line x1="5" y1="15" x2="15" y2="10" stroke="currentColor" strokeWidth="1.2" opacity="0.4" />
-      <line x1="25" y1="15" x2="15" y2="10" stroke="currentColor" strokeWidth="1.2" opacity="0.4" />
+    {/* Document/Paper - abstract representation */}
+    <g opacity="0.6">
+      <path 
+        d="M 42 70 L 58 70 L 60 75 L 40 75 Z" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
     </g>
     
-    {/* Justice Scale - Elegant and prominent */}
-    <g transform="translate(18, 20)" opacity="0.9">
-      {/* Center pillar */}
-      <line x1="16" y1="12" x2="16" y2="28" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-      <circle cx="16" cy="12" r="2" fill="currentColor" />
-      
-      {/* Horizontal beam */}
-      <line x1="6" y1="12" x2="26" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      
-      {/* Left scale */}
-      <line x1="6" y1="12" x2="6" y2="16" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M 2 16 L 6 16 L 8 19 L 4 19 Z" fill="currentColor" opacity="0.8" />
-      
-      {/* Right scale */}
-      <line x1="26" y1="12" x2="26" y2="16" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M 22 16 L 26 16 L 28 19 L 24 19 Z" fill="currentColor" opacity="0.8" />
-      
-      {/* Base */}
-      <path d="M 10 28 L 16 28 L 22 28" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-    </g>
-    
-    {/* AI Circuit/Chip accent - top right */}
-    <g transform="translate(82, 24)" opacity="0.6">
-      <rect x="0" y="0" width="10" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
-      <circle cx="5" cy="5" r="2" fill="currentColor" opacity="0.5" />
-      <line x1="5" y1="0" x2="5" y2="10" stroke="currentColor" strokeWidth="0.8" />
-      <line x1="0" y1="5" x2="10" y2="5" stroke="currentColor" strokeWidth="0.8" />
-    </g>
-    
-    {/* Digital/AI particles */}
-    <g opacity="0.4">
-      <circle cx="92" cy="50" r="1.5" fill="currentColor" />
-      <circle cx="28" cy="88" r="1.5" fill="currentColor" />
-      <circle cx="88" cy="78" r="1" fill="currentColor" />
+    {/* Decorative accent lines - modern art touch */}
+    <g opacity="0.3">
+      <line x1="25" y1="30" x2="30" y2="35" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="75" y1="30" x2="70" y2="35" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </g>
   </svg>
 );
