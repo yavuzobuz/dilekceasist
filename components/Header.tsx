@@ -2,7 +2,11 @@
 import React from 'react';
 import { ScaleIcon } from './Icon';
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  onShowLanding?: () => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
   return (
     <header className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 backdrop-blur-sm border-b border-blue-500/20 sticky top-0 z-10 shadow-lg shadow-blue-500/10">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -16,13 +20,23 @@ export const Header: React.FC = () => {
               Hukuk Asistanı <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400 animate-pulse">AI</span>
             </h1>
           </div>
-          <div className="hidden md:flex items-center space-x-2">
-            <div className="flex space-x-1">
-              <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
-              <div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
-              <div className="h-2 w-2 bg-purple-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+          <div className="flex items-center space-x-4">
+            {onShowLanding && (
+              <button
+                onClick={onShowLanding}
+                className="px-4 py-2 bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600 hover:border-blue-500 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 active:scale-95"
+              >
+                Ana Sayfa
+              </button>
+            )}
+            <div className="hidden md:flex items-center space-x-2">
+              <div className="flex space-x-1">
+                <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+                <div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                <div className="h-2 w-2 bg-purple-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+              </div>
+              <span className="text-xs text-gray-400 ml-2">Yapay Zeka Aktif</span>
             </div>
-            <span className="text-xs text-gray-400 ml-2">Yapay Zeka Aktif</span>
           </div>
         </div>
       </div>

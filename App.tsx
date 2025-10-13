@@ -11,6 +11,7 @@ import { InputPanel } from './components/InputPanel';
 import { OutputPanel } from './components/OutputPanel';
 import { ProgressSummary } from './components/ProgressSummary';
 import { ToastContainer, ToastType } from './components/Toast';
+import { LandingPage } from './components/LandingPage';
 
 // Helper function to convert a File object to a base64 string
 const fileToBase64 = (file: File): Promise<string> => {
@@ -69,6 +70,19 @@ export default function App() {
   
   // Toast notifications
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
+  
+  // Landing page state
+  const [showLanding, setShowLanding] = useState(() => {
+    // Check if user has visited before
+    const hasVisited = localStorage.getItem('hasVisited');
+    return !hasVisited;
+  });
+  
+  const handleGetStarted = useCallback(() => {
+    localStorage.setItem('hasVisited', 'true');
+    setShowLanding(false);
+    addToast('Hoş geldiniz! Hemen başlayalım 🚀', 'success');
+  }, []);
   
   const addToast = useCallback((message: string, type: ToastType) => {
     const id = Date.now().toString();
@@ -430,10 +444,20 @@ export default function App() {
   }, [generatedPetition, userRole, petitionType, caseDetails, analysisData, webSearchResult, docContent, specifics, chatMessages, parties]);
 
 
+  // Show landing page if user hasn't visited
+  if (showLanding) {
+    return (
+      <>
+        <ToastContainer toasts={toasts} removeToast={removeToast} />
+        <LandingPage onGetStarted={handleGetStarted} />
+      </>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 text-gray-200 flex flex-col font-sans">
       <ToastContainer toasts={toasts} removeToast={removeToast} />
-      <Header />
+      <Header onShowLanding={() => setShowLanding(true)} />
        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <ProgressSummary
           petitionType={petitionType}
