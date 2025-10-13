@@ -176,22 +176,25 @@ export const InputPanel: React.FC<InputPanelProps> = ({
   };
 
   return (
-    <div className="bg-gray-800 rounded-xl shadow-2xl p-6 space-y-8 h-full flex flex-col">
-      <h2 className="text-2xl font-bold text-white border-b border-gray-700 pb-4">İşlem Adımları</h2>
+    <div className="bg-gradient-to-br from-gray-800 via-gray-800 to-gray-900 rounded-xl shadow-2xl shadow-blue-500/5 p-6 space-y-8 h-full flex flex-col border border-gray-700/50 hover:border-blue-500/30 transition-all duration-500">
+      <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400 border-b border-gray-700 pb-4 flex items-center gap-2">
+        <span className="inline-block w-1 h-8 bg-gradient-to-b from-blue-400 to-cyan-400 rounded-full animate-pulse"></span>
+        İşlem Adımları
+      </h2>
       
       {/* Step 1: Basic Info */}
       <div className="space-y-4">
         <StepHeader number={1} title="Temel Bilgiler" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
+            <div className="transform transition-all duration-200 hover:scale-[1.01]">
                 <label className="block text-sm font-medium text-gray-300 mb-2">Dilekçe Türü Seçin</label>
-                <select value={petitionType} onChange={(e) => setPetitionType(e.target.value as PetitionType)} className="w-full p-2.5 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-200">
+                <select value={petitionType} onChange={(e) => setPetitionType(e.target.value as PetitionType)} className="w-full p-2.5 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-blue-400 transition-all duration-200 text-gray-200 cursor-pointer">
                     {petitionTypes.map(pt => (<option key={pt} value={pt}>{pt}</option>))}
                 </select>
             </div>
-            <div>
+            <div className="transform transition-all duration-200 hover:scale-[1.01]">
                 <label className="block text-sm font-medium text-gray-300 mb-2">Sizin Rolünüz</label>
-                <select value={userRole} onChange={(e) => setUserRole(e.target.value as UserRole)} className="w-full p-2.5 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-200">
+                <select value={userRole} onChange={(e) => setUserRole(e.target.value as UserRole)} className="w-full p-2.5 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-blue-400 transition-all duration-200 text-gray-200 cursor-pointer">
                     {userRoles.map(role => (<option key={role} value={role}>{role}</option>))}
                 </select>
             </div>
@@ -204,39 +207,42 @@ export const InputPanel: React.FC<InputPanelProps> = ({
         <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700 space-y-4">
             <h4 className="text-md font-semibold text-gray-200">Dava Künyesi Bilgileri (Varsa)</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                <div className="transform transition-all duration-200 hover:scale-[1.01]">
                     <label htmlFor="court" className="block text-sm font-medium text-gray-300 mb-1">Mahkeme Adı</label>
-                    <input id="court" type="text" value={caseDetails.court} onChange={e => handleCaseDetailsChange('court', e.target.value)} className="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-200" placeholder="Örn: Ankara 3. İş Mahkemesi"/>
+                    <input id="court" type="text" value={caseDetails.court} onChange={e => handleCaseDetailsChange('court', e.target.value)} className="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 hover:border-blue-400 transition-all duration-200 text-gray-200" placeholder="Örn: Ankara 3. İş Mahkemesi"/>
                 </div>
-                 <div>
+                 <div className="transform transition-all duration-200 hover:scale-[1.01]">
                     <label htmlFor="fileNumber" className="block text-sm font-medium text-gray-300 mb-1">Dosya Numarası (Esas No)</label>
-                    <input id="fileNumber" type="text" value={caseDetails.fileNumber} onChange={e => handleCaseDetailsChange('fileNumber', e.target.value)} className="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-200" placeholder="Örn: 2023/123 Esas"/>
+                    <input id="fileNumber" type="text" value={caseDetails.fileNumber} onChange={e => handleCaseDetailsChange('fileNumber', e.target.value)} className="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 hover:border-blue-400 transition-all duration-200 text-gray-200" placeholder="Örn: 2023/123 Esas"/>
                 </div>
-                <div>
+                <div className="transform transition-all duration-200 hover:scale-[1.01]">
                     <label htmlFor="decisionNumber" className="block text-sm font-medium text-gray-300 mb-1">Karar Numarası</label>
-                    <input id="decisionNumber" type="text" value={caseDetails.decisionNumber} onChange={e => handleCaseDetailsChange('decisionNumber', e.target.value)} className="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-200" placeholder="Örn: 2024/456 Karar"/>
+                    <input id="decisionNumber" type="text" value={caseDetails.decisionNumber} onChange={e => handleCaseDetailsChange('decisionNumber', e.target.value)} className="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 hover:border-blue-400 transition-all duration-200 text-gray-200" placeholder="Örn: 2024/456 Karar"/>
                 </div>
-                <div>
+                <div className="transform transition-all duration-200 hover:scale-[1.01]">
                     <label htmlFor="decisionDate" className="block text-sm font-medium text-gray-300 mb-1">Karar Tarihi</label>
-                    <input id="decisionDate" type="date" value={caseDetails.decisionDate} onChange={e => handleCaseDetailsChange('decisionDate', e.target.value)} className="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-200" />
+                    <input id="decisionDate" type="date" value={caseDetails.decisionDate} onChange={e => handleCaseDetailsChange('decisionDate', e.target.value)} className="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 hover:border-blue-400 transition-all duration-200 text-gray-200" />
                 </div>
             </div>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">Belgeleri Yükleyin (PDF, UDF, Word, Resim)</label>
-          <div onClick={() => fileInputRef.current?.click()} onDragOver={(e) => handleDragEvents(e, true)} onDragLeave={(e) => handleDragEvents(e, false)} onDrop={handleDrop} className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md cursor-pointer transition-colors ${isDragging ? 'border-blue-500 bg-gray-700/50' : 'border-gray-600 hover:border-blue-500'}`}>
+          <div onClick={() => fileInputRef.current?.click()} onDragOver={(e) => handleDragEvents(e, true)} onDragLeave={(e) => handleDragEvents(e, false)} onDrop={handleDrop} className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md cursor-pointer transition-all duration-300 transform hover:scale-[1.01] ${isDragging ? 'border-blue-500 bg-gray-700/50 scale-[1.02] shadow-lg shadow-blue-500/20' : 'border-gray-600 hover:border-blue-500 hover:bg-gray-700/30'}`}>
             <div className="space-y-1 text-center"><DocumentPlusIcon className="mx-auto h-12 w-12 text-gray-400"/><div className="flex text-sm text-gray-400"><p className="pl-1">Dosya seçmek için tıklayın veya sürükleyip bırakın</p></div><p className="text-xs text-gray-500">PDF, UDF, Word, JPG, PNG, WEBP, TIF (en fazla 10 dosya)</p></div>
           </div>
           <input ref={fileInputRef} type="file" multiple accept=".pdf,.udf,.jpg,.jpeg,.png,.webp,.tif,.tiff,.doc,.docx" onChange={onFileInputChange} className="hidden"/>
-          {files.length > 0 && <div className="mt-4 space-y-2"><h4 className="text-sm font-medium text-gray-300">Yüklenen Dosyalar:</h4><ul className="space-y-1">{files.map((file, index) => (<li key={index} className="flex items-center justify-between bg-gray-700 p-2 rounded-md text-sm"><span className="text-gray-200 truncate pr-2">{file.name}</span><button onClick={() => handleRemoveFile(index)} className="text-gray-400 hover:text-red-400 transition-colors flex-shrink-0"><XCircleIcon className="h-5 w-5" /></button></li>))}</ul></div>}
+          {files.length > 0 && <div className="mt-4 space-y-2 animate-fade-in-up"><h4 className="text-sm font-medium text-gray-300">Yüklenen Dosyalar:</h4><ul className="space-y-1">{files.map((file, index) => (<li key={index} className="flex items-center justify-between bg-gray-700 p-2 rounded-md text-sm transform transition-all duration-200 hover:scale-[1.02] hover:bg-gray-600 animate-scale-in"><span className="text-gray-200 truncate pr-2">{file.name}</span><button onClick={() => handleRemoveFile(index)} className="text-gray-400 hover:text-red-400 transition-all duration-200 flex-shrink-0 hover:scale-110 active:scale-95"><XCircleIcon className="h-5 w-5" /></button></li>))}</ul></div>}
         </div>
       </div>
       
       {/* Step 3: Analysis & Search */}
       <div className="space-y-4">
         <StepHeader number={3} title="Analiz ve Araştırma" />
-        <button onClick={onAnalyze} disabled={isAnalyzing || files.length === 0} className="w-full flex items-center justify-center bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold py-2.5 px-4 rounded-lg shadow-lg transition-all">{isAnalyzing ? <><LoadingSpinner className="h-5 w-5 mr-2" /> Analiz Ediliyor...</> : '1. Belgeleri Analiz Et'}</button>
+        <button onClick={onAnalyze} disabled={isAnalyzing || files.length === 0} className="w-full flex items-center justify-center bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 disabled:from-gray-700 disabled:to-gray-800 disabled:cursor-not-allowed text-white font-bold py-2.5 px-4 rounded-lg shadow-lg hover:shadow-blue-500/20 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] group relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/0 via-blue-600/10 to-blue-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+          <span className="relative">{isAnalyzing ? <><LoadingSpinner className="h-5 w-5 mr-2" /> Analiz Ediliyor...</> : '1. Belgeleri Analiz Et'}</span>
+        </button>
         {(isAnalyzing || analysisData) && (
             <div className="space-y-4 pt-4 border-t border-gray-700 mt-4">
                 <div>
@@ -268,8 +274,14 @@ export const InputPanel: React.FC<InputPanelProps> = ({
                     </div>
                  )}
                  <div className='flex flex-col md:flex-row gap-4 pt-4'>
-                    <button onClick={onGenerateKeywords} disabled={isGeneratingKeywords || !analysisData?.summary || isAnalyzing} className="w-full flex items-center justify-center bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold py-2.5 px-4 rounded-lg transition-all">{isGeneratingKeywords ? <><LoadingSpinner className="h-5 w-5 mr-2" /> Oluşturuluyor...</> : <><KeyIcon className="h-5 w-5 mr-2" /> 2. Anahtar Kelime Oluştur</>}</button>
-                    <button onClick={onSearch} disabled={isSearching || searchKeywords.length === 0 || isAnalyzing || isGeneratingKeywords} className="w-full flex items-center justify-center bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold py-2.5 px-4 rounded-lg transition-all">{isSearching ? <><LoadingSpinner className="h-5 w-5 mr-2" /> Aranıyor...</> : '3. Web Araması Yap'}</button>
+                    <button onClick={onGenerateKeywords} disabled={isGeneratingKeywords || !analysisData?.summary || isAnalyzing} className="w-full flex items-center justify-center bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 disabled:from-gray-700 disabled:to-gray-800 disabled:cursor-not-allowed text-white font-bold py-2.5 px-4 rounded-lg shadow-lg hover:shadow-purple-500/20 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] group relative overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-600/0 via-purple-600/10 to-purple-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                      <span className="relative">{isGeneratingKeywords ? <><LoadingSpinner className="h-5 w-5 mr-2" /> Oluşturuluyor...</> : <><KeyIcon className="h-5 w-5 mr-2" /> 2. Anahtar Kelime Oluştur</>}</span>
+                    </button>
+                    <button onClick={onSearch} disabled={isSearching || searchKeywords.length === 0 || isAnalyzing || isGeneratingKeywords} className="w-full flex items-center justify-center bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 disabled:from-gray-700 disabled:to-gray-800 disabled:cursor-not-allowed text-white font-bold py-2.5 px-4 rounded-lg shadow-lg hover:shadow-green-500/20 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] group relative overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-r from-green-600/0 via-green-600/10 to-green-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                      <span className="relative">{isSearching ? <><LoadingSpinner className="h-5 w-5 mr-2" /> Aranıyor...</> : '3. Web Araması Yap'}</span>
+                    </button>
                  </div>
                  {(isGeneratingKeywords || searchKeywords.length > 0) && <div className="pt-2"><label htmlFor="keywords-input" className="block text-sm font-medium text-gray-300 mb-2">Arama Anahtar Kelimeleri</label><textarea id="keywords-input" value={isGeneratingKeywords ? 'AI anahtar kelimeleri hazırlıyor...' : searchKeywords.join(', ')} onChange={(e) => setSearchKeywords(e.target.value.split(',').map(k => k.trim()).filter(Boolean))} rows={3} className="w-full p-3 bg-gray-900 border border-gray-600 rounded-lg text-gray-300 placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" placeholder="Aramak için anahtar kelimeleri virgülle ayırarak girin."/></div>}
                  {(isSearching || webSearchResult) && (
@@ -317,14 +329,18 @@ export const InputPanel: React.FC<InputPanelProps> = ({
       {/* Step 4: Additional Info */}
       <div className="space-y-4">
         <StepHeader number={4} title="Ek Bilgiler ve Özel Talimatlar" />
-        <div><label htmlFor="doc-content" className="block text-sm font-medium text-gray-300 mb-2">Ek Metin (İsteğe Bağlı)</label><textarea id="doc-content" rows={4} className="w-full p-3 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-200 placeholder-gray-500" placeholder="PDF'lere ek olarak, hızlıca kopyalayıp yapıştırmak istediğiniz metinleri veya notları buraya ekleyin." value={docContent} onChange={(e) => setDocContent(e.target.value)}/></div>
-        <div><label htmlFor="specifics" className="block text-sm font-medium text-gray-300 mb-2">Özel Talimatlar ve Notlar</label><textarea id="specifics" rows={4} className="w-full p-3 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-200 placeholder-gray-500" placeholder="Dilekçede özellikle vurgulanmasını istediğiniz noktaları, taleplerinizi veya AI'ın bilmesi gereken diğer önemli detayları buraya yazın." value={specifics} onChange={(e) => setSpecifics(e.target.value)}/></div>
+        <div className="transform transition-all duration-200 hover:scale-[1.005]"><label htmlFor="doc-content" className="block text-sm font-medium text-gray-300 mb-2">Ek Metin (İsteğe Bağlı)</label><textarea id="doc-content" rows={4} className="w-full p-3 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-blue-400 transition-all duration-200 text-gray-200 placeholder-gray-500" placeholder="PDF'lere ek olarak, hızlıca kopyalayıp yapıştırmak istediğiniz metinleri veya notları buraya ekleyin." value={docContent} onChange={(e) => setDocContent(e.target.value)}/></div>
+        <div className="transform transition-all duration-200 hover:scale-[1.005]"><label htmlFor="specifics" className="block text-sm font-medium text-gray-300 mb-2">Özel Talimatlar ve Notlar</label><textarea id="specifics" rows={4} className="w-full p-3 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-blue-400 transition-all duration-200 text-gray-200 placeholder-gray-500" placeholder="Dilekçede özellikle vurgulanmasını istediğiniz noktaları, taleplerinizi veya AI'ın bilmesi gereken diğer önemli detayları buraya yazın." value={specifics} onChange={(e) => setSpecifics(e.target.value)}/></div>
       </div>
       
        {/* Step 5: Generate */}
        <div className="mt-auto pt-6 border-t border-gray-700 space-y-4">
          <StepHeader number={5} title="Nihai Dilekçeyi Oluştur" />
-         <button onClick={onGenerate} disabled={isLoading || !analysisData || isAnalyzing || isSearching || isGeneratingKeywords} className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg shadow-lg transition-all transform hover:scale-105 disabled:scale-100">{isLoading ? <><LoadingSpinner className="h-5 w-5 mr-2" /> Oluşturuluyor...</> : <><SparklesIcon className="h-5 w-5 mr-2" /> Dilekçeyi Oluştur</>}</button>
+         <button onClick={onGenerate} disabled={isLoading || !analysisData || isAnalyzing || isSearching || isGeneratingKeywords} className="w-full flex items-center justify-center bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-600 hover:from-blue-500 hover:via-blue-600 hover:to-cyan-500 disabled:from-blue-900 disabled:via-blue-800 disabled:to-cyan-900 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg shadow-xl shadow-blue-500/30 hover:shadow-blue-400/50 transition-all duration-500 transform hover:scale-105 disabled:scale-100 group relative overflow-hidden">
+           <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+           <div className="absolute inset-0 blur-xl bg-blue-500/20 group-hover:bg-blue-400/30 transition-all duration-500"></div>
+           <span className="relative">{isLoading ? <><LoadingSpinner className="h-5 w-5 mr-2" /> Oluşturuluyor...</> : <><SparklesIcon className="h-5 w-5 mr-2 animate-spin" style={{animationDuration: '3s'}} /> Dilekçeyi Oluştur</>}</span>
+         </button>
        </div>
     </div>
   );

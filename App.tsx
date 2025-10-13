@@ -10,6 +10,7 @@ import { Header } from './components/Header';
 import { InputPanel } from './components/InputPanel';
 import { OutputPanel } from './components/OutputPanel';
 import { ProgressSummary } from './components/ProgressSummary';
+import { ToastContainer, ToastType } from './components/Toast';
 
 // Helper function to convert a File object to a base64 string
 const fileToBase64 = (file: File): Promise<string> => {
@@ -65,6 +66,18 @@ export default function App() {
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   
   const [error, setError] = useState<string | null>(null);
+  
+  // Toast notifications
+  const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
+  
+  const addToast = useCallback((message: string, type: ToastType) => {
+    const id = Date.now().toString();
+    setToasts(prev => [...prev, { id, message, type }]);
+  }, []);
+  
+  const removeToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id));
+  }, []);
 
   // Persist chat messages to localStorage whenever they change
   useEffect(() => {
@@ -196,6 +209,7 @@ export default function App() {
         if (result.caseDetails) {
             setCaseDetails(prevDetails => ({ ...prevDetails, ...result.caseDetails }));
         }
+        addToast('Belgeler başarıyla analiz edildi! ✓', 'success');
 
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata oluştu.';
@@ -227,6 +241,7 @@ export default function App() {
     try {
         const keywords = await generateSearchKeywords(analysisData.summary, userRole);
         setSearchKeywords(keywords);
+        addToast('Anahtar kelimeler oluşturuldu! 🔑', 'success');
     } catch (e) {
         const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata oluştu.';
         setError(`Anahtar kelime oluşturulurken bir hata oluştu: ${errorMessage}`);
@@ -248,6 +263,7 @@ export default function App() {
     try {
         const result = await performWebSearch(searchKeywords);
         setWebSearchResult(result);
+        addToast('Web araması tamamlandı! 🔍', 'success');
     } catch (e) {
         const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata oluştu.';
         setError(`Web araması sırasında bir hata oluştu: ${errorMessage}`);
@@ -279,6 +295,7 @@ export default function App() {
       });
       setGeneratedPetition(result);
       setPetitionVersion(v => v + 1); // Increment version to force re-mount of editor
+      addToast('Dilekçe başarıyla oluşturuldu! ✨', 'success');
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata oluştu.';
       setError(`Dilekçe oluşturulurken bir hata oluştu: ${errorMessage}`);
@@ -403,6 +420,7 @@ export default function App() {
       });
       setGeneratedPetition(result);
       setPetitionVersion(v => v + 1);
+      addToast('Dilekçe gözden geçirildi ve iyileştirildi! 🔍', 'success');
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata oluştu.';
       setError(`Dilekçe gözden geçirilirken bir hata oluştu: ${errorMessage}`);
@@ -414,6 +432,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-200 flex flex-col font-sans">
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
       <Header />
        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <ProgressSummary
