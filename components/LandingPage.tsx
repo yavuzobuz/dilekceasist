@@ -16,7 +16,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
     {
       icon: <DocumentPlusIcon className="h-8 w-8" />,
       title: "Akıllı Belge Analizi",
-      description: "PDF, Word, UDF ve görsel dosyalarınızı AI ile otomatik analiz edin",
+      description: "PDF, Word, UDF, TIFF, PNG, JPG ve diğer görsel dosyalarınızı AI ile otomatik analiz edin",
       color: "from-red-600 to-red-500"
     },
     {
