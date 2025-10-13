@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ScaleIcon } from './Icon';
+import { AIJusticeLogo } from './Icon';
 
 interface HeaderProps {
   onShowLanding?: () => void;
@@ -13,8 +13,8 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center space-x-3 group">
             <div className="relative">
-              <div className="absolute inset-0 bg-red-600/20 blur-xl rounded-full group-hover:bg-red-500/30 transition-all duration-500"></div>
-              <ScaleIcon className="h-8 w-8 text-red-500 relative transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-300" />
+              <div className="absolute inset-0 bg-red-600/20 blur-2xl group-hover:bg-red-500/30 transition-all duration-500"></div>
+              <AIJusticeLogo className="h-10 w-10 text-red-500 relative transform group-hover:scale-110 transition-all duration-300" />
             </div>
             <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">
               Hukuk Asistanı <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-red-400 animate-pulse">AI</span>

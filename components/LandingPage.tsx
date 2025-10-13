@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SparklesIcon, ScaleIcon, DocumentPlusIcon, KeyIcon, LinkIcon } from './Icon';
+import { SparklesIcon, AIJusticeLogo, DocumentPlusIcon, KeyIcon, LinkIcon } from './Icon';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -63,9 +63,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             {/* Logo/Icon */}
             <div className="flex justify-center mb-8">
               <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-red-500 rounded-full blur-2xl opacity-50 group-hover:opacity-75 transition-opacity duration-500"></div>
-                <div className="relative bg-gradient-to-br from-black to-gray-900 p-6 rounded-full border-2 border-red-600/50 shadow-2xl transform group-hover:scale-110 transition-all duration-500">
-                  <ScaleIcon className="h-16 w-16 text-red-500" />
+                <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-red-500 blur-3xl opacity-40 group-hover:opacity-60 transition-opacity duration-500 animate-pulse" style={{animationDuration: '3s'}}></div>
+                <div className="relative bg-gradient-to-br from-black via-gray-900 to-black p-8 rounded-2xl border-2 border-red-600/30 shadow-2xl transform group-hover:scale-105 transition-all duration-500">
+                  <AIJusticeLogo className="h-24 w-24 text-red-500" />
                 </div>
               </div>
             </div>
