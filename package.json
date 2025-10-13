@@ -1,0 +1,34 @@
+{
+  "name": "hukuk-asistanı:-ai-dilekçe-oluşturucu",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "server": "node server.js",
+    "dev:all": "concurrently \"npm run server\" \"npm run dev\"",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@google/genai": "1.11.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "file-saver": "2.0.5",
+    "html-to-docx": "1.8.0",
+    "html2canvas": "1.4.1",
+    "jspdf": "2.5.1",
+    "jszip": "3.10.1",
+    "mammoth": "1.7.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "utif2": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "concurrently": "^8.2.2",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}

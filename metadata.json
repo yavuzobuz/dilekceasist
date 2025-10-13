@@ -1,0 +1,6 @@
+{
+  "name": "Hukuk Asistanı: AI Dilekçe Oluşturucu",
+  "description": "Türk hukuk sistemine uygun dava, cevap, itiraz, şikayet, istinaf ve temyiz dilekçeleri hazırlayan yapay zeka destekli bir uygulama. PDF belgelerini analiz eder, web araması yaparak güncel bilgilere ulaşır ve sohbet yoluyla dilekçenizi kişiselleştirmenize olanak tanır.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
