@@ -25,28 +25,28 @@ const steps = [
 
 const SummaryItem: React.FC<{ icon: React.ReactNode; label: string; value: string | React.ReactNode;}> = ({ icon, label, value }) => (
   <div className="flex items-start text-sm">
-    <span className="text-blue-400 mr-2 mt-0.5">{icon}</span>
+    <span className="text-red-500 mr-2 mt-0.5">{icon}</span>
     <span className="font-semibold text-gray-300 mr-1.5">{label}:</span>
-    <span className="text-gray-200">{value || <span className="text-gray-500">Belirtilmedi</span>}</span>
+    <span className="text-white">{value || <span className="text-gray-500">Belirtilmedi</span>}</span>
   </div>
 );
 
 const StepIndicator: React.FC<{ status: StepStatus; label: string; isLast?: boolean }> = ({ status, label, isLast }) => {
     const statusClasses = {
         completed: {
-            circle: 'bg-blue-500 border-blue-400',
-            text: 'text-blue-300',
-            line: 'bg-blue-500'
+            circle: 'bg-red-600 border-red-500',
+            text: 'text-red-400',
+            line: 'bg-red-600'
         },
         current: {
-            circle: 'bg-blue-700 border-blue-300 ring-2 ring-blue-400',
+            circle: 'bg-red-700 border-red-400 ring-2 ring-red-500',
             text: 'text-white font-semibold',
-            line: 'bg-gray-600'
+            line: 'bg-gray-700'
         },
         upcoming: {
-            circle: 'bg-gray-700 border-gray-600',
+            circle: 'bg-gray-800 border-gray-700',
             text: 'text-gray-500',
-            line: 'bg-gray-600'
+            line: 'bg-gray-700'
         }
     };
     const classes = statusClasses[status];
@@ -93,11 +93,11 @@ export const ProgressSummary: React.FC<ProgressSummaryProps> = ({
     }
 
   return (
-    <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl my-6 p-4 shadow-lg">
+    <div className="bg-gradient-to-br from-black via-gray-900 to-black backdrop-blur-sm border border-gray-800 rounded-xl my-6 p-4 shadow-lg shadow-red-900/10">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Left Side: Progress Bar */}
             <div className="flex flex-col justify-center">
-                 <h3 className="text-base font-semibold text-gray-200 mb-3">İlerleme Durumu</h3>
+                 <h3 className="text-base font-semibold text-white mb-3">İlerleme Durumu</h3>
                  <div className="flex items-center w-full">
                     {steps.map((step, index) => {
                         const stepNumber = index + 1;
@@ -108,8 +108,8 @@ export const ProgressSummary: React.FC<ProgressSummaryProps> = ({
             </div>
 
             {/* Right Side: Summary */}
-            <div className="border-t border-gray-700 md:border-t-0 md:border-l md:pl-6">
-                 <h3 className="text-base font-semibold text-gray-200 mb-3">Dilekçe Özeti</h3>
+            <div className="border-t border-gray-800 md:border-t-0 md:border-l md:border-gray-800 md:pl-6 pt-4 md:pt-0">
+                 <h3 className="text-base font-semibold text-white mb-3">Dilekçe Özeti</h3>
                  <div className="space-y-2">
                     <SummaryItem icon={<DocumentTextIcon className="w-4 h-4" />} label="Tür" value={petitionType} />
                     <SummaryItem icon={<UserCircleIcon className="w-4 h-4" />} label="Rolünüz" value={userRole} />
