@@ -443,6 +443,29 @@ export default function App() {
     }
   }, [generatedPetition, userRole, petitionType, caseDetails, analysisData, webSearchResult, docContent, specifics, chatMessages, parties]);
 
+  const handleReset = useCallback(() => {
+    // Reset all state
+    setPetitionType(PetitionType.Dava);
+    setUserRole(UserRole.Davaci);
+    setCaseDetails({ court: '', fileNumber: '', decisionNumber: '', decisionDate: '' });
+    setFiles([]);
+    setDocContent('');
+    setSpecifics('');
+    setParties({});
+    setChatMessages([]);
+    setAnalysisData(null);
+    setSearchKeywords([]);
+    setWebSearchResult(null);
+    setGeneratedPetition('');
+    setPetitionVersion(0);
+    setError(null);
+    
+    // Clear localStorage chat history
+    localStorage.removeItem('chatHistory');
+    
+    addToast('Yeni dilekçe için hazırsınız! 🎉', 'info');
+  }, [addToast]);
+
 
   // Show landing page if user hasn't visited
   if (showLanding) {
@@ -525,6 +548,7 @@ export default function App() {
             setDocContent={setDocContent}
             specifics={specifics}
             setSpecifics={setSpecifics}
+            onReset={handleReset}
           />
         </main>
       </div>
