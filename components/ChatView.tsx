@@ -55,27 +55,27 @@ const ChatContextPanel: React.FC<{
                 onChange={(e) => onChange(e.target.value)}
                 readOnly={!isEditing}
                 rows={rows}
-                className="w-full p-2 bg-gray-900 border border-gray-600 rounded-lg text-sm text-gray-300 placeholder-gray-500 read-only:bg-gray-700/50 read-only:cursor-default focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="w-full p-2 ai-input rounded-lg text-sm placeholder-gray-500 read-only:opacity-80 read-only:cursor-default transition-colors"
             />
         </div>
     );
 
     return (
-        <div className="flex-shrink-0 bg-gray-900/50 rounded-lg border border-gray-700 mb-4">
+        <div className="flex-shrink-0 ai-card ai-border rounded-lg mb-4">
             <div className="w-full flex justify-between items-center p-3">
                 <div className="flex items-center gap-2 cursor-pointer" onClick={() => setIsOpen(!isOpen)}>
-                    <ClipboardDocumentListIcon className="h-5 w-5 text-blue-400" />
-                    <h3 className="font-semibold text-gray-200">Dilekçe Bağlamı</h3>
+                    <ClipboardDocumentListIcon className="h-5 w-5 ai-icon-accent" />
+                    <h3 className="font-semibold">Dilekçe Bağlamı</h3>
                 </div>
                 <div className="flex items-center gap-4">
                     {!isEditing ? (
-                        <div onClick={(e) => { e.stopPropagation(); setIsEditing(true); setIsOpen(true); }} className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors cursor-pointer">
+                        <div onClick={(e) => { e.stopPropagation(); setIsEditing(true); setIsOpen(true); }} className="flex items-center gap-1.5 text-xs ai-link transition-colors cursor-pointer">
                             <PencilIcon className="h-4 w-4" /> Düzenle
                         </div>
                     ) : (
                         <div className="flex items-center gap-2">
                             <div onClick={(e) => { e.stopPropagation(); handleCancel(); }} className="text-xs text-gray-400 hover:text-white transition-colors cursor-pointer">İptal</div>
-                            <div onClick={(e) => { e.stopPropagation(); handleSave(); }} className="text-xs bg-blue-600 hover:bg-blue-500 text-white font-semibold px-3 py-1 rounded-md transition-colors cursor-pointer">Kaydet</div>
+                            <div onClick={(e) => { e.stopPropagation(); handleSave(); }} className="text-xs ai-button font-semibold px-3 py-1 rounded-md transition-colors cursor-pointer">Kaydet</div>
                         </div>
                     )}
                     <ChevronDownIcon 
@@ -136,7 +136,7 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
   const introMessage = `Merhaba! Ben sizin hukuk asistanınızım. Dilekçenizi oluşturmadan önce konuyu netleştirmek, hukuki terimleri açıklamak veya dava stratejisi üzerine beyin fırtınası yapmak için benimle sohbet edebilirsiniz. Yukarıdaki "Dilekçe Bağlamı" bölümünden anahtar bilgileri düzenleyebilirsiniz.`;
 
   return (
-    <div className="h-full flex flex-col p-4">
+    <div className="h-full flex flex-col p-4 ai-theme">
        <ChatContextPanel
             searchKeywords={props.searchKeywords}
             setSearchKeywords={props.setSearchKeywords}
@@ -147,17 +147,17 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
             specifics={props.specifics}
             setSpecifics={props.setSpecifics}
         />
-      <div className="flex-grow overflow-y-auto pr-2 space-y-4">
+      <div className="flex-grow overflow-y-auto pr-2 space-y-4 ai-scrollable">
         {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center text-gray-400">
-                 <AiIcon className="h-12 w-12 text-blue-500 mb-4"/>
+                 <AiIcon className="h-12 w-12 ai-icon-accent mb-4"/>
                 <p className="max-w-sm">{introMessage}</p>
             </div>
         ) : (
             messages.map((msg, index) => (
                 <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
-                    {msg.role === 'model' && <AiIcon className="h-6 w-6 text-blue-400 flex-shrink-0 mt-1" />}
-                    <div className={`max-w-lg rounded-xl px-4 py-2 ${msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'}`}>
+                    {msg.role === 'model' && <AiIcon className="h-6 w-6 ai-icon-accent flex-shrink-0 mt-1" />}
+                    <div className={`max-w-lg rounded-xl px-4 py-2 ${msg.role === 'user' ? 'ai-bubble-user' : 'ai-bubble-model'}`}>
                         <p className="text-sm whitespace-pre-wrap break-words">{msg.text}</p>
                     </div>
                     {msg.role === 'user' && <UserCircleIcon className="h-6 w-6 text-gray-400 flex-shrink-0 mt-1" />}
@@ -166,8 +166,8 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
         )}
         {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
              <div className="flex items-start gap-3">
-                <AiIcon className="h-6 w-6 text-blue-400 flex-shrink-0 mt-1" />
-                <div className="max-w-lg rounded-xl px-4 py-3 bg-gray-700">
+                <AiIcon className="h-6 w-6 ai-icon-accent flex-shrink-0 mt-1" />
+                <div className="max-w-lg rounded-xl px-4 py-3 ai-card">
                     <LoadingSpinner className="h-5 w-5 text-gray-300" />
                 </div>
             </div>
@@ -180,13 +180,13 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="AI asistana bir mesaj gönder..."
-          className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-200 placeholder-gray-400"
+          className="w-full p-3 ai-input rounded-lg transition-colors placeholder-gray-400"
           disabled={isLoading}
         />
         <button
           type="submit"
           disabled={isLoading || !input.trim()}
-          className="bg-blue-600 text-white p-3 rounded-lg disabled:bg-gray-600 disabled:cursor-not-allowed hover:bg-blue-500 transition-colors"
+          className="ai-button p-3 rounded-lg disabled:cursor-not-allowed transition-colors"
         >
           <PaperAirplaneIcon className="h-6 w-6" />
         </button>

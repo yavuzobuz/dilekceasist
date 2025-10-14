@@ -163,3 +163,85 @@ input:focus, select:focus, textarea:focus {
   ring: 2px;
   ring-color: rgba(59, 130, 246, 0.5);
 }
+
+/* =====================
+   AI Sohbet Tema (ai-*)
+   Kolayca değiştirilebilir renk değişkenleri ve yardımcı sınıflar
+   ===================== */
+:root {
+  --ai-surface: #1a0a0a;          /* Ana arka plan - koyu kırmızımsı */
+  --ai-surface-2: #2a1111;        /* Kart arka planı - daha açık */
+  --ai-border: #4d1919;           /* Kenarlık - kırmızımsı gri */
+  --ai-text: #ffeaea;             /* Metin - sıcak beyaz */
+  --ai-muted: #d4a5a5;            /* Soluk metin - pembımsı gri */
+  --ai-accent: #ef4444;           /* Vurgu - site temasına uygun kırmızı (red-500) */
+  --ai-accent-hover: #dc2626;     /* Vurgu hover - red-600 */
+  --ai-accent-contrast: #ffffff;  /* Vurgu üstü metin - beyaz */
+  --ai-soft: rgba(239, 68, 68, 0.15); /* Yumuşak vurgu arka planı - kırmızı */
+}
+
+/***** Yardımcı sınıflar *****/
+.ai-theme { color: var(--ai-text); }
+.ai-card { background: var(--ai-surface-2); }
+.ai-bg { background: var(--ai-surface); }
+.ai-border { border: 1px solid var(--ai-border); }
+.ai-muted { color: var(--ai-muted); }
+.ai-accent-text { color: var(--ai-accent) !important; }
+.ai-accent-border { border-color: var(--ai-accent) !important; }
+
+/* Buton */
+.ai-button {
+  background: var(--ai-accent);
+  color: var(--ai-accent-contrast);
+}
+.ai-button:hover { background: var(--ai-accent-hover); }
+.ai-button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Girdi */
+.ai-input {
+  background: var(--ai-surface-2);
+  border: 1px solid var(--ai-border);
+  color: var(--ai-text);
+}
+.ai-input::placeholder { color: color-mix(in srgb, var(--ai-muted) 70%, transparent); }
+.ai-input:focus {
+  outline: none;
+  border-color: var(--ai-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ai-accent) 40%, transparent);
+}
+
+/* Sohbet balonları */
+.ai-bubble-user {
+  background: var(--ai-accent);
+  color: var(--ai-accent-contrast);
+}
+.ai-bubble-model {
+  background: var(--ai-surface-2);
+  color: var(--ai-text);
+}
+
+/* Link ve ikon vurgusu */
+.ai-link { color: var(--ai-accent); }
+.ai-link:hover { color: var(--ai-accent-hover); }
+.ai-icon-accent { color: var(--ai-accent); }
+
+/* Yumuşak vurgu blokları */
+.ai-soft-bg { background: var(--ai-soft); }
+
+/* Sadece AI Sohbet alanındaki scrollbar'ı özelleştir */
+.ai-theme .ai-scrollable::-webkit-scrollbar {
+  width: 10px;
+}
+.ai-theme .ai-scrollable::-webkit-scrollbar-track {
+  background: var(--ai-surface-2);
+  border-radius: 6px;
+}
+.ai-theme .ai-scrollable::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--ai-accent), var(--ai-accent-hover));
+  border-radius: 6px;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+}
+.ai-theme .ai-scrollable::-webkit-scrollbar-thumb:hover {
+  background: var(--ai-accent-hover);
+  box-shadow: 0 0 12px rgba(220, 38, 38, 0.5);
+}
