@@ -1,6 +1,9 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { AuthProvider } from './src/contexts/AuthContext';
 import App from './App';
 import './styles.css';
 
@@ -12,6 +15,11 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <BrowserRouter>
+      <AuthProvider>
+        <Toaster position="top-right" />
+        <App />
+      </AuthProvider>
+    </BrowserRouter>
   </React.StrictMode>
 );

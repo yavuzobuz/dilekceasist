@@ -1,12 +1,26 @@
-
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AIJusticeLogo } from './Icon';
+import { useAuth } from '../src/contexts/AuthContext';
+import { User, LogOut } from 'lucide-react';
 
 interface HeaderProps {
   onShowLanding?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
+  const { user, profile, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error) {
+      // Error handled in AuthContext
+    }
+  };
+
   return (
     <header className="bg-gradient-to-r from-black via-gray-900 to-black backdrop-blur-sm border-b border-red-600/30 sticky top-0 z-10 shadow-lg shadow-red-900/20">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -21,15 +35,48 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
             </h1>
           </div>
           <div className="flex items-center space-x-4">
-            {onShowLanding && (
-              <button
-                onClick={onShowLanding}
-                className="px-4 py-2 bg-gray-800/50 hover:bg-gray-700/50 border border-gray-600 hover:border-red-500 rounded-lg text-sm font-medium text-white transition-all duration-300 transform hover:scale-105 active:scale-95"
-              >
-                Ana Sayfa
-              </button>
+            {user ? (
+              <>
+                <button
+                  onClick={() => navigate('/profile')}
+                  className="flex items-center space-x-2 px-4 py-2 bg-gray-800/50 hover:bg-gray-700/50 border border-gray-600 hover:border-red-500 rounded-lg text-sm font-medium text-white transition-all duration-300"
+                >
+                  <User className="w-4 h-4" />
+                  <span className="hidden md:inline">{profile?.full_name || 'Profil'}</span>
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center space-x-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600 hover:border-red-500 rounded-lg text-sm font-medium text-white transition-all duration-300"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="hidden md:inline">Çıkış</span>
+                </button>
+              </>
+            ) : (
+              <>
+                {onShowLanding && (
+                  <button
+                    onClick={onShowLanding}
+                    className="px-4 py-2 bg-gray-800/50 hover:bg-gray-700/50 border border-gray-600 hover:border-red-500 rounded-lg text-sm font-medium text-white transition-all duration-300 transform hover:scale-105 active:scale-95"
+                  >
+                    Ana Sayfa
+                  </button>
+                )}
+                <button
+                  onClick={() => navigate('/login')}
+                  className="px-4 py-2 bg-gray-800/50 hover:bg-gray-700/50 border border-gray-600 hover:border-red-500 rounded-lg text-sm font-medium text-white transition-all duration-300"
+                >
+                  Giriş
+                </button>
+                <button
+                  onClick={() => navigate('/register')}
+                  className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-lg text-sm font-medium text-white transition-all duration-300"
+                >
+                  Kayıt Ol
+                </button>
+              </>
             )}
-            <div className="hidden md:flex items-center space-x-2">
+            <div className="hidden lg:flex items-center space-x-2">
               <div className="flex space-x-1">
                 <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse"></div>
                 <div className="h-2 w-2 bg-red-400 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
