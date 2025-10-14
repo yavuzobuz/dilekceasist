@@ -818,12 +818,14 @@ ${textContent}
                     contentEditable={!isLoading && !isReviewing}
                     onInput={handleInput}
                     onMouseUp={handleMouseUp}
-                    className="bg-white text-gray-900 shadow-2xl rounded-xl p-16 min-h-[calc(100vh-300px)] focus:outline-none focus:ring-4 focus:ring-blue-500/20 transition-all"
+                    className="petition-editor bg-white text-gray-900 shadow-2xl rounded-xl p-16 min-h-[calc(100vh-300px)] focus:outline-none focus:ring-4 focus:ring-blue-500/20 transition-all"
                     style={{
                         fontFamily: '"Times New Roman", Georgia, serif',
-                        fontSize: '15px',
-                        lineHeight: '1.9',
-                        letterSpacing: '0.01em'
+                        fontSize: '14px',
+                        lineHeight: '2',
+                        letterSpacing: '0.02em',
+                        textAlign: 'justify',
+                        wordSpacing: '0.05em'
                     }}
                     suppressContentEditableWarning={true}
                 />

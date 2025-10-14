@@ -157,6 +157,99 @@ button, input, select, textarea {
   transition: all 0.2s ease-in-out;
 }
 
+/* Petition Editor - Word-like formatting */
+.petition-editor {
+  /* Paragraf stilleri */
+}
+
+.petition-editor p {
+  margin-bottom: 1.5em;
+  text-indent: 2em;
+  text-align: justify;
+  orphans: 3;
+  widows: 3;
+}
+
+.petition-editor p:first-of-type {
+  text-indent: 0; /* İlk paragraf girintisiz */
+}
+
+.petition-editor h1,
+.petition-editor h2,
+.petition-editor h3,
+.petition-editor h4,
+.petition-editor h5,
+.petition-editor h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.75em;
+  font-weight: bold;
+  line-height: 1.4;
+}
+
+.petition-editor h1 { font-size: 1.8em; }
+.petition-editor h2 { font-size: 1.5em; }
+.petition-editor h3 { font-size: 1.3em; }
+.petition-editor h4 { font-size: 1.1em; }
+
+.petition-editor ul,
+.petition-editor ol {
+  margin: 1em 0;
+  padding-left: 2.5em;
+}
+
+.petition-editor li {
+  margin-bottom: 0.5em;
+  line-height: 1.8;
+}
+
+.petition-editor strong,
+.petition-editor b {
+  font-weight: 700;
+}
+
+.petition-editor em,
+.petition-editor i {
+  font-style: italic;
+}
+
+.petition-editor u {
+  text-decoration: underline;
+}
+
+.petition-editor blockquote {
+  margin: 1.5em 2em;
+  padding-left: 1.5em;
+  border-left: 3px solid #d1d5db;
+  font-style: italic;
+  color: #4b5563;
+}
+
+/* Boş satırlar için minimum yükseklik */
+.petition-editor br {
+  content: "";
+  display: block;
+  margin: 0.5em 0;
+}
+
+/* Tablo stilleri */
+.petition-editor table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.5em 0;
+}
+
+.petition-editor th,
+.petition-editor td {
+  border: 1px solid #d1d5db;
+  padding: 0.5em 1em;
+  text-align: left;
+}
+
+.petition-editor th {
+  background-color: #f3f4f6;
+  font-weight: 600;
+}
+
 /* Focus ring improvements */
 input:focus, select:focus, textarea:focus {
   outline: none;
