@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase, Petition } from '../lib/supabase';
+import { supabase, Petition } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
-import { User, FileText, Calendar, Trash2, Eye, LogOut, ArrowLeft } from 'lucide-react';
+import { User, FileText, Calendar, Trash2, Eye, LogOut, ArrowLeft, Share2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { ShareModal } from '../components/ShareModal';
+import { Footer } from '../../components/Footer';
 
 const Profile: React.FC = () => {
   const { user, profile, signOut } = useAuth();
   const [petitions, setPetitions] = useState<Petition[]>([]);
   const [loading, setLoading] = useState(true);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [selectedPetition, setSelectedPetition] = useState<Petition | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -59,6 +63,17 @@ const Profile: React.FC = () => {
   const handleView = (petition: Petition) => {
     // Navigate to app with petition data
     navigate('/app', { state: { petition } });
+  };
+
+  const handleShare = (petition: Petition) => {
+    setSelectedPetition(petition);
+    setShareModalOpen(true);
+  };
+
+  const handleShareSuccess = () => {
+    toast.success('Dilekçe başarıyla paylaşıldı! 🎉');
+    setShareModalOpen(false);
+    setSelectedPetition(null);
   };
 
   const handleLogout = async () => {
@@ -187,6 +202,13 @@ const Profile: React.FC = () => {
                         <Eye className="w-5 h-5" />
                       </button>
                       <button
+                        onClick={() => handleShare(petition)}
+                        className="p-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                        title="Paylaş"
+                      >
+                        <Share2 className="w-5 h-5" />
+                      </button>
+                      <button
                         onClick={() => handleDelete(petition.id)}
                         className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
                         title="Sil"
@@ -201,6 +223,21 @@ const Profile: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Share Modal */}
+      {selectedPetition && (
+        <ShareModal
+          petition={selectedPetition}
+          isOpen={shareModalOpen}
+          onClose={() => {
+            setShareModalOpen(false);
+            setSelectedPetition(null);
+          }}
+          onSuccess={handleShareSuccess}
+        />
+      )}
+
+      <Footer />
     </div>
   );
 };

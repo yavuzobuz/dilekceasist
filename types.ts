@@ -42,6 +42,8 @@ export interface AnalysisData {
     summary: string;
     potentialParties: string[];
     caseDetails?: CaseDetails;
+    lawyerInfo?: LawyerInfo;
+    contactInfo?: ContactInfo[];
 }
 
 export interface CaseDetails {
@@ -49,6 +51,21 @@ export interface CaseDetails {
     fileNumber: string;
     decisionNumber: string;
     decisionDate: string;
+}
+
+export interface ContactInfo {
+    name: string;
+    address: string;
+    phone: string;
+    email: string;
+    tcNo?: string;
+    barNumber?: string; // Baro sicil numarası (vekiller için)
+}
+
+export interface LawyerInfo extends ContactInfo {
+    barNumber: string;
+    bar: string; // Baro adı (örn: "Ankara Barosu")
+    title: string; // "Avukat" veya "Avukat - Stajyer" vs.
 }
 
 export interface GeneratePetitionParams {
@@ -61,6 +78,8 @@ export interface GeneratePetitionParams {
     specifics: string;
     chatHistory: ChatMessage[];
     parties: { [key: string]: string };
+    lawyerInfo?: LawyerInfo;
+    contactInfo?: ContactInfo[];
 }
 
 export interface PetitionViewProps {
@@ -71,6 +90,7 @@ export interface PetitionViewProps {
   onRewrite: (text: string) => Promise<string>;
   onReview: () => void;
   isReviewing: boolean;
+  petitionVersion: number;
 }
 
 export interface ChatContext {

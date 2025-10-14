@@ -1,5 +1,5 @@
 import { GoogleGenAI, Part, Type, FunctionDeclaration, GenerateContentResponse } from "@google/genai";
-import { type ChatMessage, type GroundingSource, type GeneratePetitionParams, UploadedFile, WebSearchResult, AnalysisData, UserRole, CaseDetails, ChatContext } from '../types';
+import { type ChatMessage, type GroundingSource, type GeneratePetitionParams, UploadedFile, WebSearchResult, AnalysisData, UserRole, CaseDetails, ChatContext, LawyerInfo, ContactInfo } from '../types';
 
 // The API_KEY is expected to be set in the execution environment via Vite's import.meta.env
 // Using VITE_ prefix is required for Vite to expose the variable to the client
@@ -49,6 +49,39 @@ const formatCaseDetailsForPrompt = (details: CaseDetails): string => {
     return detailEntries.join('\n');
 }
 
+const formatLawyerInfoForPrompt = (lawyerInfo?: LawyerInfo): string => {
+    if (!lawyerInfo || !lawyerInfo.name) return "Vekil bilgisi sağlanmadı.";
+    
+    const entries = [
+        `Ad Soyad: ${lawyerInfo.name}`,
+        lawyerInfo.title && `Unvan: ${lawyerInfo.title}`,
+        lawyerInfo.bar && `Baro: ${lawyerInfo.bar}`,
+        lawyerInfo.barNumber && `Baro Sicil No: ${lawyerInfo.barNumber}`,
+        lawyerInfo.address && `Adres: ${lawyerInfo.address}`,
+        lawyerInfo.phone && `Telefon: ${lawyerInfo.phone}`,
+        lawyerInfo.email && `Email: ${lawyerInfo.email}`,
+        lawyerInfo.tcNo && `TC No: ${lawyerInfo.tcNo}`,
+    ].filter(Boolean);
+    
+    return entries.join('\n');
+}
+
+const formatContactInfoForPrompt = (contactInfo?: ContactInfo[]): string => {
+    if (!contactInfo || contactInfo.length === 0) return "İletişim bilgisi sağlanmadı.";
+    
+    return contactInfo.map((contact, index) => {
+        const entries = [
+            `--- Kişi/Kurum ${index + 1} ---`,
+            contact.name && `Ad: ${contact.name}`,
+            contact.address && `Adres: ${contact.address}`,
+            contact.phone && `Telefon: ${contact.phone}`,
+            contact.email && `Email: ${contact.email}`,
+            contact.tcNo && `TC No: ${contact.tcNo}`,
+        ].filter(Boolean);
+        return entries.join('\n');
+    }).join('\n\n');
+}
+
 export async function analyzeDocuments(
     uploadedFiles: UploadedFile[], 
     udfTextContent: string,
@@ -59,18 +92,40 @@ export async function analyzeDocuments(
     }
     
     const model = 'gemini-2.5-flash';
-    const systemInstruction = `Sen Türk hukukunda uzmanlaşmış bir hukuk asistanısın. Görevin, sağlanan belgeleri, resimleri ve metinleri titizlikle analiz etmektir. Temel bilgileri çıkar, tüm potansiyel tarafları (şahıslar, şirketler) belirle ve eğer varsa dava künyesi bilgilerini (mahkeme adı, dosya/esas no, karar no, karar tarihi) tespit et. Çıktını, 'summary', 'potentialParties' ve 'caseDetails' anahtarlarına sahip bir JSON nesnesi olarak yapılandır. Analiz özetinin HER ZAMAN Türkçe olmasını sağla.`;
+    const systemInstruction = `Sen Türk hukukunda uzmanlaşmış bir hukuk asistanısın. Görevin, sağlanan belgeleri, resimleri ve metinleri titizlikle analiz etmektir. Temel bilgileri çıkar, tüm potansiyel tarafları (şahıslar, şirketler) belirle ve eğer varsa dava künyesi bilgilerini (mahkeme adı, dosya/esas no, karar no, karar tarihi) tespit et. Ayrıca belgelerden avukat/vekil bilgilerini (isim, baro, baro sicil no, adres, telefon, email) ve diğer iletişim bilgilerini çıkar. Çıktını JSON nesnesi olarak yapılandır. Analiz özetinin HER ZAMAN Türkçe olmasını sağla.`;
     
     const promptText = `
-Lütfen SANA GÖNDERİLEN PDF belgelerini, resim dosyalarını ve aşağıdaki metin olarak sağlanan UDF ve Word belgelerinin içeriğini analiz et.
-Tüm bu kaynaklardaki bilgileri (metinler ve görseller dahil) birleştirerek, olayın detaylı ve Türkçe bir özetini oluştur, metinde adı geçen tüm potansiyel tarafları listele ve dava künyesi bilgilerini (mahkeme, dosya numarası, karar numarası, karar tarihi) çıkar.
-Sonucu 'summary', 'potentialParties' ve 'caseDetails' anahtarlarına sahip bir JSON nesnesi olarak döndür.
+Lütfen SANA GÖNDERİLEN PDF belgelerini, resim dosyalarını ve aşağıdaki metin olarak sağlanan UDF ve Word belgelerinin içeriğini titizlikle analiz et.
+
+**ANA GÖREVLER:**
+1. Olayın detaylı ve Türkçe bir özetini oluştur
+2. Metinde adı geçen tüm potansiyel tarafları listele
+3. Dava künyesi bilgilerini çıkar (mahkeme, dosya numarası, karar numarası, karar tarihi)
+4. **ÖNEMLİ:** Avukat/vekil bilgilerini bul ve çıkar:
+   - Avukat adı soyadı (genellikle "Av." veya "Avukat" ile başlar)
+   - Baro adı ("... Barosu" formatında)
+   - Baro sicil numarası
+   - İş adresi
+   - Telefon numarası
+   - Email adresi
+5. Diğer iletişim bilgilerini çıkar (tarafların adres, telefon, email bilgileri)
+
+**ARANACAK AVUKAT BİLGİLERİ ÖRNEKLERİ:**
+- "Av. [Ad Soyad]"
+- "[Baro Adı] Barosu"
+- "Baro Sicil No:" veya "Baro Sicil:"
+- Adres satırları (genellikle mahalle, cadde, ilçe, il bilgisi içerir)
+- Telefon numaraları (0xxx xxx xx xx formatında)
+- Email adresleri (@... içeren)
 
 **UDF Belge İçerikleri:**
 ${udfTextContent || "UDF belgesi yüklenmedi."}
 
 **Word Belge İçerikleri:**
 ${wordTextContent || "Word belgesi yüklenmedi."}
+
+**ÇIKTI FORMATİ:**
+Sonucu 'summary', 'potentialParties', 'caseDetails', 'lawyerInfo' ve 'contactInfo' anahtarlarına sahip bir JSON nesnesi olarak döndür.
 `;
 
     const contentParts: Part[] = [
@@ -108,7 +163,35 @@ ${wordTextContent || "Word belgesi yüklenmedi."}
                                     decisionNumber: { type: Type.STRING },
                                     decisionDate: { type: Type.STRING },
                                 }
-                             }
+                             },
+                            lawyerInfo: {
+                                type: Type.OBJECT,
+                                description: 'Avukat/vekil bilgileri (eğer belgede varsa)',
+                                properties: {
+                                    name: { type: Type.STRING, description: 'Avukatın tam adı' },
+                                    address: { type: Type.STRING, description: 'Avukatın iş adresi' },
+                                    phone: { type: Type.STRING, description: 'Telefon numarası' },
+                                    email: { type: Type.STRING, description: 'Email adresi' },
+                                    barNumber: { type: Type.STRING, description: 'Baro sicil numarası' },
+                                    bar: { type: Type.STRING, description: 'Baro adı (örn: Ankara Barosu)' },
+                                    title: { type: Type.STRING, description: 'Unvan (örn: Avukat)' },
+                                    tcNo: { type: Type.STRING, description: 'TC Kimlik No (eğer varsa)' }
+                                }
+                            },
+                            contactInfo: {
+                                type: Type.ARRAY,
+                                description: 'Diğer iletişim bilgileri (tarafların adresleri, telefonları)',
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        name: { type: Type.STRING, description: 'Kişi/Kurum adı' },
+                                        address: { type: Type.STRING, description: 'Adres' },
+                                        phone: { type: Type.STRING, description: 'Telefon' },
+                                        email: { type: Type.STRING, description: 'Email' },
+                                        tcNo: { type: Type.STRING, description: 'TC Kimlik No (eğer varsa)' }
+                                    }
+                                }
+                            }
                         },
                         required: ['summary', 'potentialParties']
                     }
@@ -124,10 +207,33 @@ ${wordTextContent || "Word belgesi yüklenmedi."}
                     decisionDate: json.caseDetails?.decisionDate || '',
                 };
 
+                // Vekil bilgilerini parse et
+                const lawyerInfo: LawyerInfo | undefined = json.lawyerInfo ? {
+                    name: json.lawyerInfo.name || '',
+                    address: json.lawyerInfo.address || '',
+                    phone: json.lawyerInfo.phone || '',
+                    email: json.lawyerInfo.email || '',
+                    barNumber: json.lawyerInfo.barNumber || '',
+                    bar: json.lawyerInfo.bar || '',
+                    title: json.lawyerInfo.title || 'Avukat',
+                    tcNo: json.lawyerInfo.tcNo,
+                } : undefined;
+
+                // İletişim bilgilerini parse et
+                const contactInfo: ContactInfo[] | undefined = json.contactInfo?.map((contact: any) => ({
+                    name: contact.name || '',
+                    address: contact.address || '',
+                    phone: contact.phone || '',
+                    email: contact.email || '',
+                    tcNo: contact.tcNo,
+                }));
+
                 return {
                     summary: json.summary || '',
                     potentialParties: Array.from(new Set(json.potentialParties || [])) as string[], // Ensure uniqueness
-                    caseDetails: caseDetails
+                    caseDetails: caseDetails,
+                    lawyerInfo: lawyerInfo,
+                    contactInfo: contactInfo
                 };
             } catch (e) {
                 console.error("Failed to parse analysis JSON:", e, "Raw text:", response.text);
@@ -256,7 +362,7 @@ ${mevzuatQueries.map(q => `- ${q}`).join('\n')}
 // FIX: This function was incomplete and not returning a value.
 // Completed the prompt, added the API call and the return statement.
 export async function generatePetition(
-    { userRole, petitionType, caseDetails, analysisSummary, webSearchResult, specifics, chatHistory, docContent, parties }: GeneratePetitionParams
+    { userRole, petitionType, caseDetails, analysisSummary, webSearchResult, specifics, chatHistory, docContent, parties, lawyerInfo, contactInfo }: GeneratePetitionParams
 ): Promise<string> {
     const model = 'gemini-2.5-flash';
 
@@ -266,29 +372,40 @@ export async function generatePetition(
 **GÖREV: AŞAĞIDAKİ BİLGİLERİ KULLANARAK BİR HUKUKİ DİLEKÇE HAZIRLA.**
 
 **ÖNCELİKLİ BİLGİLER:**
-- **KULLANICININ ROLÜ (Dilekçenin Kimin Adına Yazılacağı):** ${userRole}
+- **KULLANICININ ROLÜ (Dilekçenin Kimin Adına Yazılacası):** ${userRole}
 - **DİLEKÇE TÜRÜ:** ${petitionType}
 
 **1. DAVA KÜNYESİ (Bu bilgileri dilekçenin başlığında ve ilgili yerlerinde KESİNLİKLE kullan):**
 ${formatCaseDetailsForPrompt(caseDetails)}
 
-**2. OLAYIN ÖZETİ (Belgelerden çıkarıldı):**
+**2. VEKİL BİLGİLERİ (ÖNEMLİ: Eğer vekil bilgisi varsa, dilekçenin sonunda vekil imza kısmında MUTLAKA kullan):**
+${formatLawyerInfoForPrompt(lawyerInfo)}
+
+**3. İLETİŞİM BİLGİLERİ (Tarafların adresleri, telefonları - Dilekçe başlığında kullan):**
+${formatContactInfoForPrompt(contactInfo)}
+
+**4. OLAYIN ÖZETİ (Belgelerden çıkarıldı):**
 ${analysisSummary || "Olay özeti sağlanmadı."}
 
-**3. TARAFLAR:**
+**5. TARAFLAR:**
 ${formatPartiesForPrompt(parties)}
 
-**4. İLGİLİ HUKUKİ ARAŞTIRMA (Web'den bulundu - Bu bilgileri argümanlarını desteklemek için kullan):**
+**6. İLGİLİ HUKUKİ ARAŞTIRMA (Web'den bulundu - Bu bilgileri argümanlarını desteklemek için kullan):**
 ${webSearchResult || "Web araştırması sonucu sağlanmadı."}
 
-**5. EK METİN VE NOTLAR (Kullanıcı tarafından sağlandı):**
+**7. EK METİN VE NOTLAR (Kullanıcı tarafından sağlandı):**
 ${docContent || "Ek metin sağlanmadı."}
 
-**6. ÖZEL TALİMATLAR VE VURGULANMASI İSTENEN NOKTALAR (Kullanıcıdan):**
+**8. ÖZEL TALİMATLAR VE VURGULANMASI İSTENEN NOKTALAR (Kullanıcıdan):**
 ${specifics || "Özel talimat sağlanmadı."}
 
-**7. ÖNCEKİ SOHBET GEÇMİŞİ (Kullanıcı ve asistan arasında geçti - Bağlamı anlamak için kullan):**
+**9. ÖNCEKİ SOHBET GEÇMİŞİ (Kullanıcı ve asistan arasında geçti - Bağlamı anlamak için kullan):**
 ${formatChatHistoryForPrompt(chatHistory)}
+
+**ÖNEMLİ UYARILAR:**
+- Vekil bilgisi varsa, dilekçenin SONUNDA mutlaka vekil bilgilerini (ad, baro, adres, telefon) ekle.
+- İletişim bilgileri varsa, taraflar kısmında uygun şekilde kullan.
+- Türk Hukuk Usulü'ne uygun format kullan.
 
 **DİLEKÇE TASLAĞI:**
 [Buraya yukarıdaki tüm bilgileri sentezleyerek, Türk Hukuk Usulü'ne uygun, resmi, talep ve sonuç kısımlarını içeren tam bir dilekçe metni oluştur.]
@@ -395,7 +512,7 @@ export async function rewriteText(textToRewrite: string): Promise<string> {
 export async function reviewPetition(
     params: GeneratePetitionParams & { currentPetition: string }
 ): Promise<string> {
-    const { userRole, petitionType, caseDetails, analysisSummary, webSearchResult, specifics, chatHistory, docContent, parties, currentPetition } = params;
+    const { userRole, petitionType, caseDetails, analysisSummary, webSearchResult, specifics, chatHistory, docContent, parties, lawyerInfo, contactInfo, currentPetition } = params;
     
     const model = 'gemini-2.5-flash';
     const systemInstruction = `You are a senior Turkish legal editor (Kıdemli Türk Hukuk Editörü). Your task is to critically review and improve the provided legal petition draft. Enhance its legal reasoning, strengthen the arguments from the user's perspective, correct any factual or legal inaccuracies, and improve the overall formatting and language to meet the highest standards of Turkish courts. Base your review *exclusively* on the provided context. DO NOT perform new web searches. The final output should be the complete, improved petition text.`;
@@ -415,6 +532,12 @@ ${currentPetition}
 
 - **DAVA KÜNYESİ:**
 ${formatCaseDetailsForPrompt(caseDetails)}
+
+- **VEKİL BİLGİLERİ:**
+${formatLawyerInfoForPrompt(lawyerInfo)}
+
+- **İLETİŞİM BİLGİLERİ:**
+${formatContactInfoForPrompt(contactInfo)}
 
 - **OLAYIN ÖZETİ:**
 ${analysisSummary || "Olay özeti sağlanmadı."}

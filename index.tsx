@@ -4,7 +4,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './src/contexts/AuthContext';
-import App from './App';
+import App from './AppRouter';
 import './styles.css';
 
 const rootElement = document.getElementById('root');

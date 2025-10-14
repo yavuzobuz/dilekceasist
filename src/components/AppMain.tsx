@@ -1,6 +1,6 @@
 import React from 'react';
 import { useState, useCallback, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
 import UTIF from 'utif2';
 import mammoth from 'mammoth';
@@ -9,8 +9,11 @@ import { analyzeDocuments, generateSearchKeywords, performWebSearch, generatePet
 import { Header } from '../../components/Header';
 import { InputPanel } from '../../components/InputPanel';
 import { OutputPanel } from '../../components/OutputPanel';
+import { PetitionView } from '../../components/PetitionView';
 import { ProgressSummary } from '../../components/ProgressSummary';
 import { ToastContainer, ToastType } from '../../components/Toast';
+import { LoadingSpinner } from '../../components/LoadingSpinner';
+import { SparklesIcon } from '../../components/Icon';
 import { Petition, supabase } from '../../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
@@ -30,6 +33,7 @@ const fileToBase64 = (file: File): Promise<string> => {
 
 export const AppMain: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const petitionFromState = (location.state as { petition?: Petition })?.petition;
 
@@ -44,15 +48,11 @@ export const AppMain: React.FC = () => {
   const [specifics, setSpecifics] = useState('');
   const [parties, setParties] = useState<{ [key: string]: string }>({});
   
-  // Initialize chat messages from localStorage
+  // Initialize chat messages from petition metadata or empty array
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => {
-    try {
-      const storedHistory = localStorage.getItem('chatHistory');
-      if (storedHistory) {
-        return JSON.parse(storedHistory);
-      }
-    } catch (error) {
-      console.error('Failed to parse chat history from localStorage:', error);
+    // If loaded from profile, use petition's chat history
+    if (petitionFromState?.metadata?.chatHistory) {
+      return petitionFromState.metadata.chatHistory;
     }
     return [];
   });
@@ -77,6 +77,7 @@ export const AppMain: React.FC = () => {
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   
   const [error, setError] = useState<string | null>(null);
+  const [isFullPageEditorMode, setIsFullPageEditorMode] = useState(false);
   
   // Toast notifications
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
@@ -90,23 +91,31 @@ export const AppMain: React.FC = () => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   }, []);
 
-  // Persist chat messages to localStorage whenever they change
-  useEffect(() => {
-    try {
-      localStorage.setItem('chatHistory', JSON.stringify(chatMessages));
-    } catch (error) {
-      console.error('Failed to save chat history to localStorage:', error);
-    }
-  }, [chatMessages]);
 
-  // Load petition from state if provided
+  // Load petition from state if provided (only on mount or when petitionFromState changes)
   useEffect(() => {
     if (petitionFromState) {
       setGeneratedPetition(petitionFromState.content || '');
       setPetitionVersion(v => v + 1);
-      addToast('Dilekçe yüklendi', 'success');
+      
+      // Restore all context data from metadata
+      const metadata = petitionFromState.metadata;
+      if (metadata) {
+        if (metadata.caseDetails) setCaseDetails(metadata.caseDetails);
+        if (metadata.parties) setParties(metadata.parties);
+        if (metadata.searchKeywords) setSearchKeywords(metadata.searchKeywords);
+        if (metadata.docContent) setDocContent(metadata.docContent);
+        if (metadata.specifics) setSpecifics(metadata.specifics);
+        if (metadata.userRole) setUserRole(metadata.userRole);
+        if (metadata.analysisData) setAnalysisData(metadata.analysisData);
+        if (metadata.webSearchResult) setWebSearchResult(metadata.webSearchResult);
+        if (metadata.chatHistory) setChatMessages(metadata.chatHistory);
+      }
+      
+      addToast('Dilekçe yüklendin̚', 'success');
     }
-  }, [petitionFromState]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [petitionFromState?.id]); // Only re-run if petition ID changes
 
   const handleAnalyze = useCallback(async () => {
     if (files.length === 0) {
@@ -312,9 +321,12 @@ export const AppMain: React.FC = () => {
         specifics,
         chatHistory: chatMessages,
         parties,
+        lawyerInfo: analysisData.lawyerInfo,
+        contactInfo: analysisData.contactInfo,
       });
       setGeneratedPetition(result);
       setPetitionVersion(v => v + 1); // Increment version to force re-mount of editor
+      setIsFullPageEditorMode(true); // Switch to full-page editor mode
       addToast('Dilekçe başarıyla oluşturuldu! ✨', 'success');
 
       // Save to Supabase if user is logged in
@@ -339,6 +351,19 @@ export const AppMain: React.FC = () => {
           title: `${petitionType} - ${new Date().toLocaleDateString('tr-TR')}`,
           petition_type: petitionType,
           content: content,
+          metadata: {
+            chatHistory: chatMessages,
+            caseDetails,
+            parties,
+            searchKeywords,
+            docContent,
+            specifics,
+            userRole,
+            analysisData,
+            webSearchResult,
+            lawyerInfo: analysisData?.lawyerInfo,
+            contactInfo: analysisData?.contactInfo,
+          },
         },
       ]);
 
@@ -463,6 +488,8 @@ export const AppMain: React.FC = () => {
         specifics,
         chatHistory: chatMessages,
         parties,
+        lawyerInfo: analysisData.lawyerInfo,
+        contactInfo: analysisData.contactInfo,
       });
       setGeneratedPetition(result);
       setPetitionVersion(v => v + 1);
@@ -491,17 +518,132 @@ export const AppMain: React.FC = () => {
     setGeneratedPetition('');
     setPetitionVersion(0);
     setError(null);
-    
-    // Clear localStorage chat history
-    localStorage.removeItem('chatHistory');
+    setIsFullPageEditorMode(false); // Exit full-page mode
     
     addToast('Yeni dilekçe için hazırsınız! 🎉', 'info');
   }, [addToast]);
 
+  // Show login prompt if user is not logged in (except when loading from profile)
+  if (!user && !petitionFromState) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-gray-200 flex flex-col font-sans">
+        <ToastContainer toasts={toasts} removeToast={removeToast} />
+        <Header onShowLanding={() => navigate('/')} />
+        <div className="flex-grow flex items-center justify-center p-8">
+          <div className="max-w-md w-full bg-gray-800 rounded-lg border border-red-600/30 p-8 text-center">
+            <div className="text-6xl mb-6">🔒</div>
+            <h2 className="text-2xl font-bold text-white mb-4">Giriş Gerekli</h2>
+            <p className="text-gray-300 mb-6">
+              Dilekçe oluşturmak için önce giriş yapmanız gerekiyor.
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={() => navigate('/login')}
+                className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors font-semibold"
+              >
+                Giriş Yap
+              </button>
+              <button
+                onClick={() => navigate('/register')}
+                className="flex-1 px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors font-semibold"
+              >
+                Kayıt Ol
+              </button>
+            </div>
+            <button
+              onClick={() => navigate('/pool')}
+              className="mt-4 text-gray-400 hover:text-white transition-colors text-sm"
+            >
+              Veya Dilekçe Havuzuna göz at →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Full-page editor mode render - Clean and spacious design
+  if (isFullPageEditorMode && generatedPetition) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-gray-200 flex flex-col font-sans">
+        <ToastContainer toasts={toasts} removeToast={removeToast} />
+        <Header onShowLanding={() => navigate('/')} />
+        
+        {/* Compact Action Bar */}
+        <div className="bg-gray-800/80 border-b border-gray-700/50 backdrop-blur-sm sticky top-0 z-40">
+          <div className="max-w-[1400px] mx-auto px-6 py-3 flex items-center justify-between">
+            <button
+              onClick={() => setIsFullPageEditorMode(false)}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all font-medium text-sm"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Düzenlemeye Geri Dön
+            </button>
+            
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleReviewPetition}
+                disabled={isReviewingPetition}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-all text-sm"
+              >
+                {isReviewingPetition ? (
+                  <>
+                    <LoadingSpinner className="h-4 w-4" />
+                    <span>İyileştiriliyor...</span>
+                  </>
+                ) : (
+                  <>
+                    <SparklesIcon className="h-4 w-4" />
+                    <span>Taslağı İyileştir</span>
+                  </>
+                )}
+              </button>
+              
+              <button
+                onClick={handleReset}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all font-medium text-sm"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Yeni Dilekçe
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Full-width petition editor */}
+        <div className="flex-grow overflow-hidden">
+          <PetitionView
+            key={petitionVersion}
+            petition={generatedPetition}
+            setGeneratedPetition={setGeneratedPetition}
+            sources={webSearchResult?.sources || []}
+            isLoading={isLoadingPetition}
+            onRewrite={handleRewriteText}
+            onReview={handleReviewPetition}
+            isReviewing={isReviewingPetition}
+            petitionVersion={petitionVersion}
+          />
+        </div>
+        
+        {error && (
+          <div className="fixed bottom-4 right-4 bg-red-800 text-white p-4 rounded-lg shadow-lg max-w-sm z-50">
+            <h4 className="font-bold mb-2">Hata</h4>
+            <p>{error}</p>
+            <button onClick={() => setError(null)} className="absolute top-2 right-2 text-xl">&times;</button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 text-gray-200 flex flex-col font-sans">
       <ToastContainer toasts={toasts} removeToast={removeToast} />
-      <Header onShowLanding={() => {}} />
+      <Header onShowLanding={() => navigate('/')} />
        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <ProgressSummary
           petitionType={petitionType}
@@ -570,6 +712,7 @@ export const AppMain: React.FC = () => {
             specifics={specifics}
             setSpecifics={setSpecifics}
             onReset={handleReset}
+            onExpandFullPage={() => setIsFullPageEditorMode(true)}
           />
         </main>
       </div>

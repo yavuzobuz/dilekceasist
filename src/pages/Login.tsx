@@ -1,26 +1,47 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Scale, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Scale, Mail, Lock, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { signIn } = useAuth();
+  const [showEmailNotConfirmed, setShowEmailNotConfirmed] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const { signIn, resendConfirmationEmail } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setShowEmailNotConfirmed(false);
 
     try {
       await signIn(email, password);
       navigate('/app');
-    } catch (error) {
+    } catch (error: any) {
+      // Email doğrulama hatası kontrolü
+      if (error.message?.includes('Email not confirmed')) {
+        setShowEmailNotConfirmed(true);
+      } else {
+        // Diğer hatalar için uyarıyı gizle
+        setShowEmailNotConfirmed(false);
+      }
       // Error is handled in AuthContext with toast
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleResendEmail = async () => {
+    setIsResending(true);
+    try {
+      await resendConfirmationEmail(email);
+    } catch (error) {
+      // Error is handled in AuthContext with toast
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -82,6 +103,44 @@ const Login: React.FC = () => {
                 />
               </div>
             </div>
+
+            {/* Email Not Confirmed Warning */}
+            {showEmailNotConfirmed && (
+              <div className="bg-yellow-900/30 border border-yellow-600/50 rounded-lg p-4 mb-4">
+                <div className="flex items-start">
+                  <AlertCircle className="w-5 h-5 text-yellow-500 mt-0.5 mr-3 flex-shrink-0" />
+                  <div className="flex-1">
+                    <h3 className="text-sm font-medium text-yellow-500 mb-1">
+                      Email Adresiniz Doğrulanmamış
+                    </h3>
+                    <p className="text-sm text-yellow-200/80 mb-3">
+                      Giriş yapabilmek için email adresinizi doğrulamanız gerekiyor. Lütfen email kutunuzu kontrol edin.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleResendEmail}
+                      disabled={isResending}
+                      className="inline-flex items-center px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isResending ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Gönderiliyor...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-1.5" />
+                          Doğrulama Emailini Tekrar Gönder
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Submit Button */}
             <button

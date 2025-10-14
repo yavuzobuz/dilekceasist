@@ -36,22 +36,35 @@ const FloatingToolbar: React.FC<{
 };
 
 
-export const PetitionView: React.FC<PetitionViewProps> = ({ petition, setGeneratedPetition, sources, isLoading, onRewrite, onReview, isReviewing }) => {
+export const PetitionView: React.FC<PetitionViewProps> = ({ petition, setGeneratedPetition, sources, isLoading, onRewrite, onReview, isReviewing, petitionVersion }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const [selectionRange, setSelectionRange] = useState<Range | null>(null);
   const [toolbarPosition, setToolbarPosition] = useState<{ top: number, left: number } | null>(null);
   const [isRewriting, setIsRewriting] = useState(false);
   const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [showFormattingToolbar, setShowFormattingToolbar] = useState(true);
+  
+  // Find & Replace state
+  const [showFindReplace, setShowFindReplace] = useState(false);
+  const [findText, setFindText] = useState('');
+  const [replaceText, setReplaceText] = useState('');
+  const [matchCase, setMatchCase] = useState(false);
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(-1);
+  const [totalMatches, setTotalMatches] = useState(0);
 
 
+  // Update editor content when petition changes or petitionVersion updates
   useEffect(() => {
-    // This now only runs on mount (or when key changes), setting initial content.
-    // This prevents the component from fighting with user for control over the content.
-    if (editorRef.current) {
-      editorRef.current.innerHTML = petition;
+    if (editorRef.current && petition) {
+      // Force a slight delay to ensure DOM is ready
+      setTimeout(() => {
+        if (editorRef.current) {
+          editorRef.current.innerHTML = petition;
+        }
+      }, 0);
     }
-  }, []); // <-- CRITICAL CHANGE: Empty dependency array fixes direct editing.
+  }, [petition, petitionVersion]); // Update when either changes
 
   const handleMouseUp = useCallback(() => {
     const selection = window.getSelection();
@@ -122,7 +135,7 @@ export const PetitionView: React.FC<PetitionViewProps> = ({ petition, setGenerat
     try {
         const canvas = await html2canvas(editorRef.current, {
             scale: 2, // Higher scale for better quality
-            backgroundColor: '#1f2937', // Match editor background (gray-800)
+            backgroundColor: '#ffffff', // White background to match editor
             useCORS: true,
         });
         const imgData = canvas.toDataURL('image/png');
@@ -195,6 +208,116 @@ export const PetitionView: React.FC<PetitionViewProps> = ({ petition, setGenerat
         setIsDownloading(false);
     }
   };
+
+  // Text formatting functions
+  const formatText = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    editorRef.current?.focus();
+  };
+
+  // Find & Replace functions
+  const highlightMatches = useCallback((searchTerm: string) => {
+    if (!editorRef.current || !searchTerm) {
+      setTotalMatches(0);
+      setCurrentMatchIndex(-1);
+      return;
+    }
+
+    const content = editorRef.current.innerText;
+    const flags = matchCase ? 'g' : 'gi';
+    const regex = new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
+    const matches = content.match(regex);
+    setTotalMatches(matches ? matches.length : 0);
+  }, [matchCase]);
+
+  const findNext = useCallback(() => {
+    if (!editorRef.current || !findText) return;
+
+    const content = editorRef.current.innerText;
+    const flags = matchCase ? 'g' : 'gi';
+    const regex = new RegExp(findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
+    const matches = Array.from(content.matchAll(regex));
+    
+    if (matches.length === 0) {
+      setTotalMatches(0);
+      setCurrentMatchIndex(-1);
+      return;
+    }
+
+    const nextIndex = (currentMatchIndex + 1) % matches.length;
+    setCurrentMatchIndex(nextIndex);
+    setTotalMatches(matches.length);
+
+    // Highlight and scroll to the match
+    window.find(findText, matchCase, false, true);
+  }, [findText, matchCase, currentMatchIndex]);
+
+  const findPrevious = useCallback(() => {
+    if (!editorRef.current || !findText) return;
+
+    const content = editorRef.current.innerText;
+    const flags = matchCase ? 'g' : 'gi';
+    const regex = new RegExp(findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
+    const matches = Array.from(content.matchAll(regex));
+    
+    if (matches.length === 0) {
+      setTotalMatches(0);
+      setCurrentMatchIndex(-1);
+      return;
+    }
+
+    const prevIndex = currentMatchIndex <= 0 ? matches.length - 1 : currentMatchIndex - 1;
+    setCurrentMatchIndex(prevIndex);
+    setTotalMatches(matches.length);
+
+    // Highlight and scroll to the match
+    window.find(findText, matchCase, true, true);
+  }, [findText, matchCase, currentMatchIndex]);
+
+  const replaceOne = useCallback(() => {
+    if (!editorRef.current || !findText) return;
+
+    const selection = window.getSelection();
+    if (selection && selection.toString().toLowerCase() === findText.toLowerCase()) {
+      document.execCommand('insertText', false, replaceText);
+      setGeneratedPetition(editorRef.current.innerHTML);
+    }
+    findNext();
+  }, [findText, replaceText, findNext, setGeneratedPetition]);
+
+  const replaceAll = useCallback(() => {
+    if (!editorRef.current || !findText) return;
+
+    const flags = matchCase ? 'g' : 'gi';
+    const regex = new RegExp(findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
+    const newContent = editorRef.current.innerHTML.replace(regex, replaceText);
+    
+    editorRef.current.innerHTML = newContent;
+    setGeneratedPetition(newContent);
+    setTotalMatches(0);
+    setCurrentMatchIndex(-1);
+  }, [findText, replaceText, matchCase, setGeneratedPetition]);
+
+  // Update matches when find text or match case changes
+  useEffect(() => {
+    if (findText) {
+      highlightMatches(findText);
+    }
+  }, [findText, matchCase, highlightMatches]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+F or Ctrl+H to open Find & Replace
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'h' || e.key === 'F' || e.key === 'H')) {
+        e.preventDefault();
+        setShowFindReplace(true);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleDownloadUdf = async () => {
     if (!editorRef.current) return;
@@ -331,25 +454,55 @@ ${textContent}
   }
 
   return (
-    <div className="h-full flex flex-col relative">
+    <div className="h-full flex flex-col relative bg-gradient-to-br from-gray-900 to-gray-800">
        <FloatingToolbar 
             position={toolbarPosition}
             onRewrite={handleRewrite}
             isRewriting={isRewriting}
         />
-        <div className="flex-shrink-0 p-3 border-b border-gray-700 flex items-center justify-end gap-2">
+        
+        {/* Compact Toolbar */}
+        <div className="flex-shrink-0 bg-gray-800/50 border-b border-gray-700/50 backdrop-blur-sm">
+          <div className="max-w-[1400px] mx-auto px-6 py-2 flex items-center justify-between gap-3">
+            {/* Left side - Tools */}
+            <div className="flex items-center gap-2">
+              <button
+                  onClick={() => setShowFormattingToolbar(!showFormattingToolbar)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-gray-700/50 hover:bg-gray-600 text-gray-300 hover:text-white rounded-lg transition-all text-sm"
+                  title="Biçimlendirme araçlarını göster/gizle"
+              >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  <span className="hidden sm:inline">Biçimlendirme</span>
+              </button>
+              
+              <button
+                  onClick={() => setShowFindReplace(!showFindReplace)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-gray-700/50 hover:bg-gray-600 text-gray-300 hover:text-white rounded-lg transition-all text-sm"
+                  title="Bul ve Değiştir (Ctrl+H)"
+              >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <span className="hidden sm:inline">Bul & Değiştir</span>
+              </button>
+            </div>
+            
+            {/* Right side - Actions */}
+            <div className="flex items-center gap-2">
             <div className="relative">
                 <button
                     onClick={() => setIsDownloadMenuOpen(!isDownloadMenuOpen)}
                     disabled={isDownloading}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 text-white font-semibold rounded-lg shadow-md transition-all text-sm"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 text-white font-medium rounded-lg transition-all text-sm"
                 >
                     {isDownloading ? (
                         <LoadingSpinner className="h-4 w-4" />
                     ) : (
-                        <ArrowDownTrayIcon className="h-5 w-5" />
+                        <ArrowDownTrayIcon className="h-4 w-4" />
                     )}
-                    <span>İndir</span>
+                    <span className="hidden sm:inline">İndir</span>
                 </button>
                 {isDownloadMenuOpen && (
                     <div 
@@ -392,34 +545,289 @@ ${textContent}
                         </ul>
                     </div>
                 )}
-             </div>
-             <button
-                onClick={onReview}
-                disabled={isReviewing || isLoading}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-md transition-all text-sm"
-            >
-                {isReviewing ? (
-                    <>
-                        <LoadingSpinner className="h-4 w-4" />
-                        <span>İyileştiriliyor...</span>
-                    </>
-                ) : (
-                    <>
-                        <SparklesIcon className="h-5 w-5" />
-                        <span>Taslağı Gözden Geçir ve İyileştir</span>
-                    </>
-                )}
-            </button>
+                </div>
+            </div>
+          </div>
         </div>
-        <div className="flex-grow overflow-y-auto p-4 bg-gray-900/50 rounded-b-lg">
-            <div
-                ref={editorRef}
-                contentEditable={!isLoading && !isReviewing}
-                onInput={handleInput}
-                onMouseUp={handleMouseUp}
-                className="whitespace-pre-wrap break-words font-sans text-gray-200 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-2"
-                suppressContentEditableWarning={true}
-            />
+        
+        {/* Formatting Toolbar */}
+        {showFormattingToolbar && (
+            <div className="flex-shrink-0 border-b border-gray-700/50 bg-gray-800/30">
+              <div className="max-w-[1400px] mx-auto px-6 py-2 flex flex-wrap items-center gap-1">
+                {/* Text Formatting */}
+                <div className="flex items-center gap-1 border-r border-gray-600 pr-2">
+                    <button
+                        onClick={() => formatText('bold')}
+                        className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                        title="Kalın (Ctrl+B)"
+                    >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M3 5a1 1 0 011-1h5.5a3.5 3.5 0 110 7H4v5a1 1 0 11-2 0V5zm2 5h5.5a1.5 1.5 0 100-3H5v3z" />
+                        </svg>
+                    </button>
+                    <button
+                        onClick={() => formatText('italic')}
+                        className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                        title="İtalik (Ctrl+I)"
+                    >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M8 5a1 1 0 100 2h1.586l-4.293 4.293a1 1 0 101.414 1.414L11 8.414V10a1 1 0 102 0V5H8z" transform="matrix(1 0 -0.3 1 0 0)" />
+                            <text x="7" y="14" fontSize="12" fontStyle="italic" fill="currentColor">I</text>
+                        </svg>
+                    </button>
+                    <button
+                        onClick={() => formatText('underline')}
+                        className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                        title="Altı Çizili (Ctrl+U)"
+                    >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M4 3a1 1 0 011 1v6a5 5 0 0010 0V4a1 1 0 112 0v6a7 7 0 11-14 0V4a1 1 0 011-1z" />
+                            <path d="M2 17h16v1H2v-1z" />
+                        </svg>
+                    </button>
+                    <button
+                        onClick={() => formatText('strikeThrough')}
+                        className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                        title="Üstü Çizili"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12h18M9 5l-3 7m0 0l3 7m-3-7h12" />
+                        </svg>
+                    </button>
+                </div>
+                
+                {/* Alignment */}
+                <div className="flex items-center gap-1 border-r border-gray-600 pr-2">
+                    <button
+                        onClick={() => formatText('justifyLeft')}
+                        className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                        title="Sola Hizala"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h10M4 18h16" />
+                        </svg>
+                    </button>
+                    <button
+                        onClick={() => formatText('justifyCenter')}
+                        className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                        title="Ortala"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M7 12h10M4 18h16" />
+                        </svg>
+                    </button>
+                    <button
+                        onClick={() => formatText('justifyRight')}
+                        className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                        title="Sağa Hizala"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M10 12h10M4 18h16" />
+                        </svg>
+                    </button>
+                    <button
+                        onClick={() => formatText('justifyFull')}
+                        className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                        title="İki Yana Yasla"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                </div>
+                
+                {/* Lists */}
+                <div className="flex items-center gap-1 border-r border-gray-600 pr-2">
+                    <button
+                        onClick={() => formatText('insertUnorderedList')}
+                        className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                        title="Madde İşaretli Liste"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+                        </svg>
+                    </button>
+                    <button
+                        onClick={() => formatText('insertOrderedList')}
+                        className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                        title="Numaralı Liste"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5h12M9 12h12M9 19h12M3 5v4m0 4v4" />
+                        </svg>
+                    </button>
+                </div>
+                
+                {/* Font Size */}
+                <div className="flex items-center gap-1 border-r border-gray-600 pr-2">
+                    <select
+                        onChange={(e) => formatText('fontSize', e.target.value)}
+                        className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded border border-gray-600 focus:border-red-500 focus:outline-none"
+                        title="Font Boyutu"
+                        defaultValue="3"
+                    >
+                        <option value="1">Çok Küçük</option>
+                        <option value="2">Küçük</option>
+                        <option value="3">Normal</option>
+                        <option value="4">Büyük</option>
+                        <option value="5">Çok Büyük</option>
+                        <option value="6">Başlık</option>
+                    </select>
+                </div>
+                
+                {/* Text Color */}
+                <div className="flex items-center gap-1">
+                    <input
+                        type="color"
+                        onChange={(e) => formatText('foreColor', e.target.value)}
+                        className="w-8 h-8 rounded cursor-pointer border border-gray-600"
+                        title="Metin Rengi"
+                        defaultValue="#e5e7eb"
+                    />
+                    <button
+                        onClick={() => formatText('removeFormat')}
+                        className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                        title="Biçimlendirmeyi Temizle"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+              </div>
+            </div>
+        )}
+        
+        {/* Find & Replace Panel */}
+        {showFindReplace && (
+          <div className="flex-shrink-0 border-b border-gray-700/50 bg-gray-800/50">
+            <div className="max-w-[1400px] mx-auto px-6 py-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Find Section */}
+                <div className="space-y-2">
+                  <label className="text-xs text-gray-400 font-medium">Bul:</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={findText}
+                      onChange={(e) => setFindText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') findNext();
+                        if (e.key === 'Escape') setShowFindReplace(false);
+                      }}
+                      placeholder="Aranacak metin..."
+                      className="flex-1 px-3 py-2 bg-gray-700 text-white text-sm rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
+                    />
+                    <button
+                      onClick={findPrevious}
+                      disabled={!findText || totalMatches === 0}
+                      className="px-3 py-2 bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg transition-all"
+                      title="Önceki (Shift+Enter)"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={findNext}
+                      disabled={!findText || totalMatches === 0}
+                      className="px-3 py-2 bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg transition-all"
+                      title="Sonraki (Enter)"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+                  {findText && (
+                    <div className="text-xs text-gray-400">
+                      {totalMatches > 0 ? (
+                        <span>{currentMatchIndex + 1} / {totalMatches} sonuç</span>
+                      ) : (
+                        <span className="text-orange-400">Sonuç bulunamadı</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Replace Section */}
+                <div className="space-y-2">
+                  <label className="text-xs text-gray-400 font-medium">Değiştir:</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={replaceText}
+                      onChange={(e) => setReplaceText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && e.ctrlKey) replaceAll();
+                        if (e.key === 'Escape') setShowFindReplace(false);
+                      }}
+                      placeholder="Yeni metin..."
+                      className="flex-1 px-3 py-2 bg-gray-700 text-white text-sm rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
+                    />
+                    <button
+                      onClick={replaceOne}
+                      disabled={!findText || totalMatches === 0}
+                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg transition-all text-sm font-medium whitespace-nowrap"
+                      title="Değiştir"
+                    >
+                      Değiştir
+                    </button>
+                    <button
+                      onClick={replaceAll}
+                      disabled={!findText || totalMatches === 0}
+                      className="px-3 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg transition-all text-sm font-medium whitespace-nowrap"
+                      title="Tümünü Değiştir (Ctrl+Enter)"
+                    >
+                      Tümünü
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={matchCase}
+                        onChange={(e) => setMatchCase(e.target.checked)}
+                        className="rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+                      />
+                      Büyük/küçük harf duyarlı
+                    </label>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Close button */}
+              <button
+                onClick={() => setShowFindReplace(false)}
+                className="absolute top-2 right-2 p-1 text-gray-400 hover:text-white transition-colors"
+                title="Kapat (Esc)"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Rich Text Editor Area - Spacious and Clean */}
+        <div className="flex-grow overflow-y-auto">
+            <div className="max-w-[1200px] mx-auto px-6 py-8">
+                <div
+                    ref={editorRef}
+                    contentEditable={!isLoading && !isReviewing}
+                    onInput={handleInput}
+                    onMouseUp={handleMouseUp}
+                    className="bg-white text-gray-900 shadow-2xl rounded-xl p-16 min-h-[calc(100vh-300px)] focus:outline-none focus:ring-4 focus:ring-blue-500/20 transition-all"
+                    style={{
+                        fontFamily: '"Times New Roman", Georgia, serif',
+                        fontSize: '15px',
+                        lineHeight: '1.9',
+                        letterSpacing: '0.01em'
+                    }}
+                    suppressContentEditableWarning={true}
+                />
+            </div>
         </div>
         {sources.length > 0 && (
             <div className="flex-shrink-0 p-4 border-t border-gray-700">

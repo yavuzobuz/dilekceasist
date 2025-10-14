@@ -20,9 +20,11 @@
     "html2canvas": "1.4.1",
     "jspdf": "2.5.1",
     "jszip": "3.10.1",
+    "lucide-react": "^0.545.0",
     "mammoth": "1.7.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.9.4",
     "utif2": "^4.1.0"
   },
