@@ -1,85 +1,14 @@
-// Templates API Endpoint
+// Templates API Endpoint - Full Template Library
+import { ICRA_TEMPLATES, IS_HUKUKU_TEMPLATES } from '../templates-part1.js';
+import { TUKETICI_TEMPLATES, TICARET_TEMPLATES, MIRAS_TEMPLATES } from '../templates-part2.js';
+
+// Combine all templates
 const TEMPLATES = [
-    {
-        id: '1',
-        category: 'Hukuk',
-        subcategory: 'Dava',
-        title: 'Genel Dava Dilekçesi',
-        description: 'Genel amaçlı dava dilekçesi şablonu',
-        icon: 'FileText',
-        isPremium: false,
-        usageCount: 1250
-    },
-    {
-        id: '2',
-        category: 'İcra',
-        subcategory: 'İcra Takibi',
-        title: 'İlamsız İcra Takip Talebi',
-        description: 'Genel haciz yoluyla ilamsız icra takibi başlatma talebi',
-        icon: 'Gavel',
-        isPremium: false,
-        usageCount: 523
-    },
-    {
-        id: '3',
-        category: 'İcra',
-        subcategory: 'İcra İtiraz',
-        title: 'Borca İtiraz Dilekçesi',
-        description: 'İcra takibine karşı borca itiraz',
-        icon: 'ShieldX',
-        isPremium: false,
-        usageCount: 678
-    },
-    {
-        id: '4',
-        category: 'İş Hukuku',
-        subcategory: 'İşe İade',
-        title: 'İşe İade Davası Dilekçesi',
-        description: 'Haksız fesih nedeniyle işe iade talebi',
-        icon: 'UserCheck',
-        isPremium: false,
-        usageCount: 445
-    },
-    {
-        id: '5',
-        category: 'İş Hukuku',
-        subcategory: 'Tazminat',
-        title: 'Kıdem ve İhbar Tazminatı Davası',
-        description: 'İş akdi feshi sonrası tazminat talebi',
-        icon: 'Banknote',
-        isPremium: false,
-        usageCount: 567
-    },
-    {
-        id: '6',
-        category: 'Ceza',
-        subcategory: 'Şikayet',
-        title: 'Suç Duyurusu Dilekçesi',
-        description: 'Savcılığa suç duyurusu',
-        icon: 'AlertTriangle',
-        isPremium: false,
-        usageCount: 892
-    },
-    {
-        id: '7',
-        category: 'İdari',
-        subcategory: 'İptal Davası',
-        title: 'İdari İşlem İptal Davası',
-        description: 'İdari işlemin iptali talebi',
-        icon: 'Building2',
-        isPremium: false,
-        usageCount: 234
-    },
-    {
-        id: '8',
-        category: 'Hukuk',
-        subcategory: 'İtiraz',
-        title: 'Kaçak Elektrik İtirazı',
-        description: 'Kaçak elektrik tahakkukuna itiraz dilekçesi',
-        icon: 'Zap',
-        isPremium: false,
-        usageCount: 456
-    }
+    ...ICRA_TEMPLATES,
+    ...IS_HUKUKU_TEMPLATES,
+    ...TUKETICI_TEMPLATES,
+    ...TICARET_TEMPLATES,
+    ...MIRAS_TEMPLATES
 ];
 
 export default async function handler(req, res) {
@@ -93,10 +22,21 @@ export default async function handler(req, res) {
     try {
         const { category, search } = req.query;
 
-        let filteredTemplates = TEMPLATES;
+        // Map templates to list format (without full content)
+        let filteredTemplates = TEMPLATES.map(t => ({
+            id: t.id,
+            category: t.category,
+            subcategory: t.subcategory,
+            title: t.title,
+            description: t.description,
+            icon: t.icon,
+            isPremium: t.isPremium,
+            usageCount: t.usageCount,
+            variableCount: t.variables?.length || 0
+        }));
 
         // Filter by category
-        if (category && category !== 'Tümü') {
+        if (category && category !== 'Tümü' && category !== 'all') {
             filteredTemplates = filteredTemplates.filter(t => t.category === category);
         }
 
@@ -120,3 +60,6 @@ export default async function handler(req, res) {
         res.status(500).json({ error: error.message });
     }
 }
+
+// Export TEMPLATES for use by other API routes
+export { TEMPLATES };
