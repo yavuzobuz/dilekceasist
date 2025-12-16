@@ -11,6 +11,22 @@ import FAQ from './src/pages/FAQ';
 import { TemplatesPage } from './src/pages/TemplatesPage';
 import ProtectedRoute from './src/components/auth/ProtectedRoute';
 
+// Admin imports
+import { AdminLayout } from './src/components/admin/AdminLayout';
+import { AdminGuard } from './src/components/admin/AdminGuard';
+import {
+  AdminDashboard,
+  UserManagement,
+  TemplateManagement,
+  TariffManagement,
+  Analytics,
+  LegalSources,
+  SystemSettings,
+  Announcements,
+  EmailTemplates,
+  SystemLogs
+} from './src/pages/admin';
+
 export default function App() {
   const navigate = useNavigate();
 
@@ -57,7 +73,27 @@ export default function App() {
           />
         }
       />
+
+      {/* Admin Routes */}
+      <Route
+        path="/admin"
+        element={
+          <AdminGuard>
+            <AdminLayout />
+          </AdminGuard>
+        }
+      >
+        <Route index element={<AdminDashboard />} />
+        <Route path="users" element={<UserManagement />} />
+        <Route path="templates" element={<TemplateManagement />} />
+        <Route path="tariffs" element={<TariffManagement />} />
+        <Route path="analytics" element={<Analytics />} />
+        <Route path="sources" element={<LegalSources />} />
+        <Route path="settings" element={<SystemSettings />} />
+        <Route path="announcements" element={<Announcements />} />
+        <Route path="email-templates" element={<EmailTemplates />} />
+        <Route path="logs" element={<SystemLogs />} />
+      </Route>
     </Routes>
   );
 }
-

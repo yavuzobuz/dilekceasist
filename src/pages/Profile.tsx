@@ -15,7 +15,8 @@ import { ClientManager } from '../components/ClientManager';
 import { Client } from '../types';
 import { clientService } from '../services/clientService';
 import { FeeCalculator } from '../components/FeeCalculator';
-import { Calculator } from 'lucide-react';
+import { LaborReceivablesCalculator } from '../components/LaborReceivablesCalculator';
+import { Calculator, Briefcase as BriefcaseIcon } from 'lucide-react';
 
 const Profile: React.FC = () => {
   const { user, profile, signOut } = useAuth();
@@ -25,7 +26,7 @@ const Profile: React.FC = () => {
   const [selectedPetition, setSelectedPetition] = useState<Petition | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'petitions' | 'clients' | 'statistics' | 'settings' | 'calculator'>('petitions');
+  const [activeTab, setActiveTab] = useState<'petitions' | 'clients' | 'statistics' | 'settings' | 'calculator' | 'labor'>('petitions');
   const navigate = useNavigate();
 
   // Office branding state
@@ -457,6 +458,17 @@ const Profile: React.FC = () => {
             <Calculator className="w-4 h-4 mr-1 sm:mr-2" />
             <span className="hidden sm:inline">Harç Hesapla</span>
             <span className="sm:hidden">Harç</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('labor')}
+            className={`px-3 sm:px-4 py-2 rounded-lg transition-all flex items-center text-sm sm:text-base whitespace-nowrap ${activeTab === 'labor'
+              ? 'bg-red-600 text-white shadow-lg'
+              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              }`}
+          >
+            <BriefcaseIcon className="w-4 h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">İşçilik Alacakları</span>
+            <span className="sm:hidden">İşçilik</span>
           </button>
           <button
             onClick={() => setActiveTab('settings')}
@@ -1260,6 +1272,13 @@ const Profile: React.FC = () => {
         {activeTab === 'calculator' && (
           <div className="max-w-4xl mx-auto">
             <FeeCalculator />
+          </div>
+        )}
+
+        {/* Labor Receivables Calculator Tab */}
+        {activeTab === 'labor' && (
+          <div className="max-w-4xl mx-auto">
+            <LaborReceivablesCalculator />
           </div>
         )}
       </div>

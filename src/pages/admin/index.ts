@@ -1,0 +1,10 @@
+export { AdminDashboard } from './AdminDashboard';
+export { UserManagement } from './UserManagement';
+export { TemplateManagement } from './TemplateManagement';
+export { TariffManagement } from './TariffManagement';
+export { Analytics } from './Analytics';
+export { LegalSources } from './LegalSources';
+export { SystemSettings } from './SystemSettings';
+export { Announcements } from './Announcements';
+export { EmailTemplates } from './EmailTemplates';
+export { SystemLogs } from './SystemLogs';

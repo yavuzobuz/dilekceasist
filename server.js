@@ -5,6 +5,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
 import path from 'path';
 import rateLimit from 'express-rate-limit';
+import { createClient } from '@supabase/supabase-js';
 import { AI_CONFIG, SERVER_CONFIG } from './config.js';
 
 // Load environment variables
@@ -316,7 +317,15 @@ app.post('/api/gemini/keywords', async (req, res) => {
 // 3. Web Search - Enhanced for Yargıtay Decisions
 app.post('/api/gemini/web-search', async (req, res) => {
     try {
-        const { keywords } = req.body;
+        const { keywords, query } = req.body;
+
+        // Handle both keywords array and single query string
+        const searchTerms = keywords || (query ? [query] : []);
+
+        if (!Array.isArray(searchTerms) || searchTerms.length === 0) {
+            return res.status(400).json({ error: 'Keywords veya query parametresi gerekli' });
+        }
+
         const model = AI_CONFIG.MODEL_NAME;
 
         const systemInstruction = `Sen, Türk hukuku alanında uzman bir araştırma asistanısın. 
@@ -353,9 +362,9 @@ Her aramada şunları tespit etmeye çalış:
 NOT: En az 3-5 emsal karar bulmaya çalış. Bulamazsan "Bu konuda emsal karar bulunamadı" yaz.`;
 
         // Generate search queries for Yargıtay and legislation
-        const yargitayQueries = keywords.map(kw => `"${kw}" Yargıtay karar emsal`);
-        const mevzuatQueries = keywords.map(kw => `"${kw}" kanun maddesi hüküm`);
-        const uyapQueries = keywords.map(kw => `"${kw}" site:karararama.yargitay.gov.tr`);
+        const yargitayQueries = searchTerms.map(kw => `"${kw}" Yargıtay karar emsal`);
+        const mevzuatQueries = searchTerms.map(kw => `"${kw}" kanun maddesi hüküm`);
+        const uyapQueries = searchTerms.map(kw => `"${kw}" site:karararama.yargitay.gov.tr`);
 
         const promptText = `
 ## ARAMA GÖREVİ: YARGITAY KARARLARI VE MEVZUAT
@@ -363,7 +372,7 @@ NOT: En az 3-5 emsal karar bulmaya çalış. Bulamazsan "Bu konuda emsal karar b
 Aşağıdaki konularda kapsamlı bir hukuki araştırma yap:
 
 ### ANAHTAR KELİMELER
-${keywords.join(', ')}
+${searchTerms.join(', ')}
 
 ### ARAMA STRATEJİSİ
 
@@ -2646,6 +2655,234 @@ app.post('/api/templates/:id/use', (req, res) => {
         content,
         title: template.title
     });
+});
+
+// Admin Users API - Get users with email from Supabase Auth
+app.get('/api/admin-users', async (req, res) => {
+    try {
+        // Use service role key to access auth.users
+        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+        const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+
+        if (!serviceRoleKey) {
+            console.error('Service role key not configured');
+            return res.status(500).json({ error: 'Service role key not configured' });
+        }
+
+        const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+            auth: { autoRefreshToken: false, persistSession: false }
+        });
+
+        // Get query params
+        const page = parseInt(req.query.page) || 1;
+        const pageSize = parseInt(req.query.pageSize) || 10;
+        const search = req.query.search || '';
+
+        // Fetch users from auth.users using admin API
+        const { data: { users }, error: authError } = await supabaseAdmin.auth.admin.listUsers({
+            page: page,
+            perPage: pageSize
+        });
+
+        if (authError) {
+            console.error('Auth error:', authError);
+            throw authError;
+        }
+
+        // Filter by search if provided
+        let filteredUsers = users || [];
+        if (search) {
+            const searchLower = search.toLowerCase();
+            filteredUsers = filteredUsers.filter(u =>
+                (u.email && u.email.toLowerCase().includes(searchLower)) ||
+                (u.user_metadata?.full_name && u.user_metadata.full_name.toLowerCase().includes(searchLower))
+            );
+        }
+
+        // Get profiles data for additional info
+        const userIds = filteredUsers.map(u => u.id);
+        const { data: profiles } = await supabaseAdmin
+            .from('profiles')
+            .select('id, full_name')
+            .in('id', userIds);
+
+        const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+        // Get petition counts
+        const { data: petitionCounts } = await supabaseAdmin
+            .from('petitions')
+            .select('user_id')
+            .in('user_id', userIds);
+
+        const countMap = new Map();
+        petitionCounts?.forEach(p => {
+            countMap.set(p.user_id, (countMap.get(p.user_id) || 0) + 1);
+        });
+
+        // Combine data
+        const combinedUsers = filteredUsers.map(user => {
+            const profile = profileMap.get(user.id) || {};
+            return {
+                id: user.id,
+                email: user.email,
+                full_name: profile.full_name || user.user_metadata?.full_name || null,
+                office_name: null,
+                created_at: user.created_at,
+                last_sign_in_at: user.last_sign_in_at,
+                petition_count: countMap.get(user.id) || 0
+            };
+        });
+
+        // Get total count
+        const { data: { users: allUsers } } = await supabaseAdmin.auth.admin.listUsers({
+            page: 1,
+            perPage: 1000
+        });
+
+        res.json({
+            users: combinedUsers,
+            total: allUsers?.length || 0,
+            page,
+            pageSize
+        });
+
+    } catch (error) {
+        console.error('Admin users error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Announcements CRUD API
+app.get('/api/announcements', async (req, res) => {
+    try {
+        const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+
+        if (!serviceRoleKey) {
+            return res.status(500).json({ error: 'Service role key not configured' });
+        }
+
+        const supabase = createClient(supabaseUrl, serviceRoleKey, {
+            auth: { autoRefreshToken: false, persistSession: false }
+        });
+
+        const activeOnly = req.query.active === 'true';
+
+        let query = supabase
+            .from('announcements')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (activeOnly) {
+            query = query.eq('is_active', true);
+        }
+
+        const { data, error } = await query;
+
+        if (error) throw error;
+
+        res.json({ announcements: data || [] });
+    } catch (error) {
+        console.error('Announcements GET error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/announcements', async (req, res) => {
+    try {
+        const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+
+        const supabase = createClient(supabaseUrl, serviceRoleKey, {
+            auth: { autoRefreshToken: false, persistSession: false }
+        });
+
+        const { title, content, type, is_active, show_on_login, expires_at } = req.body;
+
+        if (!title || !content) {
+            return res.status(400).json({ error: 'Title and content are required' });
+        }
+
+        const { data, error } = await supabase
+            .from('announcements')
+            .insert([{
+                title,
+                content,
+                type: type || 'info',
+                is_active: is_active !== false,
+                show_on_login: show_on_login || false,
+                expires_at: expires_at || null
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.status(201).json({ announcement: data });
+    } catch (error) {
+        console.error('Announcements POST error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.put('/api/announcements', async (req, res) => {
+    try {
+        const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+
+        const supabase = createClient(supabaseUrl, serviceRoleKey, {
+            auth: { autoRefreshToken: false, persistSession: false }
+        });
+
+        const { id, ...updates } = req.body;
+
+        if (!id) {
+            return res.status(400).json({ error: 'Announcement ID is required' });
+        }
+
+        const { data, error } = await supabase
+            .from('announcements')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.json({ announcement: data });
+    } catch (error) {
+        console.error('Announcements PUT error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/api/announcements', async (req, res) => {
+    try {
+        const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+
+        const supabase = createClient(supabaseUrl, serviceRoleKey, {
+            auth: { autoRefreshToken: false, persistSession: false }
+        });
+
+        const { id } = req.body;
+
+        if (!id) {
+            return res.status(400).json({ error: 'Announcement ID is required' });
+        }
+
+        const { error } = await supabase
+            .from('announcements')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Announcements DELETE error:', error);
+        res.status(500).json({ error: error.message });
+    }
 });
 
 app.listen(PORT, () => {

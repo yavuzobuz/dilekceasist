@@ -1,49 +1,7 @@
-import React, { useState, useMemo } from 'react';
-import { Calculator, Printer, Copy, Info, Scale, Gavel, FileText, Banknote, Check } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Calculator, Printer, Copy, Info, Scale, Gavel, FileText, Banknote, Check, RefreshCw, AlertTriangle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-
-// 2025 Harç Tarifeleri (1 Ocak 2025 - Resmî Gazete)
-const HARCLAR_2025 = {
-    // Başvurma Harçları (Maktu)
-    basvurmaHarci: {
-        sulhHukuk: 281.80,
-        asliyeHukuk: 615.40,
-        bolgeAdliye: 945.40,
-        anayasaMahkemesi: 5064.40,
-        icra: 615.40,
-    },
-    // Nispi Harç Oranları
-    nispiHarc: {
-        kararIlam: 0.06831, // binde 68,31
-        pesinOran: 0.25, // nispi harcın 1/4'ü peşin
-        asgaritutar: 427.60,
-    },
-    // İcra Tahsil Harçları
-    icraTahsilHarci: {
-        hacizdenOnce: 0.0455, // %4,55
-        hacizdenSonra: 0.0910, // %9,10
-        satisSonrasi: 0.1138, // %11,38
-    },
-    // İcra Peşin Harç
-    icraPesinHarc: 0.005, // binde 5
-    // Cezaevi Harcı
-    cezaeviHarci: 0.02, // %2
-    // Diğer Maktu Harçlar
-    vekaletHarci: 87.50,
-    vekaletPulu: 138.00,
-    kesifHarci: 4361.50,
-};
-
-// 2025-2026 Avukatlık Asgari Ücret Tarifesi (4 Kasım 2025)
-const AVUKATLIK_UCRET_2025 = {
-    asliyeMahkeme: 45000,
-    sulhHukuk: 30000,
-    tuketiciMahkemesi: 22500,
-    icraTakibi: 9000,
-    icraTahliye: 20000,
-    agirCeza: 65000,
-    idareMahkemesi: 30000,
-};
+import { HARCLAR_2025, AVUKATLIK_UCRET_2025, shouldCheckForUpdates, type HarcTarifeleri, type AvukatlikUcretTarifeleri } from '../config/feeTariffs';
 
 type DavaTuru = 'alacak' | 'bosanma' | 'is' | 'tuketici' | 'icra' | 'ceza' | 'idari';
 
@@ -57,6 +15,15 @@ export const FeeCalculator: React.FC = () => {
     const [davaTuru, setDavaTuru] = useState<DavaTuru>('alacak');
     const [davaDegeri, setDavaDegeri] = useState<string>('');
     const [copied, setCopied] = useState(false);
+    const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+    const [lastChecked, setLastChecked] = useState<string | null>(
+        localStorage.getItem('tariffLastChecked')
+    );
+    const [updateAvailable, setUpdateAvailable] = useState(false);
+
+    // Use tariffs from config
+    const harclar = HARCLAR_2025;
+    const avukatlikUcret = AVUKATLIK_UCRET_2025;
 
     const davaTurleri = [
         { value: 'alacak', label: 'Alacak Davası', icon: Banknote },
@@ -68,6 +35,54 @@ export const FeeCalculator: React.FC = () => {
         { value: 'idari', label: 'İdari Dava', icon: FileText },
     ];
 
+    // Check for updates on component mount (if 3 months passed)
+    useEffect(() => {
+        if (shouldCheckForUpdates(lastChecked)) {
+            // Show a subtle notification that update check is due
+            const checkDue = document.getElementById('update-check-reminder');
+            if (checkDue) checkDue.style.display = 'flex';
+        }
+    }, [lastChecked]);
+
+    const checkForUpdates = async () => {
+        setIsCheckingUpdate(true);
+        try {
+            const response = await fetch('/api/gemini/web-search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    query: '2025 yargı harç tarifesi güncel değişiklik Türkiye resmi gazete',
+                    maxResults: 3
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const now = new Date().toISOString();
+                setLastChecked(now);
+                localStorage.setItem('tariffLastChecked', now);
+
+                // Check if response mentions new tariffs
+                const responseText = JSON.stringify(data).toLowerCase();
+                const hasNewInfo = responseText.includes('2026') ||
+                    responseText.includes('yeni tarife') ||
+                    responseText.includes('güncellendi');
+
+                if (hasNewInfo) {
+                    setUpdateAvailable(true);
+                    toast('Yeni tarife bilgisi olabilir! Kontrol edin.', { icon: '⚠️' });
+                } else {
+                    toast.success('Tarifeler güncel görünüyor.');
+                }
+            }
+        } catch (error) {
+            console.error('Update check failed:', error);
+            toast.error('Güncelleme kontrolü başarısız');
+        } finally {
+            setIsCheckingUpdate(false);
+        }
+    };
+
     const hesaplamaSonuclari = useMemo((): HesaplamaResult[] => {
         const deger = parseFloat(davaDegeri) || 0;
         const results: HesaplamaResult[] = [];
@@ -75,39 +90,33 @@ export const FeeCalculator: React.FC = () => {
         switch (davaTuru) {
             case 'alacak':
             case 'is': {
-                // Başvurma Harcı
                 results.push({
                     label: 'Başvurma Harcı',
-                    tutar: HARCLAR_2025.basvurmaHarci.asliyeHukuk,
+                    tutar: harclar.basvurmaHarci.asliyeHukuk,
                     aciklama: 'Asliye Hukuk Mahkemesi maktu harç',
                 });
-                // Nispi Harç (Karar İlam)
-                const nispiHarc = Math.max(deger * HARCLAR_2025.nispiHarc.kararIlam, HARCLAR_2025.nispiHarc.asgaritutar);
+                const nispiHarc = Math.max(deger * harclar.nispiHarc.kararIlam, harclar.nispiHarc.asgaritutar);
                 results.push({
                     label: 'Nispi Harç (Toplam)',
                     tutar: nispiHarc,
                     aciklama: `Dava değerinin binde 68,31'i`,
                 });
-                // Peşin Harç
                 results.push({
                     label: 'Peşin Harç (Dava Açılışında)',
-                    tutar: nispiHarc * HARCLAR_2025.nispiHarc.pesinOran,
+                    tutar: nispiHarc * harclar.nispiHarc.pesinOran,
                     aciklama: 'Nispi harcın 1/4\'ü peşin ödenir',
                 });
-                // Vekalet Harcı
                 results.push({
                     label: 'Vekalet Harcı',
-                    tutar: HARCLAR_2025.vekaletHarci,
+                    tutar: harclar.vekaletHarci,
                 });
-                // Vekalet Pulu
                 results.push({
                     label: 'Vekalet Pulu',
-                    tutar: HARCLAR_2025.vekaletPulu,
+                    tutar: harclar.vekaletPulu,
                 });
-                // Avukatlık Ücreti
                 results.push({
                     label: 'Avukatlık Asgari Ücreti',
-                    tutar: davaTuru === 'is' ? AVUKATLIK_UCRET_2025.asliyeMahkeme : AVUKATLIK_UCRET_2025.asliyeMahkeme,
+                    tutar: avukatlikUcret.asliyeMahkeme,
                     aciklama: '2025-2026 AAÜT tarifesi',
                 });
                 break;
@@ -115,94 +124,89 @@ export const FeeCalculator: React.FC = () => {
             case 'bosanma': {
                 results.push({
                     label: 'Başvurma Harcı',
-                    tutar: HARCLAR_2025.basvurmaHarci.asliyeHukuk,
+                    tutar: harclar.basvurmaHarci.asliyeHukuk,
                 });
                 results.push({
                     label: 'Maktu Karar Harcı',
-                    tutar: HARCLAR_2025.nispiHarc.asgaritutar,
+                    tutar: harclar.nispiHarc.asgaritutar,
                     aciklama: 'Boşanma davaları maktu harçlıdır',
                 });
                 results.push({
                     label: 'Vekalet Harcı + Pulu',
-                    tutar: HARCLAR_2025.vekaletHarci + HARCLAR_2025.vekaletPulu,
+                    tutar: harclar.vekaletHarci + harclar.vekaletPulu,
                 });
                 results.push({
                     label: 'Avukatlık Asgari Ücreti',
-                    tutar: AVUKATLIK_UCRET_2025.asliyeMahkeme,
+                    tutar: avukatlikUcret.asliyeMahkeme,
                 });
                 break;
             }
             case 'tuketici': {
                 results.push({
                     label: 'Başvurma Harcı',
-                    tutar: HARCLAR_2025.basvurmaHarci.asliyeHukuk,
+                    tutar: harclar.basvurmaHarci.asliyeHukuk,
                 });
-                const nispiHarc = Math.max(deger * HARCLAR_2025.nispiHarc.kararIlam, HARCLAR_2025.nispiHarc.asgaritutar);
+                const nispiHarc = Math.max(deger * harclar.nispiHarc.kararIlam, harclar.nispiHarc.asgaritutar);
                 results.push({
                     label: 'Nispi Harç',
                     tutar: nispiHarc,
                 });
                 results.push({
                     label: 'Peşin Harç',
-                    tutar: nispiHarc * HARCLAR_2025.nispiHarc.pesinOran,
+                    tutar: nispiHarc * harclar.nispiHarc.pesinOran,
                 });
                 results.push({
                     label: 'Avukatlık Asgari Ücreti',
-                    tutar: AVUKATLIK_UCRET_2025.tuketiciMahkemesi,
+                    tutar: avukatlikUcret.tuketiciMahkemesi,
                     aciklama: 'Tüketici mahkemesi tarifesi',
                 });
                 break;
             }
             case 'icra': {
-                // İcra Başvurma
                 results.push({
                     label: 'İcraya Başvurma Harcı',
-                    tutar: HARCLAR_2025.basvurmaHarci.icra,
+                    tutar: harclar.basvurmaHarci.icra,
                 });
-                // Peşin Harç (İlamsız takip)
-                const pesinHarc = deger * HARCLAR_2025.icraPesinHarc;
+                const pesinHarc = deger * harclar.icraPesinHarc;
                 results.push({
                     label: 'Peşin Harç (Binde 5)',
                     tutar: pesinHarc,
                     aciklama: 'İlamsız icra takiplerinde',
                 });
-                // Tahsil Harçları
                 results.push({
                     label: 'Tahsil Harcı (Hacizden Önce)',
-                    tutar: deger * HARCLAR_2025.icraTahsilHarci.hacizdenOnce,
+                    tutar: deger * harclar.icraTahsilHarci.hacizdenOnce,
                     aciklama: '%4,55 - Haciz yapılmadan tahsil',
                 });
                 results.push({
                     label: 'Tahsil Harcı (Hacizden Sonra)',
-                    tutar: deger * HARCLAR_2025.icraTahsilHarci.hacizdenSonra,
+                    tutar: deger * harclar.icraTahsilHarci.hacizdenSonra,
                     aciklama: '%9,10 - Haciz sonrası, satıştan önce',
                 });
                 results.push({
                     label: 'Tahsil Harcı (Satış Sonrası)',
-                    tutar: deger * HARCLAR_2025.icraTahsilHarci.satisSonrasi,
+                    tutar: deger * harclar.icraTahsilHarci.satisSonrasi,
                     aciklama: '%11,38 - Satış yoluyla tahsil',
                 });
-                // Cezaevi Harcı
                 results.push({
                     label: 'Cezaevi Harcı (%2)',
-                    tutar: deger * HARCLAR_2025.cezaeviHarci,
+                    tutar: deger * harclar.cezaeviHarci,
                 });
-                // Avukatlık
                 results.push({
                     label: 'Avukatlık Asgari Ücreti',
-                    tutar: AVUKATLIK_UCRET_2025.icraTakibi,
+                    tutar: avukatlikUcret.icraTakibi,
                 });
                 break;
             }
             case 'ceza': {
                 results.push({
                     label: 'Başvurma Harcı',
-                    tutar: HARCLAR_2025.basvurmaHarci.asliyeHukuk,
+                    tutar: harclar.basvurmaHarci.asliyeHukuk,
                     aciklama: 'Şikayetçi/Katılan vekili için',
                 });
                 results.push({
                     label: 'Avukatlık Asgari Ücreti',
-                    tutar: AVUKATLIK_UCRET_2025.agirCeza,
+                    tutar: avukatlikUcret.agirCeza,
                     aciklama: 'Ağır Ceza Mahkemesi tarifesi',
                 });
                 break;
@@ -210,11 +214,11 @@ export const FeeCalculator: React.FC = () => {
             case 'idari': {
                 results.push({
                     label: 'Başvurma Harcı',
-                    tutar: HARCLAR_2025.basvurmaHarci.asliyeHukuk,
+                    tutar: harclar.basvurmaHarci.asliyeHukuk,
                 });
                 results.push({
                     label: 'Avukatlık Asgari Ücreti',
-                    tutar: AVUKATLIK_UCRET_2025.idareMahkemesi,
+                    tutar: avukatlikUcret.idareMahkemesi,
                     aciklama: 'İdare Mahkemesi (duruşmasız)',
                 });
                 break;
@@ -222,10 +226,9 @@ export const FeeCalculator: React.FC = () => {
         }
 
         return results;
-    }, [davaTuru, davaDegeri]);
+    }, [davaTuru, davaDegeri, harclar, avukatlikUcret]);
 
     const toplamTutar = useMemo(() => {
-        // Dava açılışında ödenecekler (tahsil harçları hariç)
         return hesaplamaSonuclari
             .filter(r => !r.label.includes('Tahsil Harcı'))
             .reduce((acc, r) => acc + r.tutar, 0);
@@ -255,15 +258,47 @@ export const FeeCalculator: React.FC = () => {
 
     return (
         <div className="bg-gray-800/50 rounded-xl border border-gray-700 p-6">
+            {/* Header with Update Check */}
             <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                     <Calculator className="w-6 h-6 text-red-500" />
                     Harç ve Masraf Hesaplayıcı
                 </h2>
-                <div className="flex items-center gap-2 text-xs text-gray-400">
-                    <Info className="w-4 h-4" />
-                    2025 Güncel Tarife
+                <div className="flex items-center gap-3">
+                    {updateAvailable && (
+                        <span className="flex items-center gap-1 text-yellow-400 text-xs bg-yellow-900/30 px-2 py-1 rounded">
+                            <AlertTriangle className="w-3 h-3" />
+                            Güncelleme olabilir
+                        </span>
+                    )}
+                    <button
+                        onClick={checkForUpdates}
+                        disabled={isCheckingUpdate}
+                        className="flex items-center gap-1 text-xs text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                        title="Tarife güncelliğini kontrol et"
+                    >
+                        <RefreshCw className={`w-4 h-4 ${isCheckingUpdate ? 'animate-spin' : ''}`} />
+                        <span className="hidden sm:inline">
+                            {isCheckingUpdate ? 'Kontrol ediliyor...' : 'Güncelleme Kontrol'}
+                        </span>
+                    </button>
                 </div>
+            </div>
+
+            {/* Tariff Version Info */}
+            <div className="flex flex-wrap items-center gap-2 mb-4 text-xs text-gray-500">
+                <span className="flex items-center gap-1">
+                    <Info className="w-3 h-3" />
+                    Harçlar: {harclar.meta.version} ({new Date(harclar.meta.lastUpdated).toLocaleDateString('tr-TR')})
+                </span>
+                <span className="hidden sm:inline">•</span>
+                <span>AAÜT: {avukatlikUcret.meta.version}</span>
+                {lastChecked && (
+                    <>
+                        <span className="hidden sm:inline">•</span>
+                        <span>Son kontrol: {new Date(lastChecked).toLocaleDateString('tr-TR')}</span>
+                    </>
+                )}
             </div>
 
             {/* Dava Türü Seçimi */}
@@ -334,7 +369,6 @@ export const FeeCalculator: React.FC = () => {
                     ))}
                 </div>
 
-                {/* Toplam */}
                 <div className="mt-4 pt-4 border-t-2 border-red-600 flex items-center justify-between">
                     <span className="text-lg font-bold text-white">TOPLAM (Tahmini)</span>
                     <span className="text-2xl font-bold text-red-500">
@@ -361,13 +395,12 @@ export const FeeCalculator: React.FC = () => {
                 </button>
             </div>
 
-            {/* Uyarı */}
-            <div className="mt-4 p-3 bg-yellow-900/30 border border-yellow-700/50 rounded-lg">
-                <p className="text-xs text-yellow-300">
-                    <strong>Not:</strong> Bu hesaplama tahmini olup, güncel harç tarifelerine göre hazırlanmıştır.
-                    Kesin tutarlar için ilgili mahkeme veya icra dairesinden bilgi alınız.
-                    Tarife: 1 Ocak 2025 (96 Seri No.lu Harçlar Kanunu Genel Tebliği) ve
-                    AAÜT 2025-2026 (4 Kasım 2025 Resmî Gazete).
+            {/* Kaynak Bilgisi */}
+            <div className="mt-4 p-3 bg-gray-900/50 border border-gray-700 rounded-lg">
+                <p className="text-xs text-gray-400">
+                    <strong>Kaynaklar:</strong><br />
+                    • {harclar.meta.source}<br />
+                    • {avukatlikUcret.meta.source}
                 </p>
             </div>
         </div>
