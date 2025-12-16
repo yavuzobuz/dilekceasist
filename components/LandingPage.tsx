@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { SparklesIcon, AIJusticeLogo, DocumentPlusIcon, KeyIcon, LinkIcon } from './Icon';
 import { Header } from './Header';
 import { Footer } from './Footer';
+import { BookOpen, HelpCircle } from 'lucide-react';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -96,8 +97,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-white overflow-hidden relative">
-      <Header onShowLanding={() => {}} />
-      
+      <Header onShowLanding={() => { }} />
+
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-red-600/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }}></div>
@@ -113,7 +114,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             {/* Logo/Icon */}
             <div className="flex justify-center mb-8">
               <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-red-500 blur-3xl opacity-40 group-hover:opacity-60 transition-opacity duration-500 animate-pulse" style={{animationDuration: '3s'}}></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-red-500 blur-3xl opacity-40 group-hover:opacity-60 transition-opacity duration-500 animate-pulse" style={{ animationDuration: '3s' }}></div>
                 <div className="relative bg-gradient-to-br from-black via-gray-900 to-black p-8 rounded-2xl border-2 border-red-600/30 shadow-2xl transform group-hover:scale-105 transition-all duration-500">
                   <AIJusticeLogo className="h-24 w-24 text-red-500" />
                 </div>
@@ -132,7 +133,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
 
             {/* Subtitle */}
             <p className="text-xl md:text-2xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
-              Yapay zeka destekli hukuki asistanınız. Dilekçelerinizi dakikalar içinde oluşturun, 
+              Yapay zeka destekli hukuki asistanınız. Dilekçelerinizi dakikalar içinde oluşturun,
               belgelerinizi analiz edin ve hukuki araştırmanızı otomatikleştirin.
             </p>
 
@@ -151,7 +152,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                   </svg>
                 </span>
               </button>
-              
+
               <button
                 onClick={() => {
                   const featuresSection = document.getElementById('features');
@@ -386,37 +387,37 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-                  <span className="text-red-500">Q:</span>
+                  <span className="text-red-500">S:</span>
                   {faq.q}
                 </h3>
                 <p className="text-gray-400 pl-6">
-                  <span className="text-red-500 font-bold">A:</span> {faq.a}
+                  <span className="text-red-500 font-bold">C:</span> {faq.a}
                 </p>
               </div>
             ))}
           </div>
-          
+
           {/* CTA to About and FAQ */}
           <div className="text-center mt-12">
             <p className="text-gray-400 mb-6">Daha fazla soru mu var?</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={() => navigate('/about')}
-                className="px-8 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors font-semibold"
+                className="px-8 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors font-semibold flex items-center gap-2"
               >
-                📖 Hakkında
+                <BookOpen className="w-5 h-5" /> Hakkında
               </button>
               <button
                 onClick={() => navigate('/faq')}
-                className="px-8 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-semibold"
+                className="px-8 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-semibold flex items-center gap-2"
               >
-                ❓ Tüm SSS'leri Gör
+                <HelpCircle className="w-5 h-5" /> Tüm SSS'leri Gör
               </button>
             </div>
           </div>
         </div>
       </div>
-      
+
       <Footer />
     </div>
   );

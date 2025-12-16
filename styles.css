@@ -3,12 +3,14 @@
 @tailwind utilities;
 
 @layer utilities {
+
   /* Slide in animations */
   @keyframes slide-in-right {
     from {
       transform: translateX(100%);
       opacity: 0;
     }
+
     to {
       transform: translateX(0);
       opacity: 1;
@@ -20,6 +22,7 @@
       transform: translateX(0);
       opacity: 1;
     }
+
     to {
       transform: translateX(100%);
       opacity: 0;
@@ -39,6 +42,7 @@
     0% {
       background-position: -1000px 0;
     }
+
     100% {
       background-position: 1000px 0;
     }
@@ -46,20 +50,21 @@
 
   .animate-shimmer {
     animation: shimmer 2s infinite linear;
-    background: linear-gradient(
-      to right,
-      rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, 0.05) 50%,
-      rgba(255, 255, 255, 0) 100%
-    );
+    background: linear-gradient(to right,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.05) 50%,
+        rgba(255, 255, 255, 0) 100%);
     background-size: 1000px 100%;
   }
 
   /* Bounce animation for icons */
   @keyframes bounce-slow {
-    0%, 100% {
+
+    0%,
+    100% {
       transform: translateY(0);
     }
+
     50% {
       transform: translateY(-5px);
     }
@@ -71,9 +76,12 @@
 
   /* Glow pulse */
   @keyframes glow-pulse {
-    0%, 100% {
+
+    0%,
+    100% {
       box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
     }
+
     50% {
       box-shadow: 0 0 40px rgba(59, 130, 246, 0.8);
     }
@@ -89,6 +97,7 @@
       opacity: 0;
       transform: translateY(20px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
@@ -105,6 +114,7 @@
       opacity: 0;
       transform: scale(0.9);
     }
+
     to {
       opacity: 1;
       transform: scale(1);
@@ -117,10 +127,13 @@
 
   /* Gradient animation */
   @keyframes gradient-x {
-    0%, 100% {
+
+    0%,
+    100% {
       background-size: 200% 200%;
       background-position: left center;
     }
+
     50% {
       background-size: 200% 200%;
       background-position: right center;
@@ -153,55 +166,95 @@
 }
 
 /* Smooth transitions for all interactive elements */
-button, input, select, textarea {
+button,
+input,
+select,
+textarea {
   transition: all 0.2s ease-in-out;
 }
 
-/* Petition Editor - Word-like formatting */
+/* Petition Editor - Legal Document Formatting */
 .petition-editor {
-  /* Paragraf stilleri */
+  font-family: "Times New Roman", Georgia, serif;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #1a1a1a;
 }
 
 .petition-editor p {
-  margin-bottom: 1.5em;
-  text-indent: 2em;
+  margin-bottom: 1.2em;
+  text-indent: 0;
   text-align: justify;
   orphans: 3;
   widows: 3;
 }
 
-.petition-editor p:first-of-type {
-  text-indent: 0; /* İlk paragraf girintisiz */
-}
-
+/* Section headers - legal document style */
 .petition-editor h1,
-.petition-editor h2,
-.petition-editor h3,
-.petition-editor h4,
-.petition-editor h5,
-.petition-editor h6 {
-  margin-top: 1.5em;
-  margin-bottom: 0.75em;
+.petition-editor h2 {
+  text-align: center;
   font-weight: bold;
-  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2em;
+  margin-bottom: 1.5em;
+  border-bottom: 2px solid #333;
+  padding-bottom: 0.5em;
 }
 
-.petition-editor h1 { font-size: 1.8em; }
-.petition-editor h2 { font-size: 1.5em; }
-.petition-editor h3 { font-size: 1.3em; }
-.petition-editor h4 { font-size: 1.1em; }
+.petition-editor h3,
+.petition-editor h4 {
+  font-weight: bold;
+  margin-top: 1.5em;
+  margin-bottom: 1em;
+  text-decoration: underline;
+}
 
+.petition-editor h1 {
+  font-size: 1.4em;
+}
+
+.petition-editor h2 {
+  font-size: 1.3em;
+}
+
+.petition-editor h3 {
+  font-size: 1.1em;
+}
+
+.petition-editor h4 {
+  font-size: 1em;
+}
+
+/* Horizontal rule as section separator */
+.petition-editor hr {
+  border: none;
+  border-top: 1px solid #666;
+  margin: 2em 0;
+}
+
+/* Lists with proper legal numbering */
 .petition-editor ul,
 .petition-editor ol {
   margin: 1em 0;
   padding-left: 2.5em;
 }
 
-.petition-editor li {
-  margin-bottom: 0.5em;
-  line-height: 1.8;
+.petition-editor ol {
+  list-style-type: decimal;
 }
 
+.petition-editor li {
+  margin-bottom: 0.75em;
+  line-height: 1.8;
+  text-align: justify;
+}
+
+.petition-editor li::marker {
+  font-weight: bold;
+}
+
+/* Strong/Bold for important terms */
 .petition-editor strong,
 .petition-editor b {
   font-weight: 700;
@@ -216,22 +269,24 @@ button, input, select, textarea {
   text-decoration: underline;
 }
 
+/* Blockquote for law citations */
 .petition-editor blockquote {
   margin: 1.5em 2em;
-  padding-left: 1.5em;
-  border-left: 3px solid #d1d5db;
+  padding: 1em 1.5em;
+  border-left: 4px solid #333;
+  background: #f9f9f9;
   font-style: italic;
-  color: #4b5563;
+  color: #333;
 }
 
-/* Boş satırlar için minimum yükseklik */
+/* Line breaks and spacing */
 .petition-editor br {
   content: "";
   display: block;
   margin: 0.5em 0;
 }
 
-/* Tablo stilleri */
+/* Table styles for party information */
 .petition-editor table {
   border-collapse: collapse;
   width: 100%;
@@ -240,21 +295,22 @@ button, input, select, textarea {
 
 .petition-editor th,
 .petition-editor td {
-  border: 1px solid #d1d5db;
-  padding: 0.5em 1em;
+  border: 1px solid #333;
+  padding: 0.75em 1em;
   text-align: left;
 }
 
 .petition-editor th {
-  background-color: #f3f4f6;
-  font-weight: 600;
+  background-color: #f0f0f0;
+  font-weight: 700;
 }
 
 /* Focus ring improvements */
-input:focus, select:focus, textarea:focus {
+input:focus,
+select:focus,
+textarea:focus {
   outline: none;
-  ring: 2px;
-  ring-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
 }
 
 /* =====================
@@ -262,33 +318,69 @@ input:focus, select:focus, textarea:focus {
    Kolayca değiştirilebilir renk değişkenleri ve yardımcı sınıflar
    ===================== */
 :root {
-  --ai-surface: #1a0a0a;          /* Ana arka plan - koyu kırmızımsı */
-  --ai-surface-2: #2a1111;        /* Kart arka planı - daha açık */
-  --ai-border: #4d1919;           /* Kenarlık - kırmızımsı gri */
-  --ai-text: #ffeaea;             /* Metin - sıcak beyaz */
-  --ai-muted: #d4a5a5;            /* Soluk metin - pembımsı gri */
-  --ai-accent: #ef4444;           /* Vurgu - site temasına uygun kırmızı (red-500) */
-  --ai-accent-hover: #dc2626;     /* Vurgu hover - red-600 */
-  --ai-accent-contrast: #ffffff;  /* Vurgu üstü metin - beyaz */
-  --ai-soft: rgba(239, 68, 68, 0.15); /* Yumuşak vurgu arka planı - kırmızı */
+  --ai-surface: #1a0a0a;
+  /* Ana arka plan - koyu kırmızımsı */
+  --ai-surface-2: #2a1111;
+  /* Kart arka planı - daha açık */
+  --ai-border: #4d1919;
+  /* Kenarlık - kırmızımsı gri */
+  --ai-text: #ffeaea;
+  /* Metin - sıcak beyaz */
+  --ai-muted: #d4a5a5;
+  /* Soluk metin - pembımsı gri */
+  --ai-accent: #ef4444;
+  /* Vurgu - site temasına uygun kırmızı (red-500) */
+  --ai-accent-hover: #dc2626;
+  /* Vurgu hover - red-600 */
+  --ai-accent-contrast: #ffffff;
+  /* Vurgu üstü metin - beyaz */
+  --ai-soft: rgba(239, 68, 68, 0.15);
+  /* Yumuşak vurgu arka planı - kırmızı */
 }
 
 /***** Yardımcı sınıflar *****/
-.ai-theme { color: var(--ai-text); }
-.ai-card { background: var(--ai-surface-2); }
-.ai-bg { background: var(--ai-surface); }
-.ai-border { border: 1px solid var(--ai-border); }
-.ai-muted { color: var(--ai-muted); }
-.ai-accent-text { color: var(--ai-accent) !important; }
-.ai-accent-border { border-color: var(--ai-accent) !important; }
+.ai-theme {
+  color: var(--ai-text);
+}
+
+.ai-card {
+  background: var(--ai-surface-2);
+}
+
+.ai-bg {
+  background: var(--ai-surface);
+}
+
+.ai-border {
+  border: 1px solid var(--ai-border);
+}
+
+.ai-muted {
+  color: var(--ai-muted);
+}
+
+.ai-accent-text {
+  color: var(--ai-accent) !important;
+}
+
+.ai-accent-border {
+  border-color: var(--ai-accent) !important;
+}
 
 /* Buton */
 .ai-button {
   background: var(--ai-accent);
   color: var(--ai-accent-contrast);
 }
-.ai-button:hover { background: var(--ai-accent-hover); }
-.ai-button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.ai-button:hover {
+  background: var(--ai-accent-hover);
+}
+
+.ai-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 /* Girdi */
 .ai-input {
@@ -296,7 +388,11 @@ input:focus, select:focus, textarea:focus {
   border: 1px solid var(--ai-border);
   color: var(--ai-text);
 }
-.ai-input::placeholder { color: color-mix(in srgb, var(--ai-muted) 70%, transparent); }
+
+.ai-input::placeholder {
+  color: color-mix(in srgb, var(--ai-muted) 70%, transparent);
+}
+
 .ai-input:focus {
   outline: none;
   border-color: var(--ai-accent);
@@ -308,32 +404,46 @@ input:focus, select:focus, textarea:focus {
   background: var(--ai-accent);
   color: var(--ai-accent-contrast);
 }
+
 .ai-bubble-model {
   background: var(--ai-surface-2);
   color: var(--ai-text);
 }
 
 /* Link ve ikon vurgusu */
-.ai-link { color: var(--ai-accent); }
-.ai-link:hover { color: var(--ai-accent-hover); }
-.ai-icon-accent { color: var(--ai-accent); }
+.ai-link {
+  color: var(--ai-accent);
+}
+
+.ai-link:hover {
+  color: var(--ai-accent-hover);
+}
+
+.ai-icon-accent {
+  color: var(--ai-accent);
+}
 
 /* Yumuşak vurgu blokları */
-.ai-soft-bg { background: var(--ai-soft); }
+.ai-soft-bg {
+  background: var(--ai-soft);
+}
 
 /* Sadece AI Sohbet alanındaki scrollbar'ı özelleştir */
 .ai-theme .ai-scrollable::-webkit-scrollbar {
   width: 10px;
 }
+
 .ai-theme .ai-scrollable::-webkit-scrollbar-track {
   background: var(--ai-surface-2);
   border-radius: 6px;
 }
+
 .ai-theme .ai-scrollable::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, var(--ai-accent), var(--ai-accent-hover));
   border-radius: 6px;
   box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
 }
+
 .ai-theme .ai-scrollable::-webkit-scrollbar-thumb:hover {
   background: var(--ai-accent-hover);
   box-shadow: 0 0 12px rgba(220, 38, 38, 0.5);

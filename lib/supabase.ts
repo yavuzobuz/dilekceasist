@@ -19,6 +19,8 @@ export type Database = {
           email: string;
           full_name: string | null;
           avatar_url: string | null;
+          office_logo_url: string | null;
+          corporate_header: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -27,6 +29,8 @@ export type Database = {
           email: string;
           full_name?: string | null;
           avatar_url?: string | null;
+          office_logo_url?: string | null;
+          corporate_header?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -35,6 +39,8 @@ export type Database = {
           email?: string;
           full_name?: string | null;
           avatar_url?: string | null;
+          office_logo_url?: string | null;
+          corporate_header?: string | null;
           updated_at?: string;
         };
       };

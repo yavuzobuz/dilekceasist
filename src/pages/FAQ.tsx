@@ -148,7 +148,7 @@ export default function FAQ() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex flex-col">
       <Header onShowLanding={() => navigate('/')} />
-      
+
       <main className="flex-grow">
         {/* Hero Section */}
         <section className="py-20 px-4">
@@ -156,7 +156,7 @@ export default function FAQ() {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-red-600 rounded-full mb-6">
               <HelpCircle className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-5xl font-bold text-white mb-6">
+            <h1 className="text-3xl sm:text-5xl font-bold text-white mb-6">
               Sıkça Sorulan Sorular
             </h1>
             <p className="text-xl text-gray-300">
@@ -177,9 +177,9 @@ export default function FAQ() {
                   {category.questions.map((faq, faqIndex) => {
                     const globalIndex = categoryIndex * 100 + faqIndex;
                     const isOpen = openIndex === globalIndex;
-                    
+
                     return (
-                      <div 
+                      <div
                         key={faqIndex}
                         className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden hover:border-red-500/50 transition-all"
                       >
@@ -187,7 +187,7 @@ export default function FAQ() {
                           onClick={() => toggleFAQ(globalIndex)}
                           className="w-full px-6 py-4 flex items-center justify-between text-left"
                         >
-                          <span className="text-lg font-semibold text-white pr-8">
+                          <span className="text-base sm:text-lg font-semibold text-white pr-4">
                             {faq.question}
                           </span>
                           {isOpen ? (

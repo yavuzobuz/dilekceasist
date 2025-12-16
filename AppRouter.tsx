@@ -8,6 +8,7 @@ import Profile from './src/pages/Profile';
 import PetitionPool from './src/pages/PetitionPool';
 import About from './src/pages/About';
 import FAQ from './src/pages/FAQ';
+import { TemplatesPage } from './src/pages/TemplatesPage';
 import ProtectedRoute from './src/components/auth/ProtectedRoute';
 
 export default function App() {
@@ -15,6 +16,12 @@ export default function App() {
 
   const handleGetStarted = () => {
     localStorage.setItem('hasVisited', 'true');
+    navigate('/app');
+  };
+
+  const handleUseTemplate = (content: string) => {
+    // Store template content and navigate to app
+    localStorage.setItem('templateContent', content);
     navigate('/app');
   };
 
@@ -41,6 +48,16 @@ export default function App() {
       <Route path="/pool" element={<PetitionPool />} /> {/* Legacy route */}
       <Route path="/about" element={<About />} />
       <Route path="/faq" element={<FAQ />} />
+      <Route
+        path="/sablonlar"
+        element={
+          <TemplatesPage
+            onBack={() => navigate('/')}
+            onUseTemplate={handleUseTemplate}
+          />
+        }
+      />
     </Routes>
   );
 }
+

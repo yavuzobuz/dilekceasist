@@ -6,6 +6,7 @@ import { Header } from '../../components/Header';
 import { Footer } from '../../components/Footer';
 import { toast } from 'react-hot-toast';
 import { PetitionType } from '../../types';
+import { BookOpenIcon, StarIcon, StarSolidIcon, EyeIcon, ArrowDownCircleIcon, XMarkIcon } from '../../components/Icon';
 
 interface PublicPetition {
   id: string;
@@ -66,7 +67,7 @@ export default function PetitionPool() {
           .select('*')
           .eq('status', 'active')
           .order('created_at', { ascending: false });
-        
+
         data = result.data;
         error = result.error;
       }
@@ -80,9 +81,9 @@ export default function PetitionPool() {
         }
         throw error;
       }
-      
+
       setPetitions(data || []);
-      
+
       // Fetch user's favorited petitions if logged in
       if (user) {
         fetchUserFavorites();
@@ -97,15 +98,15 @@ export default function PetitionPool() {
 
   const fetchUserFavorites = async () => {
     if (!user) return;
-    
+
     try {
       const { data, error } = await supabase
         .from('petition_favorites')
         .select('petition_id')
         .eq('user_id', user.id);
-      
+
       if (error) throw error;
-      
+
       const favoriteIds = new Set((data || []).map(f => f.petition_id));
       setFavoritedPetitions(favoriteIds);
     } catch (error) {
@@ -163,7 +164,7 @@ export default function PetitionPool() {
       });
 
       // Update petition favorite count in list
-      setPetitions(prev => prev.map(p => 
+      setPetitions(prev => prev.map(p =>
         p.id === petitionId ? { ...p, favorite_count: newCount } : p
       ));
 
@@ -236,12 +237,12 @@ export default function PetitionPool() {
   return (
     <div className="min-h-screen bg-gray-900 text-gray-200">
       <Header onShowLanding={() => navigate('/')} />
-      
+
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
-            <span className="text-4xl">📚</span>
+            <BookOpenIcon className="w-8 h-8 text-red-500" />
             Dilekçe Havuzu
           </h1>
           <p className="text-gray-400">Topluluk tarafından paylaşılan dilekçelere göz atın ve kullanın</p>
@@ -331,13 +332,13 @@ export default function PetitionPool() {
                   {/* Stats */}
                   <div className="flex items-center gap-4 text-sm text-gray-400 mb-4">
                     <span className="flex items-center gap-1">
-                      ⭐ {petition.favorite_count || 0}
+                      <StarIcon className="w-4 h-4" /> {petition.favorite_count || 0}
                     </span>
                     <span className="flex items-center gap-1">
-                      👁️ {petition.view_count || 0}
+                      <EyeIcon className="w-4 h-4" /> {petition.view_count || 0}
                     </span>
                     <span className="flex items-center gap-1">
-                      📥 {petition.download_count || 0}
+                      <ArrowDownCircleIcon className="w-4 h-4" /> {petition.download_count || 0}
                     </span>
                   </div>
 
@@ -351,26 +352,25 @@ export default function PetitionPool() {
                 <div className="bg-gray-750 border-t border-gray-700 p-4 flex gap-2">
                   <button
                     onClick={() => handleViewPetition(petition)}
-                    className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm font-medium"
+                    className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm font-medium flex items-center justify-center gap-2"
                   >
-                    👁️ Önizle
+                    <EyeIcon className="w-4 h-4" /> Önizle
                   </button>
                   <button
                     onClick={() => handleToggleFavorite(petition.id)}
-                    className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
-                      favoritedPetitions.has(petition.id)
-                        ? 'bg-yellow-500 hover:bg-yellow-600 text-gray-900'
-                        : 'bg-gray-700 hover:bg-yellow-500 hover:text-gray-900 text-white'
-                    }`}
+                    className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium ${favoritedPetitions.has(petition.id)
+                      ? 'bg-yellow-500 hover:bg-yellow-600 text-gray-900'
+                      : 'bg-gray-700 hover:bg-yellow-500 hover:text-gray-900 text-white'
+                      }`}
                     title={favoritedPetitions.has(petition.id) ? 'Favorilerden çıkar' : 'Favorilere ekle'}
                   >
-                    ⭐
+                    {favoritedPetitions.has(petition.id) ? <StarSolidIcon className="w-5 h-5" /> : <StarIcon className="w-5 h-5" />}
                   </button>
                   <button
                     onClick={() => handleUsePetition(petition)}
-                    className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors text-sm font-medium"
+                    className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors text-sm font-medium flex items-center justify-center gap-2"
                   >
-                    📥 Kullan
+                    <ArrowDownCircleIcon className="w-4 h-4" /> Kullan
                   </button>
                 </div>
               </div>
@@ -381,27 +381,29 @@ export default function PetitionPool() {
 
       {/* Preview Modal */}
       {selectedPetition && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setSelectedPetition(null)}>
-          <div className="bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-gray-700" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6 border-b border-gray-700 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-white">{selectedPetition.title}</h2>
-              <button onClick={() => setSelectedPetition(null)} className="text-gray-400 hover:text-white text-2xl">×</button>
+        <div className="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setSelectedPetition(null)}>
+          <div className="bg-gray-800 rounded-t-2xl sm:rounded-lg w-full sm:max-w-4xl max-h-[90vh] overflow-hidden border-t sm:border border-gray-700 flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 sm:p-6 border-b border-gray-700 flex items-center justify-between flex-shrink-0">
+              <h2 className="text-lg sm:text-2xl font-bold text-white truncate pr-4">{selectedPetition.title}</h2>
+              <button onClick={() => setSelectedPetition(null)} className="text-gray-400 hover:text-white flex-shrink-0">
+                <XMarkIcon className="w-6 h-6" />
+              </button>
             </div>
-            <div className="p-6">
-              <div className="prose prose-invert max-w-none">
+            <div className="p-4 sm:p-6 flex-1 overflow-y-auto">
+              <div className="prose prose-invert max-w-none prose-sm sm:prose-base">
                 <div dangerouslySetInnerHTML={{ __html: selectedPetition.content }} />
               </div>
             </div>
-            <div className="p-6 border-t border-gray-700 flex gap-4">
+            <div className="p-4 sm:p-6 border-t border-gray-700 flex flex-col sm:flex-row gap-2 sm:gap-4 flex-shrink-0">
               <button
                 onClick={() => handleUsePetition(selectedPetition)}
-                className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors font-semibold"
+                className="w-full sm:flex-1 px-4 sm:px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors font-semibold flex items-center justify-center gap-2"
               >
-                📥 Bu Dilekçeyi Kullan
+                <ArrowDownCircleIcon className="w-5 h-5" /> Bu Dilekçeyi Kullan
               </button>
               <button
                 onClick={() => setSelectedPetition(null)}
-                className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                className="w-full sm:w-auto px-4 sm:px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
               >
                 Kapat
               </button>

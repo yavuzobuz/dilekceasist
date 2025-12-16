@@ -60,18 +60,18 @@ export const ShareModal: React.FC<ShareModalProps> = ({ petition, isOpen, onClos
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div 
-        className="bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-700"
+    <div className="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
+      <div
+        className="bg-gray-800 rounded-t-2xl sm:rounded-lg w-full sm:max-w-2xl max-h-[90vh] overflow-hidden border-t sm:border border-gray-700 flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-6 border-b border-gray-700 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+        <div className="p-4 sm:p-6 border-b border-gray-700 flex items-center justify-between flex-shrink-0">
+          <h2 className="text-lg sm:text-2xl font-bold text-white flex items-center gap-2">
             <span>📤</span>
             Dilekçeyi Paylaş
           </h2>
-          <button 
+          <button
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors"
           >
@@ -80,7 +80,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ petition, isOpen, onClos
         </div>
 
         {/* Form */}
-        <form onSubmit={handleShare} className="p-6 space-y-6">
+        <form onSubmit={handleShare} className="p-4 sm:p-6 space-y-4 sm:space-y-6 flex-1 overflow-y-auto">
           {/* Petition Info */}
           <div className="bg-gray-700/50 p-4 rounded-lg border border-gray-600">
             <h3 className="font-semibold text-white mb-1">{petition.title}</h3>
@@ -168,7 +168,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ petition, isOpen, onClos
           </div>
 
           {/* Actions */}
-          <div className="flex gap-4 pt-4 border-t border-gray-700">
+          <div className="flex gap-2 sm:gap-4 pt-4 border-t border-gray-700">
             <button
               type="button"
               onClick={onClose}
