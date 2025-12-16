@@ -101,7 +101,8 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
         setIsLoadingTemplate(true);
 
         try {
-            const response = await fetch(`${API_BASE_URL}/api/templates/${id}`);
+            // Use query param instead of path param for consolidated API
+            const response = await fetch(`${API_BASE_URL}/api/templates?id=${encodeURIComponent(id)}`);
             if (!response.ok) throw new Error('Şablon yüklenemedi');
 
             const data = await response.json();
@@ -122,10 +123,11 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
         try {
             console.log('Sending variables to template:', variableValues);
 
-            const response = await fetch(`${API_BASE_URL}/api/templates/${selectedTemplate.id}/use`, {
+            // Use POST to consolidated endpoint with id in body
+            const response = await fetch(`${API_BASE_URL}/api/templates`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ variables: variableValues })
+                body: JSON.stringify({ id: selectedTemplate.id, variables: variableValues })
             });
 
             if (!response.ok) throw new Error('Şablon kullanılamadı');
