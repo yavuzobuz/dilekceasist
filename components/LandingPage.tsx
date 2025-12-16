@@ -21,34 +21,46 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
     {
       icon: <DocumentPlusIcon className="h-8 w-8" />,
       title: "Akıllı Belge Analizi",
-      description: "PDF, Word, UDF, TIFF, PNG, JPG ve diğer görsel dosyalarınızı AI ile otomatik analiz edin",
+      description: "PDF, Word, UDF, TIFF ve görsel dosyalarınızı AI ile analiz edin",
       color: "from-red-600 to-red-500"
     },
     {
-      icon: <KeyIcon className="h-8 w-8" />,
-      title: "Otomatik Anahtar Kelime",
-      description: "Davanız için en uygun hukuki anahtar kelimeleri yapay zeka ile oluşturun",
+      icon: <SparklesIcon className="h-8 w-8" />,
+      title: "20+ Hazır Şablon",
+      description: "İcra, iş hukuku, tüketici ve daha fazlası için hazır dilekçe şablonları",
       color: "from-gray-600 to-gray-500"
     },
     {
       icon: <LinkIcon className="h-8 w-8" />,
-      title: "Web Araştırması",
-      description: "İlgili içtihatlar ve hukuki kaynakları otomatik olarak bulun",
+      title: "İçtihat Arama",
+      description: "Yargıtay ve Danıştay kararlarını AI destekli arama ile bulun",
       color: "from-red-500 to-red-400"
+    },
+    {
+      icon: <KeyIcon className="h-8 w-8" />,
+      title: "Harç Hesaplayıcı",
+      description: "2025 güncel tarifelerle yargı harcı ve masraf hesaplama",
+      color: "from-gray-700 to-gray-600"
+    },
+    {
+      icon: <DocumentPlusIcon className="h-8 w-8" />,
+      title: "Müvekkil Yönetimi",
+      description: "Müvekkil bilgilerini kaydedin, vekaletname PDF'lerini yükleyin",
+      color: "from-red-600 to-red-500"
     },
     {
       icon: <SparklesIcon className="h-8 w-8" />,
       title: "Profesyonel Dilekçe",
-      description: "Hukuki gerekliliklere uygun, profesyonel dilekçeler oluşturun",
-      color: "from-gray-700 to-gray-600"
+      description: "AI destekli, hukuki gerekliliklere uygun dilekçe oluşturma",
+      color: "from-gray-600 to-gray-500"
     }
   ];
 
   const stats = [
     { value: "AI", label: "Güçlü Yapay Zeka" },
-    { value: "10+", label: "Dilekçe Türü" },
+    { value: "20+", label: "Hazır Şablon" },
     { value: "7/24", label: "Erişilebilir" },
-    { value: "∞", label: "Sınırsız Kullanım" }
+    { value: "2025", label: "Güncel Tarifeler" }
   ];
 
   const benefits = [
@@ -199,7 +211,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((feature, index) => (
               <div
                 key={index}
@@ -237,9 +249,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
 
           <div className="max-w-4xl mx-auto space-y-12">
             {[
-              { step: "1", title: "Belgelerinizi Yükleyin", description: "PDF, Word veya görsel belgelerinizi sisteme yükleyin" },
-              { step: "2", title: "AI Analizi", description: "Yapay zeka belgelerinizi analiz eder ve önerilerde bulunur" },
-              { step: "3", title: "Dilekçeyi Alın", description: "Profesyonel, hukuki gerekliliklere uygun dilekçeniz hazır" }
+              { step: "1", title: "Şablon Seç veya Belge Yükle", description: "20+ hazır şablondan seçim yapın veya kendi belgelerinizi analiz için yükleyin" },
+              { step: "2", title: "AI ile Düzenle", description: "Yapay zeka içeriği analiz eder, önerilerde bulunur ve harç hesaplama sunar" },
+              { step: "3", title: "İndir ve Kullan", description: "Profesyonel dilekçenizi Word/PDF olarak indirin veya paylaşın" }
             ].map((item, index) => (
               <div
                 key={index}

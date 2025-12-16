@@ -14,6 +14,8 @@ import { Footer } from '../../components/Footer';
 import { ClientManager } from '../components/ClientManager';
 import { Client } from '../types';
 import { clientService } from '../services/clientService';
+import { FeeCalculator } from '../components/FeeCalculator';
+import { Calculator } from 'lucide-react';
 
 const Profile: React.FC = () => {
   const { user, profile, signOut } = useAuth();
@@ -23,7 +25,7 @@ const Profile: React.FC = () => {
   const [selectedPetition, setSelectedPetition] = useState<Petition | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'petitions' | 'clients' | 'statistics' | 'settings'>('petitions');
+  const [activeTab, setActiveTab] = useState<'petitions' | 'clients' | 'statistics' | 'settings' | 'calculator'>('petitions');
   const navigate = useNavigate();
 
   // Office branding state
@@ -444,6 +446,17 @@ const Profile: React.FC = () => {
             <BarChart3 className="w-4 h-4 mr-1 sm:mr-2" />
             <span className="hidden sm:inline">İstatistikler</span>
             <span className="sm:hidden">İstat.</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('calculator')}
+            className={`px-3 sm:px-4 py-2 rounded-lg transition-all flex items-center text-sm sm:text-base whitespace-nowrap ${activeTab === 'calculator'
+              ? 'bg-red-600 text-white shadow-lg'
+              : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              }`}
+          >
+            <Calculator className="w-4 h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Harç Hesapla</span>
+            <span className="sm:hidden">Harç</span>
           </button>
           <button
             onClick={() => setActiveTab('settings')}
@@ -1240,6 +1253,13 @@ const Profile: React.FC = () => {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Calculator Tab */}
+        {activeTab === 'calculator' && (
+          <div className="max-w-4xl mx-auto">
+            <FeeCalculator />
           </div>
         )}
       </div>
