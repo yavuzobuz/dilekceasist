@@ -52,7 +52,7 @@ const CATEGORIES = [
     { id: 'İdari', name: 'İdari', icon: 'Building2' },
 ];
 
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = '';
 
 export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTemplate }) => {
     const [templates, setTemplates] = useState<Template[]>([]);

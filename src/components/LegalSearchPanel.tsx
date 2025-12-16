@@ -35,7 +35,7 @@ const LEGAL_SOURCES: LegalSource[] = [
     { id: 'kik', name: 'KİK', description: 'Kamu İhale Kurulu Kararları' },
 ];
 
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = '';
 
 export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
     isOpen,

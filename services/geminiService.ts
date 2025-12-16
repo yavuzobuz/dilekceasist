@@ -1,6 +1,6 @@
 import { type ChatMessage, type GeneratePetitionParams, UploadedFile, WebSearchResult, AnalysisData, UserRole, CaseDetails, ChatContext, LawyerInfo, ContactInfo } from '../types';
 
-const API_BASE_URL = 'http://localhost:3001/api/gemini';
+const API_BASE_URL = '/api/gemini';
 
 // Helper to handle API response errors
 async function handleResponse(response: Response) {
