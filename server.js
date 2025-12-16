@@ -1024,11 +1024,19 @@ async function searchEmsalFallback(keyword) {
             - Karar No
             - Tarih
             - Kısa özet (1-2 cümle)
+            - İlgi Skoru (0-100 arası, arama kelimelerine ne kadar uygun olduğunu gösteren puan)
             
-            En az 5 farklı karar bul ve JSON formatında döndür:
-            [{"mahkeme": "...", "daire": "...", "esasNo": "...", "kararNo": "...", "tarih": "...", "ozet": "..."}]
+            ⚠️ ÖNEMLİ: En az 10 farklı karar bul ve JSON formatında döndür:
+            [{"mahkeme": "...", "daire": "...", "esasNo": "...", "kararNo": "...", "tarih": "...", "ozet": "...", "relevanceScore": 85}]
             
-            Sadece JSON array döndür, başka bir şey yazma.`,
+            İlgi skorunu şu kriterlere göre belirle:
+            - 90-100: Arama kelimelerine birebir uyuşan, çok ilgili karar
+            - 70-89: Konu ile doğrudan ilgili karar
+            - 50-69: Benzer konularda emsal niteliğinde karar  
+            - 30-49: Dolaylı olarak ilgili karar
+            - 0-29: Kısmen ilgili olabilecek karar
+            
+            Sadece JSON array döndür, başka bir şey yazma. Sonuçları ilgi skoruna göre büyükten küçüğe sırala.`,
             config: {
                 tools: [{ googleSearch: {} }]
             }
@@ -1050,8 +1058,9 @@ async function searchEmsalFallback(keyword) {
                         kararNo: r.kararNo || '',
                         tarih: r.tarih || '',
                         daire: r.daire || '',
-                        ozet: r.ozet || ''
-                    }))
+                        ozet: r.ozet || '',
+                        relevanceScore: r.relevanceScore || Math.max(0, 100 - (i * 8)) // Fallback score based on position
+                    })).sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
                 };
             } catch (parseError) {
                 console.error('JSON parse error:', parseError);

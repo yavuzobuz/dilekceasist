@@ -384,6 +384,7 @@ export interface LegalSearchResult {
   tarih?: string;
   daire?: string;
   ozet?: string;
+  relevanceScore?: number; // 0-100 relevance score
 }
 
 export interface AnalysisData {

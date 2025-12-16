@@ -454,9 +454,19 @@ export const InputPanel: React.FC<InputPanelProps> = ({
                   {legalSearchResults.map((result, index) => (
                     <div key={index} className="flex items-start justify-between gap-2 p-2 bg-gray-800 rounded-lg">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-white font-medium truncate">
-                          {result.daire || result.title}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm text-white font-medium truncate flex-1">
+                            {result.daire || result.title}
+                          </p>
+                          {result.relevanceScore !== undefined && (
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${result.relevanceScore >= 70 ? 'bg-green-500/20 text-green-400' :
+                                result.relevanceScore >= 50 ? 'bg-yellow-500/20 text-yellow-400' :
+                                  'bg-red-500/20 text-red-400'
+                              }`}>
+                              %{result.relevanceScore}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-gray-400">
                           {result.esasNo && `E. ${result.esasNo} `}
                           {result.kararNo && `K. ${result.kararNo} `}

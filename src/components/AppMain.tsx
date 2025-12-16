@@ -62,7 +62,7 @@ export const AppMain: React.FC = () => {
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [searchKeywords, setSearchKeywords] = useState<string[]>([]);
   const [webSearchResult, setWebSearchResult] = useState<WebSearchResult | null>(null);
-  const [legalSearchResults, setLegalSearchResults] = useState<Array<{ title: string; esasNo?: string; kararNo?: string; tarih?: string; daire?: string; ozet?: string }>>([]);
+  const [legalSearchResults, setLegalSearchResults] = useState<Array<{ title: string; esasNo?: string; kararNo?: string; tarih?: string; daire?: string; ozet?: string; relevanceScore?: number }>>([]);
 
   // Final output
   const [generatedPetition, setGeneratedPetition] = useState(
@@ -307,6 +307,7 @@ export const AppMain: React.FC = () => {
                 tarih: result.tarih,
                 daire: result.daire,
                 ozet: result.ozet,
+                relevanceScore: result.relevanceScore,
               }));
               setLegalSearchResults(prev => [...prev, ...newResults]);
               addToast(`${newResults.length} adet emsal karar bulundu! 📚`, 'success');
@@ -509,6 +510,7 @@ export const AppMain: React.FC = () => {
             tarih: result.tarih,
             daire: result.daire,
             ozet: result.ozet,
+            relevanceScore: result.relevanceScore,
           }));
           if (newResults.length > 0) {
             setLegalSearchResults(prev => [...prev, ...newResults]);
