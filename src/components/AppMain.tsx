@@ -282,13 +282,50 @@ export const AppMain: React.FC = () => {
       const keywords = await generateSearchKeywords(analysisData.summary, userRole);
       setSearchKeywords(keywords);
       addToast('Anahtar kelimeler oluşturuldu! 🔑', 'success');
+
+      // Automatically search for legal decisions using the generated keywords
+      if (keywords.length > 0) {
+        addToast('İçtihat araması başlatılıyor... 📚', 'info');
+        try {
+          const searchQuery = keywords.slice(0, 5).join(' '); // Use first 5 keywords
+          const response = await fetch('http://localhost:3001/api/legal/search-decisions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              source: 'yargitay',
+              keyword: searchQuery,
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.results && data.results.length > 0) {
+              const newResults = data.results.map((result: any) => ({
+                title: result.title || 'Yargıtay Kararı',
+                esasNo: result.esasNo,
+                kararNo: result.kararNo,
+                tarih: result.tarih,
+                daire: result.daire,
+                ozet: result.ozet,
+              }));
+              setLegalSearchResults(prev => [...prev, ...newResults]);
+              addToast(`${newResults.length} adet emsal karar bulundu! 📚`, 'success');
+            } else {
+              addToast('Bu konuda emsal karar bulunamadı.', 'info');
+            }
+          }
+        } catch (searchError) {
+          console.error('Auto legal search error:', searchError);
+          // Don't show error toast, just log - manual search is still available
+        }
+      }
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata oluştu.';
       setError(`Anahtar kelime oluşturulurken bir hata oluştu: ${errorMessage}`);
     } finally {
       setIsGeneratingKeywords(false);
     }
-  }, [analysisData, userRole]);
+  }, [analysisData, userRole, addToast]);
 
   const handleSearch = useCallback(async () => {
     if (searchKeywords.length === 0) {
