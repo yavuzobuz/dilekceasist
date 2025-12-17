@@ -221,7 +221,7 @@ export const TariffManagement: React.FC = () => {
                                             className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-red-500"
                                         />
                                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
-                                            %{(value * 100).toFixed(2)}
+                                            %{((value as number) * 100).toFixed(2)}
                                         </span>
                                     </div>
                                 </div>
