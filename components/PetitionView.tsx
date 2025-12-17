@@ -398,7 +398,7 @@ export const PetitionView: React.FC<PetitionViewProps> = ({ petition, setGenerat
 <document>
   <metadata>
     <title>Dilekçe</title>
-    <author>Hukuk Asistanı AI</author>
+    <author>DilekAI</author>
     <date>${new Date().toISOString()}</date>
   </metadata>
   <content>
@@ -486,7 +486,7 @@ ${textContent}
                         </div>
                         <div class="content">${textContent}</div>
                         <div class="footer">
-                            <p>Hukuk Asistanı AI tarafından oluşturuldu</p>
+                            <p>DilekAI tarafından oluşturuldu</p>
                         </div>
                     </body>
                     </html>

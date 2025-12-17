@@ -13,8 +13,8 @@ export default function FAQ() {
       category: 'Genel Sorular',
       questions: [
         {
-          question: 'Hukuk Asistanı nedir?',
-          answer: 'Hukuk Asistanı, yapay zeka destekli bir dilekçe oluşturma platformudur. GPT-4 tabanlı AI teknolojisi ile dakikalar içinde profesyonel hukuki dilekçeler hazırlamanızı sağlar. Dava dilekçesi, cevap dilekçesi, itiraz, şikayet gibi 20\'den fazla dilekçe türünü destekliyoruz.'
+          question: 'DilekAI nedir?',
+          answer: 'DilekAI, yapay zeka destekli bir dilekçe oluşturma platformudur. Gemini tabanlı AI teknolojisi ile dakikalar içinde profesyonel hukuki dilekçeler hazırlamanızı sağlar. Dava dilekçesi, cevap dilekçesi, itiraz, şikayet gibi 20\'den fazla dilekçe türünü destekliyoruz.'
         },
         {
           question: 'Platform tamamen ücretsiz mi?',
@@ -110,7 +110,7 @@ export default function FAQ() {
         },
         {
           question: 'Bir hata ile karşılaştım, ne yapmalıyım?',
-          answer: 'Bir hata ile karşılaşırsanız, önce sayfayı yenilemeyi deneyin. Sorun devam ederse info@hukukasistani.com adresinden bizimle iletişime geçin. Hata mesajının ekran görüntüsünü ve detaylarını paylaşırsanız daha hızlı yardımcı olabiliriz.'
+          answer: 'Bir hata ile karşılaşırsanız, önce sayfayı yenilemeyi deneyin. Sorun devam ederse info@dilekai.com adresinden bizimle iletişime geçin. Hata mesajının ekran görüntüsünü ve detaylarını paylaşırsanız daha hızlı yardımcı olabiliriz.'
         },
         {
           question: 'Şifremi unuttum, ne yapmalıyım?',
@@ -127,7 +127,7 @@ export default function FAQ() {
         },
         {
           question: 'Platform avukatlık hizmeti mi sunuyor?',
-          answer: 'Hayır, Hukuk Asistanı bir yazılım platformudur ve avukatlık hizmeti sunmamaktadır. Platform, dilekçe hazırlama sürecini kolaylaştırmak için bir araçtır. Hukuki danışmanlık için mutlaka yetkili bir avukata başvurunuz.'
+          answer: 'Hayır, DilekAI bir yazılım platformudur ve avukatlık hizmeti sunmamaktadır. Platform, dilekçe hazırlama sürecini kolaylaştırmak için bir araçtır. Hukuki danışmanlık için mutlaka yetkili bir avukata başvurunuz.'
         },
         {
           question: 'Kişisel verilerimin gizliliği nasıl korunuyor?',
@@ -160,7 +160,7 @@ export default function FAQ() {
               Sıkça Sorulan Sorular
             </h1>
             <p className="text-xl text-gray-300">
-              Hukuk Asistanı hakkında merak ettikleriniz ve yanıtları
+              DilekAI hakkında merak ettikleriniz ve yanıtları
             </p>
           </div>
         </section>
@@ -223,7 +223,7 @@ export default function FAQ() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a
-                href="mailto:info@hukukasistani.com"
+                href="mailto:info@dilekai.com"
                 className="px-8 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-all"
               >
                 E-posta Gönder

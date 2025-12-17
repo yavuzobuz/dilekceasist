@@ -106,7 +106,7 @@ export default function About() {
               <AIJusticeLogo className="w-12 h-12 text-white" />
             </div>
             <h1 className="text-3xl sm:text-5xl font-bold text-white mb-6">
-              Hukuk Asistanı Hakkında
+              DilekAI Hakkında
             </h1>
             <p className="text-xl text-gray-300 mb-8 leading-relaxed">
               Yapay zeka destekli dilekçe oluşturma platformumuz, hukuki süreçlerinizi kolaylaştırmak ve
@@ -175,7 +175,7 @@ export default function About() {
         <section className="py-16 px-4 bg-gray-800/50">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-2xl sm:text-3xl font-bold text-white text-center mb-12">
-              Neden Hukuk Asistanı?
+              Neden DilekAI?
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {benefits.map((benefit, index) => (

@@ -19,10 +19,10 @@ const DEMO_TEMPLATES: EmailTemplate[] = [
     {
         id: '1',
         name: 'Hoşgeldin E-postası',
-        subject: 'Hukuk Asistanı\'na Hoşgeldiniz!',
+        subject: 'DilekAI\'na Hoşgeldiniz!',
         body: `Sayın {{USER_NAME}},
 
-Hukuk Asistanı platformumuza hoşgeldiniz!
+DilekAI platformumuza hoşgeldiniz!
 
 Artık yapay zeka destekli dilekçe oluşturma aracımızı kullanarak profesyonel hukuki belgeler hazırlayabilirsiniz.
 
@@ -31,7 +31,7 @@ Hemen başlamak için: {{LOGIN_URL}}
 Sorularınız için destek ekibimize ulaşabilirsiniz.
 
 Saygılarımızla,
-Hukuk Asistanı Ekibi`,
+DilekAI Ekibi`,
         type: 'welcome',
         variables: ['USER_NAME', 'LOGIN_URL'],
         lastUpdated: '2025-01-01'
@@ -52,7 +52,7 @@ Bu linkin geçerlilik süresi 1 saattir.
 Eğer bu talebi siz yapmadıysanız, bu e-postayı dikkate almayınız.
 
 Saygılarımızla,
-Hukuk Asistanı Ekibi`,
+DilekAI Ekibi`,
         type: 'password_reset',
         variables: ['USER_NAME', 'RESET_LINK'],
         lastUpdated: '2025-01-01'
@@ -72,7 +72,7 @@ Dilekçe Türü: {{PETITION_TYPE}}
 Oluşturma Tarihi: {{CREATED_DATE}}
 
 Saygılarımızla,
-Hukuk Asistanı Ekibi`,
+DilekAI Ekibi`,
         type: 'petition_ready',
         variables: ['USER_NAME', 'PETITION_TITLE', 'PETITION_TYPE', 'PETITION_URL', 'CREATED_DATE'],
         lastUpdated: '2025-01-01'
@@ -86,7 +86,7 @@ Hukuk Asistanı Ekibi`,
 {{ANNOUNCEMENT_CONTENT}}
 
 Saygılarımızla,
-Hukuk Asistanı Ekibi`,
+DilekAI Ekibi`,
         type: 'announcement',
         variables: ['USER_NAME', 'SUBJECT', 'ANNOUNCEMENT_CONTENT'],
         lastUpdated: '2025-01-01'
@@ -132,11 +132,11 @@ export const EmailTemplates: React.FC = () => {
         let content = template.body;
         const demoValues: Record<string, string> = {
             USER_NAME: 'Ahmet Yılmaz',
-            LOGIN_URL: 'https://hukukasistani.com/login',
-            RESET_LINK: 'https://hukukasistani.com/reset/abc123',
+            LOGIN_URL: 'https://dilekai.com/login',
+            RESET_LINK: 'https://dilekai.com/reset/abc123',
             PETITION_TITLE: 'İş Akdi Fesih İhtarnamesi',
             PETITION_TYPE: 'İş Hukuku',
-            PETITION_URL: 'https://hukukasistani.com/petition/123',
+            PETITION_URL: 'https://dilekai.com/petition/123',
             CREATED_DATE: new Date().toLocaleDateString('tr-TR'),
             SUBJECT: 'Önemli Güncelleme',
             ANNOUNCEMENT_CONTENT: 'Platformumuzda önemli güncellemeler yapılmıştır.'

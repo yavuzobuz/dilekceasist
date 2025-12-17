@@ -57,7 +57,7 @@ export default function Privacy() {
                                 1. Giriş
                             </h2>
                             <p className="text-gray-300 leading-relaxed">
-                                İşbu Aydınlatma Metni, <strong>Hukuk Asistanı AI</strong> platformu ("Platform") olarak,
+                                İşbu Aydınlatma Metni, <strong>DilekAI</strong> platformu ("Platform") olarak,
                                 6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") uyarınca kişisel verilerinizin
                                 işlenmesi hakkında sizleri bilgilendirmek amacıyla hazırlanmıştır.
                             </p>
@@ -75,8 +75,8 @@ export default function Privacy() {
                                 2. Veri Sorumlusunun Kimliği
                             </h2>
                             <div className="bg-gray-900/50 rounded-lg p-4 space-y-2">
-                                <p className="text-gray-300"><strong>Veri Sorumlusu:</strong> Hukuk Asistanı AI</p>
-                                <p className="text-gray-300"><strong>E-posta:</strong> info@hukukasistani.com</p>
+                                <p className="text-gray-300"><strong>Veri Sorumlusu:</strong> DilekAI</p>
+                                <p className="text-gray-300"><strong>E-posta:</strong> info@dilekai.com</p>
                                 <p className="text-gray-300"><strong>Adres:</strong> İstanbul, Türkiye</p>
                             </div>
                         </div>
@@ -244,7 +244,7 @@ export default function Privacy() {
                                 Yukarıda belirtilen haklarınıza ilişkin taleplerinizi aşağıdaki yöntemlerle iletebilirsiniz:
                             </p>
                             <div className="bg-gray-900/50 rounded-lg p-4 space-y-2">
-                                <p className="text-gray-300"><strong>E-posta:</strong> kvkk@hukukasistani.com</p>
+                                <p className="text-gray-300"><strong>E-posta:</strong> kvkk@dilekai.com</p>
                                 <p className="text-gray-400 text-sm mt-4">
                                     Başvurularınız, talebin niteliğine göre en kısa sürede ve en geç 30 gün içinde
                                     ücretsiz olarak sonuçlandırılacaktır.

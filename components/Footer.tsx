@@ -11,8 +11,8 @@ export const Footer: React.FC = () => {
           {/* Logo ve Açıklama */}
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-2 mb-4">
-              <AIJusticeLogo className="w-8 h-8 text-red-500" />
-              <span className="text-2xl font-bold text-white">Hukuk Asistanı <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-red-400">AI</span></span>
+              <img src="/logo.png" alt="DilekAI Logo" className="w-8 h-8" />
+              <span className="text-2xl font-bold text-white">Dilek<span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-red-400">AI</span></span>
             </div>
             <p className="text-gray-400 mb-4">
               Yapay zeka destekli dilekçe oluşturma platformu. Hukuki süreçlerinizi kolaylaştırın, profesyonel dilekçeler hazırlayın.
@@ -74,7 +74,7 @@ export const Footer: React.FC = () => {
             <ul className="space-y-3">
               <li className="flex items-start space-x-3 text-gray-400">
                 <Mail className="w-5 h-5 mt-0.5 flex-shrink-0 text-red-500" />
-                <span>info@hukukasistani.com</span>
+                <span>info@dilekai.com</span>
               </li>
               <li className="flex items-start space-x-3 text-gray-400">
                 <Phone className="w-5 h-5 mt-0.5 flex-shrink-0 text-red-500" />
@@ -91,7 +91,7 @@ export const Footer: React.FC = () => {
         {/* Alt Kısım */}
         <div className="border-t border-gray-800 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-400 text-sm">
-            © 2024 Hukuk Asistanı. Tüm hakları saklıdır.
+            © 2024 DilekAI. Tüm hakları saklıdır.
           </p>
           <div className="flex space-x-6 mt-4 md:mt-0">
             <Link to="/gizlilik" className="text-gray-400 hover:text-red-500 text-sm transition-colors">

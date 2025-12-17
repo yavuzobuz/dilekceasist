@@ -136,7 +136,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             {/* Main Heading */}
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
               <span className="block text-white">
-                Hukuk Asistanı
+                DilekAI
               </span>
               <span className="block mt-2 text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-red-400 to-red-500 animate-gradient-x">
                 AI Dilekçe Oluşturucu
@@ -377,7 +377,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           <div className="max-w-3xl mx-auto space-y-4">
             {[
               {
-                q: "Hukuk Asistanı AI nasıl çalışır?",
+                q: "DilekAI nasıl çalışır?",
                 a: "Belgelerinizi yükleyin, yapay zeka analiz eder ve size profesyonel bir dilekçe tasarı hazırlar. Süreç tamamen otomatiktir."
               },
               {

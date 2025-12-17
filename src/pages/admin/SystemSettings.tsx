@@ -13,7 +13,7 @@ export const SystemSettings: React.FC = () => {
     const [settings, setSettings] = useState({
         geminiApiKey: '••••••••••••••••••••',
         supabaseUrl: import.meta.env.VITE_SUPABASE_URL || '',
-        contactEmail: 'destek@hukukasistani.com',
+        contactEmail: 'destek@dilekai.com',
         maxFileSize: '10',
         sessionTimeout: '60'
     });
@@ -149,8 +149,8 @@ export const SystemSettings: React.FC = () => {
                         <button
                             onClick={toggleMaintenance}
                             className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-colors flex-1 ${maintenanceMode
-                                    ? 'bg-green-600 hover:bg-green-700 text-white'
-                                    : 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                                ? 'bg-green-600 hover:bg-green-700 text-white'
+                                : 'bg-yellow-600 hover:bg-yellow-700 text-white'
                                 }`}
                         >
                             <Power className="w-5 h-5" />

@@ -46,7 +46,7 @@ export default function Cookies() {
                             Çerez Politikası
                         </h1>
                         <p className="text-gray-400">
-                            Hukuk Asistanı AI Platformu Çerez Kullanımı Hakkında Bilgilendirme
+                            DilekAI Platformu Çerez Kullanımı Hakkında Bilgilendirme
                         </p>
                         <p className="text-sm text-gray-500 mt-2">Son güncelleme: 17 Aralık 2024</p>
                     </div>
@@ -205,7 +205,7 @@ export default function Cookies() {
                                 Çerez politikamız hakkında sorularınız için bizimle iletişime geçebilirsiniz.
                             </p>
                             <p className="text-gray-400 text-sm mt-2">
-                                E-posta: <strong>info@hukukasistani.com</strong>
+                                E-posta: <strong>info@dilekai.com</strong>
                             </p>
                         </div>
 

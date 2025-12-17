@@ -22,7 +22,7 @@ export default function Terms() {
                             Kullanım Koşulları
                         </h1>
                         <p className="text-gray-400">
-                            Hukuk Asistanı AI Platformu Kullanım Şartları ve Sorumluluk Reddi Beyanı
+                            DilekAI Platformu Kullanım Şartları ve Sorumluluk Reddi Beyanı
                         </p>
                         <p className="text-sm text-gray-500 mt-2">Son güncelleme: 17 Aralık 2024</p>
                     </div>
@@ -68,7 +68,7 @@ export default function Terms() {
                                 1. Giriş ve Kabul
                             </h2>
                             <p className="text-gray-300 leading-relaxed">
-                                İşbu Kullanım Koşulları ("Koşullar"), <strong>Hukuk Asistanı AI</strong> platformunu
+                                İşbu Kullanım Koşulları ("Koşullar"), <strong>DilekAI</strong> platformunu
                                 ("Platform") kullanımınızı düzenlemektedir. Platformu kullanarak bu Koşulları
                                 okuduğunuzu, anladığınızı ve kabul ettiğinizi beyan etmiş olursunuz.
                             </p>
@@ -279,7 +279,7 @@ export default function Terms() {
                                 ve anladığınızı beyan etmiş olursunuz.
                             </p>
                             <p className="text-gray-400 text-sm mt-4">
-                                Sorularınız için: <strong>info@hukukasistani.com</strong>
+                                Sorularınız için: <strong>info@dilekai.com</strong>
                             </p>
                         </div>
 
