@@ -67,7 +67,7 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
         setResults([]);
 
         try {
-            const response = await fetch(`${API_BASE_URL}/api/legal/search-decisions`, {
+            const response = await fetch(`${API_BASE_URL}/api/legal?action=search-decisions`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -107,7 +107,7 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
         setLoadingDocument(docId);
 
         try {
-            const response = await fetch(`${API_BASE_URL}/api/legal/get-document`, {
+            const response = await fetch(`${API_BASE_URL}/api/legal?action=get-document`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

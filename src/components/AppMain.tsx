@@ -288,7 +288,7 @@ export const AppMain: React.FC = () => {
         addToast('İçtihat araması başlatılıyor... 📚', 'info');
         try {
           const searchQuery = keywords.slice(0, 5).join(' '); // Use first 5 keywords
-          const response = await fetch('/api/legal/search-decisions', {
+          const response = await fetch('/api/legal?action=search-decisions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

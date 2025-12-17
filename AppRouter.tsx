@@ -8,6 +8,9 @@ import Profile from './src/pages/Profile';
 import PetitionPool from './src/pages/PetitionPool';
 import About from './src/pages/About';
 import FAQ from './src/pages/FAQ';
+import Privacy from './src/pages/Privacy';
+import Terms from './src/pages/Terms';
+import Cookies from './src/pages/Cookies';
 import { TemplatesPage } from './src/pages/TemplatesPage';
 import ProtectedRoute from './src/components/auth/ProtectedRoute';
 
@@ -73,6 +76,11 @@ export default function App() {
           />
         }
       />
+
+      {/* Legal Pages */}
+      <Route path="/gizlilik" element={<Privacy />} />
+      <Route path="/kullanim-kosullari" element={<Terms />} />
+      <Route path="/cerez-politikasi" element={<Cookies />} />
 
       {/* Admin Routes */}
       <Route
