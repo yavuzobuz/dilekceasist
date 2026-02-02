@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type } from '@google/genai';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const MODEL_NAME = 'gemini-2.5-pro';
+const MODEL_NAME = 'gemini-3-pro-preview';
 
 // Fallback search function for legal decisions
 async function searchEmsalFallback(keyword) {
