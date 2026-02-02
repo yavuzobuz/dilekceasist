@@ -3,7 +3,7 @@
 
 export const AI_CONFIG = {
     // Gemini Model Configuration
-    MODEL_NAME: 'gemini-2.0-flash',
+    MODEL_NAME: 'gemini-3-pro-preview',
 
     // Alternative models (for easy switching)
     // MODEL_NAME: 'gemini-1.5-pro',
