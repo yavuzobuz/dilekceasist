@@ -349,13 +349,19 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
                     >
                         <Paperclip className="h-5 w-5" />
                     </button>
-                    <input
-                        type="text"
+                    <textarea
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSend(e);
+                            }
+                        }}
                         placeholder={selectedFiles.length > 0 ? "Bu belgeler hakkında soru sorun..." : "AI asistana bir mesaj gönder..."}
-                        className="flex-1 p-3 ai-input rounded-lg transition-colors placeholder-gray-400"
+                        className="flex-1 p-3 ai-input rounded-lg transition-colors placeholder-gray-400 resize-y min-h-[48px] max-h-[200px]"
                         disabled={isLoading}
+                        rows={1}
                     />
                     <button
                         type="submit"

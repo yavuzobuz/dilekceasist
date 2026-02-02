@@ -384,19 +384,21 @@ textarea:focus {
 
 /* Girdi */
 .ai-input {
-  background: var(--ai-surface-2);
-  border: 1px solid var(--ai-border);
-  color: var(--ai-text);
+  background: #1f2937;
+  border: 2px solid #374151;
+  color: #f9fafb;
+  font-size: 0.95rem;
 }
 
 .ai-input::placeholder {
-  color: color-mix(in srgb, var(--ai-muted) 70%, transparent);
+  color: #9ca3af;
 }
 
 .ai-input:focus {
   outline: none;
-  border-color: var(--ai-accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ai-accent) 40%, transparent);
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+  background: #111827;
 }
 
 /* Sohbet balonları */

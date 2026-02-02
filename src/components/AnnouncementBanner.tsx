@@ -33,7 +33,7 @@ const typeConfig = {
     }
 };
 
-const API_BASE = 'http://localhost:3001';
+const API_BASE = '/api';
 
 interface AnnouncementBannerProps {
     position?: 'top' | 'bottom';
