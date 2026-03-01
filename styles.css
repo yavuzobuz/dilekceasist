@@ -108,6 +108,21 @@
     animation: fade-in-up 0.5s ease-out forwards;
   }
 
+  /* Fade in */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out forwards;
+  }
+
   /* Scale in */
   @keyframes scale-in {
     from {
@@ -311,6 +326,131 @@ select:focus,
 textarea:focus {
   outline: none;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+/* Petition Preview Editor - Same formatting as petition-editor */
+.petition-preview-editor {
+  font-family: "Times New Roman", Georgia, serif;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #1a1a1a;
+}
+
+.petition-preview-editor p {
+  margin-bottom: 1.2em;
+  text-indent: 0;
+  text-align: justify;
+  orphans: 3;
+  widows: 3;
+}
+
+.petition-preview-editor h1,
+.petition-preview-editor h2 {
+  text-align: center;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2em;
+  margin-bottom: 1.5em;
+  border-bottom: 2px solid #333;
+  padding-bottom: 0.5em;
+}
+
+.petition-preview-editor h3,
+.petition-preview-editor h4 {
+  font-weight: bold;
+  margin-top: 1.5em;
+  margin-bottom: 1em;
+  text-decoration: underline;
+}
+
+.petition-preview-editor h1 {
+  font-size: 1.4em;
+}
+
+.petition-preview-editor h2 {
+  font-size: 1.3em;
+}
+
+.petition-preview-editor h3 {
+  font-size: 1.1em;
+}
+
+.petition-preview-editor h4 {
+  font-size: 1em;
+}
+
+.petition-preview-editor hr {
+  border: none;
+  border-top: 1px solid #666;
+  margin: 2em 0;
+}
+
+.petition-preview-editor ul,
+.petition-preview-editor ol {
+  margin: 1em 0;
+  padding-left: 2.5em;
+}
+
+.petition-preview-editor ol {
+  list-style-type: decimal;
+}
+
+.petition-preview-editor li {
+  margin-bottom: 0.75em;
+  line-height: 1.8;
+  text-align: justify;
+}
+
+.petition-preview-editor li::marker {
+  font-weight: bold;
+}
+
+.petition-preview-editor strong,
+.petition-preview-editor b {
+  font-weight: 700;
+}
+
+.petition-preview-editor em,
+.petition-preview-editor i {
+  font-style: italic;
+}
+
+.petition-preview-editor u {
+  text-decoration: underline;
+}
+
+.petition-preview-editor blockquote {
+  margin: 1.5em 2em;
+  padding: 1em 1.5em;
+  border-left: 4px solid #333;
+  background: #f9f9f9;
+  font-style: italic;
+  color: #333;
+}
+
+.petition-preview-editor br {
+  content: "";
+  display: block;
+  margin: 0.5em 0;
+}
+
+.petition-preview-editor table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.5em 0;
+}
+
+.petition-preview-editor th,
+.petition-preview-editor td {
+  border: 1px solid #333;
+  padding: 0.75em 1em;
+  text-align: left;
+}
+
+.petition-preview-editor th {
+  background-color: #f0f0f0;
+  font-weight: 700;
 }
 
 /* =====================

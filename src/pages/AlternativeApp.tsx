@@ -10,6 +10,7 @@ import { Header } from '../../components/Header';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { SparklesIcon, ChevronDownIcon } from '../../components/Icon';
 import { PetitionView } from '../../components/PetitionView';
+import { PetitionPreview } from '../../components/PetitionPreview';
 import { ChatView } from '../../components/ChatView';
 import { VoiceInputButton } from '../../components/VoiceInputButton';
 import { Petition, supabase } from '../../lib/supabase';
@@ -136,6 +137,7 @@ const STEPS = [
     { id: 2, title: 'Belgeler', description: 'Dosya ve metin yükleme' },
     { id: 3, title: 'Analiz & Araştırma', description: 'Yapay zeka analizi' },
     { id: 4, title: 'Oluştur', description: 'Dilekçe üretme' },
+    { id: 5, title: 'Ön İzleme & İndirme', description: 'Son kontrol ve indirme' },
 ];
 
 const PARTY_FIELDS: Array<{ key: string; label: string; hint: string }> = [
@@ -1551,21 +1553,56 @@ export default function AlternativeApp() {
                                 </div>
                             )}
 
+                            {currentStep === 5 && (
+                                <div className="-mx-8 -mt-4">
+                                    <PetitionPreview
+                                        key={`preview-${petitionVersion}`}
+                                        petition={generatedPetition}
+                                        setPetition={setGeneratedPetition}
+                                        onRewrite={handleRewriteText}
+                                        onReview={handleReviewPetition}
+                                        isReviewing={isReviewingPetition}
+                                        petitionVersion={petitionVersion}
+                                        officeLogoUrl={profile?.office_logo_url}
+                                        corporateHeader={profile?.corporate_header}
+                                        sources={webSearchResult?.sources || []}
+                                        onGoBack={() => setCurrentStep(4)}
+                                    />
+                                </div>
+                            )}
+
                             {currentStep === 4 && (
                                 <div className="space-y-8">
                                     <div className="mb-6 flex items-center justify-between">
                                         <div>
-                                            <h1 className="text-3xl font-bold text-white tracking-tight mb-2">Dilekce Hazir</h1>
-                                            <p className="text-gray-400">Uretilen dilekceyi inceleyin, duzenleyin ve indirin.</p>
+                                            <h1 className="text-3xl font-bold text-white tracking-tight mb-2">Dilekçe Hazır</h1>
+                                            <p className="text-gray-400">Üretilen dilekçeyi inceleyin, düzenleyin.</p>
                                         </div>
-                                        {generatedPetition && (
-                                            <button
-                                                onClick={handleSendToEditor}
-                                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all text-sm"
-                                            >
-                                                Editore Gonder
-                                            </button>
-                                        )}
+                                        <div className="flex items-center gap-3">
+                                            {generatedPetition && (
+                                                <button
+                                                    onClick={handleSendToEditor}
+                                                    className="px-4 py-2 bg-[#1C1C1F] hover:bg-[#27272A] border border-white/10 text-white rounded-lg font-medium transition-all text-sm"
+                                                >
+                                                    Editöre Gönder
+                                                </button>
+                                            )}
+                                            {generatedPetition && (
+                                                <button
+                                                    onClick={() => setCurrentStep(5)}
+                                                    className="group flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-xl font-semibold transition-all text-sm shadow-lg shadow-emerald-900/30"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                    Ön İzleme & İndirme
+                                                    <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                    </svg>
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {generatedPetition ? (

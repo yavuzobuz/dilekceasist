@@ -7,6 +7,7 @@ import path from 'path';
 import rateLimit from 'express-rate-limit';
 import { createClient } from '@supabase/supabase-js';
 import { AI_CONFIG, SERVER_CONFIG } from './config.js';
+import templatesHandler from './api/templates.js';
 
 // Load environment variables
 dotenv.config();
@@ -25,6 +26,13 @@ const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 // Security: API Key for server endpoints (optional, set in .env)
 const SERVER_API_KEY = process.env.SERVER_API_KEY;
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'kibrit74@gmail.com')
+    .split(',')
+    .map(email => email.trim().toLowerCase())
+    .filter(Boolean);
 
 // CORS Configuration - Restrict to allowed origins
 const allowedOrigins = [
@@ -61,6 +69,77 @@ const authMiddleware = (req, res, next) => {
     }
 
     next();
+};
+
+const getBearerToken = (authorizationHeader = '') => {
+    if (typeof authorizationHeader !== 'string') return null;
+    const [scheme, token] = authorizationHeader.split(' ');
+    if (!scheme || scheme.toLowerCase() !== 'bearer' || !token) {
+        return null;
+    }
+    return token.trim();
+};
+
+const createServiceRoleClient = () => {
+    if (!SUPABASE_URL) {
+        throw new Error('Supabase URL not configured');
+    }
+
+    if (!SUPABASE_SERVICE_ROLE_KEY) {
+        throw new Error('SUPABASE_SERVICE_ROLE_KEY not configured');
+    }
+
+    return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { autoRefreshToken: false, persistSession: false }
+    });
+};
+
+const isAdminUser = (user) => {
+    const email = (user?.email || '').toLowerCase();
+    const role = String(user?.app_metadata?.role || '').toLowerCase();
+    const hasAdminClaim = user?.app_metadata?.is_admin === true || user?.user_metadata?.is_admin === true;
+
+    return hasAdminClaim || role === 'admin' || role === 'super_admin' || ADMIN_EMAILS.includes(email);
+};
+
+const requireAdminAuth = async (req, res, next) => {
+    try {
+        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+            return res.status(500).json({ error: 'Supabase auth config missing on server' });
+        }
+
+        const token = getBearerToken(req.headers.authorization);
+        if (!token) {
+            return res.status(401).json({ error: 'Unauthorized: Bearer token required' });
+        }
+
+        const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: { autoRefreshToken: false, persistSession: false }
+        });
+
+        const { data: { user }, error } = await supabaseAuth.auth.getUser(token);
+        if (error || !user) {
+            return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+        }
+
+        if (!isAdminUser(user)) {
+            return res.status(403).json({ error: 'Forbidden: Admin access required' });
+        }
+
+        req.adminUser = { id: user.id, email: user.email || null };
+        next();
+    } catch (error) {
+        console.error('Admin auth error:', error);
+        return res.status(500).json({ error: 'Admin auth failed' });
+    }
+};
+
+const requireAdminUnlessActiveOnly = (req, res, next) => {
+    const activeOnly = req.method === 'GET' && req.query.active === 'true';
+    if (activeOnly) {
+        return next();
+    }
+    return requireAdminAuth(req, res, next);
 };
 
 // Middleware
@@ -171,6 +250,9 @@ app.use('/api/html-to-docx', authMiddleware);
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok' });
 });
+
+// Templates endpoint
+app.all('/api/templates', (req, res) => templatesHandler(req, res));
 
 // 1. Analyze Documents
 app.post('/api/gemini/analyze', async (req, res) => {
@@ -2931,20 +3013,9 @@ app.post('/api/templates/:id/use', (req, res) => {
 });
 
 // Admin Users API - Get users with email from Supabase Auth
-app.get('/api/admin-users', async (req, res) => {
+app.get('/api/admin-users', requireAdminAuth, async (req, res) => {
     try {
-        // Use service role key to access auth.users
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
-        const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-
-        if (!serviceRoleKey) {
-            console.error('Service role key not configured');
-            return res.status(500).json({ error: 'Service role key not configured' });
-        }
-
-        const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-            auth: { autoRefreshToken: false, persistSession: false }
-        });
+        const supabaseAdmin = createServiceRoleClient();
 
         // Get query params
         const page = parseInt(req.query.page) || 1;
@@ -3026,18 +3097,9 @@ app.get('/api/admin-users', async (req, res) => {
 });
 
 // Announcements CRUD API
-app.get('/api/announcements', async (req, res) => {
+app.get('/api/announcements', requireAdminUnlessActiveOnly, async (req, res) => {
     try {
-        const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
-
-        if (!serviceRoleKey) {
-            return res.status(500).json({ error: 'Service role key not configured' });
-        }
-
-        const supabase = createClient(supabaseUrl, serviceRoleKey, {
-            auth: { autoRefreshToken: false, persistSession: false }
-        });
+        const supabase = createServiceRoleClient();
 
         const activeOnly = req.query.active === 'true';
 
@@ -3047,7 +3109,9 @@ app.get('/api/announcements', async (req, res) => {
             .order('created_at', { ascending: false });
 
         if (activeOnly) {
-            query = query.eq('is_active', true);
+            query = query
+                .eq('is_active', true)
+                .or(`expires_at.is.null,expires_at.gte.${new Date().toISOString()}`);
         }
 
         const { data, error } = await query;
@@ -3061,14 +3125,9 @@ app.get('/api/announcements', async (req, res) => {
     }
 });
 
-app.post('/api/announcements', async (req, res) => {
+app.post('/api/announcements', requireAdminAuth, async (req, res) => {
     try {
-        const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
-
-        const supabase = createClient(supabaseUrl, serviceRoleKey, {
-            auth: { autoRefreshToken: false, persistSession: false }
-        });
+        const supabase = createServiceRoleClient();
 
         const { title, content, type, is_active, show_on_login, expires_at } = req.body;
 
@@ -3098,14 +3157,9 @@ app.post('/api/announcements', async (req, res) => {
     }
 });
 
-app.put('/api/announcements', async (req, res) => {
+app.put('/api/announcements', requireAdminAuth, async (req, res) => {
     try {
-        const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
-
-        const supabase = createClient(supabaseUrl, serviceRoleKey, {
-            auth: { autoRefreshToken: false, persistSession: false }
-        });
+        const supabase = createServiceRoleClient();
 
         const { id, ...updates } = req.body;
 
@@ -3129,14 +3183,9 @@ app.put('/api/announcements', async (req, res) => {
     }
 });
 
-app.delete('/api/announcements', async (req, res) => {
+app.delete('/api/announcements', requireAdminAuth, async (req, res) => {
     try {
-        const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
-
-        const supabase = createClient(supabaseUrl, serviceRoleKey, {
-            auth: { autoRefreshToken: false, persistSession: false }
-        });
+        const supabase = createServiceRoleClient();
 
         const { id } = req.body;
 

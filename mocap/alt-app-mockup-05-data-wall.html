@@ -1,0 +1,261 @@
+﻿<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alt App Mockup 05 - Data Wall</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Source+Code+Pro:wght@500;700&display=swap");
+    :root {
+      --bg: #0e1625;
+      --panel: #14233a;
+      --line: #2a405f;
+      --text: #f2f7ff;
+      --muted: #a0b2cc;
+      --blue: #4ea1ff;
+      --teal: #2cc7b0;
+      --amber: #f7b955;
+      --rose: #ff7668;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Sora", sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at 0% 0%, rgba(78,161,255,.2), transparent 35%), linear-gradient(145deg, #0a1220, #0f1b2e 58%);
+      padding: 20px;
+    }
+    .wall {
+      max-width: 1380px;
+      margin: 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(20,35,58,.84);
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+      animation: show .5s ease both;
+    }
+    .top {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 11px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      background: rgba(255,255,255,.02);
+    }
+    .top h1 { margin: 0; font-size: clamp(1.05rem, 1.8vw, 1.45rem); }
+    .code { font-family: "Source Code Pro", monospace; color: var(--muted); font-size: .77rem; }
+    .core {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      background: linear-gradient(160deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+    }
+    .core h2 { margin: 0; font-size: 1rem; text-transform: uppercase; letter-spacing: .08em; }
+    .core p { margin: 6px 0 10px; color: var(--muted); }
+    .selectors {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .selector {
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      padding: 9px;
+      background: rgba(0,0,0,.16);
+    }
+    .selector.active {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 1px rgba(78,161,255,.25) inset;
+      background: rgba(78,161,255,.08);
+    }
+    .selector label {
+      display: block;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-size: .64rem;
+      margin-bottom: 5px;
+    }
+    .pick {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .pick b { font-size: .9rem; }
+    .pick span {
+      font-size: .69rem;
+      color: #cfe6ff;
+      border: 1px solid rgba(78,161,255,.42);
+      border-radius: 999px;
+      padding: 3px 7px;
+    }
+    .selector small { color: var(--muted); }
+    .form {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .field {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px;
+      background: rgba(0,0,0,.16);
+      min-height: 74px;
+    }
+    .field label {
+      display: block;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-size: .64rem;
+      margin-bottom: 4px;
+    }
+    .span2 { grid-column: span 2; }
+    .span4 { grid-column: span 4; min-height: 84px; }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .kpi {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px;
+      background: rgba(255,255,255,.02);
+    }
+    .kpi small { color: var(--muted); font-size: .63rem; text-transform: uppercase; letter-spacing: .08em; }
+    .kpi strong { display: block; margin-top: 4px; }
+    .blue strong { color: var(--blue); }
+    .teal strong { color: var(--teal); }
+    .amber strong { color: var(--amber); }
+    .rose strong { color: var(--rose); }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 10px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      background: rgba(255,255,255,.02);
+    }
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: .84rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+    }
+    .list { margin: 0; padding-left: 18px; line-height: 1.6; }
+    .doc { line-height: 1.6; min-height: 200px; }
+    .actions {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      background: rgba(0,0,0,.14);
+    }
+    .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: transparent;
+      color: var(--text);
+      padding: 8px 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn.primary { background: var(--blue); border-color: var(--blue); color: #061a34; }
+    @media (max-width: 1120px) {
+      .form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .span4 { grid-column: span 2; }
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 680px) {
+      .form, .kpis { grid-template-columns: 1fr; }
+      .span2, .span4 { grid-column: span 1; }
+      .selectors { grid-template-columns: 1fr; }
+    }
+    @keyframes show { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+  <div class="wall">
+    <header class="top">
+      <h1>Data Wall V2 / Temel Bilgi Once</h1>
+      <div class="code">BASIC_INFO_SCORE: 85 | CASE_ID: 2025-IS-0114</div>
+    </header>
+
+    <section class="core">
+      <h2>Temel Bilgileri Belirleyin</h2>
+      <p>Dashboard yapisinin merkezi bu blok: tum metrikler bu formdan beslenir.</p>
+      <div class="selectors">
+        <article class="selector active">
+          <label>Dilekce Turu Secimi</label>
+          <div class="pick"><b>Dava Dilekcesi</b><span>Degistir</span></div>
+          <small>Dava / Itiraz / Cevap / Istinaf</small>
+        </article>
+        <article class="selector active">
+          <label>Mahkeme Secimi</label>
+          <div class="pick"><b>Istanbul 8. Is Mahkemesi</b><span>Degistir</span></div>
+          <small>Is, Aile, Tuketici, Idare, Asliye secenekleri</small>
+        </article>
+      </div>
+      <div class="form">
+        <article class="field"><label>Mahkeme</label>Istanbul 8. Is Mahkemesi</article>
+        <article class="field"><label>Dosya No</label>2025/114 E.</article>
+        <article class="field"><label>Karar No</label>2025/89 K.</article>
+        <article class="field"><label>Karar Tarihi</label>14.02.2025</article>
+        <article class="field span2"><label>Davaci</label>Ahmet Yilmaz</article>
+        <article class="field span2"><label>DavalI</label>Ornek Teknoloji A.S.</article>
+        <article class="field span4"><label>Olay Ozeti</label>Haksiz fesih, fazla mesai odemesi ve kidem/ihbar tazminati taleplerinin hukuki dayanaklariyla aciklanmasi.</article>
+      </div>
+    </section>
+
+    <section class="kpis">
+      <div class="kpi blue"><small>Tamamlama</small><strong>%85</strong></div>
+      <div class="kpi teal"><small>Zorunlu Alan</small><strong>10/12</strong></div>
+      <div class="kpi amber"><small>Eksik Alan</small><strong>2</strong></div>
+      <div class="kpi rose"><small>Uyari</small><strong>Talep Tutari Yok</strong></div>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h3>Sonraki Adimlar</h3>
+        <ol class="list">
+          <li>Belge yukleme (is sozlesmesi, fesih bildirimi, bordro)</li>
+          <li>AI analiz ve icihat tarama</li>
+          <li>Taslak olusturma ve revizyon</li>
+        </ol>
+      </article>
+      <article class="card">
+        <h3>Taslak Onizleme</h3>
+        <div class="doc">Temel bilgi paneli tamamlandiginda dilekce giris, taraflar ve talep sonucu alanlari otomatik doldurulur.</div>
+      </article>
+    </section>
+
+    <section class="actions">
+      <small>Temel bilgi panelini tamamla, sonra analiz moduna gec.</small>
+      <div class="btns">
+        <button class="btn">Taslak Kaydet</button>
+        <button class="btn primary">Belgeler Adimina Gec</button>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

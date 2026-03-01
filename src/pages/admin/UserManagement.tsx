@@ -22,6 +22,9 @@ interface UserPetition {
     created_at: string;
 }
 
+// Use empty string for Vite proxy or same-origin deployment.
+const API_BASE = '';
+
 export const UserManagement: React.FC = () => {
     const [users, setUsers] = useState<UserProfile[]>([]);
     const [loading, setLoading] = useState(true);
@@ -40,6 +43,11 @@ export const UserManagement: React.FC = () => {
     const loadUsers = async () => {
         try {
             setLoading(true);
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session?.access_token) {
+                throw new Error('Admin oturumu bulunamadı');
+            }
 
             // Use admin API endpoint to get users with emails
             const params = new URLSearchParams({
@@ -48,9 +56,16 @@ export const UserManagement: React.FC = () => {
                 ...(searchQuery && { search: searchQuery })
             });
 
-            const response = await fetch(`http://localhost:3001/api/admin-users?${params}`);
+            const response = await fetch(`${API_BASE}/api/admin-users?${params}`, {
+                headers: {
+                    Authorization: `Bearer ${session.access_token}`
+                }
+            });
 
             if (!response.ok) {
+                if (response.status === 401 || response.status === 403) {
+                    throw new Error('Bu işlem için admin yetkisi gerekli');
+                }
                 // Fallback to profiles table if API fails
                 console.warn('Admin API not available, falling back to profiles');
                 await loadUsersFromProfiles();
@@ -63,6 +78,15 @@ export const UserManagement: React.FC = () => {
 
         } catch (error) {
             console.error('Error loading users:', error);
+            const message = error instanceof Error ? error.message : 'Kullanıcılar yüklenemedi';
+
+            if (message.includes('admin yetkisi') || message.includes('oturumu')) {
+                setUsers([]);
+                setTotalUsers(0);
+                toast.error(message);
+                return;
+            }
+
             // Fallback to profiles
             await loadUsersFromProfiles();
         } finally {

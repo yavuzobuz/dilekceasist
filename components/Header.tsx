@@ -57,7 +57,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
               <nav className="hidden md:flex items-center space-x-2">
                 {user && (
                   <button
-                    onClick={() => handleNavigate('/app')}
+                    onClick={() => handleNavigate('/alt-app')}
                     className="group relative px-4 py-2 text-gray-300 hover:text-white transition-all duration-300 text-sm font-medium rounded-lg overflow-hidden"
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-red-600/0 via-red-600/20 to-red-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
@@ -185,7 +185,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
             <nav className="container mx-auto px-4 py-4 space-y-2">
               {user && (
                 <button
-                  onClick={() => handleNavigate('/app')}
+                  onClick={() => handleNavigate('/alt-app')}
                   className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
                 >
                   <PenTool className="w-5 h-5 text-red-500" />

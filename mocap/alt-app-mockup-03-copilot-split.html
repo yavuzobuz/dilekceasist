@@ -1,0 +1,267 @@
+﻿<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alt App Mockup 03 - Copilot Split</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700&family=IBM+Plex+Mono:wght@500;700&display=swap");
+    :root {
+      --bg: #0a1218;
+      --panel: #10202c;
+      --panel2: #132635;
+      --line: #224457;
+      --text: #eaf8ff;
+      --muted: #93afc0;
+      --cyan: #2ec9cc;
+      --orange: #f3a64a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Outfit", sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at 0% 15%, rgba(46,201,204,.2), transparent 35%), linear-gradient(150deg, #091219, #0d1a23 60%);
+      padding: 20px;
+    }
+    .app {
+      max-width: 1400px;
+      margin: 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      overflow: hidden;
+      background: rgba(10,18,24,.86);
+      animation: show .5s ease both;
+    }
+    .top {
+      border-bottom: 1px solid var(--line);
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .top h1 { margin: 0; font-size: clamp(1.05rem, 1.8vw, 1.5rem); }
+    .meta { font-family: "IBM Plex Mono", monospace; font-size: .78rem; color: var(--muted); }
+    .split {
+      display: grid;
+      grid-template-columns: 1.05fr .95fr;
+      min-height: 720px;
+    }
+    .left, .right { padding: 14px; }
+    .left {
+      border-right: 1px solid var(--line);
+      display: grid;
+      gap: 10px;
+      background: linear-gradient(180deg, rgba(19,38,53,.82), rgba(10,18,24,.9));
+    }
+    .right {
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 10px;
+      background: linear-gradient(165deg, rgba(16,32,44,.78), rgba(10,18,24,.95));
+    }
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255,255,255,.03);
+      padding: 12px;
+    }
+    .panel h2 {
+      margin: 0;
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .panel p { margin: 6px 0 10px; color: var(--muted); }
+    .selectors {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .selector {
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: #10212e;
+      padding: 9px;
+    }
+    .selector.active {
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 1px rgba(46,201,204,.25) inset;
+      background: rgba(46,201,204,.08);
+    }
+    .selector label {
+      display: block;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      font-size: .65rem;
+      margin-bottom: 5px;
+    }
+    .pick {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .pick b { font-size: .9rem; }
+    .pick span {
+      font-size: .7rem;
+      color: var(--cyan);
+      border: 1px solid rgba(46,201,204,.45);
+      border-radius: 999px;
+      padding: 3px 7px;
+    }
+    .selector small { color: var(--muted); }
+    .form {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .field {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #10212e;
+      padding: 9px;
+      min-height: 72px;
+    }
+    .field label {
+      display: block;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      font-size: .66rem;
+      margin-bottom: 4px;
+    }
+    .full { grid-column: span 2; min-height: 84px; }
+    .msg {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px;
+      margin-top: 8px;
+      line-height: 1.45;
+      background: rgba(46,201,204,.08);
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .kpi {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px;
+      background: rgba(255,255,255,.02);
+    }
+    .kpi small { color: var(--muted); font-size: .66rem; text-transform: uppercase; letter-spacing: .08em; }
+    .kpi strong { display: block; margin-top: 4px; font-family: "IBM Plex Mono", monospace; }
+    .editor {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: rgba(0,0,0,.2);
+      line-height: 1.62;
+      overflow: auto;
+    }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: transparent;
+      color: var(--text);
+      padding: 8px 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn.primary { background: var(--cyan); border-color: var(--cyan); color: #042229; }
+    @media (max-width: 1080px) {
+      .split { grid-template-columns: 1fr; }
+      .left { border-right: 0; border-bottom: 1px solid var(--line); }
+    }
+    @media (max-width: 760px) {
+      .form, .kpis { grid-template-columns: 1fr; }
+      .full { grid-column: span 1; }
+      .selectors { grid-template-columns: 1fr; }
+    }
+    @keyframes show { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <h1>Copilot Split / Temel Bilgi Merkezli</h1>
+      <div class="meta">STEP_LOCK: BASIC_INFO_REQUIRED</div>
+    </header>
+
+    <section class="split">
+      <aside class="left">
+        <article class="panel">
+          <h2>Temel Bilgileri Belirleyin</h2>
+          <p>AI tarafina gecmeden once bu form tamamlanir. Eksik alan olursa sistem ilerlemez.</p>
+
+          <div class="selectors">
+            <article class="selector active">
+              <label>Dilekce Turu Secimi</label>
+              <div class="pick"><b>Dava Dilekcesi</b><span>Degistir</span></div>
+              <small>Dava / Itiraz / Cevap / Istinaf</small>
+            </article>
+            <article class="selector active">
+              <label>Mahkeme Secimi</label>
+              <div class="pick"><b>Istanbul 8. Is Mahkemesi</b><span>Degistir</span></div>
+              <small>Is, Aile, Tuketici, Idare, Asliye secenekleri</small>
+            </article>
+          </div>
+
+          <div class="form">
+            <article class="field"><label>Mahkeme</label>Istanbul 8. Is Mahkemesi</article>
+            <article class="field"><label>Dosya No</label>2025/114 E.</article>
+            <article class="field"><label>Karar No</label>2025/89 K.</article>
+            <article class="field"><label>Karar Tarihi</label>14.02.2025</article>
+            <article class="field"><label>Davaci</label>Ahmet Yilmaz</article>
+            <article class="field"><label>DavalI</label>Ornek Teknoloji A.S.</article>
+            <article class="field full"><label>Olay Ozeti</label>Haksiz fesih ve odenmeyen iscilik alacaklari nedeniyle kidem, ihbar ve ucret alacagi talepleri.</article>
+          </div>
+
+          <div class="msg">Tamamlama: <b>%86</b> | Eksik: Vekil iletisim bilgisi</div>
+        </article>
+
+        <article class="panel">
+          <h2>AI Konusma Onerisi</h2>
+          <p>Temel bilgi paneli netlestigi icin AI sorulari daha hedefli olacak.</p>
+        </article>
+      </aside>
+
+      <main class="right">
+        <article class="panel">
+          <h2>Analiz Ozeti</h2>
+          <div class="kpis">
+            <div class="kpi"><small>Karar Eslesme</small><strong>7</strong></div>
+            <div class="kpi"><small>Risk Uyarisi</small><strong>2</strong></div>
+            <div class="kpi"><small>Taslak Hazirlik</small><strong>Yuksek</strong></div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <h2>Dilekce Cekirdegi</h2>
+          <div class="editor">
+            <p><strong>DAVACI:</strong> Ahmet Yilmaz</p>
+            <p><strong>DAVALI:</strong> Ornek Teknoloji A.S.</p>
+            <p>Temel bilgiler panelinden gelen verilerle dava konusu ve talep sonucu otomatik taslaklanir.</p>
+          </div>
+        </article>
+
+        <div></div>
+
+        <div class="toolbar">
+          <button class="btn">Taslak Kaydet</button>
+          <button class="btn primary">Analiz ve Uretime Gec</button>
+        </div>
+      </main>
+    </section>
+  </div>
+</body>
+</html>

@@ -1,15 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
     analyzeDocuments,
     generateSearchKeywords,
     performWebSearch,
     generatePetition,
     rewriteText,
-    reviewPetition
+    reviewPetition,
 } from '../services/geminiService';
 import { UserRole, PetitionType } from '../types';
 
-// Mock fetch globally
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
@@ -19,41 +18,36 @@ describe('geminiService', () => {
     });
 
     describe('analyzeDocuments', () => {
-        it('should throw error when no documents provided', async () => {
-            await expect(analyzeDocuments([], '', '')).rejects.toThrow(
-                'Analiz edilecek hiçbir belge veya metin içeriği sağlanmadı.'
-            );
+        it('should throw when no documents are provided', async () => {
+            await expect(analyzeDocuments([], '', '')).rejects.toThrow(/Analiz edilecek/);
         });
 
-        it('should call API with correct payload', async () => {
-            const mockResponse = {
-                text: JSON.stringify({
-                    summary: 'Test özeti',
-                    potentialParties: ['Davacı', 'Davalı'],
-                    caseDetails: { court: 'Ankara Mahkemesi' },
-                }),
-            };
-
+        it('should call API and parse analysis payload', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
-                json: () => Promise.resolve(mockResponse),
+                json: () => Promise.resolve({
+                    text: JSON.stringify({
+                        summary: 'Test ozeti',
+                        potentialParties: ['Davaci', 'Davali'],
+                        caseDetails: { court: 'Ankara Mahkemesi' },
+                    }),
+                }),
             });
 
-            const result = await analyzeDocuments([], 'UDF içeriği', '');
+            const result = await analyzeDocuments([], 'UDF icerigi', '');
 
             expect(mockFetch).toHaveBeenCalledWith(
-                'http://localhost:3001/api/gemini/analyze',
+                '/api/gemini/analyze',
                 expect.objectContaining({
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                 })
             );
-
-            expect(result.summary).toBe('Test özeti');
-            expect(result.potentialParties).toContain('Davacı');
+            expect(result.summary).toBe('Test ozeti');
+            expect(result.potentialParties).toContain('Davaci');
         });
 
-        it('should handle API errors gracefully', async () => {
+        it('should throw backend error message for failed response', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: false,
                 statusText: 'Internal Server Error',
@@ -65,52 +59,66 @@ describe('geminiService', () => {
     });
 
     describe('generateSearchKeywords', () => {
-        it('should return keywords from API response', async () => {
-            const mockResponse = {
-                text: JSON.stringify({
-                    keywords: ['haksız fesih', 'tazminat', 'iş hukuku'],
-                }),
-            };
-
+        it('should return keyword array from API response', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
-                json: () => Promise.resolve(mockResponse),
+                json: () => Promise.resolve({
+                    text: JSON.stringify({ keywords: ['haksiz fesih', 'tazminat', 'is hukuku'] }),
+                }),
             });
 
-            const result = await generateSearchKeywords('Özet metni', UserRole.Davaci);
+            const result = await generateSearchKeywords('Ozet metni', UserRole.Davaci);
 
-            expect(result).toContain('haksız fesih');
+            expect(result).toContain('haksiz fesih');
             expect(result.length).toBe(3);
         });
 
-        it('should return empty array on parse error', async () => {
+        it('should return empty array on parse failure', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
                 json: () => Promise.resolve({ text: 'invalid json' }),
             });
 
-            const result = await generateSearchKeywords('Özet metni', UserRole.Davaci);
-
+            const result = await generateSearchKeywords('Ozet metni', UserRole.Davaci);
             expect(result).toEqual([]);
+        });
+    });
+
+    describe('performWebSearch', () => {
+        it('should map text and grounding metadata to search result', async () => {
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve({
+                    text: 'Arama ozeti',
+                    groundingMetadata: {
+                        groundingChunks: [
+                            { web: { uri: 'https://example.com/1', title: 'Kaynak 1' } },
+                            { web: { uri: 'https://example.com/2', title: 'Kaynak 2' } },
+                        ],
+                    },
+                }),
+            });
+
+            const result = await performWebSearch(['ise iade', 'kidem']);
+
+            expect(result.summary).toBe('Arama ozeti');
+            expect(result.sources).toHaveLength(2);
+            expect(result.sources[0].uri).toBe('https://example.com/1');
         });
     });
 
     describe('generatePetition', () => {
         it('should return petition text from API', async () => {
-            const mockResponse = {
-                text: 'Sayın Mahkeme Başkanlığına...',
-            };
-
             mockFetch.mockResolvedValueOnce({
                 ok: true,
-                json: () => Promise.resolve(mockResponse),
+                json: () => Promise.resolve({ text: 'Sayin Mahkeme Baskanligina...' }),
             });
 
             const params = {
                 userRole: UserRole.Davaci,
                 petitionType: PetitionType.DavaDilekcesi,
                 caseDetails: { court: 'Test', fileNumber: '', decisionNumber: '', decisionDate: '' },
-                analysisSummary: 'Özet',
+                analysisSummary: 'Ozet',
                 webSearchResult: '',
                 specifics: '',
                 chatHistory: [],
@@ -119,8 +127,7 @@ describe('geminiService', () => {
             };
 
             const result = await generatePetition(params);
-
-            expect(result).toBe('Sayın Mahkeme Başkanlığına...');
+            expect(result).toBe('Sayin Mahkeme Baskanligina...');
         });
     });
 
@@ -128,12 +135,36 @@ describe('geminiService', () => {
         it('should return rewritten text', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
-                json: () => Promise.resolve({ text: 'Düzeltilmiş metin' }),
+                json: () => Promise.resolve({ text: 'Duzeltilmis metin' }),
             });
 
             const result = await rewriteText('Orijinal metin');
+            expect(result).toBe('Duzeltilmis metin');
+        });
+    });
 
-            expect(result).toBe('Düzeltilmiş metin');
+    describe('reviewPetition', () => {
+        it('should return reviewed petition text', async () => {
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve({ text: 'Gozden gecirilmis dilekce' }),
+            });
+
+            const params = {
+                userRole: UserRole.Davaci,
+                petitionType: PetitionType.DavaDilekcesi,
+                caseDetails: { court: 'Test Mahkemesi', fileNumber: '', decisionNumber: '', decisionDate: '' },
+                analysisSummary: 'Analiz',
+                webSearchResult: '',
+                specifics: '',
+                chatHistory: [],
+                docContent: '',
+                parties: {},
+                currentPetition: 'Mevcut dilekce metni',
+            };
+
+            const result = await reviewPetition(params);
+            expect(result).toBe('Gozden gecirilmis dilekce');
         });
     });
 });

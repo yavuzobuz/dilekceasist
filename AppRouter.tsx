@@ -36,13 +36,13 @@ export default function App() {
 
   const handleGetStarted = () => {
     localStorage.setItem('hasVisited', 'true');
-    navigate('/app');
+    navigate('/alt-app');
   };
 
   const handleUseTemplate = (content: string) => {
     // Store template content and navigate to app
     localStorage.setItem('templateContent', content);
-    navigate('/app');
+    navigate('/alt-app');
   };
 
   return (

@@ -93,6 +93,18 @@ interface TemplatesPageProps {
     onUseTemplate: (content: string) => void;
 }
 
+const makeUniqueHeaders = (headers: string[]): string[] => {
+    const counts = new Map<string, number>();
+
+    return headers.map((rawHeader, index) => {
+        const baseHeader = (rawHeader || `Kolon_${index + 1}`).trim() || `Kolon_${index + 1}`;
+        const currentCount = counts.get(baseHeader) || 0;
+        const nextCount = currentCount + 1;
+        counts.set(baseHeader, nextCount);
+        return nextCount === 1 ? baseHeader : `${baseHeader}_${nextCount}`;
+    });
+};
+
 const CATEGORIES = [
     { id: 'all', name: 'Tumu', icon: 'ClipboardList' },
     { id: 'Hukuk', name: 'Hukuk', icon: 'Scale' },
@@ -102,6 +114,12 @@ const CATEGORIES = [
     { id: 'Idari', name: 'Idari', icon: 'Building2' },
 ];
 
+const CATEGORY_QUERY_MAP: Record<string, string> = {
+    Icra: '\u0130cra',
+    'Is Hukuku': '\u0130\u015f Hukuku',
+    Idari: '\u0130dari',
+};
+
 const API_BASE_URL = '';
 const CLIENT_FIELD_KEYS = ['SIKAYET_EDEN', 'SUPHELI', 'KIRAYA_VEREN', 'KIRACI', 'BORCLU', 'ALACAKLI', 'VEKIL', 'MUVEKKIL'];
 
@@ -110,12 +128,12 @@ const normalizeLookupKey = (value: string): string => {
 
     return value
         .toLowerCase()
-        .replace(/[��]/g, 'i')
-        .replace(/[��]/g, 's')
-        .replace(/[��]/g, 'g')
-        .replace(/[��]/g, 'u')
-        .replace(/[��]/g, 'o')
-        .replace(/[��]/g, 'c')
+        .replace(/[ıİ]/g, 'i')
+        .replace(/[şŞ]/g, 's')
+        .replace(/[ğĞ]/g, 'g')
+        .replace(/[üÜ]/g, 'u')
+        .replace(/[öÖ]/g, 'o')
+        .replace(/[çÇ]/g, 'c')
         .replace(/[^a-z0-9]+/g, '_')
         .replace(/^_+|_+$/g, '')
         .replace(/_+/g, '_');
@@ -208,7 +226,7 @@ const parseCsvFile = async (file: File): Promise<BulkSheetData> => {
     }
 
     const headersRaw = splitCsvLine(firstLine, delimiter).map(value => value.trim());
-    const headers = headersRaw.map((header, index) => header || `Kolon_${index + 1}`);
+    const headers = makeUniqueHeaders(headersRaw);
 
     const rows = lines
         .slice(1)
@@ -350,10 +368,11 @@ const parseXlsxFile = async (file: File): Promise<BulkSheetData> => {
     }
 
     const headerRow = matrix[0] || [];
-    const headers = Array.from({ length: maxColumnIndex + 1 }, (_, index) => {
+    const headersRaw = Array.from({ length: maxColumnIndex + 1 }, (_, index) => {
         const value = (headerRow[index] || '').trim();
         return value || `Kolon_${index + 1}`;
     });
+    const headers = makeUniqueHeaders(headersRaw);
 
     const rows = matrix
         .slice(1)
@@ -489,9 +508,16 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
     const [clientManagerMode, setClientManagerMode] = useState<'manage' | 'select'>('manage');
     const [targetVariablePrefix, setTargetVariablePrefix] = useState<string | null>(null);
 
-    const previewBulkRow = useMemo(() => {
-        if (!bulkSheetData || bulkSheetData.rows.length === 0) return null;
-        return bulkSheetData.rows[0];
+    const previewValueByHeader = useMemo(() => {
+        if (!bulkSheetData || bulkSheetData.rows.length === 0) return {} as Record<string, string>;
+
+        const previewMap: Record<string, string> = {};
+        bulkSheetData.headers.forEach(header => {
+            const sampleRow = bulkSheetData.rows.find(row => (row[header] || '').trim().length > 0);
+            previewMap[header] = (sampleRow?.[header] || bulkSheetData.rows[0]?.[header] || '').trim();
+        });
+
+        return previewMap;
     }, [bulkSheetData]);
 
     const resetBulkModeState = () => {
@@ -521,12 +547,13 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
         setError(null);
 
         try {
+            const apiCategory = CATEGORY_QUERY_MAP[selectedCategory] || selectedCategory;
             const url = selectedCategory === 'all'
                 ? `${API_BASE_URL}/api/templates`
-                : `${API_BASE_URL}/api/templates?category=${encodeURIComponent(selectedCategory)}`;
+                : `${API_BASE_URL}/api/templates?category=${encodeURIComponent(apiCategory)}`;
 
             const response = await fetch(url);
-            if (!response.ok) throw new Error('Sablonlar yuklenemedi');
+            if (!response.ok) throw new Error('Şablonlar yüklenemedi');
 
             const data = await response.json();
             setTemplates(data.templates || []);
@@ -542,7 +569,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
 
         try {
             const response = await fetch(`${API_BASE_URL}/api/templates?id=${encodeURIComponent(id)}`);
-            if (!response.ok) throw new Error('Sablon yuklenemedi');
+            if (!response.ok) throw new Error('Şablon yüklenemedi');
 
             const data = await response.json();
             setSelectedTemplate(data.template);
@@ -568,7 +595,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                 body: JSON.stringify({ id: selectedTemplate.id, variables: variableValues }),
             });
 
-            if (!response.ok) throw new Error('Sablon kullanilamadi');
+            if (!response.ok) throw new Error('Şablon kullanılamadı');
 
             const data = await response.json();
             onUseTemplate(data.content);
@@ -677,14 +704,52 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                 return;
             }
 
+            const rowVariablePayload = bulkSheetData.rows.map(row =>
+                buildVariablesForBulkRow(row, selectedTemplate.variables)
+            );
+
+            let generatedRows: Array<{ index: number; variables: Record<string, string>; content: string }> = [];
+
+            try {
+                const bulkResponse = await fetch(`${API_BASE_URL}/api/templates`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: selectedTemplate.id,
+                        rows: rowVariablePayload,
+                    }),
+                });
+
+                if (!bulkResponse.ok) {
+                    throw new Error(`Template bulk endpoint hatasi: ${bulkResponse.status}`);
+                }
+
+                const bulkData = await bulkResponse.json();
+                if (Array.isArray(bulkData.rows)) {
+                    generatedRows = bulkData.rows;
+                }
+            } catch (bulkFillError) {
+                console.warn('Bulk template endpoint failed, local fill fallback will be used:', bulkFillError);
+            }
+
+            if (generatedRows.length === 0) {
+                generatedRows = rowVariablePayload.map((variables, index) => ({
+                    index,
+                    variables,
+                    content: replaceTemplateVariables(selectedTemplate.content, variables),
+                }));
+            }
+
             const zip = new JSZip();
             const failedDocxRows: string[] = [];
             const usedNames = new Set<string>();
 
-            for (let index = 0; index < bulkSheetData.rows.length; index += 1) {
-                const row = bulkSheetData.rows[index];
-                const values = buildVariablesForBulkRow(row, selectedTemplate.variables);
-                const content = replaceTemplateVariables(selectedTemplate.content, values);
+            for (let index = 0; index < generatedRows.length; index += 1) {
+                const generatedRow = generatedRows[index];
+                const values = generatedRow?.variables || rowVariablePayload[index] || {};
+                const content = typeof generatedRow?.content === 'string'
+                    ? generatedRow.content
+                    : replaceTemplateVariables(selectedTemplate.content, values);
 
                 const preferredName =
                     Object.entries(values).find(([key, value]) => key.endsWith('_AD') && value.trim())?.[1] ||
@@ -725,7 +790,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                     }
                 }
 
-                setBulkProgress({ current: index + 1, total: bulkSheetData.rows.length });
+                setBulkProgress({ current: index + 1, total: generatedRows.length });
             }
 
             if (failedDocxRows.length > 0) {
@@ -778,9 +843,9 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                             <div className="hidden sm:block">
                                 <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
                                     <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-red-500" />
-                                    Sablon Galerisi
+                                    Şablon Galerisi
                                 </h1>
-                                <p className="text-sm text-gray-400 hidden md:block">Hazir dilekce sablonlarindan secin</p>
+                                <p className="text-sm text-gray-400 hidden md:block">Hazır dilekçe şablonlarından seçin</p>
                             </div>
                         </div>
 
@@ -790,7 +855,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                 type="text"
                                 value={searchQuery}
                                 onChange={(event) => setSearchQuery(event.target.value)}
-                                placeholder="Sablon ara..."
+                                placeholder="Şablon ara..."
                                 className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
                             />
                         </div>
@@ -823,7 +888,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                 {isLoading && (
                     <div className="flex flex-col items-center justify-center py-20">
                         <Loader2 className="w-12 h-12 text-red-500 animate-spin mb-4" />
-                        <p className="text-gray-400">Sablonlar yukleniyor...</p>
+                        <p className="text-gray-400">Şablonlar yükleniyor...</p>
                     </div>
                 )}
 
@@ -881,7 +946,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                 {!isLoading && !error && filteredTemplates.length === 0 && (
                     <div className="text-center py-20">
                         <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                        <h3 className="text-xl font-semibold text-gray-400 mb-2">Sablon bulunamadi</h3>
+                        <h3 className="text-xl font-semibold text-gray-400 mb-2">Şablon bulunamadı</h3>
                         <p className="text-gray-500">Farkli bir kategori veya arama terimi deneyin</p>
                     </div>
                 )}
@@ -1007,7 +1072,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                                     Seri Dilekce Uretimi
                                                 </h3>
                                                 <p className="text-sm text-gray-300 mb-4">
-                                                    Excel/CSV yukleyin, kolonlari sablon degiskenleriyle esleyin ve tek tikla toplu dilekce paketi olusturun.
+                                                    Excel/CSV yükleyin, kolonları şablon değişkenleriyle eşleyin ve tek tıkla toplu dilekçe paketi oluşturun.
                                                 </p>
                                                 <div className="flex flex-wrap gap-2">
                                                     <label className="inline-flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg cursor-pointer transition-colors">
@@ -1025,7 +1090,14 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                                         className="inline-flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg transition-colors"
                                                     >
                                                         <Download className="w-4 h-4" />
-                                                        Ornek CSV indir
+                                                        Sablon Olustur (CSV)
+                                                    </button>
+                                                    <button
+                                                        onClick={downloadSampleCsv}
+                                                        className="inline-flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors"
+                                                    >
+                                                        <FileSpreadsheet className="w-4 h-4" />
+                                                        Seri Dilekce Sablonu
                                                     </button>
                                                 </div>
                                                 <p className="text-xs text-gray-500 mt-3">
@@ -1076,7 +1148,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                                         </h4>
                                                         {selectedTemplate.variables.map(variable => {
                                                             const selectedHeader = bulkColumnMapping[variable.key] || '';
-                                                            const previewValue = selectedHeader && previewBulkRow ? (previewBulkRow[selectedHeader] || '') : '';
+                                                            const previewValue = selectedHeader ? (previewValueByHeader[selectedHeader] || '') : '';
 
                                                             return (
                                                                 <div key={variable.key} className="border border-gray-700 rounded-lg p-3 bg-gray-800/40">

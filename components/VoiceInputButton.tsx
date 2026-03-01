@@ -6,9 +6,14 @@ type SpeechRecognitionInstance = {
   continuous: boolean;
   start: () => void;
   stop: () => void;
-  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
   onerror: ((event: Event) => void) | null;
   onend: (() => void) | null;
+};
+
+type SpeechRecognitionEventLike = Event & {
+  resultIndex: number;
+  results: ArrayLike<SpeechRecognitionResult>;
 };
 
 type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
@@ -54,7 +59,7 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
     recognition.interimResults = false;
     recognition.continuous = true;
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
+    recognition.onresult = (event: SpeechRecognitionEventLike) => {
       let transcript = '';
       for (let i = event.resultIndex; i < event.results.length; i += 1) {
         const result = event.results[i];

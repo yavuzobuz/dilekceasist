@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, Petition } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
@@ -62,6 +62,9 @@ const Profile: React.FC = () => {
     email: string;
   }>({ name: '', tc_vk_no: '', address: '', phone: '', email: '' });
   const [isSavingClient, setIsSavingClient] = useState(false);
+  const [editVekaletPdf, setEditVekaletPdf] = useState<File | null>(null);
+  const [removeExistingVekaletPdf, setRemoveExistingVekaletPdf] = useState(false);
+  const editVekaletInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (user) {
@@ -265,8 +268,27 @@ const Profile: React.FC = () => {
         phone: selectedClient.phone || '',
         email: selectedClient.email || ''
       });
+      setEditVekaletPdf(null);
+      setRemoveExistingVekaletPdf(false);
       setIsEditingClient(true);
     }
+  };
+
+  const handleEditVekaletFileSelect = (file?: File | null) => {
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      toast.error('Lutfen sadece PDF dosyasi yukleyin');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Dosya boyutu 10MB\'i asamaz');
+      return;
+    }
+
+    setEditVekaletPdf(file);
+    setRemoveExistingVekaletPdf(false);
   };
 
   const handleSaveClient = async () => {
@@ -287,10 +309,27 @@ const Profile: React.FC = () => {
         email: editClientData.email.trim() || undefined
       });
 
+      // Handle vekaletname updates while editing
+      if (removeExistingVekaletPdf && updatedClient.vekalet_pdf_url) {
+        await clientService.deleteVekaletPdf(updatedClient.id);
+      }
+
+      if (editVekaletPdf) {
+        if (!removeExistingVekaletPdf && updatedClient.vekalet_pdf_url) {
+          await clientService.deleteVekaletPdf(updatedClient.id);
+        }
+        await clientService.uploadVekaletPdf(updatedClient.id, editVekaletPdf);
+      }
+
+      const refreshedClient = await clientService.getClient(updatedClient.id);
+      const finalClient = refreshedClient || updatedClient;
+
       // Update local state
-      setClients(clients.map(c => c.id === selectedClient.id ? updatedClient : c));
-      setSelectedClient(updatedClient);
+      setClients(clients.map(c => c.id === selectedClient.id ? finalClient : c));
+      setSelectedClient(finalClient);
       setIsEditingClient(false);
+      setEditVekaletPdf(null);
+      setRemoveExistingVekaletPdf(false);
       toast.success('Müvekkil bilgileri güncellendi');
     } catch (error) {
       console.error('Error updating client:', error);
@@ -777,7 +816,12 @@ const Profile: React.FC = () => {
         {selectedClient && (
           <div
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-            onClick={() => { setSelectedClient(null); setIsEditingClient(false); }}
+            onClick={() => {
+              setSelectedClient(null);
+              setIsEditingClient(false);
+              setEditVekaletPdf(null);
+              setRemoveExistingVekaletPdf(false);
+            }}
           >
             <div
               className="bg-gray-900 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg border-t sm:border border-gray-700 shadow-2xl max-h-[90vh] flex flex-col"
@@ -803,7 +847,12 @@ const Profile: React.FC = () => {
                   </div>
                 </div>
                 <button
-                  onClick={() => setSelectedClient(null)}
+                  onClick={() => {
+                    setSelectedClient(null);
+                    setIsEditingClient(false);
+                    setEditVekaletPdf(null);
+                    setRemoveExistingVekaletPdf(false);
+                  }}
                   className="p-2 hover:bg-gray-800 rounded-lg text-gray-400 hover:text-white"
                 >
                   <X className="w-5 h-5" />
@@ -868,6 +917,83 @@ const Profile: React.FC = () => {
                           onChange={(e) => setEditClientData({ ...editClientData, email: e.target.value })}
                           className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-red-500 focus:outline-none"
                         />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-300">Vekaletname (PDF)</label>
+                      <input
+                        ref={editVekaletInputRef}
+                        type="file"
+                        accept=".pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          handleEditVekaletFileSelect(e.target.files?.[0]);
+                          e.currentTarget.value = '';
+                        }}
+                      />
+                      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3 space-y-3">
+                        {selectedClient.vekalet_pdf_url && !removeExistingVekaletPdf && !editVekaletPdf && (
+                          <div className="text-sm text-green-400 flex items-center gap-2">
+                            <FileText className="w-4 h-4" />
+                            Mevcut vekaletname kayitli
+                          </div>
+                        )}
+
+                        {removeExistingVekaletPdf && (
+                          <div className="text-sm text-yellow-400">
+                            Kaydet ile mevcut vekaletname silinecek
+                          </div>
+                        )}
+
+                        {editVekaletPdf && (
+                          <div className="text-sm text-blue-300 flex items-center gap-2">
+                            <FileText className="w-4 h-4" />
+                            Secilen dosya: {editVekaletPdf.name}
+                          </div>
+                        )}
+
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => editVekaletInputRef.current?.click()}
+                            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm flex items-center gap-2"
+                          >
+                            <Upload className="w-4 h-4" />
+                            {selectedClient.vekalet_pdf_url ? 'Degistir' : 'Vekaletname Ekle'}
+                          </button>
+
+                          {editVekaletPdf && (
+                            <button
+                              type="button"
+                              onClick={() => setEditVekaletPdf(null)}
+                              className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
+                            >
+                              Secimi Temizle
+                            </button>
+                          )}
+
+                          {selectedClient.vekalet_pdf_url && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRemoveExistingVekaletPdf(prev => {
+                                  const next = !prev;
+                                  if (next) {
+                                    setEditVekaletPdf(null);
+                                  }
+                                  return next;
+                                });
+                              }}
+                              className={`px-3 py-2 rounded-lg transition-colors text-sm ${removeExistingVekaletPdf
+                                ? 'bg-yellow-700 hover:bg-yellow-600 text-white'
+                                : 'bg-red-700/80 hover:bg-red-700 text-white'
+                                }`}
+                            >
+                              {removeExistingVekaletPdf ? 'Silmeyi Iptal Et' : 'Mevcutu Kaldir'}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </>
@@ -943,7 +1069,11 @@ const Profile: React.FC = () => {
                 {isEditingClient ? (
                   <>
                     <button
-                      onClick={() => setIsEditingClient(false)}
+                      onClick={() => {
+                        setIsEditingClient(false);
+                        setEditVekaletPdf(null);
+                        setRemoveExistingVekaletPdf(false);
+                      }}
                       className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors"
                     >
                       İptal
@@ -978,7 +1108,12 @@ const Profile: React.FC = () => {
                       Düzenle
                     </button>
                     <button
-                      onClick={() => { setSelectedClient(null); setIsEditingClient(false); }}
+                      onClick={() => {
+                        setSelectedClient(null);
+                        setIsEditingClient(false);
+                        setEditVekaletPdf(null);
+                        setRemoveExistingVekaletPdf(false);
+                      }}
                       className="px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors"
                     >
                       Kapat

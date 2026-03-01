@@ -1,16 +1,48 @@
 // Consolidated Templates API Endpoint
-// Handles: GET /api/templates, GET /api/templates?id=X, POST /api/templates (use template)
+// Handles:
+// - GET /api/templates
+// - GET /api/templates?id=X
+// - POST /api/templates (single fill)
+// - POST /api/templates with rows[] (bulk fill)
 import { ICRA_TEMPLATES, IS_HUKUKU_TEMPLATES } from '../templates-part1.js';
-import { TUKETICI_TEMPLATES, TICARET_TEMPLATES, MIRAS_TEMPLATES } from '../templates-part2.js';
+import { TUKETICI_TEMPLATES, TICARET_TEMPLATES, MIRAS_TEMPLATES, CEZA_TEMPLATES, IDARI_TEMPLATES } from '../templates-part2.js';
 
-// Combine all templates
 const TEMPLATES = [
     ...ICRA_TEMPLATES,
     ...IS_HUKUKU_TEMPLATES,
     ...TUKETICI_TEMPLATES,
     ...TICARET_TEMPLATES,
-    ...MIRAS_TEMPLATES
+    ...MIRAS_TEMPLATES,
+    ...CEZA_TEMPLATES,
+    ...IDARI_TEMPLATES,
 ];
+
+const normalizeCategory = (value = '') => {
+    return String(value)
+        .toLowerCase()
+        .replace(/\u0131/g, 'i')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '');
+};
+
+const fillTemplateContent = (templateContent, variables = {}) => {
+    let content = templateContent;
+
+    const today = new Date().toLocaleDateString('tr-TR');
+    content = content.replace(/\{\{TARIH\}\}/g, today);
+
+    for (const [key, value] of Object.entries(variables || {})) {
+        const placeholder = `{{${key}}}`;
+        const normalizedValue = value == null ? '' : String(value);
+        content = content.split(placeholder).join(normalizedValue);
+    }
+
+    // Remove any remaining unreplaced variables
+    content = content.replace(/\{\{[A-Z_]+\}\}/g, '[...]');
+
+    return content;
+};
 
 export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -20,20 +52,18 @@ export default async function handler(req, res) {
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     try {
-        // GET request - list templates or get single template
         if (req.method === 'GET') {
+            console.log("TEMPLATES API GET HIT. URL:", req.url, "QUERY:", req.query);
             const { category, search, id } = req.query;
 
-            // If id is provided, return single template
             if (id) {
                 const template = TEMPLATES.find(t => t.id === id);
                 if (!template) {
-                    return res.status(404).json({ error: 'Şablon bulunamadı' });
+                    return res.status(404).json({ error: 'Sablon bulunamadi' });
                 }
                 return res.json({ success: true, template });
             }
 
-            // Otherwise, return list of templates
             let filteredTemplates = TEMPLATES.map(t => ({
                 id: t.id,
                 category: t.category,
@@ -43,15 +73,16 @@ export default async function handler(req, res) {
                 icon: t.icon,
                 isPremium: t.isPremium,
                 usageCount: t.usageCount,
-                variableCount: t.variables?.length || 0
+                variableCount: t.variables?.length || 0,
             }));
 
-            // Filter by category
-            if (category && category !== 'Tümü' && category !== 'all') {
-                filteredTemplates = filteredTemplates.filter(t => t.category === category);
+            const normalizedCategory = normalizeCategory(category);
+            if (normalizedCategory && normalizedCategory !== 'tumu' && normalizedCategory !== 'all') {
+                filteredTemplates = filteredTemplates.filter(t =>
+                    normalizeCategory(t.category) === normalizedCategory
+                );
             }
 
-            // Filter by search term
             if (search) {
                 const searchLower = search.toLowerCase();
                 filteredTemplates = filteredTemplates.filter(t =>
@@ -62,54 +93,56 @@ export default async function handler(req, res) {
 
             return res.json({
                 success: true,
+                query: req.query,
+                originalUrl: req.originalUrl,
                 templates: filteredTemplates,
-                total: filteredTemplates.length
+                total: filteredTemplates.length,
             });
         }
 
-        // POST request - use template (fill variables)
         if (req.method === 'POST') {
-            const { id, variables } = req.body;
+            const { id, variables, rows } = req.body || {};
 
             if (!id) {
                 return res.status(400).json({ error: 'Template ID gerekli' });
             }
 
-            console.log(`[TEMPLATE USE] ID: ${id}, Variables:`, JSON.stringify(variables, null, 2));
-
             const template = TEMPLATES.find(t => t.id === id);
             if (!template) {
-                return res.status(404).json({ error: 'Şablon bulunamadı' });
+                return res.status(404).json({ error: 'Sablon bulunamadi' });
             }
 
-            let content = template.content;
+            // Bulk mode
+            if (Array.isArray(rows)) {
+                const generatedRows = rows.map((rowVariables = {}, index) => ({
+                    index,
+                    variables: rowVariables,
+                    content: fillTemplateContent(template.content, rowVariables),
+                }));
 
-            // Add current date
-            const today = new Date().toLocaleDateString('tr-TR');
-            content = content.replace(/\{\{TARIH\}\}/g, today);
-
-            // Replace all variables
-            if (variables) {
-                for (const [key, value] of Object.entries(variables)) {
-                    const placeholder = '{{' + key + '}}';
-                    content = content.split(placeholder).join(value || '');
-                }
+                return res.json({
+                    success: true,
+                    title: template.title,
+                    total: generatedRows.length,
+                    rows: generatedRows,
+                });
             }
 
-            // Remove any remaining unreplaced variables
-            content = content.replace(/\{\{[A-Z_]+\}\}/g, '[...]');
+            // Single mode
+            console.log(`[TEMPLATE USE] ID: ${id}, Variables:`, JSON.stringify(variables, null, 2));
+            const content = fillTemplateContent(template.content, variables);
 
             return res.json({
                 success: true,
                 content,
-                title: template.title
+                title: template.title,
             });
         }
 
         return res.status(405).json({ error: 'Method not allowed' });
-
     } catch (error) {
         console.error('Templates Error:', error);
         res.status(500).json({ error: error.message });
     }
 }
+

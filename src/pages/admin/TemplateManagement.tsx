@@ -25,6 +25,7 @@ interface Template {
     content: string;
     isPremium: boolean;
     usageCount: number;
+    variableCount?: number;
 }
 
 const CATEGORIES = ['Hukuk', 'İcra', 'İş Hukuku', 'Ceza', 'İdari'];
@@ -178,7 +179,9 @@ export const TemplateManagement: React.FC = () => {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className="text-gray-300">{template.variableCount || 0}</span>
+                                            <span className="text-gray-300">
+                                                {template.variableCount ?? template.variables?.length ?? 0}
+                                            </span>
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className="text-gray-300">{template.usageCount}</span>

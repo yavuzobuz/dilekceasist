@@ -1,0 +1,234 @@
+﻿<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alt App Mockup 01 - Command Deck</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=DM+Serif+Display&display=swap");
+    :root {
+      --bg: #0f1117;
+      --bg2: #171d2b;
+      --panel: #1a2234;
+      --line: #2e3a51;
+      --text: #edf1ff;
+      --muted: #99a4bd;
+      --accent: #ff8b5b;
+      --ok: #2ed197;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at 90% -10%, rgba(255,139,91,.25), transparent 40%), linear-gradient(160deg, #0d1019, #12192a 55%);
+      color: var(--text);
+      font-family: "Space Grotesk", sans-serif;
+      padding: 20px;
+    }
+    .app {
+      max-width: 1360px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 270px 1fr;
+      gap: 14px;
+      animation: show .5s ease both;
+    }
+    .side, .main {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(22, 29, 43, .88);
+    }
+    .side { padding: 16px; }
+    .main { padding: 16px; display: grid; gap: 12px; }
+    .brand {
+      font-family: "DM Serif Display", serif;
+      font-size: 1.6rem;
+      margin-bottom: 10px;
+    }
+    .steps { display: grid; gap: 8px; }
+    .step {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      background: #161f31;
+    }
+    .step.active { border-color: var(--accent); }
+    .step b { display: block; font-size: .92rem; }
+    .step small { color: var(--muted); }
+    .health {
+      margin-top: 12px;
+      border: 1px solid rgba(46,209,151,.35);
+      background: rgba(46,209,151,.08);
+      border-radius: 12px;
+      padding: 10px;
+      color: #c8f9e8;
+    }
+    .core {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      background: linear-gradient(145deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+    }
+    .core h1 {
+      margin: 0;
+      font-size: clamp(1.2rem, 1.8vw, 1.8rem);
+      letter-spacing: .01em;
+    }
+    .core p { margin: 6px 0 0; color: var(--muted); }
+    .selectors {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .selector {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      background: #131c2b;
+    }
+    .selector.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(255,139,91,.22) inset;
+    }
+    .selector label {
+      display: block;
+      font-size: .67rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      margin-bottom: 6px;
+    }
+    .pick {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .pick b { font-size: .95rem; }
+    .pick span {
+      font-size: .72rem;
+      color: #ffd1bf;
+      border: 1px solid rgba(255,139,91,.45);
+      border-radius: 999px;
+      padding: 3px 8px;
+    }
+    .selector small { color: var(--muted); }
+    .form {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .field {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      background: #121a2a;
+      min-height: 76px;
+    }
+    .field label {
+      display: block;
+      font-size: .72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      margin-bottom: 5px;
+    }
+    .field .value { font-size: .94rem; }
+    .wide { grid-column: span 3; min-height: 94px; }
+    .footer {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      background: #121a28;
+    }
+    .footer small { color: var(--muted); }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn {
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 9px 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #24130d; }
+    @media (max-width: 1080px) {
+      .app { grid-template-columns: 1fr; }
+      .form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .wide { grid-column: span 2; }
+      .selectors { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 720px) {
+      .form { grid-template-columns: 1fr; }
+      .wide { grid-column: span 1; }
+    }
+    @keyframes show { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="side">
+      <div class="brand">Dilekce Deck</div>
+      <div class="steps">
+        <article class="step active"><b>1. Temel Bilgiler</b><small>Bu adim tamamlanmadan devam etme</small></article>
+        <article class="step"><b>2. Belgeler</b><small>PDF, JPG, DOCX yukleme</small></article>
+        <article class="step"><b>3. Analiz</b><small>Icihat ve risk analizi</small></article>
+        <article class="step"><b>4. Olustur</b><small>Nihai dilekce uretilir</small></article>
+      </div>
+      <section class="health">
+        Temel Bilgi Tamamlama: <b>74%</b>
+      </section>
+    </aside>
+
+    <main class="main">
+      <section class="core">
+        <h1>Temel Bilgileri Belirleyin</h1>
+        <p>Dilekce kalitesini en cok etkileyen kisim: tur, rol, mahkeme ve taraf bilgilerini netlestirin.</p>
+
+        <div class="selectors">
+          <article class="selector active">
+            <label>Dilekce Turu Secimi</label>
+            <div class="pick"><b>Dava Dilekcesi</b><span>Degistir</span></div>
+            <small>Dava / Itiraz / Cevap / Istinaf</small>
+          </article>
+          <article class="selector active">
+            <label>Mahkeme Secimi</label>
+            <div class="pick"><b>Istanbul 8. Is Mahkemesi</b><span>Degistir</span></div>
+            <small>Is, Aile, Tuketici, Idare, Asliye secenekleri</small>
+          </article>
+        </div>
+
+        <div class="form">
+          <article class="field"><label>Hukuk Alani</label><div class="value">Is Hukuku</div></article>
+          <article class="field"><label>Alt Kategori</label><div class="value">Ise Iade ve Alacak</div></article>
+          <article class="field"><label>Mahkeme</label><div class="value">Istanbul 8. Is Mahkemesi</div></article>
+          <article class="field"><label>Dosya No</label><div class="value">2025/114 E.</div></article>
+          <article class="field"><label>Karar No</label><div class="value">(opsiyonel) 2025/89 K.</div></article>
+          <article class="field"><label>Karar Tarihi</label><div class="value">14.02.2025</div></article>
+          <article class="field"><label>Davaci</label><div class="value">Ahmet Yilmaz</div></article>
+          <article class="field"><label>DavalI</label><div class="value">Ornek Teknoloji A.S.</div></article>
+          <article class="field"><label>Vekil Bilgisi</label><div class="value">Av. Ayse Demir</div></article>
+          <article class="field wide"><label>Olay Ozeti</label><div class="value">Haksiz fesih, eksik mesai odemesi, kidem ve ihbar tazminati talebi.</div></article>
+        </div>
+      </section>
+
+      <section class="footer">
+        <small>Zorunlu alanlar tamamlanmadan "Analize Gec" aktif olmaz.</small>
+        <div class="actions">
+          <button class="btn">Taslak Kaydet</button>
+          <button class="btn primary">Analize Gec</button>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

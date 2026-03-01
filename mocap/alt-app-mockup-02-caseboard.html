@@ -1,0 +1,272 @@
+﻿<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alt App Mockup 02 - Caseboard</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Manrope:wght@400;500;700&display=swap");
+    :root {
+      --bg: #f4efe5;
+      --paper: #fffaf2;
+      --line: #d9cfbf;
+      --ink: #25262a;
+      --muted: #6f6d67;
+      --accent: #cf6e43;
+      --accentSoft: #ffe8d6;
+      --ok: #2e8f62;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at 80% 0%, #f8dfc7, transparent 42%), linear-gradient(165deg, #efe6d7, var(--bg));
+      color: var(--ink);
+      font-family: "Manrope", sans-serif;
+      padding: 22px;
+    }
+    .app {
+      max-width: 1380px;
+      margin: 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      overflow: hidden;
+      background: rgba(255,250,242,.85);
+      animation: show .5s ease both;
+    }
+    .top {
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.6);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .top h1 {
+      margin: 0;
+      font-family: "Fraunces", serif;
+      font-size: clamp(1.2rem, 2vw, 1.9rem);
+    }
+    .badge {
+      border: 1px solid #b9e2c8;
+      background: #ebfff2;
+      color: var(--ok);
+      border-radius: 999px;
+      padding: 6px 11px;
+      font-size: .76rem;
+      font-weight: 800;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+    .main {
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+    }
+    .core {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+      padding: 14px;
+    }
+    .core h2 {
+      margin: 0;
+      font-family: "Fraunces", serif;
+      font-size: clamp(1.1rem, 1.7vw, 1.5rem);
+    }
+    .core p { margin: 6px 0 10px; color: var(--muted); }
+    .selectors {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .selector {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fffdfa;
+      padding: 10px;
+    }
+    .selector.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(207,110,67,.2) inset;
+      background: #fff7ef;
+    }
+    .selector label {
+      display: block;
+      color: var(--muted);
+      font-size: .67rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 6px;
+      font-weight: 800;
+    }
+    .pick {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .pick b { font-size: .93rem; }
+    .pick span {
+      font-size: .72rem;
+      border: 1px solid #e2af8e;
+      border-radius: 999px;
+      padding: 3px 8px;
+      color: #a7542f;
+      background: #fff2e8;
+    }
+    .selector small { color: var(--muted); }
+    .form {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 9px;
+    }
+    .field {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fffdf9;
+      padding: 9px;
+      min-height: 72px;
+    }
+    .field label {
+      display: block;
+      color: var(--muted);
+      font-size: .67rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 4px;
+      font-weight: 800;
+    }
+    .field .value { font-size: .9rem; }
+    .wide { grid-column: span 2; }
+    .full { grid-column: span 4; min-height: 84px; }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(220px, 1fr));
+      gap: 10px;
+    }
+    .col {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      padding: 10px;
+    }
+    .col h3 {
+      margin: 0 0 8px;
+      font-size: .87rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .task {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px;
+      margin-bottom: 8px;
+      background: #fffaf4;
+    }
+    .task b { display: block; margin-bottom: 3px; font-size: .83rem; }
+    .task small { color: var(--muted); }
+    .actions {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      padding: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      padding: 9px 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    @media (max-width: 1100px) {
+      .form { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .full { grid-column: span 2; }
+      .board { grid-template-columns: 1fr; }
+      .selectors { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 700px) {
+      .form { grid-template-columns: 1fr; }
+      .wide, .full { grid-column: span 1; }
+    }
+    @keyframes show { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <h1>Caseboard V2 / Temel Bilgi Once</h1>
+      <div class="badge">Step 1 Oncelikli</div>
+    </header>
+
+    <main class="main">
+      <section class="core">
+        <h2>Temel Bilgileri Belirleyin</h2>
+        <p>Bu panel tum akisin kilidi: tur, rol, mahkeme, taraf ve olay ozeti net olmadan analiz baslatilmaz.</p>
+
+        <div class="selectors">
+          <article class="selector active">
+            <label>Dilekce Turu Secimi</label>
+            <div class="pick"><b>Dava Dilekcesi</b><span>Degistir</span></div>
+            <small>Dava / Itiraz / Cevap / Istinaf</small>
+          </article>
+          <article class="selector active">
+            <label>Mahkeme Secimi</label>
+            <div class="pick"><b>Istanbul 8. Is Mahkemesi</b><span>Degistir</span></div>
+            <small>Is, Aile, Tuketici, Idare, Asliye secenekleri</small>
+          </article>
+        </div>
+
+        <div class="form">
+          <article class="field"><label>Mahkeme</label><div class="value">Istanbul 8. Is Mahkemesi</div></article>
+          <article class="field"><label>Dosya No</label><div class="value">2025/114 E.</div></article>
+          <article class="field"><label>Karar No</label><div class="value">2025/89 K.</div></article>
+          <article class="field"><label>Karar Tarihi</label><div class="value">14.02.2025</div></article>
+          <article class="field wide"><label>Davaci</label><div class="value">Ahmet Yilmaz</div></article>
+          <article class="field wide"><label>DavalI</label><div class="value">Ornek Teknoloji A.S.</div></article>
+          <article class="field full"><label>Olay Ozeti</label><div class="value">Haksiz fesih, fazla mesai odemesinin eksikligi, kidem ve ihbar tazminati talepleri.</div></article>
+        </div>
+      </section>
+
+      <section class="board">
+        <article class="col">
+          <h3>2. Belgeler</h3>
+          <div class="task"><b>Yukleme</b><small>PDF, JPG, DOCX kabul</small></div>
+          <div class="task"><b>Kontrol</b><small>Eksik belge uyarisi</small></div>
+        </article>
+        <article class="col">
+          <h3>3. Analiz</h3>
+          <div class="task"><b>Icihat Arama</b><small>Yargitay + BAM filtreleri</small></div>
+          <div class="task"><b>Risk Notu</b><small>Delil zayifligi kontrolu</small></div>
+        </article>
+        <article class="col">
+          <h3>4. Olustur</h3>
+          <div class="task"><b>Taslak</b><small>AI destekli metin cikisi</small></div>
+          <div class="task"><b>Revizyon</b><small>Dil / talep sonucu guclendirme</small></div>
+        </article>
+      </section>
+
+      <section class="actions">
+        <small>Temel bilgi paneli tamamlanma seviyesi: <b>%81</b></small>
+        <div class="btns">
+          <button class="btn">Taslak Kaydet</button>
+          <button class="btn primary">Belgeler Adimina Gec</button>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

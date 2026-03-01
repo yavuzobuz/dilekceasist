@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../../../lib/supabase';
 import {
     Bell, Plus, Search, Edit2, Trash2, X, Save,
     Clock, CheckCircle, XCircle, Loader2, AlertCircle
@@ -39,10 +40,24 @@ export const Announcements: React.FC = () => {
         loadAnnouncements();
     }, []);
 
+    const getAuthHeaders = async (includeJson = false): Promise<Record<string, string>> => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+            throw new Error('Admin oturumu bulunamadı');
+        }
+
+        return {
+            ...(includeJson ? { 'Content-Type': 'application/json' } : {}),
+            Authorization: `Bearer ${session.access_token}`
+        };
+    };
+
     const loadAnnouncements = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${API_BASE}/api/announcements`);
+            const response = await fetch(`${API_BASE}/api/announcements`, {
+                headers: await getAuthHeaders()
+            });
             if (!response.ok) throw new Error('Failed to fetch announcements');
             const data = await response.json();
             setAnnouncements(data.announcements || []);
@@ -70,7 +85,7 @@ export const Announcements: React.FC = () => {
             const isNew = !editingAnnouncement.id;
             const response = await fetch(`${API_BASE}/api/announcements`, {
                 method: isNew ? 'POST' : 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: await getAuthHeaders(true),
                 body: JSON.stringify(editingAnnouncement)
             });
 
@@ -97,7 +112,7 @@ export const Announcements: React.FC = () => {
         try {
             const response = await fetch(`${API_BASE}/api/announcements`, {
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
+                headers: await getAuthHeaders(true),
                 body: JSON.stringify({ id })
             });
 
@@ -114,7 +129,7 @@ export const Announcements: React.FC = () => {
         try {
             const response = await fetch(`${API_BASE}/api/announcements`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: await getAuthHeaders(true),
                 body: JSON.stringify({ id: announcement.id, is_active: !announcement.is_active })
             });
 
