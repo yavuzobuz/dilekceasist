@@ -38,6 +38,8 @@ const convertMarkdownToHtml = (text: string): string => {
   return html;
 };
 
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const FloatingToolbar: React.FC<{
   position: { top: number; left: number } | null;
   onRewrite: () => void;
@@ -76,6 +78,10 @@ export const PetitionView: React.FC<PetitionViewProps> = ({ petition, setGenerat
   const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showFormattingToolbar, setShowFormattingToolbar] = useState(true);
+  const [fontFamily, setFontFamily] = useState('Times New Roman');
+  const [fontSize, setFontSize] = useState('3');
+  const [textColor, setTextColor] = useState('#111827');
+  const [highlightColor, setHighlightColor] = useState('#fff59d');
 
   // Find & Replace state
   const [showFindReplace, setShowFindReplace] = useState(false);
@@ -268,94 +274,201 @@ export const PetitionView: React.FC<PetitionViewProps> = ({ petition, setGenerat
     }
   };
 
+  const syncEditorContent = useCallback(() => {
+    if (editorRef.current) {
+      setGeneratedPetition(editorRef.current.innerHTML);
+    }
+  }, [setGeneratedPetition]);
+
   // Text formatting functions
-  const formatText = (command: string, value?: string) => {
+  const formatText = useCallback((command: string, value?: string) => {
+    if (!editorRef.current) return;
+
+    editorRef.current.focus();
+    document.execCommand('styleWithCSS', false, 'true');
     document.execCommand(command, false, value);
-    editorRef.current?.focus();
-  };
+    syncEditorContent();
+  }, [syncEditorContent]);
+
+  const getSearchRanges = useCallback((searchTerm: string): Range[] => {
+    if (!editorRef.current || !searchTerm) return [];
+
+    const textNodes: Array<{ node: Text; start: number; end: number }> = [];
+    const walker = document.createTreeWalker(editorRef.current, NodeFilter.SHOW_TEXT);
+    let fullText = '';
+    let cursor = 0;
+
+    while (walker.nextNode()) {
+      const node = walker.currentNode as Text;
+      const value = node.nodeValue || '';
+      const start = cursor;
+      cursor += value.length;
+      textNodes.push({ node, start, end: cursor });
+      fullText += value;
+    }
+
+    if (!fullText) return [];
+
+    const flags = matchCase ? 'g' : 'gi';
+    const regex = new RegExp(escapeRegExp(searchTerm), flags);
+    const ranges: Range[] = [];
+
+    const resolvePosition = (index: number): { node: Text; offset: number } | null => {
+      for (const textNode of textNodes) {
+        if (index >= textNode.start && index <= textNode.end) {
+          return { node: textNode.node, offset: index - textNode.start };
+        }
+      }
+      return null;
+    };
+
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(fullText)) !== null) {
+      const start = match.index;
+      const end = start + match[0].length;
+
+      const startPos = resolvePosition(start);
+      const endPos = resolvePosition(end);
+      if (startPos && endPos) {
+        const range = document.createRange();
+        range.setStart(startPos.node, startPos.offset);
+        range.setEnd(endPos.node, endPos.offset);
+        ranges.push(range);
+      }
+
+      if (match[0].length === 0) {
+        regex.lastIndex += 1;
+      }
+    }
+
+    return ranges;
+  }, [matchCase]);
+
+  const focusRange = useCallback((range: Range) => {
+    const selection = window.getSelection();
+    if (!selection) return;
+
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    const container = range.startContainer.nodeType === Node.TEXT_NODE
+      ? (range.startContainer.parentElement as HTMLElement | null)
+      : (range.startContainer as HTMLElement);
+    container?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, []);
 
   // Find & Replace functions
   const highlightMatches = useCallback((searchTerm: string) => {
-    if (!editorRef.current || !searchTerm) {
+    if (!searchTerm) {
       setTotalMatches(0);
       setCurrentMatchIndex(-1);
       return;
     }
 
-    const content = editorRef.current.innerText;
-    const flags = matchCase ? 'g' : 'gi';
-    const regex = new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
-    const matches = content.match(regex);
-    setTotalMatches(matches ? matches.length : 0);
-  }, [matchCase]);
+    const ranges = getSearchRanges(searchTerm);
+    setTotalMatches(ranges.length);
+    if (ranges.length === 0) {
+      setCurrentMatchIndex(-1);
+    } else if (currentMatchIndex >= ranges.length) {
+      setCurrentMatchIndex(ranges.length - 1);
+    }
+  }, [currentMatchIndex, getSearchRanges]);
 
   const findNext = useCallback(() => {
-    if (!editorRef.current || !findText) return;
+    if (!findText) return;
 
-    const content = editorRef.current.innerText;
-    const flags = matchCase ? 'g' : 'gi';
-    const regex = new RegExp(findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
-    const matches = Array.from(content.matchAll(regex));
-
-    if (matches.length === 0) {
+    const ranges = getSearchRanges(findText);
+    if (ranges.length === 0) {
       setTotalMatches(0);
       setCurrentMatchIndex(-1);
       return;
     }
 
-    const nextIndex = (currentMatchIndex + 1) % matches.length;
+    const nextIndex = (currentMatchIndex + 1) % ranges.length;
     setCurrentMatchIndex(nextIndex);
-    setTotalMatches(matches.length);
-
-    // Highlight and scroll to the match
-    window.find(findText, matchCase, false, true);
-  }, [findText, matchCase, currentMatchIndex]);
+    setTotalMatches(ranges.length);
+    focusRange(ranges[nextIndex]);
+  }, [findText, currentMatchIndex, getSearchRanges, focusRange]);
 
   const findPrevious = useCallback(() => {
-    if (!editorRef.current || !findText) return;
+    if (!findText) return;
 
-    const content = editorRef.current.innerText;
-    const flags = matchCase ? 'g' : 'gi';
-    const regex = new RegExp(findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
-    const matches = Array.from(content.matchAll(regex));
-
-    if (matches.length === 0) {
+    const ranges = getSearchRanges(findText);
+    if (ranges.length === 0) {
       setTotalMatches(0);
       setCurrentMatchIndex(-1);
       return;
     }
 
-    const prevIndex = currentMatchIndex <= 0 ? matches.length - 1 : currentMatchIndex - 1;
+    const prevIndex = currentMatchIndex <= 0 ? ranges.length - 1 : currentMatchIndex - 1;
     setCurrentMatchIndex(prevIndex);
-    setTotalMatches(matches.length);
-
-    // Highlight and scroll to the match
-    window.find(findText, matchCase, true, true);
-  }, [findText, matchCase, currentMatchIndex]);
+    setTotalMatches(ranges.length);
+    focusRange(ranges[prevIndex]);
+  }, [findText, currentMatchIndex, getSearchRanges, focusRange]);
 
   const replaceOne = useCallback(() => {
-    if (!editorRef.current || !findText) return;
+    if (!findText) return;
 
-    const selection = window.getSelection();
-    if (selection && selection.toString().toLowerCase() === findText.toLowerCase()) {
-      document.execCommand('insertText', false, replaceText);
-      setGeneratedPetition(editorRef.current.innerHTML);
+    const ranges = getSearchRanges(findText);
+    if (ranges.length === 0) {
+      setTotalMatches(0);
+      setCurrentMatchIndex(-1);
+      return;
     }
-    findNext();
-  }, [findText, replaceText, findNext, setGeneratedPetition]);
+
+    const targetIndex = currentMatchIndex >= 0 ? Math.min(currentMatchIndex, ranges.length - 1) : 0;
+    const targetRange = ranges[targetIndex];
+    targetRange.deleteContents();
+    targetRange.insertNode(document.createTextNode(replaceText));
+
+    syncEditorContent();
+
+    const remainingRanges = getSearchRanges(findText);
+    setTotalMatches(remainingRanges.length);
+    if (remainingRanges.length === 0) {
+      setCurrentMatchIndex(-1);
+      return;
+    }
+
+    const nextIndex = targetIndex % remainingRanges.length;
+    setCurrentMatchIndex(nextIndex);
+    focusRange(remainingRanges[nextIndex]);
+  }, [findText, replaceText, currentMatchIndex, getSearchRanges, focusRange, syncEditorContent]);
 
   const replaceAll = useCallback(() => {
     if (!editorRef.current || !findText) return;
 
     const flags = matchCase ? 'g' : 'gi';
-    const regex = new RegExp(findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
-    const newContent = editorRef.current.innerHTML.replace(regex, replaceText);
+    const walker = document.createTreeWalker(editorRef.current, NodeFilter.SHOW_TEXT);
+    let replacements = 0;
 
-    editorRef.current.innerHTML = newContent;
-    setGeneratedPetition(newContent);
-    setTotalMatches(0);
-    setCurrentMatchIndex(-1);
-  }, [findText, replaceText, matchCase, setGeneratedPetition]);
+    while (walker.nextNode()) {
+      const node = walker.currentNode as Text;
+      const text = node.nodeValue || '';
+      if (!text) continue;
+
+      const regex = new RegExp(escapeRegExp(findText), flags);
+      const updated = text.replace(regex, () => {
+        replacements += 1;
+        return replaceText;
+      });
+
+      if (updated !== text) {
+        node.nodeValue = updated;
+      }
+    }
+
+    if (replacements > 0) {
+      syncEditorContent();
+    }
+
+    const remaining = getSearchRanges(findText);
+    setTotalMatches(remaining.length);
+    setCurrentMatchIndex(remaining.length > 0 ? 0 : -1);
+    if (remaining.length > 0) {
+      focusRange(remaining[0]);
+    }
+  }, [findText, replaceText, matchCase, syncEditorContent, getSearchRanges, focusRange]);
 
   // Update matches when find text or match case changes
   useEffect(() => {
@@ -560,6 +673,19 @@ ${textContent}
 
           {/* Right side - Actions */}
           <div className="flex items-center gap-2">
+            <button
+              onClick={onReview}
+              disabled={isReviewing}
+              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-all text-sm"
+              title="Taslağı iyileştir"
+            >
+              {isReviewing ? (
+                <LoadingSpinner className="h-4 w-4" />
+              ) : (
+                <SparklesIcon className="h-4 w-4" />
+              )}
+              <span className="hidden sm:inline">Taslağı İyileştir</span>
+            </button>
             <div className="relative">
               <button
                 onClick={() => setIsDownloadMenuOpen(!isDownloadMenuOpen)}
@@ -623,6 +749,28 @@ ${textContent}
       {showFormattingToolbar && (
         <div className="flex-shrink-0 border-b border-gray-700/50 bg-gray-800/30 overflow-x-auto">
           <div className="max-w-[1400px] mx-auto px-3 sm:px-6 py-2 flex items-center gap-1 min-w-max">
+            {/* Undo / Redo */}
+            <div className="flex items-center gap-1 border-r border-gray-600 pr-2">
+              <button
+                onClick={() => formatText('undo')}
+                className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                title="Geri Al (Ctrl+Z)"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h11a4 4 0 110 8h-1M3 10l4-4m-4 4l4 4" />
+                </svg>
+              </button>
+              <button
+                onClick={() => formatText('redo')}
+                className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                title="Yinele (Ctrl+Y)"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H10a4 4 0 100 8h1m10-8l-4-4m4 4l-4 4" />
+                </svg>
+              </button>
+            </div>
+
             {/* Text Formatting */}
             <div className="flex items-center gap-1 border-r border-gray-600 pr-2">
               <button
@@ -727,31 +875,67 @@ ${textContent}
               </button>
             </div>
 
-            {/* Font Size */}
+            {/* Font Family */}
             <div className="flex items-center gap-1 border-r border-gray-600 pr-2">
               <select
-                onChange={(e) => formatText('fontSize', e.target.value)}
+                value={fontFamily}
+                onChange={(e) => {
+                  setFontFamily(e.target.value);
+                  formatText('fontName', e.target.value);
+                }}
                 className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded border border-gray-600 focus:border-red-500 focus:outline-none"
-                title="Font Boyutu"
-                defaultValue="3"
+                title="Yazi Tipi"
               >
-                <option value="1">Çok Küçük</option>
-                <option value="2">Küçük</option>
-                <option value="3">Normal</option>
-                <option value="4">Büyük</option>
-                <option value="5">Çok Büyük</option>
-                <option value="6">Başlık</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Calibri">Calibri</option>
+                <option value="Arial">Arial</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Verdana">Verdana</option>
               </select>
             </div>
 
-            {/* Text Color */}
+            {/* Font Size */}
+            <div className="flex items-center gap-1 border-r border-gray-600 pr-2">
+              <select
+                value={fontSize}
+                onChange={(e) => {
+                  setFontSize(e.target.value);
+                  formatText('fontSize', e.target.value);
+                }}
+                className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded border border-gray-600 focus:border-red-500 focus:outline-none"
+                title="Font Boyutu"
+              >
+                <option value="1">10px</option>
+                <option value="2">12px</option>
+                <option value="3">14px</option>
+                <option value="4">16px</option>
+                <option value="5">18px</option>
+                <option value="6">24px</option>
+                <option value="7">32px</option>
+              </select>
+            </div>
+
+            {/* Text / Highlight Color */}
             <div className="flex items-center gap-1">
               <input
                 type="color"
-                onChange={(e) => formatText('foreColor', e.target.value)}
+                value={textColor}
+                onChange={(e) => {
+                  setTextColor(e.target.value);
+                  formatText('foreColor', e.target.value);
+                }}
                 className="w-8 h-8 rounded cursor-pointer border border-gray-600"
                 title="Metin Rengi"
-                defaultValue="#e5e7eb"
+              />
+              <input
+                type="color"
+                value={highlightColor}
+                onChange={(e) => {
+                  setHighlightColor(e.target.value);
+                  formatText('hiliteColor', e.target.value);
+                }}
+                className="w-8 h-8 rounded cursor-pointer border border-gray-600"
+                title="Vurgu Rengi"
               />
               <button
                 onClick={() => formatText('removeFormat')}
@@ -770,7 +954,7 @@ ${textContent}
       {/* Find & Replace Panel */}
       {showFindReplace && (
         <div className="flex-shrink-0 border-b border-gray-700/50 bg-gray-800/50">
-          <div className="max-w-[1400px] mx-auto px-3 sm:px-6 py-3 sm:py-4">
+          <div className="max-w-[1400px] mx-auto px-3 sm:px-6 py-3 sm:py-4 relative">
             <div className="grid grid-cols-1 gap-3 sm:gap-4">
               {/* Find Section */}
               <div className="space-y-2">
@@ -940,3 +1124,5 @@ ${textContent}
     </div>
   );
 };
+
+

@@ -26,9 +26,9 @@ interface OutputPanelProps {
   webSearchResult: WebSearchResult | null;
   setWebSearchResult: (result: React.SetStateAction<WebSearchResult | null>) => void;
   docContent: string;
-  setDocContent: (content: string) => void;
+  setDocContent: React.Dispatch<React.SetStateAction<string>>;
   specifics: string;
-  setSpecifics: (specifics: string) => void;
+  setSpecifics: React.Dispatch<React.SetStateAction<string>>;
 
   // Reset function
   onReset?: () => void;

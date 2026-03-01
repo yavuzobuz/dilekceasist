@@ -15,6 +15,7 @@ import {
 import { SparklesIcon, DocumentPlusIcon, XCircleIcon, KeyIcon, LinkIcon, ChevronDownIcon } from './Icon';
 import { Scale, Trash2 } from 'lucide-react';
 import { LoadingSpinner } from './LoadingSpinner';
+import { VoiceInputButton } from './VoiceInputButton';
 
 interface InputPanelProps {
   // Step 1: Type & Role
@@ -49,9 +50,9 @@ interface InputPanelProps {
 
   // Step 4: Additions
   docContent: string;
-  setDocContent: (content: string) => void;
+  setDocContent: React.Dispatch<React.SetStateAction<string>>;
   specifics: string;
-  setSpecifics: (specifics: string) => void;
+  setSpecifics: React.Dispatch<React.SetStateAction<string>>;
 
   // Step 5: Generate
   onGenerate: () => void;
@@ -495,8 +496,38 @@ export const InputPanel: React.FC<InputPanelProps> = ({
       {/* Step 4: Additional Info */}
       <div className="space-y-4">
         <StepHeader number={4} title="Ek Bilgiler ve Özel Talimatlar" />
-        <div className="transform transition-all duration-200 hover:scale-[1.005]"><label htmlFor="doc-content" className="block text-sm font-medium text-gray-300 mb-2">Ek Metin (İsteğe Bağlı)</label><textarea id="doc-content" rows={4} className="w-full p-3 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-blue-400 transition-all duration-200 text-gray-200 placeholder-gray-500" placeholder="PDF'lere ek olarak, hızlıca kopyalayıp yapıştırmak istediğiniz metinleri veya notları buraya ekleyin." value={docContent} onChange={(e) => setDocContent(e.target.value)} /></div>
-        <div className="transform transition-all duration-200 hover:scale-[1.005]"><label htmlFor="specifics" className="block text-sm font-medium text-gray-300 mb-2">Özel Talimatlar ve Notlar</label><textarea id="specifics" rows={4} className="w-full p-3 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-blue-400 transition-all duration-200 text-gray-200 placeholder-gray-500" placeholder="Dilekçede özellikle vurgulanmasını istediğiniz noktaları, taleplerinizi veya AI'ın bilmesi gereken diğer önemli detayları buraya yazın." value={specifics} onChange={(e) => setSpecifics(e.target.value)} /></div>
+        <div className="transform transition-all duration-200 hover:scale-[1.005]">
+          <div className="flex items-center justify-between mb-2">
+            <label htmlFor="doc-content" className="block text-sm font-medium text-gray-300">Ek Metin (İsteğe Bağlı)</label>
+            <VoiceInputButton
+              onTranscript={(text) => setDocContent((prev) => prev.trim() ? `${prev}\n${text}` : text)}
+            />
+          </div>
+          <textarea
+            id="doc-content"
+            rows={4}
+            className="w-full p-3 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-blue-400 transition-all duration-200 text-gray-200 placeholder-gray-500"
+            placeholder="PDF'lere ek olarak, hızlıca kopyalayıp yapıştırmak istediğiniz metinleri veya notları buraya ekleyin."
+            value={docContent}
+            onChange={(e) => setDocContent(e.target.value)}
+          />
+        </div>
+        <div className="transform transition-all duration-200 hover:scale-[1.005]">
+          <div className="flex items-center justify-between mb-2">
+            <label htmlFor="specifics" className="block text-sm font-medium text-gray-300">Özel Talimatlar ve Notlar</label>
+            <VoiceInputButton
+              onTranscript={(text) => setSpecifics((prev) => prev.trim() ? `${prev}\n${text}` : text)}
+            />
+          </div>
+          <textarea
+            id="specifics"
+            rows={4}
+            className="w-full p-3 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-blue-400 transition-all duration-200 text-gray-200 placeholder-gray-500"
+            placeholder="Dilekçede özellikle vurgulanmasını istediğiniz noktaları, taleplerinizi veya AI'ın bilmesi gereken diğer önemli detayları buraya yazın."
+            value={specifics}
+            onChange={(e) => setSpecifics(e.target.value)}
+          />
+        </div>
       </div>
 
       {/* Step 5: Generate */}

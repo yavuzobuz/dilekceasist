@@ -3,6 +3,7 @@ import { ChatMessage, WebSearchResult, ChatUploadedFile } from '../types';
 import { LoadingSpinner } from './LoadingSpinner';
 import { PaperAirplaneIcon, UserCircleIcon, SparklesIcon as AiIcon, ChevronDownIcon, PencilIcon, ClipboardDocumentListIcon, KeyIcon, GlobeAltIcon, DocumentTextIcon, LightBulbIcon } from './Icon';
 import { Paperclip, X, FileText, Image as ImageIcon } from 'lucide-react';
+import { VoiceInputButton } from './VoiceInputButton';
 
 // Enhanced component for the editable context panel
 const ChatContextPanel: React.FC<{
@@ -11,11 +12,11 @@ const ChatContextPanel: React.FC<{
     webSearchResult: WebSearchResult | null;
     setWebSearchResult: (result: React.SetStateAction<WebSearchResult | null>) => void;
     docContent: string;
-    setDocContent: (content: string) => void;
+    setDocContent: React.Dispatch<React.SetStateAction<string>>;
     specifics: string;
-    setSpecifics: (specifics: string) => void;
+    setSpecifics: React.Dispatch<React.SetStateAction<string>>;
 }> = (props) => {
-    const [isOpen, setIsOpen] = useState(true); // Start open by default
+    const [isOpen, setIsOpen] = useState(false); // Start collapsed by default
     const [isEditing, setIsEditing] = useState(false);
     const panelRef = useRef<HTMLDivElement>(null);
 
@@ -152,7 +153,7 @@ const ChatContextPanel: React.FC<{
 
             {/* Collapsible Content */}
             <div
-                className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'
+                className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[400px] opacity-100 overflow-y-auto' : 'max-h-0 opacity-0 overflow-hidden'
                     }`}
             >
                 <div className="p-4 pt-0 space-y-4 border-t border-gray-700/50">
@@ -218,9 +219,9 @@ interface ChatViewProps {
     webSearchResult: WebSearchResult | null;
     setWebSearchResult: (result: React.SetStateAction<WebSearchResult | null>) => void;
     docContent: string;
-    setDocContent: (content: string) => void;
+    setDocContent: React.Dispatch<React.SetStateAction<string>>;
     specifics: string;
-    setSpecifics: (specifics: string) => void;
+    setSpecifics: React.Dispatch<React.SetStateAction<string>>;
 }
 
 export const ChatView: React.FC<ChatViewProps> = (props) => {
@@ -349,6 +350,12 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
                     >
                         <Paperclip className="h-5 w-5" />
                     </button>
+                    <VoiceInputButton
+                        disabled={isLoading}
+                        onTranscript={(text) =>
+                            setInput((prev) => (prev.trim().length > 0 ? `${prev} ${text}` : text))
+                        }
+                    />
                     <textarea
                         value={input}
                         onChange={(e) => setInput(e.target.value)}

@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
 import UTIF from 'utif2';
 import mammoth from 'mammoth';
-import { PetitionType, ChatMessage, UploadedFile, WebSearchResult, AnalysisData, UserRole, CaseDetails } from '../../types';
+import { PetitionType, ChatMessage, UploadedFile, WebSearchResult, AnalysisData, UserRole, CaseDetails, LegalSearchResult } from '../../types';
 import { analyzeDocuments, generateSearchKeywords, performWebSearch, generatePetition, streamChatResponse, rewriteText, reviewPetition } from '../../services/geminiService';
 import { Header } from '../../components/Header';
 import { InputPanel } from '../../components/InputPanel';
@@ -18,6 +18,7 @@ import { SparklesIcon } from '../../components/Icon';
 import { Petition, supabase } from '../../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
+import { searchLegalDecisions } from '../utils/legalSearch';
 
 // Helper function to convert a File object to a base64 string
 const fileToBase64 = (file: File): Promise<string> => {
@@ -62,7 +63,7 @@ export const AppMain: React.FC = () => {
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [searchKeywords, setSearchKeywords] = useState<string[]>([]);
   const [webSearchResult, setWebSearchResult] = useState<WebSearchResult | null>(null);
-  const [legalSearchResults, setLegalSearchResults] = useState<Array<{ title: string; esasNo?: string; kararNo?: string; tarih?: string; daire?: string; ozet?: string; relevanceScore?: number }>>([]);
+  const [legalSearchResults, setLegalSearchResults] = useState<LegalSearchResult[]>([]);
 
   // Final output
   const [generatedPetition, setGeneratedPetition] = useState(
@@ -80,6 +81,7 @@ export const AppMain: React.FC = () => {
 
   const [error, setError] = useState<string | null>(null);
   const [isFullPageEditorMode, setIsFullPageEditorMode] = useState(false);
+  const [editorReturnRoute, setEditorReturnRoute] = useState('/app');
   const [isLegalSearchOpen, setIsLegalSearchOpen] = useState(false);
 
   // Toast notifications
@@ -99,15 +101,19 @@ export const AppMain: React.FC = () => {
   useEffect(() => {
     // Check for template content from localStorage
     const templateContent = localStorage.getItem('templateContent');
+    const storedEditorReturnRoute = localStorage.getItem('editorReturnRoute');
     if (templateContent) {
       setGeneratedPetition(templateContent);
       setPetitionVersion(v => v + 1);
       setIsFullPageEditorMode(true);
+      setEditorReturnRoute(storedEditorReturnRoute === '/alt-app' ? '/alt-app' : '/app');
       localStorage.removeItem('templateContent'); // Clear after using
+      localStorage.removeItem('editorReturnRoute');
       addToast('Şablon yüklendi! ✨', 'success');
     } else if (petitionFromState) {
       setGeneratedPetition(petitionFromState.content || '');
       setPetitionVersion(v => v + 1);
+      setEditorReturnRoute('/app');
 
       // Restore all context data from metadata
       const metadata = petitionFromState.metadata;
@@ -120,6 +126,7 @@ export const AppMain: React.FC = () => {
         if (metadata.userRole) setUserRole(metadata.userRole);
         if (metadata.analysisData) setAnalysisData(metadata.analysisData);
         if (metadata.webSearchResult) setWebSearchResult(metadata.webSearchResult);
+        if (Array.isArray(metadata.legalSearchResults)) setLegalSearchResults(metadata.legalSearchResults);
         if (metadata.chatHistory) setChatMessages(metadata.chatHistory);
       }
 
@@ -127,6 +134,18 @@ export const AppMain: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [petitionFromState?.id]); // Only re-run if petition ID changes
+
+  const handleExitFullPageEditor = useCallback(() => {
+    if (editorReturnRoute === '/alt-app') {
+      if (generatedPetition?.trim()) {
+        localStorage.setItem('templateContent', generatedPetition);
+      }
+      navigate('/alt-app');
+      return;
+    }
+
+    setIsFullPageEditorMode(false);
+  }, [editorReturnRoute, generatedPetition, navigate]);
 
   const handleAnalyze = useCallback(async () => {
     if (files.length === 0) {
@@ -268,6 +287,20 @@ export const AppMain: React.FC = () => {
     }
   };
 
+  const mergeLegalResults = useCallback((incoming: LegalSearchResult[]) => {
+    if (incoming.length === 0) return;
+
+    setLegalSearchResults(prev => {
+      const seen = new Set<string>();
+      return [...prev, ...incoming].filter(result => {
+        const key = `${result.title || ''}|${result.esasNo || ''}|${result.kararNo || ''}|${result.tarih || ''}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    });
+  }, []);
+
   const handleGenerateKeywords = useCallback(async () => {
     if (!analysisData?.summary) {
       setError('Lütfen önce belgeleri analiz edin.');
@@ -288,6 +321,19 @@ export const AppMain: React.FC = () => {
         addToast('İçtihat araması başlatılıyor... 📚', 'info');
         try {
           const searchQuery = keywords.slice(0, 5).join(' '); // Use first 5 keywords
+          const newResults = await searchLegalDecisions({
+            source: 'yargitay',
+            keyword: searchQuery,
+          });
+
+          if (newResults.length > 0) {
+            mergeLegalResults(newResults);
+            addToast(`${newResults.length} adet emsal karar bulundu!`, 'success');
+          } else {
+            addToast('Bu konuda emsal karar bulunamadi.', 'info');
+          }
+          return;
+
           const response = await fetch('/api/legal?action=search-decisions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -309,7 +355,7 @@ export const AppMain: React.FC = () => {
                 ozet: result.ozet,
                 relevanceScore: result.relevanceScore,
               }));
-              setLegalSearchResults(prev => [...prev, ...newResults]);
+              mergeLegalResults(newResults);
               addToast(`${newResults.length} adet emsal karar bulundu! 📚`, 'success');
             } else {
               addToast('Bu konuda emsal karar bulunamadı.', 'info');
@@ -326,7 +372,7 @@ export const AppMain: React.FC = () => {
     } finally {
       setIsGeneratingKeywords(false);
     }
-  }, [analysisData, userRole, addToast]);
+  }, [analysisData, userRole, addToast, mergeLegalResults]);
 
   const handleSearch = useCallback(async () => {
     if (searchKeywords.length === 0) {
@@ -354,7 +400,7 @@ export const AppMain: React.FC = () => {
   const handleAddLegalContent = useCallback((text: string, resultData?: { title: string; esasNo?: string; kararNo?: string; tarih?: string; daire?: string; ozet?: string }) => {
     // Store structured data for petition generation
     if (resultData) {
-      setLegalSearchResults(prev => [...prev, resultData]);
+      mergeLegalResults([resultData]);
     }
     // Also add text to petition if already generated
     if (generatedPetition) {
@@ -362,7 +408,7 @@ export const AppMain: React.FC = () => {
     }
     setIsLegalSearchOpen(false);
     addToast('İçtihat eklendi! ⚖️ Dilekçe oluştururken kullanılacak.', 'success');
-  }, [generatedPetition]);
+  }, [generatedPetition, mergeLegalResults]);
 
   // Handler to remove a legal search result
   const handleRemoveLegalResult = useCallback((index: number) => {
@@ -403,6 +449,7 @@ export const AppMain: React.FC = () => {
       });
       setGeneratedPetition(result);
       setPetitionVersion(v => v + 1); // Increment version to force re-mount of editor
+      setEditorReturnRoute('/app');
       setIsFullPageEditorMode(true); // Switch to full-page editor mode
       addToast('Dilekçe başarıyla oluşturuldu! ✨', 'success');
 
@@ -416,7 +463,7 @@ export const AppMain: React.FC = () => {
     } finally {
       setIsLoadingPetition(false);
     }
-  }, [userRole, petitionType, caseDetails, analysisData, webSearchResult, docContent, specifics, chatMessages, parties, user]);
+  }, [userRole, petitionType, caseDetails, analysisData, webSearchResult, legalSearchResults, docContent, specifics, chatMessages, parties, user]);
 
   const savePetitionToSupabase = async (content: string) => {
     if (!user) return;
@@ -439,6 +486,7 @@ export const AppMain: React.FC = () => {
             userRole,
             analysisData,
             webSearchResult,
+            legalSearchResults,
             lawyerInfo: analysisData?.lawyerInfo,
             contactInfo: analysisData?.contactInfo,
           },
@@ -513,7 +561,7 @@ export const AppMain: React.FC = () => {
             relevanceScore: result.relevanceScore,
           }));
           if (newResults.length > 0) {
-            setLegalSearchResults(prev => [...prev, ...newResults]);
+            mergeLegalResults(newResults);
             addToast(`${newResults.length} adet emsal karar bulundu! 📚`, 'success');
           }
         }
@@ -618,7 +666,7 @@ export const AppMain: React.FC = () => {
     } finally {
       setIsLoadingChat(false);
     }
-  }, [chatMessages, analysisData, searchKeywords, webSearchResult, docContent, specifics]);
+  }, [chatMessages, analysisData, searchKeywords, webSearchResult, docContent, specifics, mergeLegalResults, addToast]);
 
   const handleRewriteText = useCallback(async (text: string): Promise<string> => {
     setError(null);
@@ -742,7 +790,7 @@ export const AppMain: React.FC = () => {
         <div className="bg-gray-800/80 border-b border-gray-700/50 backdrop-blur-sm sticky top-16 z-40">
           <div className="max-w-[1400px] mx-auto px-3 sm:px-6 py-2 sm:py-3 flex flex-wrap items-center justify-between gap-2">
             <button
-              onClick={() => setIsFullPageEditorMode(false)}
+              onClick={handleExitFullPageEditor}
               className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all font-medium text-sm"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -903,7 +951,10 @@ export const AppMain: React.FC = () => {
             setSpecifics={setSpecifics}
 
             onReset={handleReset}
-            onExpandFullPage={() => setIsFullPageEditorMode(true)}
+            onExpandFullPage={() => {
+              setEditorReturnRoute('/app');
+              setIsFullPageEditorMode(true);
+            }}
           />
         </main>
       </div>
