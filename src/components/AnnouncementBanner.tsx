@@ -33,7 +33,8 @@ const typeConfig = {
     }
 };
 
-const API_BASE = '/api';
+// API_BASE is empty to use the Vite proxy (e.g., fetch('/api/announcements'))
+const API_BASE = '';
 
 interface AnnouncementBannerProps {
     position?: 'top' | 'bottom';

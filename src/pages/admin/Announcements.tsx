@@ -23,7 +23,8 @@ const typeConfig = {
     error: { bg: 'bg-red-900/30', border: 'border-red-700/50', text: 'text-red-400', label: 'Hata' }
 };
 
-const API_BASE = 'http://localhost:3001';
+// Use empty string to run through Vite proxy or same-domain in production
+const API_BASE = '';
 
 export const Announcements: React.FC = () => {
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);

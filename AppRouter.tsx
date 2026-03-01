@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import { LandingPage } from './components/LandingPage';
 import { AppMain } from './src/components/AppMain';
+import AlternativeApp from './src/pages/AlternativeApp';
 import Login from './src/pages/Login';
 import Register from './src/pages/Register';
 import Profile from './src/pages/Profile';
@@ -54,6 +55,10 @@ export default function App() {
         element={
           <AppMain />
         }
+      />
+      <Route
+        path="/alt-app"
+        element={<AlternativeApp />}
       />
       <Route
         path="/profile"

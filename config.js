@@ -2,12 +2,13 @@
 // Change values here to update them across all files
 
 export const AI_CONFIG = {
-    // Gemini Model Configuration
-    MODEL_NAME: 'gemini-3-pro-preview',
+    // Gemini Model Configuration (Updated to Gemini 3 for better reasoning)
+    MODEL_NAME: 'gemini-3.1-pro-preview',
 
     // Alternative models (for easy switching)
-    // MODEL_NAME: 'gemini-1.5-pro',
-    // MODEL_NAME: 'gemini-1.5-flash',
+    // MODEL_NAME: 'gemini-3.0-pro-preview',
+    // MODEL_NAME: 'gemini-3-flash-preview',
+    // MODEL_NAME: 'gemini-2.5-pro',
 
     // API Settings
     MAX_RETRIES: 3,
