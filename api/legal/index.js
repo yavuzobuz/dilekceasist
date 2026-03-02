@@ -34,6 +34,52 @@ const maybeExtractJson = (text = '') => {
     return null;
 };
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+const isRetryableAiError = (error) => {
+    const message = [
+        error?.message || '',
+        error?.cause?.message || '',
+        error?.stack || '',
+    ].join(' ').toLowerCase();
+
+    return [
+        'fetch failed',
+        'etimedout',
+        'econnreset',
+        'socket hang up',
+        'temporary failure',
+        'network error',
+        '503',
+        '429',
+    ].some(token => message.includes(token));
+};
+
+async function generateContentWithRetry(requestPayload, options = {}) {
+    const maxRetries = Number.isFinite(options.maxRetries) ? options.maxRetries : 3;
+    const initialDelayMs = Number.isFinite(options.initialDelayMs) ? options.initialDelayMs : 1000;
+
+    let lastError = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+        try {
+            return await ai.models.generateContent(requestPayload);
+        } catch (error) {
+            lastError = error;
+            const canRetry = attempt < maxRetries && isRetryableAiError(error);
+            if (!canRetry) {
+                throw error;
+            }
+
+            const backoffDelay = initialDelayMs * (2 ** attempt);
+            const jitter = Math.floor(Math.random() * 200);
+            await sleep(backoffDelay + jitter);
+        }
+    }
+
+    throw lastError || new Error('AI request failed');
+}
+
 // GET /api/legal?action=sources
 async function handleSources(req, res) {
     res.json({
@@ -55,9 +101,14 @@ async function handleSearchDecisions(req, res) {
         return res.status(400).json({ error: 'Arama kelimesi (keyword) gereklidir.' });
     }
 
-    const response = await ai.models.generateContent({
-        model: MODEL_NAME,
-        contents: `Turkiye'de "${keyword}" konusunda emsal Yargitay ve Danistay kararlarini bul.
+    let text = '';
+    let rows = [];
+    let warning = '';
+
+    try {
+        const response = await generateContentWithRetry({
+            model: MODEL_NAME,
+            contents: `Turkiye'de "${keyword}" konusunda emsal Yargitay ve Danistay kararlarini bul.
 
 Her karar icin su alanlari uret:
 - mahkeme
@@ -71,12 +122,18 @@ Her karar icin su alanlari uret:
 
 Sadece JSON array dondur:
 [{"mahkeme":"...","daire":"...","esasNo":"...","kararNo":"...","tarih":"...","ozet":"...","sourceUrl":"https://...","relevanceScore":85}]`,
-        config: { tools: [{ googleSearch: {} }] }
-    });
+            config: { tools: [{ googleSearch: {} }] }
+        });
 
-    const text = response.text || '';
-    const parsed = maybeExtractJson(text);
-    const rows = Array.isArray(parsed) ? parsed : [];
+        text = response.text || '';
+        const parsed = maybeExtractJson(text);
+        rows = Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+        console.error('AI search-decisions fallback error:', error);
+        warning = 'Emsal arama servislerine gecici olarak ulasilamiyor. Lutfen kisa bir sure sonra tekrar deneyin.';
+        rows = [];
+        text = '';
+    }
 
     const results = rows.length > 0
         ? rows.map((r, i) => ({
@@ -104,6 +161,7 @@ Sadece JSON array dondur:
         provider: 'ai-fallback',
         keyword,
         results,
+        ...(warning ? { warning } : {}),
     });
 }
 
@@ -123,7 +181,7 @@ async function getDocumentViaAIFallback({ keyword = '', documentId = '', documen
     const query = queryParts.join(' ').trim();
     if (!query) return '';
 
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
         model: MODEL_NAME,
         contents: `Asagidaki karar kunyesine ait karar METNINI resmi kaynaklardan bul:
 ${query}

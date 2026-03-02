@@ -33,6 +33,45 @@ const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
+const parseFunctionCallArgs = (rawArgs: unknown): Record<string, any> => {
+  if (!rawArgs) return {};
+  if (typeof rawArgs === 'string') {
+    try {
+      const parsed = JSON.parse(rawArgs);
+      return parsed && typeof parsed === 'object' ? parsed as Record<string, any> : {};
+    } catch {
+      return {};
+    }
+  }
+  return typeof rawArgs === 'object' ? rawArgs as Record<string, any> : {};
+};
+
+const extractGeneratedDocumentPayload = (rawArgs: unknown): { title: string; content: string } | null => {
+  const args = parseFunctionCallArgs(rawArgs);
+  const content = (
+    args.documentContent ??
+    args.document_content ??
+    args.content ??
+    args.petitionContent ??
+    args.dilekceMetni ??
+    ''
+  );
+  const title = (
+    args.documentTitle ??
+    args.document_title ??
+    args.title ??
+    'Belge'
+  );
+
+  const normalizedContent = typeof content === 'string' ? content.trim() : '';
+  if (!normalizedContent) return null;
+
+  return {
+    title: typeof title === 'string' && title.trim() ? title.trim() : 'Belge',
+    content: normalizedContent,
+  };
+};
+
 export const AppMain: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -86,7 +125,6 @@ export const AppMain: React.FC = () => {
 
   // Toast notifications
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
-
   const addToast = useCallback((message: string, type: ToastType) => {
     const id = Date.now().toString();
     setToasts(prev => [...prev, { id, message, type }]);
@@ -625,27 +663,30 @@ export const AppMain: React.FC = () => {
 
             // Handle document generation from chat
             if (fc.name === 'generate_document') {
-              generatedDocument = true;
-              const args = fc.args as {
-                documentType?: string;
-                documentTitle?: string;
-                documentContent?: string;
-              };
-
-              if (args.documentContent) {
-                // Set the generated petition
-                setGeneratedPetition(args.documentContent);
-                setPetitionVersion(v => v + 1);
-
-                // Show success message in chat
-                setChatMessages(prev => prev.map((msg, index) =>
-                  index === prev.length - 1
-                    ? { ...msg, text: msg.text + `\n\n📄 **${args.documentTitle || 'Belge'}** oluşturuldu!\n\n✅ Belge "Oluşturulan Dilekçe" bölümüne eklendi. Düzenlemek, indirmek veya tam sayfa görüntülemek için o bölümü kullanabilirsiniz.` }
-                    : msg
-                ));
-
-                addToast(`${args.documentTitle || 'Belge'} oluşturuldu! 📄`, 'success');
+              const payload = extractGeneratedDocumentPayload(fc.args);
+              if (!payload || generatedDocument) {
+                continue;
               }
+
+              generatedDocument = true;
+
+              // Set the generated petition
+              setGeneratedPetition(payload.content);
+              setPetitionVersion(v => v + 1);
+
+              // Persist chat-generated petition for profile history
+              if (user) {
+                await savePetitionToSupabase(payload.content);
+              }
+
+              // Show success message in chat
+              setChatMessages(prev => prev.map((msg, index) =>
+                index === prev.length - 1
+                  ? { ...msg, text: msg.text + `\n\n${payload.title} olusturuldu.\n\nBelge "Olusturulan Dilekce" bolumune eklendi. Duzenlemek, indirmek veya tam sayfa goruntulemek icin bu bolumu kullanabilirsiniz.` }
+                  : msg
+              ));
+
+              addToast(`${payload.title} olusturuldu.`, 'success');
             }
           }
         }
@@ -666,7 +707,7 @@ export const AppMain: React.FC = () => {
     } finally {
       setIsLoadingChat(false);
     }
-  }, [chatMessages, analysisData, searchKeywords, webSearchResult, docContent, specifics, mergeLegalResults, addToast]);
+  }, [chatMessages, analysisData, searchKeywords, webSearchResult, docContent, specifics, mergeLegalResults, addToast, user, savePetitionToSupabase]);
 
   const handleRewriteText = useCallback(async (text: string): Promise<string> => {
     setError(null);
@@ -743,11 +784,11 @@ export const AppMain: React.FC = () => {
   // Show login prompt if user is not logged in (except when loading from profile)
   if (!user && !petitionFromState) {
     return (
-      <div className="min-h-screen bg-gray-900 text-gray-200 flex flex-col font-sans">
+      <div className="min-h-screen bg-[#0A0A0B] text-gray-200 flex flex-col font-sans">
         <ToastContainer toasts={toasts} removeToast={removeToast} />
         <Header onShowLanding={() => navigate('/')} />
         <div className="flex-grow flex items-center justify-center p-8">
-          <div className="max-w-md w-full bg-gray-800 rounded-lg border border-red-600/30 p-8 text-center">
+          <div className="max-w-md w-full bg-[#111113] rounded-lg border border-white/10 p-8 text-center">
             <div className="text-6xl mb-6">🔒</div>
             <h2 className="text-2xl font-bold text-white mb-4">Giriş Gerekli</h2>
             <p className="text-gray-300 mb-6">
@@ -762,7 +803,7 @@ export const AppMain: React.FC = () => {
               </button>
               <button
                 onClick={() => navigate('/register')}
-                className="flex-1 px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors font-semibold"
+                className="flex-1 px-6 py-3 bg-[#1A1A1D] hover:bg-[#1C1C1F] text-white rounded-lg transition-colors font-semibold"
               >
                 Kayıt Ol
               </button>
@@ -782,16 +823,16 @@ export const AppMain: React.FC = () => {
   // Full-page editor mode render - Clean and spacious design
   if (isFullPageEditorMode && generatedPetition) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-gray-200 flex flex-col font-sans">
+      <div className="min-h-screen bg-[#0A0A0B] text-gray-200 flex flex-col font-sans">
         <ToastContainer toasts={toasts} removeToast={removeToast} />
         <Header onShowLanding={() => navigate('/')} />
 
         {/* Compact Action Bar */}
-        <div className="bg-gray-800/80 border-b border-gray-700/50 backdrop-blur-sm sticky top-16 z-40">
+        <div className="bg-[#111113]/90 border-b border-white/10 backdrop-blur-sm sticky top-16 z-40">
           <div className="max-w-[1400px] mx-auto px-3 sm:px-6 py-2 sm:py-3 flex flex-wrap items-center justify-between gap-2">
             <button
               onClick={handleExitFullPageEditor}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all font-medium text-sm"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-[#1A1A1D] hover:bg-[#1C1C1F] text-white rounded-lg transition-all font-medium text-sm"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -830,7 +871,7 @@ export const AppMain: React.FC = () => {
 
               <button
                 onClick={handleReset}
-                className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all font-medium text-sm"
+                className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 bg-[#1A1A1D] hover:bg-[#1C1C1F] text-white rounded-lg transition-all font-medium text-sm"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -870,7 +911,7 @@ export const AppMain: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-200 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#0A0A0B] text-gray-200 flex flex-col font-sans">
       <ToastContainer toasts={toasts} removeToast={removeToast} />
       <Header onShowLanding={() => navigate('/')} />
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">

@@ -213,6 +213,7 @@ interface ChatViewProps {
     messages: ChatMessage[];
     onSendMessage: (message: string, files?: File[]) => void;
     isLoading: boolean;
+    statusText?: string;
     // Context props
     searchKeywords: string[];
     setSearchKeywords: (keywords: string[]) => void;
@@ -225,7 +226,7 @@ interface ChatViewProps {
 }
 
 export const ChatView: React.FC<ChatViewProps> = (props) => {
-    const { messages, onSendMessage, isLoading } = props;
+    const { messages, onSendMessage, isLoading, statusText } = props;
     const [input, setInput] = useState('');
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -300,6 +301,9 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
                     <div className="flex items-start gap-3">
                         <AiIcon className="h-6 w-6 ai-icon-accent flex-shrink-0 mt-1" />
                         <div className="max-w-lg rounded-xl px-4 py-3 ai-card">
+                            {statusText && (
+                                <p className="text-xs text-gray-300 mb-2">{statusText}</p>
+                            )}
                             <LoadingSpinner className="h-5 w-5 text-gray-300" />
                         </div>
                     </div>

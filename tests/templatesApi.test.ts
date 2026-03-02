@@ -8,6 +8,7 @@ import {
     CEZA_TEMPLATES,
     IDARI_TEMPLATES,
 } from '../templates-part2.js';
+import { SOZLESME_VE_IHTARNAME_TEMPLATES } from '../templates-part3.js';
 
 const ALL_TEMPLATES = [
     ...ICRA_TEMPLATES,
@@ -17,6 +18,7 @@ const ALL_TEMPLATES = [
     ...MIRAS_TEMPLATES,
     ...CEZA_TEMPLATES,
     ...IDARI_TEMPLATES,
+    ...SOZLESME_VE_IHTARNAME_TEMPLATES,
 ];
 
 interface MockReq {
@@ -116,7 +118,7 @@ describe('api/templates handler', () => {
         await templatesHandler(reqTurkish as any, resTurkish as any);
 
         expect(resAscii.body.total).toBe(resTurkish.body.total);
-        expect(resAscii.body.total).toBe(2);
+        expect(resAscii.body.total).toBe(IS_HUKUKU_TEMPLATES.length);
     });
 
     it('should return expanded Ceza and Idari categories', async () => {
@@ -243,4 +245,3 @@ describe('api/templates handler', () => {
         expect(res.body.rows[1].content).toContain('Ayse Kaya');
     });
 });
-

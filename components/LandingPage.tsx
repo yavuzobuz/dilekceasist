@@ -108,7 +108,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-white overflow-hidden relative">
+    <div className="min-h-screen bg-[#0A0A0B] text-white overflow-hidden relative">
       <Header onShowLanding={() => { }} />
 
       {/* Animated background elements */}

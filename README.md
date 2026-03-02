@@ -18,3 +18,13 @@ View your app in AI Studio: https://ai.studio/apps/drive/1LfbFBy3UsZZeBhvXHMW_X7
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+## Codex Agent Team
+
+This repo now includes a role-based Codex workflow in `AGENTS.md`.
+
+Use prompts like:
+
+- `agent team: implement X`
+- `planner coder reviewer mode`
+- `takim modu ile ilerle`

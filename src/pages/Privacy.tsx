@@ -26,7 +26,7 @@ export default function Privacy() {
     ];
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex flex-col">
+        <div className="min-h-screen bg-[#0A0A0B] flex flex-col">
             <Header onShowLanding={() => navigate('/')} />
 
             <main className="flex-grow">

@@ -491,127 +491,23 @@ export const PetitionView: React.FC<PetitionViewProps> = ({ petition, setGenerat
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleDownloadUdf = async () => {
-    if (!editorRef.current) return;
-    setIsDownloading(true);
-    setIsDownloadMenuOpen(false);
-    try {
-      // Extract plain text from HTML
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = editorRef.current.innerHTML;
-      let textContent = tempDiv.innerText || tempDiv.textContent || '';
-
-      // Prepend corporate header to text content for UDF
-      if (corporateHeader) {
-        textContent = `${corporateHeader}\n\n${textContent}`;
-      }
-
-      // Create XML content for UDF - Reverted to documented structure
-      const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
-<document>
-  <metadata>
-    <title>Dilekçe</title>
-    <author>DilekAI</author>
-    <date>${new Date().toISOString()}</date>
-  </metadata>
-  <content>
-    <![CDATA[
-${textContent}
-    ]]>
-  </content>
-</document>`;
-
-      // Create ZIP archive (UDF is a ZIP file)
-      const zip = new JSZip();
-
-      // Critical: mimetype must be the first file and uncompressed (STORE)
-      // We try 'application/udf' this time as a fallback if vnd.udf fails, or stick to standard.
-      // Let's stick to the documented one but ensure STORE is effective.
-      zip.file('mimetype', 'application/vnd.udf', { compression: "STORE" });
-      zip.file('content.xml', xmlContent);
-
-      // Generate ZIP
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-
-      // Create a temporary URL for the blob
-      const blobUrl = URL.createObjectURL(zipBlob);
-
-      // Create a download link and trigger it
-      const downloadLink = document.createElement('a');
-      downloadLink.href = blobUrl;
-      downloadLink.download = 'dilekce.udf';
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-
-
-      // Clean up
-      document.body.removeChild(downloadLink);
-
-      // After a short delay, try to open the file
-      // Note: Modern browsers prevent automatic opening for security reasons,
-      // but we'll create a clickable link for the user
-      setTimeout(() => {
-        URL.revokeObjectURL(blobUrl);
-
-        // Create a viewer that opens the UDF content in a new window
-        const viewerWindow = window.open('', '_blank');
-        if (viewerWindow) {
-          viewerWindow.document.write(`
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset="UTF-8">
-                        <title>UDF İçeriği - Dilekçe</title>
-                        <style>
-                            body {
-                                font-family: 'Calibri', 'Arial', sans-serif;
-                                max-width: 800px;
-                                margin: 40px auto;
-                                padding: 20px;
-                                background: #f5f5f5;
-                                line-height: 1.6;
-                            }
-                            .content {
-                                background: white;
-                                padding: 40px;
-                                box-shadow: 0 0 10px rgba(0,0,0,0.1);
-                                white-space: pre-wrap;
-                            }
-                            .header {
-                                background: #2563eb;
-                                color: white;
-                                padding: 20px;
-                                margin: -20px -20px 20px -20px;
-                                text-align: center;
-                            }
-                            .footer {
-                                text-align: center;
-                                margin-top: 20px;
-                                color: #666;
-                                font-size: 12px;
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="header">
-                            <h1>📄 Dilekçe - UDF İçeriği</h1>
-                            <p>Oluşturulma: ${new Date().toLocaleString('tr-TR')}</p>
-                        </div>
-                        <div class="content">${textContent}</div>
-                        <div class="footer">
-                            <p>DilekAI tarafından oluşturuldu</p>
-                        </div>
-                    </body>
-                    </html>
-                `);
-          viewerWindow.document.close();
-        }
-      }, 500);
-    } catch (error) {
-      console.error("Error generating UDF:", error);
-    } finally {
-      setIsDownloading(false);
-    }
+  const handleDownloadUdf = async () => {
+    if (!editorRef.current) return;
+    setIsDownloading(true);
+    setIsDownloadMenuOpen(false);
+    try {
+      const { generateUdfBlob } = await import('../services/udfGenerator');
+      const blob = await generateUdfBlob({
+        html: editorRef.current.innerHTML,
+        title: 'DilekÃ§e',
+        corporateHeader: corporateHeader || undefined,
+      });
+      saveAs(blob, 'dilekce.udf');
+    } catch (error) {
+      console.error("Error generating UDF:", error);
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
 
@@ -1124,5 +1020,4 @@ ${textContent}
     </div>
   );
 };
-
 

@@ -2,13 +2,13 @@
 // Change values here to update them across all files
 
 export const AI_CONFIG = {
-    // Gemini Model Configuration (Updated to Gemini 3 for better reasoning)
-    MODEL_NAME: 'gemini-3.1-pro-preview',
+    // Gemini model configuration (use a broadly available default)
+    MODEL_NAME: 'gemini-2.5-flash',
 
     // Alternative models (for easy switching)
+    // MODEL_NAME: 'gemini-2.5-pro',
     // MODEL_NAME: 'gemini-3.0-pro-preview',
     // MODEL_NAME: 'gemini-3-flash-preview',
-    // MODEL_NAME: 'gemini-2.5-pro',
 
     // API Settings
     MAX_RETRIES: 3,
@@ -16,7 +16,7 @@ export const AI_CONFIG = {
 };
 
 export const SERVER_CONFIG = {
-    PORT: 3001,
+    PORT: Number(process.env.PORT || 3001),
     JSON_LIMIT: '50mb',
 };
 

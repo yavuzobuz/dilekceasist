@@ -41,12 +41,12 @@ const StepIndicator: React.FC<{ status: StepStatus; label: string; isLast?: bool
         current: {
             circle: 'bg-red-700 border-red-400 ring-2 ring-red-500',
             text: 'text-white font-semibold',
-            line: 'bg-gray-700'
+            line: 'bg-white/10'
         },
         upcoming: {
-            circle: 'bg-gray-800 border-gray-700',
+            circle: 'bg-[#1A1A1D] border-white/10',
             text: 'text-gray-500',
-            line: 'bg-gray-700'
+            line: 'bg-white/10'
         }
     };
     const classes = statusClasses[status];
@@ -93,7 +93,7 @@ export const ProgressSummary: React.FC<ProgressSummaryProps> = ({
     }
 
     return (
-        <div className="bg-gradient-to-br from-black via-gray-900 to-black backdrop-blur-sm border border-gray-800 rounded-xl my-6 p-4 shadow-lg shadow-red-900/10">
+        <div className="bg-[#111113] backdrop-blur-sm border border-white/10 rounded-xl my-6 p-4 shadow-lg shadow-red-900/10">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Left Side: Progress Bar */}
                 <div className="flex flex-col justify-center">
@@ -108,7 +108,7 @@ export const ProgressSummary: React.FC<ProgressSummaryProps> = ({
                 </div>
 
                 {/* Right Side: Summary */}
-                <div className="border-t border-gray-800 md:border-t-0 md:border-l md:border-gray-800 md:pl-6 pt-4 md:pt-0">
+                <div className="border-t border-white/10 md:border-t-0 md:border-l md:border-white/10 md:pl-6 pt-4 md:pt-0">
                     <h3 className="text-base font-semibold text-white mb-3">Dilekçe Özeti</h3>
                     <div className="space-y-2">
                         <SummaryItem icon={<DocumentTextIcon className="w-4 h-4" />} label="Tür" value={petitionType} />

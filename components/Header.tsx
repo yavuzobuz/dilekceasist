@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AIJusticeLogo } from './Icon';
 import { useAuth } from '../src/contexts/AuthContext';
 import { AnnouncementBanner } from '../src/components/AnnouncementBanner';
 import {
   User,
-  LogOut,
   PenTool,
   Library,
   BookOpen,
@@ -13,6 +11,7 @@ import {
   Home,
   Key,
   Sparkles,
+  Scroll,
   Menu,
   X
 } from 'lucide-react';
@@ -22,18 +21,9 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  const handleLogout = async () => {
-    try {
-      await signOut();
-      navigate('/');
-    } catch (error) {
-      // Error handled in AuthContext
-    }
-  };
 
   const handleNavigate = (path: string) => {
     navigate(path);
@@ -44,8 +34,8 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
     <>
       <header className="bg-gradient-to-r from-black via-gray-900 to-black backdrop-blur-sm border-b border-red-600/30 sticky top-0 z-50 shadow-lg shadow-red-900/20">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-6">
+          <div className="flex items-center justify-between h-16 min-w-0">
+            <div className="flex items-center gap-4 min-w-0 flex-1">
               <div className="flex items-center space-x-3 group cursor-pointer" onClick={() => handleNavigate('/')}>
                 <img src="/logo.png" alt="DilekAI Logo" className="h-12 w-12 transform group-hover:scale-110 transition-all duration-300" />
                 <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">
@@ -54,11 +44,11 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
               </div>
 
               {/* Navigation Links - Desktop */}
-              <nav className="hidden md:flex items-center space-x-2">
+              <nav className="hidden xl:flex items-center gap-1 min-w-0 overflow-x-auto">
                 {user && (
                   <button
                     onClick={() => handleNavigate('/alt-app')}
-                    className="group relative px-4 py-2 text-gray-300 hover:text-white transition-all duration-300 text-sm font-medium rounded-lg overflow-hidden"
+                    className="group relative shrink-0 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-xs 2xl:text-sm font-medium rounded-lg overflow-hidden"
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-red-600/0 via-red-600/20 to-red-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
                     <span className="relative flex items-center gap-2">
@@ -69,7 +59,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
                 )}
                 <button
                   onClick={() => handleNavigate('/petition-pool')}
-                  className="group relative px-4 py-2 text-gray-300 hover:text-white transition-all duration-300 text-sm font-medium rounded-lg overflow-hidden"
+                  className="group relative shrink-0 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-xs 2xl:text-sm font-medium rounded-lg overflow-hidden"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-red-600/0 via-red-600/20 to-red-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
                   <span className="relative flex items-center gap-2">
@@ -78,8 +68,8 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
                   </span>
                 </button>
                 <button
-                  onClick={() => handleNavigate('/sablonlar')}
-                  className="group relative px-4 py-2 text-gray-300 hover:text-white transition-all duration-300 text-sm font-medium rounded-lg overflow-hidden"
+                  onClick={() => handleNavigate('/sablonlar?category=templates')}
+                  className="group relative shrink-0 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-xs 2xl:text-sm font-medium rounded-lg overflow-hidden"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-red-600/0 via-red-600/20 to-red-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
                   <span className="relative flex items-center gap-2">
@@ -88,8 +78,18 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
                   </span>
                 </button>
                 <button
+                  onClick={() => handleNavigate('/sozlesmeler-ihtarnameler')}
+                  className="group relative shrink-0 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-xs 2xl:text-sm font-medium rounded-lg overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-red-600/0 via-red-600/20 to-red-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                  <span className="relative flex items-center gap-2">
+                    <Scroll className="w-4 h-4 text-red-500 group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
+                    <span className="group-hover:translate-x-0.5 transition-transform duration-300">Sözleşmeler & İhtarnameler</span>
+                  </span>
+                </button>
+                <button
                   onClick={() => handleNavigate('/about')}
-                  className="group relative px-4 py-2 text-gray-300 hover:text-white transition-all duration-300 text-sm font-medium rounded-lg overflow-hidden"
+                  className="group relative shrink-0 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-xs 2xl:text-sm font-medium rounded-lg overflow-hidden"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-red-600/0 via-red-600/20 to-red-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
                   <span className="relative flex items-center gap-2">
@@ -99,7 +99,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
                 </button>
                 <button
                   onClick={() => handleNavigate('/faq')}
-                  className="group relative px-4 py-2 text-gray-300 hover:text-white transition-all duration-300 text-sm font-medium rounded-lg overflow-hidden"
+                  className="group relative shrink-0 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-xs 2xl:text-sm font-medium rounded-lg overflow-hidden"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-red-600/0 via-red-600/20 to-red-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
                   <span className="relative flex items-center gap-2">
@@ -111,7 +111,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
             </div>
 
             {/* Desktop Auth Buttons */}
-            <div className="hidden md:flex items-center space-x-4">
+            <div className="hidden xl:flex items-center space-x-3 shrink-0">
               {user ? (
                 <button
                   onClick={() => handleNavigate('/profile')}
@@ -160,7 +160,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
             </div>
 
             {/* Mobile Menu Button */}
-            <div className="flex md:hidden items-center space-x-3">
+            <div className="flex xl:hidden items-center space-x-3">
               {user && (
                 <button
                   onClick={() => handleNavigate('/profile')}
@@ -181,7 +181,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden bg-gray-900/95 backdrop-blur-lg border-t border-gray-800">
+          <div className="xl:hidden bg-gray-900/95 backdrop-blur-lg border-t border-gray-800 max-h-[calc(100vh-4rem)] overflow-y-auto">
             <nav className="container mx-auto px-4 py-4 space-y-2">
               {user && (
                 <button
@@ -200,11 +200,18 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
                 Dilekçe Havuzu
               </button>
               <button
-                onClick={() => handleNavigate('/sablonlar')}
+                onClick={() => handleNavigate('/sablonlar?category=templates')}
                 className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
               >
                 <Library className="w-5 h-5 text-red-500" />
                 Şablonlar
+              </button>
+              <button
+                onClick={() => handleNavigate('/sozlesmeler-ihtarnameler')}
+                className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
+              >
+                <Scroll className="w-5 h-5 text-red-500" />
+                Sözleşmeler & İhtarnameler
               </button>
               <button
                 onClick={() => handleNavigate('/about')}

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
     FileText,
     Search,
@@ -30,6 +31,7 @@ import { saveAs } from 'file-saver';
 import { marked } from 'marked';
 import { ClientManager } from '../components/ClientManager';
 import { Client } from '../types';
+import { searchLegalDecisions, type NormalizedLegalDecision } from '../utils/legalSearch';
 
 const IconMap: Record<string, React.FC<any>> = {
     HeartCrack,
@@ -90,7 +92,29 @@ interface BulkSheetData {
 
 interface TemplatesPageProps {
     onBack: () => void;
-    onUseTemplate: (content: string) => void;
+    onUseTemplate: (content: string, context?: TemplateTransferContext) => void;
+}
+
+interface TemplateTransferDecision {
+    title: string;
+    esasNo?: string;
+    kararNo?: string;
+    tarih?: string;
+    daire?: string;
+    ozet?: string;
+    relevanceScore?: number;
+}
+
+export interface TemplateTransferContext {
+    source: 'templates_page';
+    templateId: string;
+    templateTitle: string;
+    templateCategory: string;
+    templateSubcategory: string;
+    variableValues: Record<string, string>;
+    selectedDecisions: TemplateTransferDecision[];
+    aiRequested: boolean;
+    createdAt: string;
 }
 
 const makeUniqueHeaders = (headers: string[]): string[] => {
@@ -106,12 +130,14 @@ const makeUniqueHeaders = (headers: string[]): string[] => {
 };
 
 const CATEGORIES = [
-    { id: 'all', name: 'Tumu', icon: 'ClipboardList' },
+    { id: 'templates', name: 'Şablonlar', icon: 'ClipboardList' },
+    { id: 'contracts', name: 'Sözleşmeler', icon: 'Scroll' },
+    { id: 'notices', name: 'İhtarnameler', icon: 'Siren' },
     { id: 'Hukuk', name: 'Hukuk', icon: 'Scale' },
-    { id: 'Icra', name: 'Icra', icon: 'Scroll' },
-    { id: 'Is Hukuku', name: 'Is Hukuku', icon: 'Briefcase' },
+    { id: 'Icra', name: 'İcra', icon: 'Scroll' },
+    { id: 'Is Hukuku', name: 'İş Hukuku', icon: 'Briefcase' },
     { id: 'Ceza', name: 'Ceza', icon: 'Siren' },
-    { id: 'Idari', name: 'Idari', icon: 'Building2' },
+    { id: 'Idari', name: 'İdari', icon: 'Building2' },
 ];
 
 const CATEGORY_QUERY_MAP: Record<string, string> = {
@@ -119,24 +145,99 @@ const CATEGORY_QUERY_MAP: Record<string, string> = {
     'Is Hukuku': '\u0130\u015f Hukuku',
     Idari: '\u0130dari',
 };
+const DEFAULT_TEMPLATE_CATEGORY = 'templates';
+const CONTRACTS_NOTICES_CATEGORY = 'contracts_notices';
+const CONTRACTS_NOTICES_ROUTE = '/sozlesmeler-ihtarnameler';
+const AVAILABLE_CATEGORY_IDS = new Set(CATEGORIES.map(category => category.id));
+
+const resolveCategoryFromSearch = (search: string): string => {
+    const searchParams = new URLSearchParams(search);
+    const routeCategory = searchParams.get('category');
+    if (routeCategory && AVAILABLE_CATEGORY_IDS.has(routeCategory)) return routeCategory;
+    return DEFAULT_TEMPLATE_CATEGORY;
+};
 
 const API_BASE_URL = '';
 const CLIENT_FIELD_KEYS = ['SIKAYET_EDEN', 'SUPHELI', 'KIRAYA_VEREN', 'KIRACI', 'BORCLU', 'ALACAKLI', 'VEKIL', 'MUVEKKIL'];
+const TURKISH_LOOKUP_MAP: Record<string, string> = {
+    '\u0131': 'i',
+    '\u0130': 'i',
+    '\u015f': 's',
+    '\u015e': 's',
+    '\u011f': 'g',
+    '\u011e': 'g',
+    '\u00fc': 'u',
+    '\u00dc': 'u',
+    '\u00f6': 'o',
+    '\u00d6': 'o',
+    '\u00e7': 'c',
+    '\u00c7': 'c',
+};
 
 const normalizeLookupKey = (value: string): string => {
     if (!value) return '';
 
-    return value
+    const normalizedTurkish = Array.from(value)
+        .map(char => TURKISH_LOOKUP_MAP[char] || char)
+        .join('');
+
+    return normalizedTurkish
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
         .toLowerCase()
-        .replace(/[ıİ]/g, 'i')
-        .replace(/[şŞ]/g, 's')
-        .replace(/[ğĞ]/g, 'g')
-        .replace(/[üÜ]/g, 'u')
-        .replace(/[öÖ]/g, 'o')
-        .replace(/[çÇ]/g, 'c')
         .replace(/[^a-z0-9]+/g, '_')
         .replace(/^_+|_+$/g, '')
         .replace(/_+/g, '_');
+};
+
+const CP1252_REVERSE_BYTE_MAP = new Map<number, number>([
+    [0x20AC, 0x80], [0x201A, 0x82], [0x0192, 0x83], [0x201E, 0x84],
+    [0x2026, 0x85], [0x2020, 0x86], [0x2021, 0x87], [0x02C6, 0x88],
+    [0x2030, 0x89], [0x0160, 0x8A], [0x2039, 0x8B], [0x0152, 0x8C],
+    [0x017D, 0x8E], [0x2018, 0x91], [0x2019, 0x92], [0x201C, 0x93],
+    [0x201D, 0x94], [0x2022, 0x95], [0x2013, 0x96], [0x2014, 0x97],
+    [0x02DC, 0x98], [0x2122, 0x99], [0x0161, 0x9A], [0x203A, 0x9B],
+    [0x0153, 0x9C], [0x017E, 0x9E], [0x0178, 0x9F],
+]);
+
+const MOJIBAKE_DETECTION = /[ÃÄÅÂ]/;
+
+const decodePotentialMojibake = (value: string): string => {
+    if (!value || !MOJIBAKE_DETECTION.test(value)) return value;
+
+    const bytes: number[] = [];
+    for (const char of value) {
+        const codePoint = char.codePointAt(0);
+        if (codePoint == null) continue;
+
+        if (codePoint <= 0xFF) {
+            bytes.push(codePoint);
+            continue;
+        }
+
+        const cp1252Byte = CP1252_REVERSE_BYTE_MAP.get(codePoint);
+        if (cp1252Byte == null) {
+            return value;
+        }
+        bytes.push(cp1252Byte);
+    }
+
+    try {
+        return new TextDecoder('utf-8').decode(new Uint8Array(bytes));
+    } catch {
+        return value;
+    }
+};
+
+const deepSanitizeText = <T,>(input: T): T => {
+    if (typeof input === 'string') return decodePotentialMojibake(input) as T;
+    if (Array.isArray(input)) return input.map(item => deepSanitizeText(item)) as T;
+    if (input && typeof input === 'object') {
+        const entries = Object.entries(input as Record<string, unknown>)
+            .map(([key, value]) => [key, deepSanitizeText(value)]);
+        return Object.fromEntries(entries) as T;
+    }
+    return input;
 };
 
 const sanitizeFileName = (value: string): string => {
@@ -150,16 +251,17 @@ const sanitizeFileName = (value: string): string => {
 };
 
 const replaceTemplateVariables = (content: string, variables: Record<string, string>): string => {
-    let result = content;
+    let result = content || '';
     const today = new Date().toLocaleDateString('tr-TR');
-    result = result.replace(/\{\{TARIH\}\}/g, today);
+    result = result.replace(/\{\{\s*TARIH\s*\}\}/gi, today);
 
     for (const [key, value] of Object.entries(variables)) {
-        const placeholder = `{{${key}}}`;
-        result = result.split(placeholder).join(value || '');
+        if (!key) continue;
+        const placeholderRegex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'gi');
+        result = result.replace(placeholderRegex, value || '');
     }
 
-    return result.replace(/\{\{[A-Z_]+\}\}/g, '[...]');
+    return result.replace(/\{\{\s*[A-Z0-9_]+\s*\}\}/gi, '[...]');
 };
 
 const markdownToHtml = (content: string): string => {
@@ -482,9 +584,69 @@ const isClientField = (key: string): boolean => {
     return upperKey.endsWith('_AD') || CLIENT_FIELD_KEYS.includes(upperKey);
 };
 
+type TemplateSectionKey = 'contracts' | 'notices' | 'other';
+
+const buildDecisionIdentity = (decision: Pick<NormalizedLegalDecision, 'title' | 'esasNo' | 'kararNo' | 'tarih'>): string => {
+    return `${decision.title || ''}|${decision.esasNo || ''}|${decision.kararNo || ''}|${decision.tarih || ''}`;
+};
+
+const formatDecisionCitation = (decision: Pick<NormalizedLegalDecision, 'title' | 'esasNo' | 'kararNo' | 'tarih' | 'ozet'>): string => {
+    const citation = [
+        decision.title || 'Yargitay Karari',
+        decision.esasNo ? `E. ${decision.esasNo}` : '',
+        decision.kararNo ? `K. ${decision.kararNo}` : '',
+        decision.tarih ? `T. ${decision.tarih}` : '',
+    ].filter(Boolean).join(' - ');
+
+    const summary = (decision.ozet || '').trim();
+    return summary ? `${citation}\n  Ozet: ${summary}` : citation;
+};
+
+const buildMcpDecisionAppendix = (decisions: Array<Pick<NormalizedLegalDecision, 'title' | 'esasNo' | 'kararNo' | 'tarih' | 'ozet'>>): string => {
+    if (!decisions.length) return '';
+
+    const lines = decisions.map((decision, index) => `${index + 1}. ${formatDecisionCitation(decision)}`);
+    return `## EMSAL YARGITAY KARARLARI (MCP)\n${lines.join('\n\n')}`;
+};
+
+const buildVariableContext = (values: Record<string, string>): string => {
+    const lines = Object.entries(values)
+        .map(([key, value]) => [key, (value || '').trim()] as const)
+        .filter(([, value]) => value.length > 0)
+        .map(([key, value]) => `- ${key}: ${value}`);
+
+    return lines.length ? lines.join('\n') : '- Deger girilmedi';
+};
+
+const resolveTemplateSection = (template: Template): TemplateSectionKey => {
+    const category = normalizeLookupKey(template.category || '');
+    const subcategory = normalizeLookupKey(template.subcategory || '');
+    const title = normalizeLookupKey(template.title || '');
+    const description = normalizeLookupKey(template.description || '');
+    const combined = `${category} ${subcategory} ${title} ${description}`;
+
+    const isNotice = category.includes('ihtar')
+        || subcategory.includes('ihtar')
+        || title.includes('ihtar')
+        || combined.includes('ihtarname');
+    if (isNotice) return 'notices';
+
+    const isContract = category.includes('sozles')
+        || subcategory.includes('sozles')
+        || title.includes('sozles')
+        || combined.includes('sozlesme');
+    if (isContract) return 'contracts';
+
+    return 'other';
+};
+
 export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTemplate }) => {
+    const location = useLocation();
+    const isContractsNoticesPage = location.pathname === CONTRACTS_NOTICES_ROUTE;
     const [templates, setTemplates] = useState<Template[]>([]);
-    const [selectedCategory, setSelectedCategory] = useState('all');
+    const [selectedCategory, setSelectedCategory] = useState(() =>
+        isContractsNoticesPage ? CONTRACTS_NOTICES_CATEGORY : resolveCategoryFromSearch(location.search)
+    );
     const [searchQuery, setSearchQuery] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -494,6 +656,12 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
     const [variableValues, setVariableValues] = useState<Record<string, string>>({});
     const [isGenerating, setIsGenerating] = useState(false);
     const [generationMode, setGenerationMode] = useState<'single' | 'bulk'>('single');
+    const [isAiEnhanced, setIsAiEnhanced] = useState(true);
+    const [mcpKeyword, setMcpKeyword] = useState('');
+    const [mcpSearchResults, setMcpSearchResults] = useState<NormalizedLegalDecision[]>([]);
+    const [selectedMcpDecisions, setSelectedMcpDecisions] = useState<NormalizedLegalDecision[]>([]);
+    const [isSearchingMcp, setIsSearchingMcp] = useState(false);
+    const [mcpSearchError, setMcpSearchError] = useState<string | null>(null);
 
     const [bulkSheetData, setBulkSheetData] = useState<BulkSheetData | null>(null);
     const [bulkColumnMapping, setBulkColumnMapping] = useState<Record<string, string>>({});
@@ -507,6 +675,12 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
     const [showClientManager, setShowClientManager] = useState(false);
     const [clientManagerMode, setClientManagerMode] = useState<'manage' | 'select'>('manage');
     const [targetVariablePrefix, setTargetVariablePrefix] = useState<string | null>(null);
+
+    const effectiveCategory = isContractsNoticesPage ? CONTRACTS_NOTICES_CATEGORY : selectedCategory;
+    const visibleCategories = useMemo(
+        () => CATEGORIES.filter(category => category.id !== 'contracts' && category.id !== 'notices'),
+        []
+    );
 
     const previewValueByHeader = useMemo(() => {
         if (!bulkSheetData || bulkSheetData.rows.length === 0) return {} as Record<string, string>;
@@ -531,24 +705,42 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
         setBulkProgress({ current: 0, total: 0 });
     };
 
+    const resetSingleModeEnhancementState = () => {
+        setIsAiEnhanced(true);
+        setMcpKeyword('');
+        setMcpSearchResults([]);
+        setSelectedMcpDecisions([]);
+        setIsSearchingMcp(false);
+        setMcpSearchError(null);
+    };
+
     const closeTemplateModal = () => {
         setSelectedTemplate(null);
         setVariableValues({});
         setGenerationMode('single');
         resetBulkModeState();
+        resetSingleModeEnhancementState();
     };
 
     useEffect(() => {
         fetchTemplates();
-    }, [selectedCategory]);
+    }, [effectiveCategory]);
+
+    useEffect(() => {
+        const routeCategory = isContractsNoticesPage
+            ? CONTRACTS_NOTICES_CATEGORY
+            : resolveCategoryFromSearch(location.search);
+        setSelectedCategory(prev => (prev === routeCategory ? prev : routeCategory));
+    }, [location.search, isContractsNoticesPage]);
 
     const fetchTemplates = async () => {
         setIsLoading(true);
         setError(null);
 
         try {
-            const apiCategory = CATEGORY_QUERY_MAP[selectedCategory] || selectedCategory;
-            const url = selectedCategory === 'all'
+            const clientFilteredCategories = new Set(['templates', 'contracts', 'notices']);
+            const apiCategory = CATEGORY_QUERY_MAP[effectiveCategory] || effectiveCategory;
+            const url = clientFilteredCategories.has(effectiveCategory) || effectiveCategory === CONTRACTS_NOTICES_CATEGORY
                 ? `${API_BASE_URL}/api/templates`
                 : `${API_BASE_URL}/api/templates?category=${encodeURIComponent(apiCategory)}`;
 
@@ -556,7 +748,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
             if (!response.ok) throw new Error('Şablonlar yüklenemedi');
 
             const data = await response.json();
-            setTemplates(data.templates || []);
+            setTemplates(deepSanitizeText(data.templates || []));
         } catch (fetchError) {
             setError(fetchError instanceof Error ? fetchError.message : 'Bir hata olustu');
         } finally {
@@ -572,15 +764,101 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
             if (!response.ok) throw new Error('Şablon yüklenemedi');
 
             const data = await response.json();
-            setSelectedTemplate(data.template);
+            setSelectedTemplate(deepSanitizeText(data.template));
             setVariableValues({});
             setGenerationMode('single');
             resetBulkModeState();
+            resetSingleModeEnhancementState();
         } catch (templateError) {
             console.error('Template fetch error:', templateError);
         } finally {
             setIsLoadingTemplate(false);
         }
+    };
+
+    const isMcpDecisionSelected = (decision: Pick<NormalizedLegalDecision, 'title' | 'esasNo' | 'kararNo' | 'tarih'>) => {
+        const identity = buildDecisionIdentity(decision);
+        return selectedMcpDecisions.some(item => buildDecisionIdentity(item) === identity);
+    };
+
+    const toggleMcpDecision = (decision: NormalizedLegalDecision) => {
+        const identity = buildDecisionIdentity(decision);
+        setSelectedMcpDecisions(prev => {
+            const exists = prev.some(item => buildDecisionIdentity(item) === identity);
+            if (exists) {
+                return prev.filter(item => buildDecisionIdentity(item) !== identity);
+            }
+            return [...prev, decision];
+        });
+    };
+
+    const handleMcpSearch = async () => {
+        const keyword = mcpKeyword.trim();
+        if (!keyword) return;
+
+        setIsSearchingMcp(true);
+        setMcpSearchError(null);
+
+        try {
+            const results = await searchLegalDecisions({
+                source: 'yargitay',
+                keyword,
+                apiBaseUrl: API_BASE_URL,
+            });
+            setMcpSearchResults(results);
+        } catch (searchError) {
+            const message = searchError instanceof Error ? searchError.message : 'MCP Yargitay aramasinda hata olustu.';
+            setMcpSearchError(message);
+            setMcpSearchResults([]);
+        } finally {
+            setIsSearchingMcp(false);
+        }
+    };
+
+    const enhanceTemplateWithAI = async (draftContent: string): Promise<string> => {
+        const decisionContext = selectedMcpDecisions.length
+            ? selectedMcpDecisions.map((decision, index) => `${index + 1}. ${formatDecisionCitation(decision)}`).join('\n\n')
+            : 'Emsal karar secilmedi.';
+        const variableContext = buildVariableContext(variableValues);
+
+        const enhancementPrompt = [
+            'GOREV: Asagidaki Turkce hukuk dilekce taslagini profesyonel bir hukuk dili ile gelistir.',
+            'KURALLAR:',
+            '- Baslik yapisini koru.',
+            '- Somut olgu uydurma, sadece verilen bilgi ve taslaktan ilerle.',
+            '- Etiket gibi duran metinleri (ornegin "TC Kimlik No", "Ise Giris Tarihi") hukuki anlatima uygun hale getir.',
+            '- Bilgi eksikse [ ... ] yaz.',
+            selectedMcpDecisions.length > 0
+                ? '- Secilen MCP Yargitay kararlarini gerekce ve talep bolumunde atif yaparak kullan.'
+                : '- Hukuki gerekceyi guclendirirken metni bos birakma.',
+            '',
+            '[TASLAK METIN]',
+            draftContent,
+            '',
+            '[ALAN DEGERLERI]',
+            variableContext,
+            '',
+            '[MCP YARGITAY KARARLARI]',
+            decisionContext,
+            '',
+            '[CIKTI]',
+            'Sadece iyilestirilmis nihai dilekce metnini dondur.',
+        ].join('\n');
+
+        const response = await fetch(`${API_BASE_URL}/api/gemini/rewrite`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ textToRewrite: enhancementPrompt }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text().catch(() => '');
+            throw new Error(errorText || 'AI zenginlestirme basarisiz oldu.');
+        }
+
+        const data = await response.json();
+        const rewritten = decodePotentialMojibake(String(data.text || '')).trim();
+        return rewritten || draftContent;
     };
 
     const handleUseTemplate = async () => {
@@ -598,7 +876,30 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
             if (!response.ok) throw new Error('Şablon kullanılamadı');
 
             const data = await response.json();
-            onUseTemplate(data.content);
+            const baseContent = decodePotentialMojibake(String(data.content || ''));
+            const legalAppendix = buildMcpDecisionAppendix(selectedMcpDecisions);
+            const mergedContent = legalAppendix ? `${baseContent}\n\n${legalAppendix}` : baseContent;
+            const transferContext: TemplateTransferContext = {
+                source: 'templates_page',
+                templateId: selectedTemplate.id,
+                templateTitle: selectedTemplate.title,
+                templateCategory: selectedTemplate.category,
+                templateSubcategory: selectedTemplate.subcategory,
+                variableValues: { ...variableValues },
+                selectedDecisions: selectedMcpDecisions.map(decision => ({
+                    title: decision.title || 'Yargitay Karari',
+                    esasNo: decision.esasNo || '',
+                    kararNo: decision.kararNo || '',
+                    tarih: decision.tarih || '',
+                    daire: decision.daire || '',
+                    ozet: decision.ozet || '',
+                    relevanceScore: decision.relevanceScore,
+                })),
+                aiRequested: isAiEnhanced,
+                createdAt: new Date().toISOString(),
+            };
+
+            onUseTemplate(mergedContent, transferContext);
         } catch (templateUseError) {
             console.error('Template use error:', templateUseError);
         } finally {
@@ -689,6 +990,33 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
         return null;
     };
 
+    const bulkPreviewContent = useMemo(() => {
+        if (!selectedTemplate || !bulkSheetData || bulkSheetData.rows.length === 0) return '';
+
+        const previewRow = bulkSheetData.rows.find(row =>
+            selectedTemplate.variables.some(variable => {
+                const mappedColumn = bulkColumnMapping[variable.key];
+                if (!mappedColumn) return false;
+                return Boolean((row[mappedColumn] || '').trim());
+            })
+        ) || bulkSheetData.rows[0];
+
+        const previewVariables = buildVariablesForBulkRow(previewRow, selectedTemplate.variables);
+        return replaceTemplateVariables(selectedTemplate.content, previewVariables);
+    }, [selectedTemplate, bulkSheetData, bulkColumnMapping, bulkFallbackValues]);
+
+    const singlePreviewContent = useMemo(() => {
+        if (!selectedTemplate) return '';
+        const base = replaceTemplateVariables(selectedTemplate.content, variableValues);
+        const legalAppendix = buildMcpDecisionAppendix(selectedMcpDecisions);
+        return legalAppendix ? `${base}\n\n${legalAppendix}` : base;
+    }, [selectedTemplate, variableValues, selectedMcpDecisions]);
+
+    const activePreviewContent = generationMode === 'bulk' ? bulkPreviewContent : singlePreviewContent;
+    const previewHint = generationMode === 'bulk'
+        ? 'Kolon eslemeleri ve sabit degerler degistikce onizleme otomatik guncellenir.'
+        : 'Sag taraftaki alanlari doldurdukca onizleme canli olarak guncellenir.';
+
     const handleBulkGenerate = async () => {
         if (!selectedTemplate || !bulkSheetData) return;
 
@@ -726,7 +1054,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
 
                 const bulkData = await bulkResponse.json();
                 if (Array.isArray(bulkData.rows)) {
-                    generatedRows = bulkData.rows;
+                    generatedRows = deepSanitizeText(bulkData.rows);
                 }
             } catch (bulkFillError) {
                 console.warn('Bulk template endpoint failed, local fill fallback will be used:', bulkFillError);
@@ -813,13 +1141,97 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
         }
     };
 
-    const filteredTemplates = templates.filter(template =>
-        template.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        template.description.toLowerCase().includes(searchQuery.toLowerCase())
+    const templatesBySelectedCategory = useMemo(() => {
+        return templates.filter(template => {
+            const section = resolveTemplateSection(template);
+
+            if (effectiveCategory === CONTRACTS_NOTICES_CATEGORY) {
+                return section === 'contracts' || section === 'notices';
+            }
+            if (effectiveCategory === 'templates') return section === 'other';
+            if (effectiveCategory === 'contracts') return section === 'contracts';
+            if (effectiveCategory === 'notices') return section === 'notices';
+            return true;
+        });
+    }, [templates, effectiveCategory]);
+
+    const filteredTemplates = useMemo(() => {
+        const normalizedQuery = searchQuery.trim().toLowerCase();
+        if (!normalizedQuery) return templatesBySelectedCategory;
+
+        return templatesBySelectedCategory.filter(template =>
+            template.title.toLowerCase().includes(normalizedQuery) ||
+            template.description.toLowerCase().includes(normalizedQuery)
+        );
+    }, [templatesBySelectedCategory, searchQuery]);
+
+    const sectionTitle = effectiveCategory === 'templates'
+        ? 'Sablonlar'
+        : effectiveCategory === 'contracts'
+            ? 'Sozlesmeler'
+            : effectiveCategory === 'notices'
+                ? 'Ihtarnameler'
+                : null;
+
+    const contractsTemplates = useMemo(
+        () => filteredTemplates.filter(template => resolveTemplateSection(template) === 'contracts'),
+        [filteredTemplates]
+    );
+
+    const noticesTemplates = useMemo(
+        () => filteredTemplates.filter(template => resolveTemplateSection(template) === 'notices'),
+        [filteredTemplates]
+    );
+
+    const isContractsNoticesView = effectiveCategory === CONTRACTS_NOTICES_CATEGORY;
+    const pageTitle = isContractsNoticesView ? 'Sozlesmeler & Ihtarnameler' : 'Sablon Galerisi';
+    const pageDescription = isContractsNoticesView
+        ? 'Tum sozlesme ve ihtarname sablonlarini buradan kullanabilirsiniz'
+        : 'Hazir dilekce sablonlarindan secin';
+
+    const renderTemplateCard = (template: Template) => (
+        <div
+            key={template.id}
+            onClick={() => fetchTemplateDetail(template.id)}
+            className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 cursor-pointer hover:border-red-500 hover:bg-gray-800 transition-all group"
+        >
+            <div className="flex items-start justify-between mb-4">
+                <span className="text-4xl text-red-500">
+                    {(() => {
+                        const Icon = IconMap[template.icon] || FileText;
+                        return <Icon className="w-10 h-10" />;
+                    })()}
+                </span>
+                {template.isPremium && (
+                    <span className="flex items-center gap-1 px-2 py-1 bg-yellow-600/20 text-yellow-400 rounded-full text-xs font-medium">
+                        <Crown className="w-3 h-3" />
+                        Premium
+                    </span>
+                )}
+            </div>
+
+            <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-red-400 transition-colors">
+                {template.title}
+            </h3>
+
+            <p className="text-sm text-gray-400 mb-4 line-clamp-2">
+                {template.description}
+            </p>
+
+            <div className="flex items-center justify-between text-xs text-gray-500">
+                <span className="bg-gray-700 px-2 py-1 rounded">
+                    {template.subcategory}
+                </span>
+                <span className="flex items-center gap-1">
+                    <Users className="w-3 h-3" />
+                    {template.usageCount} kullanim
+                </span>
+            </div>
+        </div>
     );
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white">
+        <div className="min-h-screen bg-[#0A0A0B] text-white">
             <header className="border-b border-gray-700 bg-gray-900/80 backdrop-blur-sm sticky top-0 z-40">
                 <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
@@ -843,9 +1255,9 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                             <div className="hidden sm:block">
                                 <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
                                     <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-red-500" />
-                                    Şablon Galerisi
+                                    {pageTitle}
                                 </h1>
-                                <p className="text-sm text-gray-400 hidden md:block">Hazır dilekçe şablonlarından seçin</p>
+                                <p className="text-sm text-gray-400 hidden md:block">{pageDescription}</p>
                             </div>
                         </div>
 
@@ -855,7 +1267,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                 type="text"
                                 value={searchQuery}
                                 onChange={(event) => setSearchQuery(event.target.value)}
-                                placeholder="Şablon ara..."
+                                placeholder={isContractsNoticesView ? 'Sozlesme veya ihtarname ara...' : 'Sablon ara...'}
                                 className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
                             />
                         </div>
@@ -864,26 +1276,28 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
             </header>
 
             <div className="max-w-7xl mx-auto px-4 py-8">
-                <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
-                    {CATEGORIES.map(category => (
-                        <button
-                            key={category.id}
-                            onClick={() => setSelectedCategory(category.id)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${selectedCategory === category.id
-                                ? 'bg-red-600 text-white'
-                                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                                }`}
-                        >
-                            <span>
-                                {(() => {
-                                    const Icon = IconMap[category.icon] || FileText;
-                                    return <Icon className="w-5 h-5" />;
-                                })()}
-                            </span>
-                            {category.name}
-                        </button>
-                    ))}
-                </div>
+                {!isContractsNoticesView && (
+                    <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
+                        {visibleCategories.map(category => (
+                            <button
+                                key={category.id}
+                                onClick={() => setSelectedCategory(category.id)}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${effectiveCategory === category.id
+                                    ? 'bg-red-600 text-white'
+                                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                                    }`}
+                            >
+                                <span>
+                                    {(() => {
+                                        const Icon = IconMap[category.icon] || FileText;
+                                        return <Icon className="w-5 h-5" />;
+                                    })()}
+                                </span>
+                                {category.name}
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 {isLoading && (
                     <div className="flex flex-col items-center justify-center py-20">
@@ -899,48 +1313,40 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                 )}
 
                 {!isLoading && !error && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredTemplates.map(template => (
-                            <div
-                                key={template.id}
-                                onClick={() => fetchTemplateDetail(template.id)}
-                                className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 cursor-pointer hover:border-red-500 hover:bg-gray-800 transition-all group"
-                            >
-                                <div className="flex items-start justify-between mb-4">
-                                    <span className="text-4xl text-red-500">
-                                        {(() => {
-                                            const Icon = IconMap[template.icon] || FileText;
-                                            return <Icon className="w-10 h-10" />;
-                                        })()}
-                                    </span>
-                                    {template.isPremium && (
-                                        <span className="flex items-center gap-1 px-2 py-1 bg-yellow-600/20 text-yellow-400 rounded-full text-xs font-medium">
-                                            <Crown className="w-3 h-3" />
-                                            Premium
-                                        </span>
-                                    )}
-                                </div>
+                    isContractsNoticesView ? (
+                        <div className="space-y-10">
+                            <section className="space-y-4">
+                                <h2 className="text-2xl font-semibold text-white">Sozlesmeler</h2>
+                                {contractsTemplates.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {contractsTemplates.map(renderTemplateCard)}
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-500">Sozlesme sablonu bulunamadi.</p>
+                                )}
+                            </section>
 
-                                <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-red-400 transition-colors">
-                                    {template.title}
-                                </h3>
-
-                                <p className="text-sm text-gray-400 mb-4 line-clamp-2">
-                                    {template.description}
-                                </p>
-
-                                <div className="flex items-center justify-between text-xs text-gray-500">
-                                    <span className="bg-gray-700 px-2 py-1 rounded">
-                                        {template.subcategory}
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                        <Users className="w-3 h-3" />
-                                        {template.usageCount} kullanim
-                                    </span>
-                                </div>
+                            <section className="space-y-4">
+                                <h2 className="text-2xl font-semibold text-white">Ihtarnameler</h2>
+                                {noticesTemplates.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {noticesTemplates.map(renderTemplateCard)}
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-500">Ihtarname sablonu bulunamadi.</p>
+                                )}
+                            </section>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {sectionTitle && (
+                                <h2 className="text-2xl font-semibold text-white">{sectionTitle}</h2>
+                            )}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {filteredTemplates.map(renderTemplateCard)}
                             </div>
-                        ))}
-                    </div>
+                        </div>
+                    )
                 )}
 
                 {!isLoading && !error && filteredTemplates.length === 0 && (
@@ -953,8 +1359,8 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
             </div>
 
             {(selectedTemplate || isLoadingTemplate) && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-                    <div className="bg-gray-900 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-3xl max-h-[90vh] sm:max-h-[85vh] flex flex-col border-t sm:border border-gray-700 shadow-2xl">
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-2">
+                    <div className="bg-gray-900 rounded-t-2xl sm:rounded-2xl w-full sm:w-[96vw] 2xl:max-w-[1800px] h-[96vh] sm:h-[92vh] flex flex-col border-t sm:border border-gray-700 shadow-2xl overflow-hidden">
                         {isLoadingTemplate ? (
                             <div className="flex items-center justify-center py-20">
                                 <Loader2 className="w-12 h-12 text-red-500 animate-spin" />
@@ -982,8 +1388,23 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                     </button>
                                 </div>
 
-                                <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-                                    <p className="text-gray-400 mb-4">{selectedTemplate.description}</p>
+                                <div className="flex-1 min-h-0 overflow-hidden p-4 sm:p-6">
+                                    <div className="h-full min-h-0 grid grid-cols-1 xl:grid-cols-2 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-rows-1 gap-4 sm:gap-6">
+                                        <div className="min-h-0 bg-black/30 border border-gray-700 rounded-xl p-4 flex flex-col">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <FileText className="w-4 h-4 text-red-500" />
+                                                <h3 className="font-semibold text-white">Dilekce Onizleme</h3>
+                                            </div>
+                                            <p className="text-xs text-gray-400 mb-3">{previewHint}</p>
+                                            <div className="flex-1 min-h-0 overflow-auto rounded-lg border border-gray-700 bg-black/40 p-3">
+                                                <pre className="whitespace-pre-wrap text-sm leading-relaxed text-gray-200 font-serif">
+                                                    {activePreviewContent || 'Onizleme icin alanlari doldurmaya baslayin.'}
+                                                </pre>
+                                            </div>
+                                        </div>
+
+                                        <div className="min-h-0 overflow-y-auto pr-1 pb-2 space-y-4">
+                                            <p className="text-gray-400 mb-4">{selectedTemplate.description}</p>
 
                                     <div className="flex items-center gap-2 bg-gray-800 p-1 rounded-xl border border-gray-700 mb-5">
                                         <button
@@ -1013,6 +1434,116 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                                 <Filter className="w-4 h-4 text-red-500" />
                                                 Bilgileri Doldurun
                                             </h3>
+
+                                            <div className="bg-gray-800/40 border border-gray-700 rounded-xl p-4 space-y-3">
+                                                <label className="flex items-center gap-2 text-sm text-gray-200">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isAiEnhanced}
+                                                        onChange={(event) => setIsAiEnhanced(event.target.checked)}
+                                                        className="rounded border-gray-500 bg-gray-700 text-red-600 focus:ring-red-500"
+                                                    />
+                                                    AI ile dilekceyi zenginlestir
+                                                </label>
+                                                {isAiEnhanced && (
+                                                    <p className="text-xs text-gray-400">
+                                                        Secilen kararlar ve alan degerleri alt uygulamada chatbot mantigi ile otomatik islenecek.
+                                                    </p>
+                                                )}
+
+                                                <div className="space-y-2">
+                                                    <p className="text-xs text-gray-400">
+                                                        MCP ile Yargitay karari ara ve secilen kararlarini dilekceye ekle.
+                                                    </p>
+                                                    <div className="flex flex-col sm:flex-row gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={mcpKeyword}
+                                                            onChange={(event) => setMcpKeyword(event.target.value)}
+                                                            onKeyDown={(event) => {
+                                                                if (event.key === 'Enter') {
+                                                                    event.preventDefault();
+                                                                    handleMcpSearch();
+                                                                }
+                                                            }}
+                                                            placeholder="Orn: kidem tazminati fesih hakli nedenle"
+                                                            className="flex-1 p-2.5 bg-gray-800 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
+                                                        />
+                                                        <button
+                                                            onClick={handleMcpSearch}
+                                                            disabled={isSearchingMcp || !mcpKeyword.trim()}
+                                                            className="px-4 py-2.5 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-700/60 disabled:text-gray-500 text-white rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
+                                                        >
+                                                            {isSearchingMcp ? (
+                                                                <>
+                                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                                    Araniyor...
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <Search className="w-4 h-4" />
+                                                                    Yargitay Ara (MCP)
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {mcpSearchError && (
+                                                    <div className="text-xs text-red-300 bg-red-900/30 border border-red-700 rounded-lg p-2">
+                                                        {mcpSearchError}
+                                                    </div>
+                                                )}
+
+                                                {selectedMcpDecisions.length > 0 && (
+                                                    <div className="text-xs text-emerald-300 bg-emerald-900/20 border border-emerald-700/60 rounded-lg p-2">
+                                                        {selectedMcpDecisions.length} karar secildi. Uretimde dilekceye eklenecek.
+                                                    </div>
+                                                )}
+
+                                                {mcpSearchResults.length > 0 && (
+                                                    <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
+                                                        {mcpSearchResults.slice(0, 12).map((decision, index) => {
+                                                            const selected = isMcpDecisionSelected(decision);
+                                                            const decisionKey = buildDecisionIdentity(decision) || `decision-${index}`;
+
+                                                            return (
+                                                                <button
+                                                                    key={decisionKey}
+                                                                    type="button"
+                                                                    onClick={() => toggleMcpDecision(decision)}
+                                                                    className={`w-full text-left p-3 rounded-lg border transition-colors ${selected
+                                                                        ? 'border-red-500/70 bg-red-900/20'
+                                                                        : 'border-gray-700 bg-gray-800/60 hover:border-gray-500'
+                                                                        }`}
+                                                                >
+                                                                    <div className="flex items-start justify-between gap-3">
+                                                                        <div className="min-w-0">
+                                                                            <p className="text-sm text-white font-medium">{decision.title || 'Yargitay Karari'}</p>
+                                                                            <p className="text-xs text-gray-400 mt-1">
+                                                                                {decision.esasNo ? `E. ${decision.esasNo} ` : ''}
+                                                                                {decision.kararNo ? `K. ${decision.kararNo} ` : ''}
+                                                                                {decision.tarih ? `T. ${decision.tarih}` : ''}
+                                                                            </p>
+                                                                        </div>
+                                                                        <span className={`text-[11px] px-2 py-1 rounded-full border ${selected
+                                                                            ? 'border-red-500 text-red-300'
+                                                                            : 'border-gray-600 text-gray-300'
+                                                                            }`}>
+                                                                            {selected ? 'Eklendi' : 'Ekle'}
+                                                                        </span>
+                                                                    </div>
+                                                                    {decision.ozet && (
+                                                                        <p className="text-xs text-gray-300 mt-2 line-clamp-3">
+                                                                            {decision.ozet}
+                                                                        </p>
+                                                                    )}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
 
                                             {selectedTemplate.variables.map(variable => (
                                                 <div key={variable.key}>
@@ -1220,6 +1751,8 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                             )}
                                         </div>
                                     )}
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="p-4 sm:p-6 border-t border-gray-700 flex gap-2 sm:gap-3">
@@ -1238,7 +1771,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                             {isGenerating ? (
                                                 <>
                                                     <Loader2 className="w-5 h-5 animate-spin" />
-                                                    Olusturuluyor...
+                                                    {isAiEnhanced ? 'Alt uygulamaya aktariliyor...' : 'Olusturuluyor...'}
                                                 </>
                                             ) : (
                                                 <>
@@ -1315,3 +1848,8 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
         </div>
     );
 };
+
+
+
+
+

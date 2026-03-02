@@ -241,43 +241,26 @@ export const PetitionPreview: React.FC<PetitionPreviewProps> = ({
         }
     };
 
-    const handleDownloadUdf = async () => {
-        if (!editorRef.current) return;
-        setIsDownloading(true);
-        setIsDownloadMenuOpen(false);
-        try {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = editorRef.current.innerHTML;
-            let textContent = tempDiv.innerText || tempDiv.textContent || '';
-            if (corporateHeader) {
-                textContent = `${corporateHeader}\n\n${textContent}`;
-            }
-            const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
-<document>
-  <metadata>
-    <title>Dilekçe</title>
-    <author>DilekAI</author>
-    <date>${new Date().toISOString()}</date>
-  </metadata>
-  <content>
-    <![CDATA[
-${textContent}
-    ]]>
-  </content>
-</document>`;
-            const zip = new JSZip();
-            zip.file('mimetype', 'application/vnd.udf', { compression: 'STORE' });
-            zip.file('content.xml', xmlContent);
-            const zipBlob = await zip.generateAsync({ type: 'blob' });
-            saveAs(zipBlob, 'dilekce.udf');
-            setDownloadSuccess('UDF');
-            setTimeout(() => setDownloadSuccess(null), 3000);
-        } catch (error) {
-            console.error('Error generating UDF:', error);
-        } finally {
-            setIsDownloading(false);
-        }
-    };
+  const handleDownloadUdf = async () => {
+    if (!editorRef.current) return;
+    setIsDownloading(true);
+    setIsDownloadMenuOpen(false);
+    try {
+      const { generateUdfBlob } = await import('../services/udfGenerator');
+      const blob = await generateUdfBlob({
+        html: editorRef.current.innerHTML,
+        title: 'DilekÃ§e',
+        corporateHeader: corporateHeader || undefined,
+      });
+      saveAs(blob, 'dilekce.udf');
+      setDownloadSuccess('UDF');
+      setTimeout(() => setDownloadSuccess(null), 3000);
+    } catch (error) {
+      console.error("Error generating UDF:", error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
     return (
         <div className="min-h-screen flex flex-col bg-[#0A0A0B]">

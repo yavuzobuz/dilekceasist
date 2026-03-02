@@ -16,7 +16,7 @@ export const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+            <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center">
                 <div className="text-center">
                     <Loader2 className="w-12 h-12 text-red-500 animate-spin mx-auto mb-4" />
                     <p className="text-gray-400">Yetki kontrol ediliyor...</p>
@@ -33,7 +33,7 @@ export const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
 
     if (!isAdmin) {
         return (
-            <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center p-4">
                 <div className="bg-gray-800 rounded-2xl p-8 max-w-md text-center border border-gray-700">
                     <div className="w-16 h-16 bg-red-600/20 rounded-full flex items-center justify-center mx-auto mb-6">
                         <Shield className="w-8 h-8 text-red-500" />

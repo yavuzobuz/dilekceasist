@@ -322,8 +322,8 @@ export const Announcements: React.FC = () => {
                                     <label className="block text-sm font-medium text-gray-300 mb-1">Bitiş Tarihi</label>
                                     <input
                                         type="date"
-                                        value={editingAnnouncement.expires_at || ''}
-                                        onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, expires_at: e.target.value || null })}
+                                        value={editingAnnouncement.expires_at ? editingAnnouncement.expires_at.split('T')[0] : ''}
+                                        onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, expires_at: e.target.value ? new Date(e.target.value).toISOString() : null })}
                                         className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
                                     />
                                 </div>

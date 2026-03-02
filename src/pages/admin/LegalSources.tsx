@@ -61,7 +61,7 @@ export const LegalSources: React.FC = () => {
         if (editingSource.id) {
             setSources(sources.map(s => s.id === editingSource.id ? editingSource : s));
         } else {
-            setSources([...sources, { ...editingSource, id: Date.now().toString() }]);
+            setSources([...sources, { ...editingSource, id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}` }]);
         }
 
         setShowModal(false);

@@ -152,7 +152,23 @@ export async function* streamChatResponse(
             body: JSON.stringify({ chatHistory, analysisSummary, context, files })
         });
 
-        if (!response.ok) throw new Error('Chat API failed');
+        if (!response.ok) {
+            const rawError = await response.text();
+            let message = `Chat API failed (HTTP ${response.status})`;
+
+            if (rawError) {
+                try {
+                    const parsed = JSON.parse(rawError);
+                    if (parsed?.error) {
+                        message = `Chat API failed (HTTP ${response.status}): ${parsed.error}`;
+                    }
+                } catch {
+                    message = `Chat API failed (HTTP ${response.status}): ${rawError}`;
+                }
+            }
+
+            throw new Error(message);
+        }
         if (!response.body) throw new Error('No response body');
 
         const reader = response.body.getReader();

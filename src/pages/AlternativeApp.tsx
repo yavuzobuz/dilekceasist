@@ -31,6 +31,45 @@ const fileToBase64 = (file: File): Promise<string> => {
     });
 };
 
+const parseFunctionCallArgs = (rawArgs: unknown): Record<string, any> => {
+    if (!rawArgs) return {};
+    if (typeof rawArgs === 'string') {
+        try {
+            const parsed = JSON.parse(rawArgs);
+            return parsed && typeof parsed === 'object' ? parsed as Record<string, any> : {};
+        } catch {
+            return {};
+        }
+    }
+    return typeof rawArgs === 'object' ? rawArgs as Record<string, any> : {};
+};
+
+const extractGeneratedDocumentPayload = (rawArgs: unknown): { title: string; content: string } | null => {
+    const args = parseFunctionCallArgs(rawArgs);
+    const content = (
+        args.documentContent ??
+        args.document_content ??
+        args.content ??
+        args.petitionContent ??
+        args.dilekceMetni ??
+        ''
+    );
+    const title = (
+        args.documentTitle ??
+        args.document_title ??
+        args.title ??
+        'Belge'
+    );
+
+    const normalizedContent = typeof content === 'string' ? content.trim() : '';
+    if (!normalizedContent) return null;
+
+    return {
+        title: typeof title === 'string' && title.trim() ? title.trim() : 'Belge',
+        content: normalizedContent,
+    };
+};
+
 const extractResultsFromText = (text: string): any[] => {
     if (!text || typeof text !== 'string') return [];
 
@@ -130,6 +169,127 @@ const normalizeLegalSearchResults = (payload: any): AlternativeLegalSearchResult
         seen.add(key);
         return true;
     });
+};
+
+const mergeUniqueLegalResults = (
+    existing: AlternativeLegalSearchResult[],
+    incoming: AlternativeLegalSearchResult[]
+): AlternativeLegalSearchResult[] => {
+    const seen = new Set<string>();
+    return [...existing, ...incoming].filter(result => {
+        const key = `${result.title || ''}|${result.esasNo || ''}|${result.kararNo || ''}|${result.tarih || ''}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+};
+
+const mergeWebSearchResults = (
+    existing: WebSearchResult | null,
+    incoming: WebSearchResult | null
+): WebSearchResult | null => {
+    if (!existing && !incoming) return null;
+    if (!existing) return incoming;
+    if (!incoming) return existing;
+
+    const summary = [existing.summary, incoming.summary].filter(Boolean).join('\n\n').trim();
+    const sourceMap = new Map<string, { uri: string; title: string }>();
+
+    for (const source of [...existing.sources, ...incoming.sources]) {
+        if (!source?.uri) continue;
+        sourceMap.set(source.uri, { uri: source.uri, title: source.title || source.uri });
+    }
+
+    return {
+        summary,
+        sources: Array.from(sourceMap.values()),
+    };
+};
+
+const extractKeywordCandidates = (rawValue: string): string[] => {
+    if (!rawValue) return [];
+    return rawValue
+        .split(/[\s,;:.!?()\/\\-]+/g)
+        .map(token => token.trim())
+        .filter(token => token.length >= 3);
+};
+
+const isLikelyPetitionRequest = (rawMessage: string): boolean => {
+    if (!rawMessage) return false;
+    return /(dilekce|dilekçe|belge|taslak|template|ihtarname|itiraz|temyiz|feragat|talep)/i.test(rawMessage)
+        && /(olustur|oluştur|hazirla|hazırla|yaz)/i.test(rawMessage);
+};
+
+const buildLegalResultsPrompt = (results: AlternativeLegalSearchResult[]): string => {
+    if (results.length === 0) return '';
+    return results
+        .map(result => `- ${result.title} ${result.esasNo ? `E. ${result.esasNo}` : ''} ${result.kararNo ? `K. ${result.kararNo}` : ''} ${result.tarih ? `T. ${result.tarih}` : ''} ${result.ozet || ''}`.trim())
+        .join('\n');
+};
+
+interface TemplateTransferDecision {
+    title: string;
+    esasNo?: string;
+    kararNo?: string;
+    tarih?: string;
+    daire?: string;
+    ozet?: string;
+    relevanceScore?: number;
+}
+
+interface TemplateTransferContext {
+    source?: string;
+    templateId?: string;
+    templateTitle?: string;
+    templateCategory?: string;
+    templateSubcategory?: string;
+    variableValues?: Record<string, string>;
+    selectedDecisions?: TemplateTransferDecision[];
+    aiRequested?: boolean;
+    createdAt?: string;
+}
+
+const TEMPLATE_CONTEXT_STORAGE_KEY = 'templateContext';
+
+const parseTemplateTransferContext = (rawValue: string | null): TemplateTransferContext | null => {
+    if (!rawValue) return null;
+    try {
+        const parsed = JSON.parse(rawValue);
+        if (!parsed || typeof parsed !== 'object') return null;
+        return parsed as TemplateTransferContext;
+    } catch {
+        return null;
+    }
+};
+
+const formatTemplateVariableContext = (variableValues?: Record<string, string>): string => {
+    if (!variableValues || typeof variableValues !== 'object') return '';
+    const lines = Object.entries(variableValues)
+        .map(([key, value]) => [key.trim(), String(value || '').trim()] as const)
+        .filter(([, value]) => value.length > 0)
+        .map(([key, value]) => `- ${key}: ${value}`);
+
+    if (lines.length === 0) return '';
+    return `SABLON ALAN DEGERLERI\n${lines.join('\n')}`;
+};
+
+const normalizeTemplateDecisions = (decisions?: TemplateTransferDecision[]): AlternativeLegalSearchResult[] => {
+    if (!Array.isArray(decisions)) return [];
+    return decisions
+        .filter(decision => decision && typeof decision === 'object')
+        .map((decision, index) => {
+            const title = (decision.title || 'Yargitay Karari').trim();
+            return {
+                id: `template-decision-${index + 1}`,
+                title,
+                esasNo: decision.esasNo || '',
+                kararNo: decision.kararNo || '',
+                tarih: decision.tarih || '',
+                daire: decision.daire || '',
+                ozet: decision.ozet || '',
+                relevanceScore: decision.relevanceScore,
+            };
+        });
 };
 
 const STEPS = [
@@ -270,11 +430,12 @@ export default function AlternativeApp() {
     const [isLegalSearching, setIsLegalSearching] = useState(false);
     const [isLoadingPetition, setIsLoadingPetition] = useState(false);
     const [isReviewingPetition, setIsReviewingPetition] = useState(false);
+    const [pendingTemplateAutoEnhancement, setPendingTemplateAutoEnhancement] = useState(false);
     const [isLoadingChat, setIsLoadingChat] = useState(false);
+    const [chatProgressText, setChatProgressText] = useState('');
 
     const [error, setError] = useState<string | null>(null);
     const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
-
     const addToast = useCallback((message: string, type: ToastType) => {
         const id = Date.now().toString();
         setToasts(prev => [...prev, { id, message, type }]);
@@ -282,6 +443,20 @@ export default function AlternativeApp() {
 
     const removeToast = useCallback((id: string) => {
         setToasts(prev => prev.filter(toast => toast.id !== id));
+    }, []);
+
+    const mergeLegalResults = useCallback((incoming: AlternativeLegalSearchResult[]) => {
+        if (incoming.length === 0) return;
+
+        setLegalSearchResults(prev => {
+            const seen = new Set<string>();
+            return [...prev, ...incoming].filter(result => {
+                const key = `${result.title || ''}|${result.esasNo || ''}|${result.kararNo || ''}|${result.tarih || ''}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+        });
     }, []);
 
     useEffect(() => {
@@ -345,7 +520,7 @@ export default function AlternativeApp() {
 
             const payload = await response.json();
             const normalizedResults = normalizeLegalSearchResults(payload);
-            setLegalSearchResults(normalizedResults);
+            mergeLegalResults(normalizedResults);
 
             if (normalizedResults.length > 0) {
                 addToast(`${normalizedResults.length} adet emsal karar bulundu!`, 'success');
@@ -358,6 +533,26 @@ export default function AlternativeApp() {
             setIsLegalSearching(false);
         }
     };
+
+    const handleSelectedFiles = useCallback((rawFiles: FileList | null) => {
+        if (!rawFiles) return;
+
+        const selectedFiles = Array.from(rawFiles);
+        const allowedExtensions = ['.pdf', '.udf', '.jpg', '.jpeg', '.png', '.webp', '.tif', '.tiff', '.doc', '.docx'];
+        const validFiles = selectedFiles.filter(file =>
+            allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
+        );
+
+        if (validFiles.length !== selectedFiles.length) {
+            addToast('Sadece PDF, UDF, Word veya resim dosyalari desteklenir.', 'info');
+        }
+
+        if (validFiles.length > 10) {
+            addToast('En fazla 10 dosya secilebilir. Ilk 10 dosya alindi.', 'info');
+        }
+
+        setFiles(validFiles.slice(0, 10));
+    }, [addToast]);
 
     const handleAnalyze = async () => {
         if (files.length === 0) {
@@ -384,21 +579,76 @@ export default function AlternativeApp() {
                 const extension = file.name.split('.').pop()?.toLowerCase();
                 if (extension === 'pdf') {
                     allUploadedFiles.push({ mimeType: 'application/pdf', data: await fileToBase64(file) });
+                } else if (extension === 'tif' || extension === 'tiff') {
+                    try {
+                        const arrayBuffer = await file.arrayBuffer();
+                        const ifds = UTIF.decode(arrayBuffer);
+                        const firstPage = ifds[0];
+
+                        if (!firstPage) {
+                            throw new Error('TIFF icinde sayfa bulunamadi.');
+                        }
+
+                        UTIF.decodeImage(arrayBuffer, firstPage);
+                        const rgba = UTIF.toRGBA8(firstPage);
+                        const canvas = document.createElement('canvas');
+                        canvas.width = firstPage.width;
+                        canvas.height = firstPage.height;
+                        const ctx = canvas.getContext('2d');
+
+                        if (!ctx) {
+                            throw new Error('Canvas context olusturulamadi.');
+                        }
+
+                        const imageData = ctx.createImageData(firstPage.width, firstPage.height);
+                        imageData.data.set(rgba);
+                        ctx.putImageData(imageData, 0, 0);
+
+                        const dataUrl = canvas.toDataURL('image/png');
+                        const base64Data = dataUrl.split(',')[1];
+
+                        allUploadedFiles.push({
+                            mimeType: 'image/png',
+                            data: base64Data,
+                        });
+                    } catch (tiffError) {
+                        console.error(`Error processing TIFF file ${file.name}:`, tiffError);
+                        setError(`TIFF dosyasi islenirken hata: ${file.name}`);
+                    }
                 } else if (file.type.startsWith('image/')) {
                     allUploadedFiles.push({ mimeType: file.type, data: await fileToBase64(file) });
                 } else if (extension === 'udf') {
                     try {
                         const loadedZip = await zip.loadAsync(file);
                         let xmlContent = '';
+                        let xmlFile = null;
                         for (const fileName in loadedZip.files) {
-                            if (loadedZip.files[fileName].name.toLowerCase().endsWith('.xml')) {
-                                xmlContent = await loadedZip.files[fileName].async('string');
-                                break;
+                            if (Object.prototype.hasOwnProperty.call(loadedZip.files, fileName)) {
+                                const fileObject = loadedZip.files[fileName];
+                                if (!fileObject.dir && fileObject.name.toLowerCase().endsWith('.xml')) {
+                                    xmlFile = fileObject;
+                                    break;
+                                }
                             }
+                        }
+
+                        if (xmlFile) {
+                            xmlContent = await xmlFile.async('string');
+                        } else {
+                            xmlContent = 'UDF arsivinde .xml uzantili icerik dosyasi bulunamadi.';
                         }
                         udfContent += `\n\n--- UDF Belgesi: ${file.name} ---\n${xmlContent}`;
                     } catch (e) {
                         udfContent += `\n\n--- UDF Belgesi: ${file.name} (HATA) ---\nKabul edilemedi.`;
+                    }
+                } else if (extension === 'doc' || extension === 'docx') {
+                    try {
+                        const arrayBuffer = await file.arrayBuffer();
+                        const result = await mammoth.extractRawText({ arrayBuffer });
+                        wordContent += `\n\n--- Word Belgesi: ${file.name} ---\n${result.value}`;
+                    } catch (wordError) {
+                        console.error(`Error processing Word file ${file.name}:`, wordError);
+                        wordContent += `\n\n--- Word Belgesi: ${file.name} (HATA) ---\nBu Word belgesi islenemedi.`;
                     }
                 }
             }
@@ -631,6 +881,67 @@ export default function AlternativeApp() {
         });
     }, []);
 
+    const savePetitionToSupabase = useCallback(async (
+        content: string,
+        titleOverride?: string,
+        metadataOverrides?: Partial<{
+            chatHistory: ChatMessage[];
+            searchKeywords: string[];
+            docContent: string;
+            specifics: string;
+            webSearchResult: WebSearchResult | null;
+            legalSearchResults: AlternativeLegalSearchResult[];
+        }>
+    ) => {
+        if (!user) return;
+
+        try {
+            const { error: insertError } = await supabase.from('petitions').insert([
+                {
+                    user_id: user.id,
+                    title: titleOverride || `${petitionType} - ${new Date().toLocaleDateString('tr-TR')}`,
+                    petition_type: petitionType,
+                    content,
+                    status: 'completed',
+                    metadata: {
+                        chatHistory: metadataOverrides?.chatHistory ?? chatMessages,
+                        caseDetails,
+                        parties,
+                        searchKeywords: metadataOverrides?.searchKeywords ?? searchKeywords,
+                        docContent: metadataOverrides?.docContent ?? docContent,
+                        specifics: metadataOverrides?.specifics ?? specifics,
+                        userRole,
+                        analysisData,
+                        webSearchResult: metadataOverrides?.webSearchResult ?? webSearchResult,
+                        legalSearchResults: metadataOverrides?.legalSearchResults ?? legalSearchResults,
+                        lawyerInfo: analysisData?.lawyerInfo,
+                        contactInfo: analysisData?.contactInfo,
+                    },
+                },
+            ]);
+
+            if (insertError) throw insertError;
+            addToast('Dilekce profile kaydedildi.', 'success');
+        } catch (saveError: any) {
+            console.error('Error saving petition in AlternativeApp:', saveError);
+            addToast('Dilekce profile kaydedilemedi.', 'error');
+        }
+    }, [
+        user,
+        petitionType,
+        chatMessages,
+        caseDetails,
+        parties,
+        searchKeywords,
+        docContent,
+        specifics,
+        userRole,
+        analysisData,
+        webSearchResult,
+        legalSearchResults,
+        addToast,
+    ]);
+
     const handleRewriteText = useCallback(async (text: string): Promise<string> => {
         setError(null);
         try {
@@ -694,12 +1005,13 @@ export default function AlternativeApp() {
     }, [generatedPetition, addToast, navigate]);
 
     const handleSendChatMessage = useCallback(async (message: string, files?: File[]) => {
+        const normalizedMessage = (message || '').trim();
         let chatFiles: { name: string; mimeType: string; data: string }[] = [];
         if (files && files.length > 0) {
             chatFiles = await Promise.all(
                 files.map(async (file) => ({
                     name: file.name,
-                    mimeType: file.type,
+                    mimeType: file.type || 'application/octet-stream',
                     data: await fileToBase64(file),
                 }))
             );
@@ -707,23 +1019,31 @@ export default function AlternativeApp() {
 
         const userMessage: ChatMessage = {
             role: 'user',
-            text: message || (chatFiles.length > 0 ? `📎 ${chatFiles.length} dosya yüklendi${message ? ': ' + message : ''}` : ''),
-            files: chatFiles.length > 0 ? chatFiles : undefined
+            text: normalizedMessage || (chatFiles.length > 0 ? `[Dosya] ${chatFiles.length} dosya yuklendi` : ''),
+            files: chatFiles.length > 0 ? chatFiles : undefined,
         };
         const newMessages: ChatMessage[] = [...chatMessages, userMessage];
         setChatMessages(newMessages);
         setIsLoadingChat(true);
         setError(null);
+        setChatProgressText(chatFiles.length > 0 ? 'Yuklenen dosyalar analiz ediliyor...' : 'Dusunuyorum...');
+
+        let mergedKeywords = [...searchKeywords];
+        let mergedWebSearchResult: WebSearchResult | null = webSearchResult;
+        let mergedLegalResults = [...legalSearchResults];
+        let mergedDocContent = docContent;
+        let assistantText = '';
+        const userRequestedPetition = isLikelyPetitionRequest(normalizedMessage);
 
         try {
             const responseStream = streamChatResponse(
                 newMessages,
                 analysisData?.summary || '',
                 {
-                    keywords: searchKeywords.join(', '),
-                    searchSummary: webSearchResult?.summary || '',
-                    docContent: docContent,
-                    specifics: specifics,
+                    keywords: mergedKeywords.join(', '),
+                    searchSummary: mergedWebSearchResult?.summary || '',
+                    docContent: mergedDocContent,
+                    specifics,
                 },
                 chatFiles
             );
@@ -733,10 +1053,43 @@ export default function AlternativeApp() {
             let functionCallDetected = false;
             let addedKeywordsCount = 0;
             let generatedDocument = false;
+            let pendingGeneratedPayload: { title: string; content: string } | null = null;
 
             for await (const chunk of responseStream) {
+                if (chunk.functionCallResults && chunk.searchResults) {
+                    setChatProgressText('Emsal kararlar baglama ekleniyor...');
+                    const newResults = normalizeLegalSearchResults(chunk.searchResults);
+                    if (newResults.length > 0) {
+                        mergedLegalResults = mergeUniqueLegalResults(mergedLegalResults, newResults);
+                        mergeLegalResults(newResults);
+                        addToast(`${newResults.length} adet emsal karar bulundu!`, 'success');
+
+                        const formattedSummary = newResults
+                            .slice(0, 5)
+                            .map(result => {
+                                const meta = [
+                                    result.esasNo ? `E. ${result.esasNo}` : '',
+                                    result.kararNo ? `K. ${result.kararNo}` : '',
+                                    result.tarih ? `T. ${result.tarih}` : '',
+                                ].filter(Boolean).join(' ');
+                                return `${result.title}${meta ? ` (${meta})` : ''}`;
+                            })
+                            .join('\n');
+
+                        const streamSummary = typeof chunk.text === 'string' ? chunk.text.trim() : '';
+                        const nextSearchResult: WebSearchResult = {
+                            summary: streamSummary || formattedSummary,
+                            sources: [],
+                        };
+                        mergedWebSearchResult = mergeWebSearchResults(mergedWebSearchResult, nextSearchResult);
+                        if (mergedWebSearchResult) {
+                            setWebSearchResult(mergedWebSearchResult);
+                        }
+                    }
+                }
+
                 const getText = (c: any): string => {
-                    if (c.text) return c.text;
+                    if (typeof c.text === 'string') return c.text;
                     if (c.candidates?.[0]?.content?.parts) {
                         return c.candidates[0].content.parts
                             .filter((p: any) => p.text)
@@ -748,13 +1101,14 @@ export default function AlternativeApp() {
 
                 const chunkText = getText(chunk);
                 if (chunkText) {
+                    assistantText += chunkText;
                     setChatMessages(prev => prev.map((msg, index) =>
                         index === prev.length - 1 ? { ...msg, text: msg.text + chunkText } : msg
                     ));
                 }
 
                 const getFunctionCalls = (c: any): any[] => {
-                    if (c.functionCalls) return c.functionCalls;
+                    if (Array.isArray(c.functionCalls)) return c.functionCalls;
                     if (c.candidates?.[0]?.content?.parts) {
                         return c.candidates[0].content.parts
                             .filter((p: any) => p.functionCall)
@@ -764,56 +1118,194 @@ export default function AlternativeApp() {
                 };
 
                 const functionCalls = getFunctionCalls(chunk);
-                if (functionCalls.length > 0) {
-                    for (const fc of functionCalls) {
-                        if (fc.name === 'update_search_keywords') {
-                            functionCallDetected = true;
-                            const args = fc.args as { keywordsToAdd?: string[] };
-                            const { keywordsToAdd } = args;
-                            if (Array.isArray(keywordsToAdd) && keywordsToAdd.length > 0) {
-                                addedKeywordsCount += keywordsToAdd.length;
-                                setSearchKeywords(prev => [...new Set([...prev, ...keywordsToAdd])]);
-                            }
+                if (functionCalls.length === 0) continue;
+
+                for (const fc of functionCalls) {
+                    if (fc.name === 'update_search_keywords') {
+                        functionCallDetected = true;
+                        setChatProgressText('Anahtar kelimeler baglama ekleniyor...');
+
+                        const args = parseFunctionCallArgs(fc.args);
+                        const rawKeywords = Array.isArray(args.keywordsToAdd) ? args.keywordsToAdd : [];
+                        const cleanedKeywords = rawKeywords
+                            .map(keyword => typeof keyword === 'string' ? keyword.trim() : '')
+                            .filter(Boolean);
+
+                        if (cleanedKeywords.length > 0) {
+                            const nextKeywords = Array.from(new Set([...mergedKeywords, ...cleanedKeywords]));
+                            addedKeywordsCount += nextKeywords.length - mergedKeywords.length;
+                            mergedKeywords = nextKeywords;
+                            setSearchKeywords(nextKeywords);
+                        }
+                    }
+
+                    if (fc.name === 'search_yargitay') {
+                        functionCallDetected = true;
+                        setChatProgressText('Emsal kararlar aran�yor...');
+
+                        const args = parseFunctionCallArgs(fc.args);
+                        const queryKeywords = typeof args.searchQuery === 'string'
+                            ? extractKeywordCandidates(args.searchQuery)
+                            : [];
+                        const explicitKeywords = Array.isArray(args.keywords)
+                            ? args.keywords
+                                .map((keyword: unknown) => typeof keyword === 'string' ? keyword.trim() : '')
+                                .filter(Boolean)
+                            : [];
+                        const mergedFromCall = Array.from(new Set([...queryKeywords, ...explicitKeywords]));
+
+                        if (mergedFromCall.length > 0) {
+                            mergedKeywords = Array.from(new Set([...mergedKeywords, ...mergedFromCall]));
+                            setSearchKeywords(mergedKeywords);
+                        }
+                    }
+
+                    if (fc.name === 'generate_document') {
+                        setChatProgressText('Dilekce olusturuluyor...');
+                        const payload = extractGeneratedDocumentPayload(fc.args);
+                        if (!payload || generatedDocument) {
+                            continue;
                         }
 
-                        if (fc.name === 'generate_document') {
-                            generatedDocument = true;
-                            const args = fc.args as {
-                                documentType?: string;
-                                documentTitle?: string;
-                                documentContent?: string;
-                            };
+                        generatedDocument = true;
+                        pendingGeneratedPayload = payload;
+                        setGeneratedPetition(payload.content);
+                        setPetitionVersion(v => v + 1);
+                        setCurrentStep(4);
 
-                            if (args.documentContent) {
-                                setGeneratedPetition(args.documentContent);
-                                setPetitionVersion(v => v + 1);
-                                setChatMessages(prev => prev.map((msg, index) =>
-                                    index === prev.length - 1
-                                        ? { ...msg, text: msg.text + `\n\n📄 **${args.documentTitle || 'Belge'}** oluşturuldu!\n\n✅ Belge "Oluşturulan Dilekçe" bölümüne eklendi.` }
-                                        : msg
-                                ));
-                                addToast(`${args.documentTitle || 'Belge'} oluşturuldu! 📄`, 'success');
-                            }
-                        }
+                        const generationNote = `\n\n${payload.title} olusturuldu.\n\nBelge "Olusturulan Dilekce" bolumune eklendi.`;
+                        assistantText += generationNote;
+                        setChatMessages(prev => prev.map((msg, index) =>
+                            index === prev.length - 1
+                                ? { ...msg, text: msg.text + generationNote }
+                                : msg
+                        ));
+
+                        addToast(`${payload.title} olusturuldu.`, 'success');
                     }
                 }
             }
 
-            if (functionCallDetected && addedKeywordsCount > 0 && !generatedDocument) {
+            if (chatFiles.length > 0 && assistantText.trim()) {
+                setChatProgressText('Dosya analizi baglama kaydediliyor...');
+                const fileNames = chatFiles.map(file => file.name).join(', ');
+                const analysisSnippet = assistantText.trim().slice(0, 1600);
+                const contextEntry = [
+                    'Sohbet dosya analizi:',
+                    `Dosyalar: ${fileNames}`,
+                    analysisSnippet,
+                ].join('\n');
+
+                mergedDocContent = [mergedDocContent, contextEntry].filter(Boolean).join('\n\n').trim();
+                setDocContent(mergedDocContent);
+                addToast('Dosya analizi dilekce baglamina eklendi.', 'success');
+            }
+
+            if (addedKeywordsCount > 0 && mergedKeywords.length > 0 && (!mergedWebSearchResult?.summary || mergedWebSearchResult.summary.trim().length === 0)) {
+                setChatProgressText('Web arastirmasi yapiliyor...');
+                try {
+                    const autoWebSearchResult = await performWebSearch(mergedKeywords);
+                    mergedWebSearchResult = mergeWebSearchResults(mergedWebSearchResult, autoWebSearchResult);
+                    if (mergedWebSearchResult) {
+                        setWebSearchResult(mergedWebSearchResult);
+                    }
+                    addToast('Web arastirmasi tamamlandi ve baglama eklendi.', 'success');
+                } catch (searchError) {
+                    console.error('Auto web search after keyword update failed:', searchError);
+                }
+            }
+
+            if (functionCallDetected && addedKeywordsCount > 0 && !generatedDocument && assistantText.trim() === '') {
+                const confirmation = `Tamam, ${addedKeywordsCount} adet anahtar kelime baglama eklendi.`;
+                assistantText += confirmation;
                 setChatMessages(prev => prev.map((msg, index) =>
-                    index === prev.length - 1 && msg.text.trim() === ''
-                        ? { ...msg, text: `✅ ${addedKeywordsCount} adet anahtar kelime eklendi.` }
-                        : msg
+                    index === prev.length - 1 ? { ...msg, text: confirmation } : msg
                 ));
             }
+
+            if (userRequestedPetition && !generatedDocument) {
+                setChatProgressText('Dilekce olusturma adimi tamamlan�yor...');
+                let fallbackPetition = '';
+
+                if (analysisData?.summary?.trim()) {
+                    try {
+                        fallbackPetition = await generatePetition({
+                            userRole,
+                            petitionType,
+                            caseDetails,
+                            analysisSummary: analysisData.summary,
+                            webSearchResult: mergedWebSearchResult?.summary || '',
+                            legalSearchResult: buildLegalResultsPrompt(mergedLegalResults),
+                            docContent: mergedDocContent,
+                            specifics,
+                            chatHistory: [...newMessages, { role: 'model', text: assistantText }],
+                            parties,
+                            lawyerInfo: analysisData.lawyerInfo,
+                            contactInfo: analysisData.contactInfo,
+                        });
+                    } catch (fallbackError) {
+                        console.error('Fallback petition generation failed:', fallbackError);
+                    }
+                }
+
+                if (!fallbackPetition && assistantText.trim().length > 180) {
+                    fallbackPetition = assistantText.trim();
+                }
+
+                if (fallbackPetition) {
+                    setGeneratedPetition(fallbackPetition);
+                    setPetitionVersion(v => v + 1);
+                    setCurrentStep(4);
+                    addToast('Dilekce olusturuldu ve taslak alana eklendi.', 'success');
+
+                    if (user) {
+                        await savePetitionToSupabase(fallbackPetition, 'Sohbetten Uretilen Dilekce', {
+                            chatHistory: [...newMessages, { role: 'model', text: assistantText }],
+                            searchKeywords: mergedKeywords,
+                            docContent: mergedDocContent,
+                            specifics,
+                            webSearchResult: mergedWebSearchResult,
+                            legalSearchResults: mergedLegalResults,
+                        });
+                    }
+                }
+            }
+
+            if (pendingGeneratedPayload && user) {
+                await savePetitionToSupabase(pendingGeneratedPayload.content, pendingGeneratedPayload.title, {
+                    chatHistory: [...newMessages, { role: 'model', text: assistantText }],
+                    searchKeywords: mergedKeywords,
+                    docContent: mergedDocContent,
+                    specifics,
+                    webSearchResult: mergedWebSearchResult,
+                    legalSearchResults: mergedLegalResults,
+                });
+            }
         } catch (e) {
-            const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata oluştu.';
-            setError(`Sohbet sırasında bir hata oluştu: ${errorMessage}`);
+            const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata olustu.';
+            setError(`Sohbet sirasinda bir hata olustu: ${errorMessage}`);
             setChatMessages(prev => prev.slice(0, -1));
         } finally {
             setIsLoadingChat(false);
+            setChatProgressText('');
         }
-    }, [chatMessages, analysisData, searchKeywords, webSearchResult, docContent, specifics, addToast]);
+    }, [
+        chatMessages,
+        analysisData,
+        searchKeywords,
+        webSearchResult,
+        legalSearchResults,
+        docContent,
+        specifics,
+        mergeLegalResults,
+        addToast,
+        user,
+        savePetitionToSupabase,
+        userRole,
+        petitionType,
+        caseDetails,
+        parties,
+    ]);
 
     const handleGeneratePetition = async () => {
         if (!analysisData?.summary) {
@@ -823,11 +1315,7 @@ export default function AlternativeApp() {
         setIsLoadingPetition(true);
         setError(null);
         try {
-            const legalResultsText = legalSearchResults.length > 0
-                ? legalSearchResults
-                    .map(result => `- ${result.title} ${result.esasNo ? `E. ${result.esasNo}` : ''} ${result.kararNo ? `K. ${result.kararNo}` : ''} ${result.tarih ? `T. ${result.tarih}` : ''} ${result.ozet || ''}`.trim())
-                    .join('\n')
-                : '';
+            const legalResultsText = buildLegalResultsPrompt(legalSearchResults);
 
             const result = await generatePetition({
                 userRole, petitionType, caseDetails,
@@ -841,6 +1329,10 @@ export default function AlternativeApp() {
             setPetitionVersion(v => v + 1);
             setCurrentStep(4);
             addToast('Dilekçe başarıyla oluşturuldu! ✅', 'success');
+
+            if (user) {
+                await savePetitionToSupabase(result);
+            }
         } catch (e: any) {
             setError(`Dilekçe üretim hatası: ${e.message}`);
         } finally {
@@ -1019,7 +1511,7 @@ export default function AlternativeApp() {
                                         <input
                                             type="file"
                                             multiple
-                                            onChange={(e) => setFiles(Array.from(e.target.files || []))}
+                                            onChange={(e) => handleSelectedFiles(e.target.files)}
                                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                         />
                                         <div className="w-16 h-16 bg-[#1A1A1D] rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
@@ -1036,6 +1528,46 @@ export default function AlternativeApp() {
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Seçilen dosyalar listesi */}
+                                    {files.length > 0 && (
+                                        <div className="bg-[#111113] border border-white/5 rounded-xl p-4 mt-4">
+                                            <h4 className="text-sm font-medium text-gray-400 mb-3 px-2">Yüklenen Dosyalar</h4>
+                                            <ul className="space-y-2">
+                                                {files.map((file, idx) => {
+                                                    const isPdf = file.name.toLowerCase().endsWith('.pdf');
+                                                    const isImg = file.type.startsWith('image/');
+                                                    const isUdf = file.name.toLowerCase().endsWith('.udf');
+
+                                                    return (
+                                                        <li key={idx} className="flex items-center justify-between p-3 bg-[#1A1A1D] rounded-lg border border-white/5 hover:border-white/10 transition-colors">
+                                                            <div className="flex items-center gap-3 overflow-hidden">
+                                                                <div className="shrink-0 w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center">
+                                                                    {isPdf ? <span className="text-xl">📕</span> :
+                                                                        isImg ? <span className="text-xl">🖼️</span> :
+                                                                            isUdf ? <span className="text-xl">📄</span> :
+                                                                                <span className="text-xl">📁</span>}
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="text-sm font-medium text-gray-200 truncate">{file.name}</p>
+                                                                    <p className="text-xs text-gray-500 uppercase">{file.name.split('.').pop()}</p>
+                                                                </div>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => setFiles(files.filter((_, i) => i !== idx))}
+                                                                className="shrink-0 p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                                                                title="Dosyayı kaldır"
+                                                            >
+                                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                                </svg>
+                                                            </button>
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        </div>
+                                    )}
 
                                     <div className="bg-[#111113] border border-white/5 rounded-2xl p-6 sm:p-8 shadow-sm">
                                         <div className="mb-4 flex items-center justify-between gap-3">
@@ -1743,6 +2275,7 @@ export default function AlternativeApp() {
                                     messages={chatMessages}
                                     onSendMessage={handleSendChatMessage}
                                     isLoading={isLoadingChat}
+                                    statusText={chatProgressText}
                                     searchKeywords={searchKeywords}
                                     setSearchKeywords={setSearchKeywords}
                                     webSearchResult={webSearchResult}
@@ -1777,6 +2310,9 @@ export default function AlternativeApp() {
         </div >
     );
 }
+
+
+
 
 
 

@@ -45,8 +45,8 @@ export const OutputPanel: React.FC<OutputPanelProps> = (props) => {
   return (
     <div className="flex flex-col gap-6 h-full">
       {/* Petition Section */}
-      <div className="bg-gradient-to-br from-black via-gray-900 to-black rounded-xl shadow-2xl shadow-red-900/10 flex flex-col border border-gray-800/50 min-h-[400px]">
-        <div className="flex items-center justify-between border-b border-gray-800 px-4 py-3">
+      <div className="bg-[#111113] rounded-xl shadow-2xl shadow-red-900/10 flex flex-col border border-white/10 min-h-[400px]">
+        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
             <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -98,8 +98,8 @@ export const OutputPanel: React.FC<OutputPanelProps> = (props) => {
       </div>
 
       {/* Chat Section - Separate and distinct */}
-      <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-xl shadow-2xl shadow-blue-900/10 flex flex-col border border-blue-800/30 min-h-[350px]">
-        <div className="flex items-center justify-between border-b border-blue-800/30 px-4 py-3">
+      <div className="bg-[#111113] rounded-xl shadow-2xl shadow-blue-900/10 flex flex-col border border-white/10 min-h-[350px]">
+        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
             <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />

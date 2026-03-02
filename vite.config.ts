@@ -13,6 +13,18 @@ export default defineConfig(({ mode }) => {
           '/api': {
             target: 'http://localhost:3001',
             changeOrigin: true,
+            configure: (proxy) => {
+              proxy.on('error', (_err, _req, res) => {
+                const message = JSON.stringify({
+                  error: 'Backend API is unreachable. Start `npm run server` or `npm run dev:all`.'
+                });
+
+                if (!res.headersSent) {
+                  res.writeHead(502, { 'Content-Type': 'application/json' });
+                }
+                res.end(message);
+              });
+            },
           },
         },
         open: true,

@@ -8,6 +8,7 @@ import rateLimit from 'express-rate-limit';
 import { createClient } from '@supabase/supabase-js';
 import { AI_CONFIG, SERVER_CONFIG } from './config.js';
 import templatesHandler from './api/templates.js';
+import announcementsHandler from './api/announcements.js';
 
 // Load environment variables
 dotenv.config();
@@ -28,25 +29,51 @@ const ai = new GoogleGenAI({ apiKey: API_KEY });
 const SERVER_API_KEY = process.env.SERVER_API_KEY;
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'kibrit74@gmail.com')
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
     .split(',')
     .map(email => email.trim().toLowerCase())
     .filter(Boolean);
 
-// CORS Configuration - Restrict to allowed origins
-const allowedOrigins = [
+// CORS configuration
+const normalizeOrigin = (origin = '') => origin.trim().replace(/\/+$/, '').toLowerCase();
+
+const parseOriginList = (...values) => values
+    .filter(Boolean)
+    .flatMap(value => String(value).split(','))
+    .map(normalizeOrigin)
+    .filter(Boolean);
+
+const isLocalDevOrigin = (origin) => {
+    try {
+        const parsed = new URL(origin);
+        const host = (parsed.hostname || '').toLowerCase();
+        return host === 'localhost' || host === '127.0.0.1' || host === '::1';
+    } catch {
+        return false;
+    }
+};
+
+const allowedOriginSet = new Set(parseOriginList(
     'http://localhost:3000',
     'http://127.0.0.1:3000',
-    process.env.FRONTEND_URL // Production URL from env
-].filter(Boolean);
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:4173',
+    'http://127.0.0.1:4173',
+    process.env.FRONTEND_URL,
+    process.env.CORS_ORIGINS
+));
 
 const corsOptions = {
     origin: (origin, callback) => {
         // Allow requests with no origin (like mobile apps or curl)
         if (!origin) return callback(null, true);
 
-        if (allowedOrigins.includes(origin)) {
+        const normalizedOrigin = normalizeOrigin(origin);
+        const isAllowed = allowedOriginSet.has(normalizedOrigin);
+        const isAllowedDevOrigin = process.env.NODE_ENV !== 'production' && isLocalDevOrigin(origin);
+
+        if (isAllowed || isAllowedDevOrigin) {
             callback(null, true);
         } else {
             console.warn(`âš ï¸ CORS blocked request from: ${origin}`);
@@ -80,24 +107,30 @@ const getBearerToken = (authorizationHeader = '') => {
     return token.trim();
 };
 
+// Shared helper for Supabase service role client validation
 const createServiceRoleClient = () => {
-    if (!SUPABASE_URL) {
-        throw new Error('Supabase URL not configured');
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl) {
+        throw new Error('VITE_SUPABASE_URL not configured');
+    }
+    if (!serviceRoleKey) {
+        throw new Error('SUPABASE_SERVICE_ROLE_KEY or VITE_SUPABASE_SERVICE_ROLE_KEY not configured');
     }
 
-    if (!SUPABASE_SERVICE_ROLE_KEY) {
-        throw new Error('SUPABASE_SERVICE_ROLE_KEY not configured');
-    }
-
-    return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-        auth: { autoRefreshToken: false, persistSession: false }
+    return createClient(supabaseUrl, serviceRoleKey, {
+        auth: {
+            autoRefreshToken: false,
+            persistSession: false
+        }
     });
 };
 
 const isAdminUser = (user) => {
     const email = (user?.email || '').toLowerCase();
     const role = String(user?.app_metadata?.role || '').toLowerCase();
-    const hasAdminClaim = user?.app_metadata?.is_admin === true || user?.user_metadata?.is_admin === true;
+    const hasAdminClaim = user?.app_metadata?.is_admin === true;
 
     return hasAdminClaim || role === 'admin' || role === 'super_admin' || ADMIN_EMAILS.includes(email);
 };
@@ -134,16 +167,17 @@ const requireAdminAuth = async (req, res, next) => {
     }
 };
 
-const requireAdminUnlessActiveOnly = (req, res, next) => {
-    const activeOnly = req.method === 'GET' && req.query.active === 'true';
-    if (activeOnly) {
-        return next();
-    }
-    return requireAdminAuth(req, res, next);
-};
-
 // Middleware
 app.use(cors(corsOptions));
+app.use((err, req, res, next) => {
+    if (err?.message === 'CORS: Origin not allowed') {
+        return res.status(403).json({
+            error: 'CORS: Origin not allowed',
+            origin: req.headers.origin || null
+        });
+    }
+    return next(err);
+});
 app.use(express.json({ limit: '50mb' })); // Increased limit for file uploads
 
 // Rate Limiting Configuration
@@ -1116,6 +1150,54 @@ const maybeExtractJson = (text = '') => {
     return null;
 };
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+const isRetryableAiError = (error) => {
+    const message = [
+        error?.message || '',
+        error?.cause?.message || '',
+        error?.stack || '',
+    ].join(' ').toLowerCase();
+
+    return [
+        'fetch failed',
+        'etimedout',
+        'econnreset',
+        'socket hang up',
+        'temporary failure',
+        'network error',
+        '503',
+        '429',
+    ].some(token => message.includes(token));
+};
+
+async function generateContentWithRetry(requestPayload) {
+    const maxRetries = Number.isFinite(AI_CONFIG.MAX_RETRIES) ? AI_CONFIG.MAX_RETRIES : 2;
+    const initialDelayMs = Number.isFinite(AI_CONFIG.INITIAL_RETRY_DELAY_MS) ? AI_CONFIG.INITIAL_RETRY_DELAY_MS : 1000;
+
+    let lastError = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+        try {
+            return await ai.models.generateContent(requestPayload);
+        } catch (error) {
+            lastError = error;
+            const canRetry = attempt < maxRetries && isRetryableAiError(error);
+            if (!canRetry) {
+                throw error;
+            }
+
+            const backoffDelay = initialDelayMs * (2 ** attempt);
+            const jitter = Math.floor(Math.random() * 200);
+            const waitMs = backoffDelay + jitter;
+            console.warn(`AI request failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${waitMs}ms...`);
+            await sleep(waitMs);
+        }
+    }
+
+    throw lastError || new Error('AI request failed');
+}
+
 const getBedestenHeaders = () => ({
     'Accept': 'application/json, text/plain, */*',
     'Accept-Language': 'tr,en-US;q=0.9,en;q=0.8',
@@ -1298,7 +1380,7 @@ async function getBedestenDocumentContent(documentId) {
 // Fallback: Use Gemini + Google Search for legal decisions
 async function searchEmsalFallback(keyword) {
     try {
-        const response = await ai.models.generateContent({
+        const response = await generateContentWithRetry({
             model: AI_CONFIG.MODEL_NAME,
             contents: `Türkiye'de "${keyword}" konusunda emsal Yargıtay ve Danıştay kararları bul.
 
@@ -1352,7 +1434,11 @@ Sadece JSON array döndür:
         };
     } catch (error) {
         console.error('Fallback search error:', error);
-        throw error;
+        return {
+            success: false,
+            results: [],
+            error: error?.message || 'AI fallback failed',
+        };
     }
 }
 
@@ -1373,7 +1459,7 @@ async function getDocumentViaAIFallback({ keyword = '', documentId = '', documen
     if (!query) return '';
 
     try {
-        const response = await ai.models.generateContent({
+        const response = await generateContentWithRetry({
             model: AI_CONFIG.MODEL_NAME,
             contents: `Aşağıdaki karar künyesine ait karar METNİNİ resmi kaynaklardan bul:
 ${query}
@@ -1422,6 +1508,17 @@ app.post('/api/legal/search-decisions', authMiddleware, async (req, res) => {
             provider = 'ai-fallback';
             const fallback = await searchEmsalFallback(keyword);
             results = fallback.results || [];
+
+            if (!fallback.success && results.length === 0) {
+                return res.json({
+                    success: true,
+                    source: source || 'all',
+                    keyword,
+                    provider,
+                    results: [],
+                    warning: 'Emsal arama servislerine gecici olarak ulasilamiyor. Lutfen kisa bir sure sonra tekrar deneyin.',
+                });
+            }
         }
 
         res.json({
@@ -2941,11 +3038,63 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
     }
 ];
 
+const CP1252_REVERSE_BYTE_MAP = new Map([
+    [0x20AC, 0x80], [0x201A, 0x82], [0x0192, 0x83], [0x201E, 0x84],
+    [0x2026, 0x85], [0x2020, 0x86], [0x2021, 0x87], [0x02C6, 0x88],
+    [0x2030, 0x89], [0x0160, 0x8A], [0x2039, 0x8B], [0x0152, 0x8C],
+    [0x017D, 0x8E], [0x2018, 0x91], [0x2019, 0x92], [0x201C, 0x93],
+    [0x201D, 0x94], [0x2022, 0x95], [0x2013, 0x96], [0x2014, 0x97],
+    [0x02DC, 0x98], [0x2122, 0x99], [0x0161, 0x9A], [0x203A, 0x9B],
+    [0x0153, 0x9C], [0x017E, 0x9E], [0x0178, 0x9F],
+]);
+
+const MOJIBAKE_DETECTION = /[ÃÄÅÂ]/;
+
+const decodePotentialMojibake = (value) => {
+    if (typeof value !== 'string' || !MOJIBAKE_DETECTION.test(value)) return value;
+
+    const bytes = [];
+    for (const char of value) {
+        const codePoint = char.codePointAt(0);
+        if (codePoint == null) continue;
+
+        if (codePoint <= 0xFF) {
+            bytes.push(codePoint);
+            continue;
+        }
+
+        const cp1252Byte = CP1252_REVERSE_BYTE_MAP.get(codePoint);
+        if (cp1252Byte == null) {
+            return value;
+        }
+        bytes.push(cp1252Byte);
+    }
+
+    try {
+        return Buffer.from(bytes).toString('utf8');
+    } catch {
+        return value;
+    }
+};
+
+const deepSanitizeText = (input) => {
+    if (typeof input === 'string') return decodePotentialMojibake(input);
+    if (Array.isArray(input)) return input.map(item => deepSanitizeText(item));
+    if (input && typeof input === 'object') {
+        return Object.fromEntries(
+            Object.entries(input).map(([key, value]) => [key, deepSanitizeText(value)])
+        );
+    }
+    return input;
+};
+
+const SANITIZED_TEMPLATES = TEMPLATES.map(template => deepSanitizeText(template));
+
 // Get all templates
 app.get('/api/templates', (req, res) => {
     const { category } = req.query;
 
-    let filteredTemplates = TEMPLATES.map(t => ({
+    let filteredTemplates = SANITIZED_TEMPLATES.map(t => ({
         id: t.id,
         category: t.category,
         subcategory: t.subcategory,
@@ -2966,10 +3115,10 @@ app.get('/api/templates', (req, res) => {
 
 // Get single template with full content
 app.get('/api/templates/:id', (req, res) => {
-    const template = TEMPLATES.find(t => t.id === req.params.id);
+    const template = SANITIZED_TEMPLATES.find(t => t.id === req.params.id);
 
     if (!template) {
-        return res.status(404).json({ error: 'Åablon bulunamadÄ±' });
+        return res.status(404).json({ error: 'Şablon bulunamadı' });
     }
 
     res.json({ template });
@@ -2977,10 +3126,10 @@ app.get('/api/templates/:id', (req, res) => {
 
 // Use template - fill variables and generate content
 app.post('/api/templates/:id/use', (req, res) => {
-    const template = TEMPLATES.find(t => t.id === req.params.id);
+    const template = SANITIZED_TEMPLATES.find(t => t.id === req.params.id);
 
     if (!template) {
-        return res.status(404).json({ error: 'Åablon bulunamadÄ±' });
+        return res.status(404).json({ error: 'Şablon bulunamadı' });
     }
 
     const { variables } = req.body;
@@ -3096,119 +3245,9 @@ app.get('/api/admin-users', requireAdminAuth, async (req, res) => {
     }
 });
 
-// Announcements CRUD API
-app.get('/api/announcements', requireAdminUnlessActiveOnly, async (req, res) => {
-    try {
-        const supabase = createServiceRoleClient();
-
-        const activeOnly = req.query.active === 'true';
-
-        let query = supabase
-            .from('announcements')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (activeOnly) {
-            query = query
-                .eq('is_active', true)
-                .or(`expires_at.is.null,expires_at.gte.${new Date().toISOString()}`);
-        }
-
-        const { data, error } = await query;
-
-        if (error) throw error;
-
-        res.json({ announcements: data || [] });
-    } catch (error) {
-        console.error('Announcements GET error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.post('/api/announcements', requireAdminAuth, async (req, res) => {
-    try {
-        const supabase = createServiceRoleClient();
-
-        const { title, content, type, is_active, show_on_login, expires_at } = req.body;
-
-        if (!title || !content) {
-            return res.status(400).json({ error: 'Title and content are required' });
-        }
-
-        const { data, error } = await supabase
-            .from('announcements')
-            .insert([{
-                title,
-                content,
-                type: type || 'info',
-                is_active: is_active !== false,
-                show_on_login: show_on_login || false,
-                expires_at: expires_at || null
-            }])
-            .select()
-            .single();
-
-        if (error) throw error;
-
-        res.status(201).json({ announcement: data });
-    } catch (error) {
-        console.error('Announcements POST error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.put('/api/announcements', requireAdminAuth, async (req, res) => {
-    try {
-        const supabase = createServiceRoleClient();
-
-        const { id, ...updates } = req.body;
-
-        if (!id) {
-            return res.status(400).json({ error: 'Announcement ID is required' });
-        }
-
-        const { data, error } = await supabase
-            .from('announcements')
-            .update(updates)
-            .eq('id', id)
-            .select()
-            .single();
-
-        if (error) throw error;
-
-        res.json({ announcement: data });
-    } catch (error) {
-        console.error('Announcements PUT error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.delete('/api/announcements', requireAdminAuth, async (req, res) => {
-    try {
-        const supabase = createServiceRoleClient();
-
-        const { id } = req.body;
-
-        if (!id) {
-            return res.status(400).json({ error: 'Announcement ID is required' });
-        }
-
-        const { error } = await supabase
-            .from('announcements')
-            .delete()
-            .eq('id', id);
-
-        if (error) throw error;
-
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Announcements DELETE error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
+// Announcements API (shared handler)
+app.all('/api/announcements', (req, res) => announcementsHandler(req, res));
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });
-
-

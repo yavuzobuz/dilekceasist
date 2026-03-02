@@ -12,7 +12,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center">
+      <div className="min-h-screen bg-[#0A0A0B] flex items-center justify-center">
         <div className="text-center">
           <svg
             className="animate-spin h-12 w-12 text-red-500 mx-auto mb-4"

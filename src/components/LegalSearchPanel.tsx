@@ -248,10 +248,18 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
                                     : null;
 
                                 return (
-                                    <button
+                                    <div
                                         key={docId}
                                         onClick={() => openDecisionModal(result, index)}
-                                        className="w-full text-left bg-gray-800 border border-gray-700 rounded-xl overflow-hidden hover:border-red-500/50 transition-colors"
+                                        className="w-full text-left bg-gray-800 border border-gray-700 rounded-xl overflow-hidden hover:border-red-500/50 transition-colors cursor-pointer"
+                                        role="button"
+                                        tabIndex={0}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                e.preventDefault();
+                                                openDecisionModal(result, index);
+                                            }
+                                        }}
                                     >
                                         <div className="p-4">
                                             <div className="flex items-start justify-between gap-4">
@@ -305,7 +313,7 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
                                                 </div>
                                             </div>
                                         </div>
-                                    </button>
+                                    </div>
                                 );
                             })}
                         </div>

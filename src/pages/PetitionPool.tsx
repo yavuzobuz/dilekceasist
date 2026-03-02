@@ -225,7 +225,7 @@ export default function PetitionPool() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex flex-col">
+      <div className="min-h-screen bg-[#0A0A0B] flex flex-col">
         <Header onShowLanding={() => navigate('/')} />
         <div className="flex-grow flex items-center justify-center">
           <div className="text-white text-xl">Yükleniyor...</div>
@@ -235,7 +235,7 @@ export default function PetitionPool() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-200">
+    <div className="min-h-screen bg-[#0A0A0B] text-gray-200">
       <Header onShowLanding={() => navigate('/')} />
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">

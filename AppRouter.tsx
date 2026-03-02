@@ -12,7 +12,7 @@ import FAQ from './src/pages/FAQ';
 import Privacy from './src/pages/Privacy';
 import Terms from './src/pages/Terms';
 import Cookies from './src/pages/Cookies';
-import { TemplatesPage } from './src/pages/TemplatesPage';
+import { TemplatesPage, type TemplateTransferContext } from './src/pages/TemplatesPage';
 import ProtectedRoute from './src/components/auth/ProtectedRoute';
 
 // Admin imports
@@ -39,9 +39,14 @@ export default function App() {
     navigate('/alt-app');
   };
 
-  const handleUseTemplate = (content: string) => {
+  const handleUseTemplate = (content: string, context?: TemplateTransferContext) => {
     // Store template content and navigate to app
     localStorage.setItem('templateContent', content);
+    if (context) {
+      localStorage.setItem('templateContext', JSON.stringify(context));
+    } else {
+      localStorage.removeItem('templateContext');
+    }
     navigate('/alt-app');
   };
 
@@ -74,6 +79,15 @@ export default function App() {
       <Route path="/faq" element={<FAQ />} />
       <Route
         path="/sablonlar"
+        element={
+          <TemplatesPage
+            onBack={() => navigate('/')}
+            onUseTemplate={handleUseTemplate}
+          />
+        }
+      />
+      <Route
+        path="/sozlesmeler-ihtarnameler"
         element={
           <TemplatesPage
             onBack={() => navigate('/')}

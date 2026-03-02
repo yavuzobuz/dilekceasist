@@ -1,20 +1,27 @@
 import { GoogleGenAI, Type } from '@google/genai';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const MODEL_NAME = 'gemini-3-pro-preview';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+const MODEL_NAME = process.env.GEMINI_MODEL_NAME || process.env.VITE_GEMINI_MODEL_NAME || 'gemini-2.5-flash';
+
+const getAiClient = () => {
+    if (!GEMINI_API_KEY) {
+        throw new Error('GEMINI_API_KEY or VITE_GEMINI_API_KEY is not configured');
+    }
+    return new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+};
 
 // Fallback search function for legal decisions
-async function searchEmsalFallback(keyword) {
+async function searchEmsalFallback(ai, keyword) {
     try {
         const response = await ai.models.generateContent({
             model: MODEL_NAME,
-            contents: `Türkiye'de "${keyword}" konusunda emsal Yargıtay ve Danıştay kararları bul. Her karar için:
-            - Mahkeme, Daire, Esas No, Karar No, Tarih, Özet, İlgi Skoru (0-100)
-            
-            En az 10 karar bul ve JSON formatında döndür:
+            contents: `Turkiye'de "${keyword}" konusunda emsal Yargitay ve Danistay kararlari bul. Her karar icin:
+            - Mahkeme, Daire, Esas No, Karar No, Tarih, Ozet, Ilgi Skoru (0-100)
+
+            En az 10 karar bul ve JSON formatinda dondur:
             [{"mahkeme": "...", "daire": "...", "esasNo": "...", "kararNo": "...", "tarih": "...", "ozet": "...", "relevanceScore": 85}]
-            
-            Sadece JSON array döndür.`,
+
+            Sadece JSON array dondur.`,
             config: { tools: [{ googleSearch: {} }] }
         });
 
@@ -24,16 +31,18 @@ async function searchEmsalFallback(keyword) {
             const results = JSON.parse(jsonMatch[0]);
             return {
                 success: true,
-                results: results.map((r, i) => ({
-                    id: `search-${i}`,
-                    title: `${r.mahkeme || 'Yargıtay'} ${r.daire || ''}`,
-                    esasNo: r.esasNo || '',
-                    kararNo: r.kararNo || '',
-                    tarih: r.tarih || '',
-                    daire: r.daire || '',
-                    ozet: r.ozet || '',
-                    relevanceScore: r.relevanceScore || Math.max(0, 100 - (i * 8))
-                })).sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
+                results: results
+                    .map((r, i) => ({
+                        id: `search-${i}`,
+                        title: `${r.mahkeme || 'Yargitay'} ${r.daire || ''}`.trim(),
+                        esasNo: r.esasNo || '',
+                        kararNo: r.kararNo || '',
+                        tarih: r.tarih || '',
+                        daire: r.daire || '',
+                        ozet: r.ozet || '',
+                        relevanceScore: r.relevanceScore || Math.max(0, 100 - (i * 8))
+                    }))
+                    .sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
             };
         }
         return { success: true, results: [] };
@@ -52,28 +61,34 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     try {
-        const { chatHistory, analysisSummary, context, files } = req.body;
+        const ai = getAiClient();
+        const { chatHistory, analysisSummary, context, files } = req.body || {};
+        const safeContext = context || {};
+
+        if (!Array.isArray(chatHistory) || chatHistory.length === 0) {
+            return res.status(400).json({ error: 'chatHistory must be a non-empty array' });
+        }
 
         const contextPrompt = `
 **MEVCUT DURUM:**
-- Vaka Özeti: ${analysisSummary || "Henüz analiz yapılmadı."}
-- Anahtar Kelimeler: ${context?.keywords || "Yok"}
-- Web Araştırma: ${context?.searchSummary || "Yok"}
-${files?.length > 0 ? `- Yüklenen Belgeler: ${files.length} adet` : ''}
+- Vaka Ozeti: ${analysisSummary || 'Henuz analiz yapilmadi.'}
+- Anahtar Kelimeler: ${safeContext.keywords || 'Yok'}
+- Web Arastirma: ${safeContext.searchSummary || 'Yok'}
+${Array.isArray(files) && files.length > 0 ? `- Yuklenen Belgeler: ${files.length} adet` : ''}
 `;
 
-        const systemInstruction = `Sen, Türk Hukuku uzmanı bir hukuk asistanısın.
+        const systemInstruction = `Sen, Turk Hukuku uzmani bir hukuk asistanisin.
 
-**GÖREVLERİN:**
-1. Hukuki soruları yanıtla
-2. Dava stratejisi konusunda yardımcı ol
-3. Belge yüklendiyse analiz et
-4. generate_document fonksiyonu ile belge oluştur
-5. search_yargitay fonksiyonu ile içtihat ara
+**GOREVLERIN:**
+1. Hukuki sorulari yanitla
+2. Dava stratejisi konusunda yardimci ol
+3. Belge yuklendiyse analiz et
+4. generate_document fonksiyonu ile belge olustur
+5. search_yargitay fonksiyonu ile ictihat ara
 
 ${contextPrompt}
 
-Türkçe yanıt ver.`;
+Turkce yanit ver.`;
 
         const updateKeywordsFunction = {
             name: 'update_search_keywords',
@@ -89,7 +104,7 @@ Türkçe yanıt ver.`;
 
         const generateDocumentFunction = {
             name: 'generate_document',
-            description: 'Belge/dilekçe oluştur',
+            description: 'Belge veya dilekce olustur',
             parameters: {
                 type: Type.OBJECT,
                 properties: {
@@ -103,7 +118,7 @@ Türkçe yanıt ver.`;
 
         const searchYargitayFunction = {
             name: 'search_yargitay',
-            description: 'Yargıtay kararı ara',
+            description: 'Yargitay karari ara',
             parameters: {
                 type: Type.OBJECT,
                 properties: {
@@ -114,22 +129,20 @@ Türkçe yanıt ver.`;
             },
         };
 
-        // Build contents with file support
-        const contents = chatHistory.map(msg => {
-            const parts = [{ text: msg.text }];
-            if (msg.files?.length > 0) {
-                msg.files.forEach(file => {
+        const contents = chatHistory.map((msg) => {
+            const parts = [{ text: msg?.text || '' }];
+            if (Array.isArray(msg?.files) && msg.files.length > 0) {
+                msg.files.forEach((file) => {
                     parts.push({ inlineData: { mimeType: file.mimeType, data: file.data } });
                 });
             }
-            return { role: msg.role === 'user' ? 'user' : 'model', parts };
+            return { role: msg?.role === 'user' ? 'user' : 'model', parts };
         });
 
-        // Add files from request to last message
-        if (files?.length > 0 && contents.length > 0) {
+        if (Array.isArray(files) && files.length > 0 && contents.length > 0) {
             const lastIdx = contents.length - 1;
             if (contents[lastIdx].role === 'user') {
-                files.forEach(file => {
+                files.forEach((file) => {
                     contents[lastIdx].parts.push({ inlineData: { mimeType: file.mimeType, data: file.data } });
                 });
             }
@@ -144,14 +157,12 @@ Türkçe yanıt ver.`;
             },
         });
 
-        // Streaming response
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         res.setHeader('Transfer-Encoding', 'chunked');
 
-        let pendingSearchCalls = [];
+        const pendingSearchCalls = [];
 
         for await (const chunk of responseStream) {
-            // Check for search function calls
             const candidate = chunk.candidates?.[0];
             if (candidate?.content?.parts) {
                 for (const part of candidate.content.parts) {
@@ -163,14 +174,13 @@ Türkçe yanıt ver.`;
             res.write(JSON.stringify(chunk) + '\n');
         }
 
-        // Execute pending search calls
         if (pendingSearchCalls.length > 0) {
             for (const fc of pendingSearchCalls) {
                 const searchQuery = fc.args?.searchQuery || '';
-                console.log(`🔍 AI legal search: "${searchQuery}"`);
-                const searchResult = await searchEmsalFallback(searchQuery);
+                console.log(`[AI] legal search: "${searchQuery}"`);
+                const searchResult = await searchEmsalFallback(ai, searchQuery);
 
-                let formattedResults = '\n\n### 📚 BULUNAN YARGITAY KARARLARI\n\n';
+                let formattedResults = '\n\n### BULUNAN YARGITAY KARARLARI\n\n';
                 if (searchResult.results?.length > 0) {
                     searchResult.results.forEach((r, i) => {
                         formattedResults += `**${i + 1}. ${r.title}**\n`;
@@ -178,23 +188,30 @@ Türkçe yanıt ver.`;
                         if (r.kararNo) formattedResults += `K. ${r.kararNo} `;
                         if (r.tarih) formattedResults += `T. ${r.tarih}`;
                         formattedResults += '\n';
-                        if (r.ozet) formattedResults += `Özet: ${r.ozet}\n\n`;
+                        if (r.ozet) formattedResults += `Ozet: ${r.ozet}\n\n`;
                     });
                 } else {
-                    formattedResults += 'Bu konuda emsal karar bulunamadı.\n';
+                    formattedResults += 'Bu konuda emsal karar bulunamadi.\n';
                 }
 
-                res.write(JSON.stringify({ text: formattedResults, functionCallResults: true, searchResults: searchResult.results }) + '\n');
+                res.write(JSON.stringify({
+                    text: formattedResults,
+                    functionCallResults: true,
+                    searchResults: searchResult.results
+                }) + '\n');
             }
         }
 
         res.end();
-
     } catch (error) {
         console.error('Chat Error:', error);
         if (!res.headersSent) {
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ error: error?.message || 'Internal Server Error' });
         } else {
+            res.write(JSON.stringify({
+                text: '\n\nSohbet servisi gecici olarak kullanilamiyor. Lutfen tekrar deneyin.\n',
+                error: true
+            }) + '\n');
             res.end();
         }
     }
