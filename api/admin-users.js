@@ -88,7 +88,7 @@ const createServiceRoleClient = () => {
     });
 };
 
-const requireAdminAuth = async (req) => {
+const getAuthenticatedUser = async (req) => {
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
         throw httpError(500, 'Supabase auth config missing on server');
     }
@@ -110,9 +110,17 @@ const requireAdminAuth = async (req) => {
         throw httpError(401, 'Unauthorized: Invalid token');
     }
 
+    return user;
+};
+
+const requireAdminAuth = async (req) => {
+    const user = await getAuthenticatedUser(req);
+
     if (!isAdminUser(user)) {
         throw httpError(403, 'Forbidden: Admin access required');
     }
+
+    return user;
 };
 
 const getOrCreateUserPlan = async (serviceClient, userId) => {
@@ -390,6 +398,14 @@ export default async function handler(req, res) {
     }
 
     try {
+        const action = String(req.query?.action || '').toLowerCase();
+        if (req.method === 'GET' && action === 'plan-summary') {
+            const authenticatedUser = await getAuthenticatedUser(req);
+            const supabaseAdmin = createServiceRoleClient();
+            const summary = await buildPlanUsageSummary(supabaseAdmin, authenticatedUser.id);
+            return res.status(200).json({ summary });
+        }
+
         await requireAdminAuth(req);
         const supabaseAdmin = createServiceRoleClient();
 

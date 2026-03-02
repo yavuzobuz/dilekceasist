@@ -108,7 +108,7 @@ const Profile: React.FC = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) return;
 
-      const response = await fetch('/api/user-plan-summary', {
+      const response = await fetch('/api/admin-users?action=plan-summary', {
         headers: {
           Authorization: `Bearer ${session.access_token}`
         }
