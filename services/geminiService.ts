@@ -1,6 +1,20 @@
 import { type ChatMessage, type GeneratePetitionParams, UploadedFile, WebSearchResult, AnalysisData, UserRole, CaseDetails, ChatContext, LawyerInfo, ContactInfo } from '../types';
+import { supabase } from '../lib/supabase';
 
 const API_BASE_URL = '/api/gemini';
+
+async function buildJsonHeaders(): Promise<Record<string, string>> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+            headers.Authorization = `Bearer ${session.access_token}`;
+        }
+    } catch (error) {
+        console.error('Could not load auth session for API headers:', error);
+    }
+    return headers;
+}
 
 // Helper to handle API response errors
 async function handleResponse(response: Response) {
@@ -38,7 +52,7 @@ export async function analyzeDocuments(
 
     const data = await handleResponse(await fetch(`${API_BASE_URL}/analyze`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await buildJsonHeaders(),
         body: JSON.stringify(payload)
     }));
 
@@ -98,7 +112,7 @@ export async function analyzeDocuments(
 export async function generateSearchKeywords(analysisText: string, userRole: UserRole): Promise<string[]> {
     const data = await handleResponse(await fetch(`${API_BASE_URL}/keywords`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await buildJsonHeaders(),
         body: JSON.stringify({ analysisText, userRole })
     }));
 
@@ -114,7 +128,7 @@ export async function generateSearchKeywords(analysisText: string, userRole: Use
 export async function performWebSearch(keywords: string[]): Promise<WebSearchResult> {
     const data = await handleResponse(await fetch(`${API_BASE_URL}/web-search`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await buildJsonHeaders(),
         body: JSON.stringify({ keywords })
     }));
 
@@ -132,7 +146,7 @@ export async function generatePetition(
 ): Promise<string> {
     const data = await handleResponse(await fetch(`${API_BASE_URL}/generate-petition`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await buildJsonHeaders(),
         body: JSON.stringify(params)
     }));
 
@@ -148,7 +162,7 @@ export async function* streamChatResponse(
     try {
         const response = await fetch(`${API_BASE_URL}/chat`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: await buildJsonHeaders(),
             body: JSON.stringify({ chatHistory, analysisSummary, context, files })
         });
 
@@ -203,7 +217,7 @@ export async function* streamChatResponse(
 export async function rewriteText(textToRewrite: string): Promise<string> {
     const data = await handleResponse(await fetch(`${API_BASE_URL}/rewrite`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await buildJsonHeaders(),
         body: JSON.stringify({ textToRewrite })
     }));
     return data.text;
@@ -214,7 +228,7 @@ export async function reviewPetition(
 ): Promise<string> {
     const data = await handleResponse(await fetch(`${API_BASE_URL}/review`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await buildJsonHeaders(),
         body: JSON.stringify(params)
     }));
     return data.text;

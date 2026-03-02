@@ -46,7 +46,6 @@ import {
     deleteUserTemplate,
     extractVariablesFromContent,
     type UserCustomTemplate,
-    type UserCustomTemplateInsert,
 } from '../services/customTemplateService';
 
 const IconMap: Record<string, React.FC<any>> = {
@@ -133,7 +132,19 @@ export interface TemplateTransferContext {
     selectedDecisions: TemplateTransferDecision[];
     aiRequested: boolean;
     createdAt: string;
+    bulkPackagePending?: boolean;
+    bulkPackageStorageKey?: string;
+    bulkRowCount?: number;
+    editableTemplateContent?: string;
+    templateVariables?: Array<{
+        key: string;
+        label?: string;
+        required?: boolean;
+    }>;
+    enableVariableEditor?: boolean;
 }
+
+const BULK_TEMPLATE_PACKAGE_STORAGE_KEY = 'templateBulkPackage';
 
 const makeUniqueHeaders = (headers: string[]): string[] => {
     const counts = new Map<string, number>();
@@ -156,6 +167,17 @@ const CATEGORIES = [
     { id: 'Is Hukuku', name: 'İş Hukuku', icon: 'Briefcase' },
     { id: 'Ceza', name: 'Ceza', icon: 'Siren' },
     { id: 'Idari', name: 'İdari', icon: 'Building2' },
+];
+
+type CustomTemplateType = 'dilekce' | 'sozlesme' | 'ihtarname';
+type PetitionTemplateCategory = 'Hukuk' | 'Ceza' | 'Is Hukuku' | 'Icra' | 'Idari';
+
+const PETITION_CATEGORY_OPTIONS: Array<{ value: PetitionTemplateCategory; label: string }> = [
+    { value: 'Hukuk', label: 'Hukuk' },
+    { value: 'Ceza', label: 'Ceza' },
+    { value: 'Is Hukuku', label: 'İş Hukuku' },
+    { value: 'Icra', label: 'İcra' },
+    { value: 'Idari', label: 'İdari' },
 ];
 
 const CATEGORY_QUERY_MAP: Record<string, string> = {
@@ -531,11 +553,72 @@ const scoreHeaderMatch = (variableCandidate: string, headerCandidate: string): n
 
     const variableTokens = variableCandidate.split('_').filter(token => token.length > 1);
     const headerTokens = headerCandidate.split('_').filter(token => token.length > 1);
-    const commonTokenCount = variableTokens.filter(token => headerTokens.includes(token)).length;
-    if (commonTokenCount === 0) return 0;
+    if (variableTokens.length === 0 || headerTokens.length === 0) return 0;
 
-    const allTokensMatched = commonTokenCount === variableTokens.length;
-    return (commonTokenCount * 15) + (allTokensMatched ? 20 : 0);
+    const levenshteinDistance = (a: string, b: string): number => {
+        const rows = a.length + 1;
+        const cols = b.length + 1;
+        const matrix = Array.from({ length: rows }, () => Array(cols).fill(0));
+
+        for (let i = 0; i < rows; i += 1) matrix[i][0] = i;
+        for (let j = 0; j < cols; j += 1) matrix[0][j] = j;
+
+        for (let i = 1; i < rows; i += 1) {
+            for (let j = 1; j < cols; j += 1) {
+                const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+                matrix[i][j] = Math.min(
+                    matrix[i - 1][j] + 1,
+                    matrix[i][j - 1] + 1,
+                    matrix[i - 1][j - 1] + cost
+                );
+            }
+        }
+
+        return matrix[a.length][b.length];
+    };
+
+    const tokenSimilarity = (left: string, right: string): number => {
+        const maxLength = Math.max(left.length, right.length);
+        if (maxLength === 0) return 1;
+        return 1 - (levenshteinDistance(left, right) / maxLength);
+    };
+
+    let exactTokenMatches = 0;
+    const unmatchedHeaderTokens = [...headerTokens];
+
+    variableTokens.forEach(variableToken => {
+        const exactIndex = unmatchedHeaderTokens.indexOf(variableToken);
+        if (exactIndex >= 0) {
+            exactTokenMatches += 1;
+            unmatchedHeaderTokens.splice(exactIndex, 1);
+        }
+    });
+
+    let fuzzyTokenMatches = 0;
+    variableTokens.forEach(variableToken => {
+        if (headerTokens.includes(variableToken)) return;
+
+        let bestMatchIndex = -1;
+        let bestSimilarity = 0;
+        unmatchedHeaderTokens.forEach((headerToken, index) => {
+            const similarity = tokenSimilarity(variableToken, headerToken);
+            if (similarity > bestSimilarity) {
+                bestSimilarity = similarity;
+                bestMatchIndex = index;
+            }
+        });
+
+        if (bestMatchIndex >= 0 && bestSimilarity >= 0.55) {
+            fuzzyTokenMatches += 1;
+            unmatchedHeaderTokens.splice(bestMatchIndex, 1);
+        }
+    });
+
+    const totalMatches = exactTokenMatches + fuzzyTokenMatches;
+    if (totalMatches === 0) return 0;
+
+    const allTokensMatched = totalMatches >= variableTokens.length;
+    return (exactTokenMatches * 15) + (fuzzyTokenMatches * 10) + (allTokensMatched ? 20 : 0);
 };
 
 const getVariableAliases = (variable: TemplateVariable): string[] => {
@@ -561,33 +644,38 @@ const getVariableAliases = (variable: TemplateVariable): string[] => {
         }
     });
 
+    if (normalizedKey.includes('brut')) aliases.add(normalizedKey.replace(/brut/g, 'butur'));
+    if (normalizedLabel.includes('brut')) aliases.add(normalizedLabel.replace(/brut/g, 'butur'));
+
     return Array.from(aliases);
 };
 
-const inferColumnMapping = (variables: TemplateVariable[], headers: string[]): Record<string, string> => {
+const findBestMatchingHeaderForVariable = (variable: TemplateVariable, headers: string[]): string | null => {
     const normalizedHeaders = headers.map(header => ({
         raw: header,
         normalized: normalizeLookupKey(header),
     }));
+    const aliases = getVariableAliases(variable);
+    let best: { header: string; score: number } | null = null;
 
+    normalizedHeaders.forEach(headerInfo => {
+        aliases.forEach(alias => {
+            const score = scoreHeaderMatch(alias, headerInfo.normalized);
+            if (!best || score > best.score) {
+                best = { header: headerInfo.raw, score };
+            }
+        });
+    });
+
+    return best && best.score >= 30 ? best.header : null;
+};
+
+const inferColumnMapping = (variables: TemplateVariable[], headers: string[]): Record<string, string> => {
     const result: Record<string, string> = {};
 
     variables.forEach(variable => {
-        const aliases = getVariableAliases(variable);
-        let best: { header: string; score: number } | null = null;
-
-        normalizedHeaders.forEach(headerInfo => {
-            aliases.forEach(alias => {
-                const score = scoreHeaderMatch(alias, headerInfo.normalized);
-                if (!best || score > best.score) {
-                    best = { header: headerInfo.raw, score };
-                }
-            });
-        });
-
-        if (best && best.score >= 30) {
-            result[variable.key] = best.header;
-        }
+        const bestHeader = findBestMatchingHeaderForVariable(variable, headers);
+        if (bestHeader) result[variable.key] = bestHeader;
     });
 
     return result;
@@ -658,6 +746,32 @@ const resolveTemplateSection = (template: Template): TemplateSectionKey => {
     return 'other';
 };
 
+const resolveCustomTemplateCategoryInfo = (
+    template: Pick<UserCustomTemplate, 'template_type' | 'petition_category'>
+): { category: string; subcategory: string } => {
+    if (template.template_type === 'sozlesme') {
+        return { category: 'contracts', subcategory: 'Sozlesme' };
+    }
+    if (template.template_type === 'ihtarname') {
+        return { category: 'notices', subcategory: 'Ihtarname' };
+    }
+
+    const petitionCategory = template.petition_category || 'templates';
+    return { category: petitionCategory, subcategory: template.petition_category || 'Dilekce' };
+};
+
+const templateMatchesCategory = (template: Template, categoryId: string): boolean => {
+    const section = resolveTemplateSection(template);
+    if (categoryId === CONTRACTS_NOTICES_CATEGORY) {
+        return section === 'contracts' || section === 'notices';
+    }
+    if (categoryId === 'templates') return section === 'other';
+    if (categoryId === 'contracts') return section === 'contracts';
+    if (categoryId === 'notices') return section === 'notices';
+
+    return normalizeLookupKey(template.category || '') === normalizeLookupKey(categoryId);
+};
+
 export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTemplate }) => {
     const location = useLocation();
     const isContractsNoticesPage = location.pathname === CONTRACTS_NOTICES_ROUTE;
@@ -703,7 +817,8 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
     const [customForm, setCustomForm] = useState({
         title: '',
         description: '',
-        template_type: 'dilekce' as 'dilekce' | 'sozlesme' | 'ihtarname',
+        template_type: 'dilekce' as CustomTemplateType,
+        petition_category: '' as PetitionTemplateCategory | '',
         content: '',
         style_notes: '',
         source_file_name: null as string | null,
@@ -758,6 +873,14 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
         resetSingleModeEnhancementState();
     };
 
+    const handleCustomTemplateTypeChange = useCallback((templateType: CustomTemplateType) => {
+        setCustomForm(prev => ({
+            ...prev,
+            template_type: templateType,
+            petition_category: templateType === 'dilekce' ? prev.petition_category : '',
+        }));
+    }, []);
+
     // Özel şablonları Supabase'den yükle
     const loadCustomTemplates = useCallback(async () => {
         if (!user) {
@@ -787,6 +910,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                 title: template.title,
                 description: template.description || '',
                 template_type: template.template_type,
+                petition_category: template.template_type === 'dilekce' ? (template.petition_category || '') : '',
                 content: template.content,
                 style_notes: template.style_notes || '',
                 source_file_name: template.source_file_name,
@@ -798,6 +922,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                 title: '',
                 description: '',
                 template_type: 'dilekce',
+                petition_category: '',
                 content: '',
                 style_notes: '',
                 source_file_name: null,
@@ -856,6 +981,10 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
             setCustomFormError('Şablon içeriği zorunludur.');
             return;
         }
+        if (customForm.template_type === 'dilekce' && !customForm.petition_category) {
+            setCustomFormError('Dilekçe kategorisi seçimi zorunludur.');
+            return;
+        }
 
         setCustomFormSaving(true);
         setCustomFormError(null);
@@ -866,6 +995,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                     title: customForm.title.trim(),
                     description: customForm.description.trim() || null,
                     template_type: customForm.template_type,
+                    petition_category: customForm.template_type === 'dilekce' ? customForm.petition_category : null,
                     content: customForm.content,
                     style_notes: customForm.style_notes.trim() || null,
                     source_file_name: customForm.source_file_name,
@@ -877,6 +1007,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                     title: customForm.title.trim(),
                     description: customForm.description.trim() || null,
                     template_type: customForm.template_type,
+                    petition_category: customForm.template_type === 'dilekce' ? customForm.petition_category : null,
                     content: customForm.content,
                     style_notes: customForm.style_notes.trim() || null,
                     source_file_name: customForm.source_file_name,
@@ -907,10 +1038,11 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
 
     // Özel şablonu TemplateDetail olarak aç (mevcut modal ile)
     const openCustomTemplateAsDetail = useCallback((ct: UserCustomTemplate) => {
+        const { category, subcategory } = resolveCustomTemplateCategoryInfo(ct);
         const detail: TemplateDetail = {
             id: `custom-${ct.id}`,
-            category: ct.template_type === 'sozlesme' ? 'contracts' : ct.template_type === 'ihtarname' ? 'notices' : 'templates',
-            subcategory: ct.template_type === 'sozlesme' ? 'Sözleşme' : ct.template_type === 'ihtarname' ? 'İhtarname' : 'Dilekçe',
+            category,
+            subcategory,
             title: ct.title,
             description: ct.description || '',
             icon: 'FileText',
@@ -1084,6 +1216,24 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
             const baseContent = decodePotentialMojibake(String(data.content || ''));
             const legalAppendix = buildMcpDecisionAppendix(selectedMcpDecisions);
             const mergedContent = legalAppendix ? `${baseContent}\n\n${legalAppendix}` : baseContent;
+            const editableTemplateContent = legalAppendix ? `${selectedTemplate.content}\n\n${legalAppendix}` : selectedTemplate.content;
+            const templateVariablesForTransfer = selectedTemplate.variables.map(variable => ({
+                key: variable.key,
+                label: variable.label || variable.key,
+                required: Boolean(variable.required),
+            }));
+
+            let finalContent = mergedContent;
+            let aiEnhancedInTemplates = false;
+            if (isAiEnhanced) {
+                try {
+                    finalContent = await enhanceTemplateWithAI(mergedContent);
+                    aiEnhancedInTemplates = true;
+                } catch (enhancementError) {
+                    console.error('Template AI enhancement failed, alt-app fallback will be used:', enhancementError);
+                }
+            }
+
             const transferContext: TemplateTransferContext = {
                 source: 'templates_page',
                 templateId: selectedTemplate.id,
@@ -1100,11 +1250,14 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                     ozet: decision.ozet || '',
                     relevanceScore: decision.relevanceScore,
                 })),
-                aiRequested: isAiEnhanced,
+                aiRequested: isAiEnhanced && !aiEnhancedInTemplates,
                 createdAt: new Date().toISOString(),
+                editableTemplateContent,
+                templateVariables: templateVariablesForTransfer,
+                enableVariableEditor: !aiEnhancedInTemplates,
             };
 
-            onUseTemplate(mergedContent, transferContext);
+            onUseTemplate(finalContent, transferContext);
         } catch (templateUseError) {
             console.error('Template use error:', templateUseError);
         } finally {
@@ -1155,10 +1308,12 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
 
     const buildVariablesForBulkRow = (row: Record<string, string>, variables: TemplateVariable[]): Record<string, string> => {
         const rowValues: Record<string, string> = {};
+        const rowHeaders = Object.keys(row);
 
         variables.forEach(variable => {
             const mappedColumn = bulkColumnMapping[variable.key];
-            const mappedValue = mappedColumn ? row[mappedColumn] || '' : '';
+            const inferredColumn = mappedColumn || findBestMatchingHeaderForVariable(variable, rowHeaders) || '';
+            const mappedValue = inferredColumn ? row[inferredColumn] || '' : '';
             const fallbackValue = bulkFallbackValues[variable.key] || '';
             rowValues[variable.key] = (mappedValue || fallbackValue || '').trim();
         });
@@ -1167,17 +1322,6 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
     };
 
     const validateBulkRows = (rows: Record<string, string>[], variables: TemplateVariable[]) => {
-        const missingRequiredMappings = variables.filter(variable => {
-            if (!variable.required) return false;
-            const hasColumn = Boolean(bulkColumnMapping[variable.key]);
-            const hasFallback = Boolean((bulkFallbackValues[variable.key] || '').trim());
-            return !hasColumn && !hasFallback;
-        });
-
-        if (missingRequiredMappings.length > 0) {
-            return `Zorunlu alanlar eslenmedi: ${missingRequiredMappings.map(field => field.label || field.key).join(', ')}`;
-        }
-
         const rowErrors: number[] = [];
         rows.forEach((row, index) => {
             const values = buildVariablesForBulkRow(row, variables);
@@ -1240,104 +1384,50 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
             const rowVariablePayload = bulkSheetData.rows.map(row =>
                 buildVariablesForBulkRow(row, selectedTemplate.variables)
             );
-
-            let generatedRows: Array<{ index: number; variables: Record<string, string>; content: string }> = [];
+            const pendingBulkPackage = {
+                source: 'templates_page_bulk',
+                templateId: selectedTemplate.id,
+                templateTitle: selectedTemplate.title,
+                templateContent: selectedTemplate.content,
+                rowVariables: rowVariablePayload,
+                includeDocx: includeDocxInBulk,
+                createdAt: new Date().toISOString(),
+            };
 
             try {
-                const bulkResponse = await fetch(`${API_BASE_URL}/api/templates`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        id: selectedTemplate.id,
-                        rows: rowVariablePayload,
-                    }),
-                });
-
-                if (!bulkResponse.ok) {
-                    throw new Error(`Template bulk endpoint hatasi: ${bulkResponse.status}`);
-                }
-
-                const bulkData = await bulkResponse.json();
-                if (Array.isArray(bulkData.rows)) {
-                    generatedRows = deepSanitizeText(bulkData.rows);
-                }
-            } catch (bulkFillError) {
-                console.warn('Bulk template endpoint failed, local fill fallback will be used:', bulkFillError);
+                localStorage.setItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY, JSON.stringify(pendingBulkPackage));
+            } catch (storageError) {
+                console.error('Bulk package storage error:', storageError);
+                setBulkError('Seri paket verisi kaydedilemedi. Tarayici depolama alani yetersiz olabilir.');
+                return;
             }
 
-            if (generatedRows.length === 0) {
-                generatedRows = rowVariablePayload.map((variables, index) => ({
-                    index,
-                    variables,
-                    content: replaceTemplateVariables(selectedTemplate.content, variables),
-                }));
-            }
+            setBulkProgress({ current: rowVariablePayload.length, total: rowVariablePayload.length });
+            const templateVariablesForTransfer = selectedTemplate.variables.map(variable => ({
+                key: variable.key,
+                label: variable.label || variable.key,
+                required: Boolean(variable.required),
+            }));
 
-            const zip = new JSZip();
-            const failedDocxRows: string[] = [];
-            const usedNames = new Set<string>();
+            const transferContext: TemplateTransferContext = {
+                source: 'templates_page',
+                templateId: selectedTemplate.id,
+                templateTitle: selectedTemplate.title,
+                templateCategory: selectedTemplate.category,
+                templateSubcategory: selectedTemplate.subcategory,
+                variableValues: {},
+                selectedDecisions: [],
+                aiRequested: false,
+                createdAt: new Date().toISOString(),
+                bulkPackagePending: true,
+                bulkPackageStorageKey: BULK_TEMPLATE_PACKAGE_STORAGE_KEY,
+                bulkRowCount: rowVariablePayload.length,
+                editableTemplateContent: selectedTemplate.content,
+                templateVariables: templateVariablesForTransfer,
+                enableVariableEditor: false,
+            };
 
-            for (let index = 0; index < generatedRows.length; index += 1) {
-                const generatedRow = generatedRows[index];
-                const values = generatedRow?.variables || rowVariablePayload[index] || {};
-                const content = typeof generatedRow?.content === 'string'
-                    ? generatedRow.content
-                    : replaceTemplateVariables(selectedTemplate.content, values);
-
-                const preferredName =
-                    Object.entries(values).find(([key, value]) => key.endsWith('_AD') && value.trim())?.[1] ||
-                    values[selectedTemplate.variables[0]?.key] ||
-                    '';
-
-                let fileBase = sanitizeFileName(`${index + 1}_${preferredName || 'dilekce'}`);
-                while (usedNames.has(fileBase)) {
-                    fileBase = `${fileBase}_${index + 1}`;
-                }
-                usedNames.add(fileBase);
-
-                zip.file(`${fileBase}.txt`, content);
-
-                if (includeDocxInBulk) {
-                    try {
-                        const response = await fetch('/api/html-to-docx', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                html: markdownToHtml(content),
-                                options: {
-                                    font: 'Calibri',
-                                    fontSize: '22',
-                                },
-                            }),
-                        });
-
-                        if (!response.ok) {
-                            throw new Error(`DOCX endpoint hatasi: ${response.status}`);
-                        }
-
-                        const docxBuffer = await response.arrayBuffer();
-                        zip.file(`${fileBase}.docx`, docxBuffer);
-                    } catch (docxError) {
-                        const reason = docxError instanceof Error ? docxError.message : 'Bilinmeyen hata';
-                        failedDocxRows.push(`Satir ${index + 2}: ${reason}`);
-                    }
-                }
-
-                setBulkProgress({ current: index + 1, total: generatedRows.length });
-            }
-
-            if (failedDocxRows.length > 0) {
-                zip.file('_docx_hatalari.txt', failedDocxRows.join('\n'));
-            }
-
-            const zipBlob = await zip.generateAsync({ type: 'blob' });
-            saveAs(zipBlob, `${sanitizeFileName(selectedTemplate.title)}_seri_dilekceler.zip`);
-
-            if (failedDocxRows.length === 0) {
-                setBulkSuccess(`${bulkSheetData.rows.length} satir icin seri dilekce paketi olusturuldu.`);
-            } else {
-                setBulkSuccess(`${bulkSheetData.rows.length} satir icin paket olusturuldu. ${failedDocxRows.length} satirda DOCX olusturma hatasi var; detaylar ZIP icindeki _docx_hatalari.txt dosyasinda.`);
-            }
+            onUseTemplate(selectedTemplate.content, transferContext);
         } catch (generationError) {
             const message = generationError instanceof Error ? generationError.message : 'Seri uretim sirasinda hata olustu.';
             setBulkError(message);
@@ -1348,12 +1438,9 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
 
     // Özel şablonları Template formatına dönüştür
     const customTemplatesAsCards: Template[] = useMemo(() => {
-        const typeToCategory: Record<string, string> = { dilekce: 'templates', sozlesme: 'contracts', ihtarname: 'notices' };
-        const typeToSubcategory: Record<string, string> = { dilekce: 'Dilekçe', sozlesme: 'Sözleşme', ihtarname: 'İhtarname' };
         return customTemplates.map(ct => ({
+            ...resolveCustomTemplateCategoryInfo(ct),
             id: `custom-${ct.id}`,
-            category: typeToCategory[ct.template_type] || 'templates',
-            subcategory: typeToSubcategory[ct.template_type] || 'Dilekçe',
             title: ct.title,
             description: ct.description || '',
             icon: 'FileText',
@@ -1365,28 +1452,10 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
     }, [customTemplates]);
 
     const templatesBySelectedCategory = useMemo(() => {
-        const presetFiltered = templates.filter(template => {
-            const section = resolveTemplateSection(template);
-            if (effectiveCategory === CONTRACTS_NOTICES_CATEGORY) {
-                return section === 'contracts' || section === 'notices';
-            }
-            if (effectiveCategory === 'templates') return section === 'other';
-            if (effectiveCategory === 'contracts') return section === 'contracts';
-            if (effectiveCategory === 'notices') return section === 'notices';
-            return true;
-        });
+        const presetFiltered = templates.filter(template => templateMatchesCategory(template, effectiveCategory));
 
-        // Özel şablonları da kategoriye göre filtrele ve başa ekle
-        const customFiltered = customTemplatesAsCards.filter(ct => {
-            const section = resolveTemplateSection(ct);
-            if (effectiveCategory === CONTRACTS_NOTICES_CATEGORY) {
-                return section === 'contracts' || section === 'notices';
-            }
-            if (effectiveCategory === 'templates') return section === 'other';
-            if (effectiveCategory === 'contracts') return section === 'contracts';
-            if (effectiveCategory === 'notices') return section === 'notices';
-            return true;
-        });
+        // Ozel sablonlari da kategoriye gore filtrele ve basa ekle
+        const customFiltered = customTemplatesAsCards.filter(ct => templateMatchesCategory(ct, effectiveCategory));
 
         return [...customFiltered, ...presetFiltered];
     }, [templates, customTemplatesAsCards, effectiveCategory]);
@@ -1509,20 +1578,22 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
 
     return (
         <div className="min-h-screen bg-[#0A0A0B] text-white">
-            <header className="border-b border-gray-700 bg-gray-900/80 backdrop-blur-sm sticky top-0 z-40">
+            <header className="premium-topbar sticky top-0 z-40">
                 <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                         <div className="flex items-center gap-2 sm:gap-4">
                             <button
                                 onClick={onBack}
-                                className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+                                className="premium-back-button"
+                                aria-label="Geri"
                             >
-                                <ArrowLeft className="w-5 h-5" />
+                                <ArrowLeft className="w-5 h-5 premium-back-icon" />
+                                <span className="premium-back-label hidden sm:inline">Geri</span>
                             </button>
                             {user && (
                                 <button
                                     onClick={() => openCustomTemplateModal()}
-                                    className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                                    className="premium-cta-button premium-cta-button--brand text-sm"
                                 >
                                     <Plus className="w-4 h-4" />
                                     <span className="hidden sm:inline">Yeni Özel Şablon</span>
@@ -2057,7 +2128,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                             {isGenerating ? (
                                                 <>
                                                     <Loader2 className="w-5 h-5 animate-spin" />
-                                                    {isAiEnhanced ? 'Alt uygulamaya aktariliyor...' : 'Olusturuluyor...'}
+                                                    {isAiEnhanced ? 'AI ile gelistiriliyor...' : 'Olusturuluyor...'}
                                                 </>
                                             ) : (
                                                 <>
@@ -2075,12 +2146,12 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                             {isBulkGenerating ? (
                                                 <>
                                                     <Loader2 className="w-5 h-5 animate-spin" />
-                                                    Seri paket hazirlaniyor...
+                                                    Alt-app'e aktariliyor...
                                                 </>
                                             ) : (
                                                 <>
                                                     <Archive className="w-5 h-5" />
-                                                    Seri Dilekce Paketi Uret
+                                                    Alt-app'te Onayla ve Indir
                                                 </>
                                             )}
                                         </button>
@@ -2200,7 +2271,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                     ] as const).map(opt => (
                                         <button
                                             key={opt.value}
-                                            onClick={() => setCustomForm(prev => ({ ...prev, template_type: opt.value }))}
+                                            onClick={() => handleCustomTemplateTypeChange(opt.value)}
                                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${customForm.template_type === opt.value
                                                     ? 'bg-blue-600 text-white'
                                                     : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
@@ -2211,6 +2282,26 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                     ))}
                                 </div>
                             </div>
+
+                            {customForm.template_type === 'dilekce' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-300 mb-1">Dilekçe Kategorisi *</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {PETITION_CATEGORY_OPTIONS.map(opt => (
+                                            <button
+                                                key={opt.value}
+                                                onClick={() => setCustomForm(prev => ({ ...prev, petition_category: opt.value }))}
+                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${customForm.petition_category === opt.value
+                                                        ? 'bg-blue-600 text-white'
+                                                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                                    }`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Dosya Yükleme */}
                             <div>
@@ -2313,8 +2404,3 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
         </div>
     );
 };
-
-
-
-
-

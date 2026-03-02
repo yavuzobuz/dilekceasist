@@ -9,6 +9,7 @@ import Profile from './src/pages/Profile';
 import PetitionPool from './src/pages/PetitionPool';
 import About from './src/pages/About';
 import FAQ from './src/pages/FAQ';
+import Pricing from './src/pages/Pricing';
 import Privacy from './src/pages/Privacy';
 import Terms from './src/pages/Terms';
 import Cookies from './src/pages/Cookies';
@@ -77,6 +78,8 @@ export default function App() {
       <Route path="/pool" element={<PetitionPool />} /> {/* Legacy route */}
       <Route path="/about" element={<About />} />
       <Route path="/faq" element={<FAQ />} />
+      <Route path="/fiyatlandirma" element={<Pricing />} />
+      <Route path="/pricing" element={<Pricing />} />
       <Route
         path="/sablonlar"
         element={

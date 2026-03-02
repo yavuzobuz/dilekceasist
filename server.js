@@ -33,6 +33,8 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
     .split(',')
     .map(email => email.trim().toLowerCase())
     .filter(Boolean);
+const TRIAL_DURATION_DAYS = Math.max(1, Number.parseInt(process.env.TRIAL_DURATION_DAYS || '14', 10));
+const TRIAL_DAILY_GENERATION_LIMIT = Math.max(1, Number.parseInt(process.env.TRIAL_DAILY_GENERATION_LIMIT || '10', 10));
 
 // CORS configuration
 const normalizeOrigin = (origin = '') => origin.trim().replace(/\/+$/, '').toLowerCase();
@@ -536,6 +538,11 @@ ${mevzuatQueries.map(q => `- ${q}`).join('\n')}
 // 4. Generate Petition
 app.post('/api/gemini/generate-petition', async (req, res) => {
     try {
+        const generationCredit = await consumeGenerationCredit(req, 'generate_petition');
+        if (!generationCredit.allowed) {
+            return res.status(generationCredit.status).json(generationCredit.payload);
+        }
+
         const params = req.body;
         const model = AI_CONFIG.MODEL_NAME;
 
@@ -710,10 +717,14 @@ YukarÄ±daki ham verileri kullanarak:
             config: { systemInstruction },
         });
 
-        res.json({ text: response.text });
+        res.json({
+            text: response.text,
+            usage: generationCredit.usage || null,
+        });
     } catch (error) {
         console.error('Generate Petition Error:', error);
-        res.status(500).json({ error: error.message });
+        const statusCode = Number(error?.status || 500);
+        res.status(statusCode).json({ error: error.message });
     }
 });
 
@@ -722,6 +733,16 @@ app.post('/api/gemini/chat', async (req, res) => {
     try {
         const { chatHistory, analysisSummary, context, files } = req.body;
         const model = AI_CONFIG.MODEL_NAME;
+        const latestUserMessage = extractLatestUserMessage(chatHistory);
+        let hasConsumedDocumentCredit = false;
+
+        if (isLikelyDocumentGenerationRequest(latestUserMessage)) {
+            const initialCredit = await consumeGenerationCredit(req, 'chat_document_generation');
+            if (!initialCredit.allowed) {
+                return res.status(initialCredit.status).json(initialCredit.payload);
+            }
+            hasConsumedDocumentCredit = true;
+        }
 
         const contextPrompt = `
 **MEVCUT DURUM VE BAÄLAM:**
@@ -788,6 +809,10 @@ KullanÄ±cÄ± ÅŸunlarÄ± sÃ¶ylediÄŸinde generate_document fonksiyonunu 
 - temyiz_dilekÃ§esi: Temyiz dilekÃ§esi
 - icra_takip_talebi: Ä°cra takip talebi
 - genel_dilekÃ§e: Genel dilekÃ§e/belge
+
+**LIMIT KURALI:**
+- Belge olustururken mutlaka generate_document fonksiyonunu kullan.
+- generate_document fonksiyonu cagirmadan tam belge metni verme.
 
 Ä°ÅŸte mevcut davanÄ±n baÄŸlamÄ±:
 ${contextPrompt}
@@ -906,6 +931,7 @@ TÃ¼rkÃ§e yanÄ±t ver. YargÄ±tay kararÄ± aranmasÄ± istendiÄŸinde Goo
         res.setHeader('Transfer-Encoding', 'chunked');
 
         let pendingFunctionCalls = [];
+        let streamBlockedByQuota = false;
 
         for await (const chunk of responseStream) {
             // Check for function calls
@@ -915,12 +941,42 @@ TÃ¼rkÃ§e yanÄ±t ver. YargÄ±tay kararÄ± aranmasÄ± istendiÄŸinde Goo
                     if (part.functionCall && part.functionCall.name === 'search_yargitay') {
                         pendingFunctionCalls.push(part.functionCall);
                     }
+                    if (part.functionCall && part.functionCall.name === 'generate_document' && !hasConsumedDocumentCredit) {
+                        const credit = await consumeGenerationCredit(req, 'chat_document_generation');
+                        if (!credit.allowed) {
+                            streamBlockedByQuota = true;
+                            const quotaChunk = {
+                                text: '\n\n⚠️ Gunluk trial belge uretim limitine ulastiniz. Yarin tekrar deneyin veya bir pakete gecin.\n',
+                                error: true,
+                                code: credit.payload?.code || 'TRIAL_DAILY_LIMIT_REACHED',
+                                quotaBlocked: true,
+                                usage: {
+                                    dailyLimit: credit.payload?.dailyLimit || TRIAL_DAILY_GENERATION_LIMIT,
+                                    usedToday: credit.payload?.usedToday || TRIAL_DAILY_GENERATION_LIMIT,
+                                    remainingToday: credit.payload?.remainingToday || 0,
+                                    trialEndsAt: credit.payload?.trialEndsAt || null,
+                                }
+                            };
+                            res.write(JSON.stringify(quotaChunk) + '\n');
+                            break;
+                        }
+                        hasConsumedDocumentCredit = true;
+                    }
                 }
+            }
+
+            if (streamBlockedByQuota) {
+                break;
             }
 
             // Send chunk as JSON string to handle both text and function calls
             const data = JSON.stringify(chunk);
             res.write(data + '\n'); // Newline delimited JSON
+        }
+
+        if (streamBlockedByQuota) {
+            res.end();
+            return;
         }
 
         // If there were search_yargitay function calls, execute them and send results
@@ -1001,19 +1057,328 @@ app.post('/api/html-to-docx', async (req, res) => {
 });
 
 // 6. Rewrite Text
+const REWRITE_MODE_CONFIG = {
+    fix: {
+        systemInstruction: 'Sen Turkce hukuk metni editorusun. Anlami degistirmeden yalnizca dil bilgisi, imla, noktalama ve anlatim netligini duzelt.',
+        taskTitle: 'DUZELT',
+        taskDescription: 'Metnin anlamini koruyarak imla, noktalama ve ifade sorunlarini duzelt.'
+    },
+    strengthen: {
+        systemInstruction: 'Sen Turkce hukuk metni editorusun. Metni daha ikna edici, tutarli ve profesyonel hale getir; yeni olgu uydurma.',
+        taskTitle: 'GUCLENDIR',
+        taskDescription: 'Metni hukuki uslup ve ikna gucu acisindan guclendir.'
+    },
+    rewrite: {
+        systemInstruction: 'Sen Turkce hukuk metni editorusun. Metni profesyonel, acik ve resmi bir dille yeniden yaz.',
+        taskTitle: 'YENIDEN_YAZ',
+        taskDescription: 'Metni profesyonel hukuki dille yeniden yaz.'
+    }
+};
+
+const isLikelyDocumentGenerationRequest = (rawMessage = '') => {
+    if (!rawMessage) return false;
+    const text = String(rawMessage).toLocaleLowerCase('tr-TR');
+    const hasDocumentIntent = /(dilekce|dilekçe|sozlesme|sözleşme|ihtarname|belge|taslak|metin|talep)/i.test(text);
+    const hasGenerationVerb = /(olustur|oluştur|uret|üret|hazirla|hazırla|yaz)/i.test(text);
+    return hasDocumentIntent && hasGenerationVerb;
+};
+
+const extractLatestUserMessage = (chatHistory = []) => {
+    if (!Array.isArray(chatHistory) || chatHistory.length === 0) return '';
+    for (let i = chatHistory.length - 1; i >= 0; i -= 1) {
+        const item = chatHistory[i];
+        if (item?.role === 'user' && typeof item?.text === 'string') {
+            return item.text;
+        }
+    }
+    return '';
+};
+
+const buildQuotaErrorPayload = ({ trialEndsAt, dailyLimit, usedToday, reason }) => ({
+    error: reason === 'trial_expired'
+        ? 'Ucretsiz deneme suresi bitti. Belge uretimine devam etmek icin bir pakete gecin.'
+        : 'Gunluk trial limitinize ulastiniz. Yarin tekrar deneyin veya bir pakete gecin.',
+    code: reason === 'trial_expired' ? 'TRIAL_EXPIRED' : 'TRIAL_DAILY_LIMIT_REACHED',
+    trialEndsAt,
+    dailyLimit,
+    usedToday,
+    remainingToday: Math.max(0, (dailyLimit || 0) - (usedToday || 0)),
+});
+
+const getAuthenticatedUserFromRequest = async (req) => {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+        const err = new Error('Supabase auth config missing on server');
+        err.status = 500;
+        throw err;
+    }
+
+    const token = getBearerToken(req.headers.authorization);
+    if (!token) {
+        const err = new Error('Belge uretimi icin giris yapmaniz gerekiyor.');
+        err.status = 401;
+        throw err;
+    }
+
+    const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { autoRefreshToken: false, persistSession: false }
+    });
+
+    const { data: { user }, error } = await supabaseAuth.auth.getUser(token);
+    if (error || !user) {
+        const err = new Error('Gecersiz oturum. Lutfen tekrar giris yapin.');
+        err.status = 401;
+        throw err;
+    }
+
+    return user;
+};
+
+const getOrCreateUserPlan = async (serviceClient, userId) => {
+    const { data: existingPlan, error: planError } = await serviceClient
+        .from('user_usage_plans')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+    if (planError) {
+        throw planError;
+    }
+    if (existingPlan) {
+        return existingPlan;
+    }
+
+    const now = new Date();
+    const trialEndsAt = new Date(now.getTime() + TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
+    const payload = {
+        user_id: userId,
+        plan_code: 'trial',
+        status: 'active',
+        trial_starts_at: now.toISOString(),
+        trial_ends_at: trialEndsAt,
+        daily_limit: TRIAL_DAILY_GENERATION_LIMIT,
+    };
+
+    const { data: insertedPlan, error: insertError } = await serviceClient
+        .from('user_usage_plans')
+        .insert(payload)
+        .select('*')
+        .single();
+
+    if (insertError) {
+        const { data: fallbackPlan, error: fallbackError } = await serviceClient
+            .from('user_usage_plans')
+            .select('*')
+            .eq('user_id', userId)
+            .maybeSingle();
+        if (fallbackError || !fallbackPlan) {
+            throw insertError;
+        }
+        return fallbackPlan;
+    }
+
+    return insertedPlan;
+};
+
+const getTodayIsoDate = () => new Date().toISOString().slice(0, 10);
+
+const parsePositiveLimit = (value) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+        return null;
+    }
+    return Math.floor(parsed);
+};
+
+const getUsageCountForDate = async (serviceClient, userId, usageDate) => {
+    const { count, error } = await serviceClient
+        .from('ai_generation_usage')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('usage_date', usageDate);
+
+    if (error) {
+        throw error;
+    }
+
+    return count || 0;
+};
+
+const buildPlanUsageSummary = async (serviceClient, userId) => {
+    const plan = await getOrCreateUserPlan(serviceClient, userId);
+    const planCode = String(plan?.plan_code || 'trial').toLowerCase();
+    const status = String(plan?.status || 'active').toLowerCase();
+    const dailyLimit = parsePositiveLimit(plan?.daily_limit);
+    const today = getTodayIsoDate();
+    const usedToday = await getUsageCountForDate(serviceClient, userId, today);
+    const remainingToday = dailyLimit === null ? null : Math.max(0, dailyLimit - usedToday);
+
+    return {
+        user_id: userId,
+        plan_code: planCode,
+        status,
+        daily_limit: dailyLimit,
+        used_today: usedToday,
+        remaining_today: remainingToday,
+        trial_starts_at: plan?.trial_starts_at || null,
+        trial_ends_at: plan?.trial_ends_at || null,
+    };
+};
+
+const consumeGenerationCredit = async (req, actionType = 'document_generation') => {
+    const user = await getAuthenticatedUserFromRequest(req);
+    const serviceClient = createServiceRoleClient();
+    const plan = await getOrCreateUserPlan(serviceClient, user.id);
+    const planCode = String(plan?.plan_code || 'trial').toLowerCase();
+    const status = String(plan?.status || 'active').toLowerCase();
+    const today = getTodayIsoDate();
+    const configuredDailyLimit = parsePositiveLimit(plan?.daily_limit);
+
+    if (status !== 'active') {
+        return {
+            allowed: false,
+            status: 403,
+            payload: {
+                error: 'Paketiniz aktif degil. Lutfen hesap yoneticinizle iletisime gecin.',
+                code: 'PLAN_INACTIVE'
+            }
+        };
+    }
+
+    const isTrialPlan = planCode === 'trial';
+    const dailyLimit = isTrialPlan
+        ? (configuredDailyLimit || TRIAL_DAILY_GENERATION_LIMIT)
+        : configuredDailyLimit;
+    const usedToday = dailyLimit ? await getUsageCountForDate(serviceClient, user.id, today) : 0;
+
+    if (isTrialPlan) {
+        const now = new Date();
+        const trialEndsAt = plan?.trial_ends_at ? new Date(plan.trial_ends_at) : null;
+
+        if (trialEndsAt && now > trialEndsAt) {
+            return {
+                allowed: false,
+                status: 403,
+                payload: buildQuotaErrorPayload({
+                    trialEndsAt: plan.trial_ends_at,
+                    dailyLimit,
+                    usedToday: usedToday || 0,
+                    reason: 'trial_expired'
+                })
+            };
+        }
+    }
+
+    if (dailyLimit && usedToday >= dailyLimit) {
+        if (isTrialPlan) {
+            return {
+                allowed: false,
+                status: 429,
+                payload: buildQuotaErrorPayload({
+                    trialEndsAt: plan.trial_ends_at,
+                    dailyLimit,
+                    usedToday,
+                    reason: 'daily_limit'
+                })
+            };
+        }
+
+        return {
+            allowed: false,
+            status: 429,
+            payload: {
+                error: 'Paketinizin gunluk belge uretim limitine ulastiniz.',
+                code: 'PLAN_DAILY_LIMIT_REACHED',
+                dailyLimit,
+                usedToday,
+                remainingToday: 0
+            }
+        };
+    }
+
+    const { error: usageInsertError } = await serviceClient
+        .from('ai_generation_usage')
+        .insert({
+            user_id: user.id,
+            usage_date: today,
+            action_type: actionType,
+            plan_code: planCode,
+        });
+
+    if (usageInsertError) {
+        throw usageInsertError;
+    }
+
+    if (isTrialPlan) {
+        return {
+            allowed: true,
+            user,
+            plan,
+            usage: {
+                dailyLimit,
+                usedToday: usedToday + 1,
+                remainingToday: Math.max(0, dailyLimit - (usedToday + 1)),
+                trialEndsAt: plan.trial_ends_at,
+            }
+        };
+    }
+
+    return {
+        allowed: true,
+        user,
+        plan,
+        usage: dailyLimit ? {
+            dailyLimit,
+            usedToday: usedToday + 1,
+            remainingToday: Math.max(0, dailyLimit - (usedToday + 1)),
+            trialEndsAt: null,
+        } : null
+    };
+};
+
+const normalizeRewriteMode = (mode) => {
+    const normalized = String(mode || 'rewrite').trim().toLowerCase();
+    return Object.prototype.hasOwnProperty.call(REWRITE_MODE_CONFIG, normalized) ? normalized : 'rewrite';
+};
+
 app.post('/api/gemini/rewrite', async (req, res) => {
     try {
-        const { textToRewrite } = req.body;
+        const { textToRewrite, mode } = req.body || {};
+        if (typeof textToRewrite !== 'string' || textToRewrite.trim().length === 0) {
+            return res.status(400).json({ error: 'textToRewrite is required' });
+        }
+        if (textToRewrite.length > 20000) {
+            return res.status(413).json({ error: 'textToRewrite exceeds 20000 characters' });
+        }
+
+        const normalizedMode = normalizeRewriteMode(mode);
+        const modeConfig = REWRITE_MODE_CONFIG[normalizedMode];
         const model = AI_CONFIG.MODEL_NAME;
-        const systemInstruction = `Sen bir TÃ¼rk hukuk metni editÃ¶rÃ¼sÃ¼n...`;
-        const promptText = `LÃ¼tfen aÅŸaÄŸÄ±daki metni yeniden yaz:\n\n"${textToRewrite}"`;
+        const promptText = `
+GOREV: ${modeConfig.taskTitle}
+ACIKLAMA: ${modeConfig.taskDescription}
+
+KURALLAR:
+- Turkce yaz.
+- Ek bilgi uydurma.
+- Yalnizca duzenlenmis metni dondur.
+
+METIN:
+"""${textToRewrite}"""
+`;
 
         const response = await ai.models.generateContent({
             model,
             contents: promptText,
-            config: { systemInstruction },
+            config: { systemInstruction: modeConfig.systemInstruction },
         });
-        res.json({ text: response.text.trim() });
+
+        const output = typeof response.text === 'string' ? response.text.trim() : '';
+        if (!output) {
+            return res.status(502).json({ error: 'Rewrite model returned empty output' });
+        }
+
+        res.json({ text: output, mode: normalizedMode });
     } catch (error) {
         console.error('Rewrite Error:', error);
         res.status(500).json({ error: error.message });
@@ -3161,6 +3526,33 @@ app.post('/api/templates/:id/use', (req, res) => {
     });
 });
 
+const normalizePlanCode = (planCode) => {
+    const normalized = String(planCode || '').trim().toLowerCase();
+    if (!normalized) return null;
+    if (!/^[a-z0-9_-]{2,32}$/.test(normalized)) return null;
+    return normalized;
+};
+
+const normalizePlanStatus = (planStatus) => {
+    const normalized = String(planStatus || '').trim().toLowerCase();
+    if (!normalized) return null;
+    if (!['active', 'inactive', 'suspended'].includes(normalized)) return null;
+    return normalized;
+};
+
+// Authenticated user plan summary
+app.get('/api/user-plan-summary', async (req, res) => {
+    try {
+        const user = await getAuthenticatedUserFromRequest(req);
+        const serviceClient = createServiceRoleClient();
+        const summary = await buildPlanUsageSummary(serviceClient, user.id);
+        res.json({ summary });
+    } catch (error) {
+        console.error('User plan summary error:', error);
+        res.status(error.status || 500).json({ error: error.message || 'Plan ozeti alinamadi' });
+    }
+});
+
 // Admin Users API - Get users with email from Supabase Auth
 app.get('/api/admin-users', requireAdminAuth, async (req, res) => {
     try {
@@ -3192,8 +3584,17 @@ app.get('/api/admin-users', requireAdminAuth, async (req, res) => {
             );
         }
 
-        // Get profiles data for additional info
         const userIds = filteredUsers.map(u => u.id);
+        if (userIds.length === 0) {
+            return res.json({
+                users: [],
+                total: 0,
+                page,
+                pageSize
+            });
+        }
+
+        // Get profiles data for additional info
         const { data: profiles } = await supabaseAdmin
             .from('profiles')
             .select('id, full_name')
@@ -3207,14 +3608,40 @@ app.get('/api/admin-users', requireAdminAuth, async (req, res) => {
             .select('user_id')
             .in('user_id', userIds);
 
-        const countMap = new Map();
+        const petitionCountMap = new Map();
         petitionCounts?.forEach(p => {
-            countMap.set(p.user_id, (countMap.get(p.user_id) || 0) + 1);
+            petitionCountMap.set(p.user_id, (petitionCountMap.get(p.user_id) || 0) + 1);
+        });
+
+        // Get plan data
+        const { data: plans } = await supabaseAdmin
+            .from('user_usage_plans')
+            .select('user_id, plan_code, status, daily_limit, trial_starts_at, trial_ends_at')
+            .in('user_id', userIds);
+        const planMap = new Map(plans?.map(plan => [plan.user_id, plan]) || []);
+
+        // Get today's usage for visible users
+        const today = getTodayIsoDate();
+        const { data: usageRows } = await supabaseAdmin
+            .from('ai_generation_usage')
+            .select('user_id')
+            .in('user_id', userIds)
+            .eq('usage_date', today);
+        const usageCountMap = new Map();
+        usageRows?.forEach(row => {
+            usageCountMap.set(row.user_id, (usageCountMap.get(row.user_id) || 0) + 1);
         });
 
         // Combine data
         const combinedUsers = filteredUsers.map(user => {
             const profile = profileMap.get(user.id) || {};
+            const plan = planMap.get(user.id);
+            const planCode = String(plan?.plan_code || 'trial').toLowerCase();
+            const planStatus = String(plan?.status || 'active').toLowerCase();
+            const dailyLimit = parsePositiveLimit(plan?.daily_limit);
+            const usedToday = usageCountMap.get(user.id) || 0;
+            const remainingToday = dailyLimit === null ? null : Math.max(0, dailyLimit - usedToday);
+
             return {
                 id: user.id,
                 email: user.email,
@@ -3222,7 +3649,14 @@ app.get('/api/admin-users', requireAdminAuth, async (req, res) => {
                 office_name: null,
                 created_at: user.created_at,
                 last_sign_in_at: user.last_sign_in_at,
-                petition_count: countMap.get(user.id) || 0
+                petition_count: petitionCountMap.get(user.id) || 0,
+                plan_code: planCode,
+                plan_status: planStatus,
+                daily_limit: dailyLimit,
+                used_today: usedToday,
+                remaining_today: remainingToday,
+                trial_starts_at: plan?.trial_starts_at || null,
+                trial_ends_at: plan?.trial_ends_at || null,
             };
         });
 
@@ -3242,6 +3676,90 @@ app.get('/api/admin-users', requireAdminAuth, async (req, res) => {
     } catch (error) {
         console.error('Admin users error:', error);
         res.status(500).json({ error: error.message });
+    }
+});
+
+// Admin Users API - Assign package and document generation rights
+app.patch('/api/admin-users', requireAdminAuth, async (req, res) => {
+    try {
+        const { userId, planCode, status, dailyLimit, resetTodayUsage } = req.body || {};
+
+        if (!userId || typeof userId !== 'string') {
+            return res.status(400).json({ error: 'userId zorunludur.' });
+        }
+
+        const serviceClient = createServiceRoleClient();
+        const existingPlan = await getOrCreateUserPlan(serviceClient, userId);
+        const updates = {};
+
+        if (planCode !== undefined) {
+            const normalizedPlanCode = normalizePlanCode(planCode);
+            if (!normalizedPlanCode) {
+                return res.status(400).json({ error: 'Gecersiz planCode degeri.' });
+            }
+            updates.plan_code = normalizedPlanCode;
+        }
+
+        if (status !== undefined) {
+            const normalizedStatus = normalizePlanStatus(status);
+            if (!normalizedStatus) {
+                return res.status(400).json({ error: 'Gecersiz status degeri.' });
+            }
+            updates.status = normalizedStatus;
+        }
+
+        if (dailyLimit !== undefined) {
+            if (dailyLimit === null || dailyLimit === '') {
+                updates.daily_limit = null;
+            } else {
+                const normalizedLimit = parsePositiveLimit(dailyLimit);
+                if (!normalizedLimit) {
+                    return res.status(400).json({ error: 'dailyLimit pozitif bir sayi olmali veya null olmalidir.' });
+                }
+                updates.daily_limit = normalizedLimit;
+            }
+        }
+
+        if ((updates.plan_code || existingPlan?.plan_code) === 'trial') {
+            const now = new Date();
+            updates.trial_starts_at = existingPlan?.trial_starts_at || now.toISOString();
+            updates.trial_ends_at = existingPlan?.trial_ends_at
+                || new Date(now.getTime() + TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
+            if (updates.daily_limit === undefined && !parsePositiveLimit(existingPlan?.daily_limit)) {
+                updates.daily_limit = TRIAL_DAILY_GENERATION_LIMIT;
+            }
+        }
+
+        if (Object.keys(updates).length > 0) {
+            const { error: updateError } = await serviceClient
+                .from('user_usage_plans')
+                .update(updates)
+                .eq('user_id', userId);
+
+            if (updateError) {
+                throw updateError;
+            }
+        }
+
+        if (resetTodayUsage) {
+            const today = getTodayIsoDate();
+            const { error: resetError } = await serviceClient
+                .from('ai_generation_usage')
+                .delete()
+                .eq('user_id', userId)
+                .eq('usage_date', today);
+
+            if (resetError) {
+                throw resetError;
+            }
+        }
+
+        const summary = await buildPlanUsageSummary(serviceClient, userId);
+        res.json({ success: true, summary });
+    } catch (error) {
+        console.error('Admin user rights update error:', error);
+        res.status(500).json({ error: error.message || 'Kullanici haklari guncellenemedi.' });
     }
 });
 

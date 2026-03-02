@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 import UTIF from 'utif2';
 import mammoth from 'mammoth';
 import { PetitionType, ChatMessage, UploadedFile, WebSearchResult, AnalysisData, UserRole, CaseDetails, PetitionCategory, PetitionSubcategory, CategoryToSubcategories, SubcategoryToPetitionTypes, CategoryToRoles, LegalSearchResult, ContactInfo, LawyerInfo } from '../../types';
@@ -217,7 +218,7 @@ const extractKeywordCandidates = (rawValue: string): string[] => {
 const isLikelyPetitionRequest = (rawMessage: string): boolean => {
     if (!rawMessage) return false;
     return /(dilekce|dilekçe|belge|taslak|template|ihtarname|itiraz|temyiz|feragat|talep)/i.test(rawMessage)
-        && /(olustur|oluştur|hazirla|hazırla|yaz)/i.test(rawMessage);
+        && /(olustur|olutur|hazirla|hazırla|yaz)/i.test(rawMessage);
 };
 
 const buildLegalResultsPrompt = (results: AlternativeLegalSearchResult[]): string => {
@@ -237,6 +238,12 @@ interface TemplateTransferDecision {
     relevanceScore?: number;
 }
 
+interface TemplateTransferVariable {
+    key: string;
+    label: string;
+    required: boolean;
+}
+
 interface TemplateTransferContext {
     source?: string;
     templateId?: string;
@@ -247,9 +254,32 @@ interface TemplateTransferContext {
     selectedDecisions?: TemplateTransferDecision[];
     aiRequested?: boolean;
     createdAt?: string;
+    bulkPackagePending: boolean;
+    bulkPackageStorageKey: string;
+    bulkRowCount: number;
+    editableTemplateContent: string;
+    templateVariables: TemplateTransferVariable[];
+    enableVariableEditor: boolean;
 }
 
 const TEMPLATE_CONTEXT_STORAGE_KEY = 'templateContext';
+const BULK_TEMPLATE_PACKAGE_STORAGE_KEY = 'templateBulkPackage';
+
+interface PendingBulkTemplatePackage {
+    source: string;
+    templateId: string;
+    templateTitle: string;
+    templateContent: string;
+    rowVariables: Array<Record<string, string>>;
+    includeDocx: boolean;
+    createdAt: string;
+}
+
+interface TemplateVariableEditorItem {
+    key: string;
+    label: string;
+    required: boolean;
+}
 
 const parseTemplateTransferContext = (rawValue: string | null): TemplateTransferContext | null => {
     if (!rawValue) return null;
@@ -260,6 +290,121 @@ const parseTemplateTransferContext = (rawValue: string | null): TemplateTransfer
     } catch {
         return null;
     }
+};
+
+const parsePendingBulkTemplatePackage = (rawValue: string | null): PendingBulkTemplatePackage | null => {
+    if (!rawValue) return null;
+    try {
+        const parsed = JSON.parse(rawValue);
+        if (!parsed || typeof parsed !== 'object') return null;
+        if (!Array.isArray(parsed.rowVariables) || typeof parsed.templateContent !== 'string') return null;
+        return parsed as PendingBulkTemplatePackage;
+    } catch {
+        return null;
+    }
+};
+
+const extractTemplateVariableKeys = (content: string): string[] => {
+    if (!content) return [];
+    const regex = /\{\{\s*([^{}\s]+)\s*\}\}/g;
+    const found: string[] = [];
+    const seen = new Set<string>();
+    let match: RegExpExecArray | null = regex.exec(content);
+
+    while (match) {
+        const key = String(match[1] || '').trim();
+        if (key && !seen.has(key)) {
+            seen.add(key);
+            found.push(key);
+        }
+        match = regex.exec(content);
+    }
+
+    return found;
+};
+
+const buildTemplateVariableEditorItems = (
+    templateVariables: TemplateTransferVariable[] | undefined,
+    contentWithPlaceholders: string
+): TemplateVariableEditorItem[] => {
+    const result = new Map<string, TemplateVariableEditorItem>();
+
+    (templateVariables || []).forEach(variable => {
+        const key = String(variable.key || '').trim();
+        if (!key) return;
+        result.set(key, {
+            key,
+            label: String(variable.label || key).trim() || key,
+            required: Boolean(variable.required),
+        });
+    });
+
+    extractTemplateVariableKeys(contentWithPlaceholders).forEach(key => {
+        if (result.has(key)) return;
+        result.set(key, { key, label: key, required: false });
+    });
+
+    return Array.from(result.values());
+};
+
+const seedTemplateVariableValues = (
+    items: TemplateVariableEditorItem[],
+    incomingValues: Record<string, string>
+): Record<string, string> => {
+    const seeded: Record<string, string> = {};
+    items.forEach(item => {
+        seeded[item.key] = String(incomingValues?.[item.key] || '');
+    });
+    return seeded;
+};
+
+const replaceTemplateVariables = (content: string, variables: Record<string, string>): string => {
+    if (!content) return '';
+
+    let output = content;
+    for (const [key, value] of Object.entries(variables)) {
+        const escapedKey = key.replace(/[.*+^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\{\\{\\s*${escapedKey}\\s*\\}\\}`, 'gi');
+        output = output.replace(regex, value || '');
+    }
+    return output;
+};
+
+const applyTemplateVariablesForEditor = (content: string, variables: Record<string, string>): string => {
+    if (!content) return '';
+
+    let output = content;
+    for (const [key, value] of Object.entries(variables)) {
+        const nextValue = String(value || '');
+        if (!nextValue.trim()) continue;
+        const escapedKey = key.replace(/[.*+^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\{\\{\\s*${escapedKey}\\s*\\}\\}`, 'gi');
+        output = output.replace(regex, nextValue);
+    }
+
+    return output;
+};
+
+const sanitizeFileName = (value: string): string => {
+    const safe = value
+        .replace(/[<>:"/\\|*\x00-\x1F]/g, '')
+        .replace(/\s+/g, '_')
+        .replace(/_+/g, '_')
+        .trim();
+
+    return safe || 'dilekce';
+};
+
+const escapeHtml = (value: string): string => value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const plainTextToHtml = (value: string): string => {
+    const escaped = escapeHtml(value || '');
+    return escaped.split('\n').map(line => `<p>${line || '&nbsp;'}</p>`).join('');
 };
 
 const formatTemplateVariableContext = (variableValues?: Record<string, string>): string => {
@@ -304,7 +449,7 @@ const PARTY_FIELDS: Array<{ key: string; label: string; hint: string }> = [
     { key: 'davaci', label: 'Davaci', hint: 'Dava acan taraf' },
     { key: 'davali', label: 'Davali', hint: 'Dava edilen taraf' },
     { key: 'musteki', label: 'Musteki', hint: 'Sikayetci / magdur taraf' },
-    { key: 'supheli', label: 'Supheli / Sanik', hint: 'Hakkinda islem yapilan taraf' },
+    { key: 'supheli', label: 'Supheli / Sanik', hint: 'Hakkinda işlem yapilan taraf' },
     { key: 'katilan', label: 'Katilan / Mudahil', hint: 'Davaya sonradan katilan taraf' },
     { key: 'diger', label: 'Diger Taraf', hint: 'Ucuncu kisi / kurum' },
 ];
@@ -384,9 +529,17 @@ export default function AlternativeApp() {
     const [userRole, setUserRole] = useState<UserRole>(UserRole.Davaci);
     const [caseDetails, setCaseDetails] = useState<CaseDetails>({ court: '', fileNumber: '', decisionNumber: '', decisionDate: '' });
     const [files, setFiles] = useState<File[]>([]);
+    const FILE_BATCH_SIZE = 15;
+    const MAX_UPLOAD_BATCHES = 3;
+    const MAX_TOTAL_UPLOAD_FILES = FILE_BATCH_SIZE * MAX_UPLOAD_BATCHES;
+    const [enabledUploadBatches, setEnabledUploadBatches] = useState(1);
     const [docContent, setDocContent] = useState('');
     const [specifics, setSpecifics] = useState('');
     const [parties, setParties] = useState<{ [key: string]: string }>({});
+
+    const activeUploadLimit = enabledUploadBatches * FILE_BATCH_SIZE;
+    const canUnlockNextUploadBatch = enabledUploadBatches < MAX_UPLOAD_BATCHES;
+    const canSelectMoreFiles = files.length < Math.min(activeUploadLimit, MAX_TOTAL_UPLOAD_FILES);
 
     // Cascading dropdown state
     const [selectedCategory, setSelectedCategory] = useState<PetitionCategory>(PetitionCategory.Hukuk);
@@ -402,6 +555,12 @@ export default function AlternativeApp() {
             setUserRole(availableRoles[0]);
         }
     }, [selectedCategory, availableRoles, userRole, setUserRole]);
+
+    useEffect(() => {
+        if (files.length === 0 && enabledUploadBatches !== 1) {
+            setEnabledUploadBatches(1);
+        }
+    }, [files.length, enabledUploadBatches]);
 
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => {
         if (petitionFromState?.metadata?.chatHistory) {
@@ -423,6 +582,12 @@ export default function AlternativeApp() {
 
     const [generatedPetition, setGeneratedPetition] = useState(petitionFromState?.content || '');
     const [petitionVersion, setPetitionVersion] = useState(0);
+    const [pendingBulkPackage, setPendingBulkPackage] = useState<PendingBulkTemplatePackage | null>(null);
+    const [isBulkPackageDownloading, setIsBulkPackageDownloading] = useState(false);
+    const [editableTemplateContent, setEditableTemplateContent] = useState<string | null>(null);
+    const [templateVariableItems, setTemplateVariableItems] = useState<TemplateVariableEditorItem[]>([]);
+    const [templateVariableValues, setTemplateVariableValues] = useState<Record<string, string>>({});
+    const [hasTemplateVariableChanges, setHasTemplateVariableChanges] = useState(false);
 
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isGeneratingKeywords, setIsGeneratingKeywords] = useState(false);
@@ -464,17 +629,45 @@ export default function AlternativeApp() {
     useEffect(() => {
         const templateContent = localStorage.getItem('templateContent');
         const rawTemplateCtx = localStorage.getItem('templateContext');
+        const rawBulkPackage = localStorage.getItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
         const templateCtx = parseTemplateTransferContext(rawTemplateCtx);
+        const bulkPackage = parsePendingBulkTemplatePackage(rawBulkPackage);
 
         if (templateContent) {
-            setGeneratedPetition(templateContent);
-            setRawTemplateContent(templateContent);
+            const hasPendingBulkPackage = Boolean(templateCtx.bulkPackagePending && bulkPackage);
+            const variableEditorEnabled = Boolean(templateCtx.enableVariableEditor) && !hasPendingBulkPackage;
+            const editableSourceContent = String(templateCtx.editableTemplateContent || templateContent || '');
+            const nextTemplateVariableItems = variableEditorEnabled
+                ? buildTemplateVariableEditorItems(templateCtx.templateVariables, editableSourceContent)
+                : [];
+            const nextTemplateVariableValues = seedTemplateVariableValues(nextTemplateVariableItems, templateCtx.variableValues);
+            const hasTemplateVariableEditor = variableEditorEnabled
+                && editableSourceContent.trim().length > 0
+                && nextTemplateVariableItems.length > 0;
+            const initialTemplateDraft = hasTemplateVariableEditor
+                ? applyTemplateVariablesForEditor(editableSourceContent, nextTemplateVariableValues)
+                : templateContent;
+
+            setGeneratedPetition(initialTemplateDraft);
+            setRawTemplateContent(initialTemplateDraft);
+            setEditableTemplateContent(hasTemplateVariableEditor ? editableSourceContent : null);
+            setTemplateVariableItems(hasTemplateVariableEditor ? nextTemplateVariableItems : []);
+            setTemplateVariableValues(hasTemplateVariableEditor ? nextTemplateVariableValues : {});
+            setHasTemplateVariableChanges(false);
             setPetitionVersion(v => v + 1);
-            setCurrentStep(4);
+            setCurrentStep(hasPendingBulkPackage ? 4 : 2);
+            setPendingBulkPackage(hasPendingBulkPackage ? bulkPackage : null);
+            setDocContent(prev => [
+                prev,
+                `SABLON TASLAK METNI\n${initialTemplateDraft}`,
+            ].filter(Boolean).join('\n\n'));
             localStorage.removeItem('templateContent');
             localStorage.removeItem('templateContext');
+            if (!hasPendingBulkPackage) {
+                localStorage.removeItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
+            }
 
-            // TemplateContext varsa: kararları, alan değerlerini ve AI güçlendirme flag'ini aktar
+            // TemplateContext varsa: kararlar, alan deerlerini ve AI glendirme flag'ini aktar
             if (templateCtx) {
                 const transferredDecisions = normalizeTemplateDecisions(templateCtx.selectedDecisions);
                 if (transferredDecisions.length > 0) {
@@ -484,13 +677,23 @@ export default function AlternativeApp() {
                 if (variableContext) {
                     setSpecifics(prev => [prev, variableContext].filter(Boolean).join('\n\n'));
                 }
-                if (templateCtx.aiRequested && transferredDecisions.length > 0) {
+                if (templateCtx.aiRequested) {
                     setPendingTemplateAutoEnhancement(true);
                 }
             }
 
-            addToast('Şablon yüklendi! ✅', 'success');
+            if (hasPendingBulkPackage) {
+                addToast(`Seri paket taslagi acildi. Duzenleme sonrasi ${bulkPackage.rowVariables.length || 0} dilekceyi onayla ve indir.`, 'success');
+            } else {
+                addToast('ablon yklendi! ', 'success');
+            }
         } else if (petitionFromState) {
+            setPendingBulkPackage(null);
+            setEditableTemplateContent(null);
+            setTemplateVariableItems([]);
+            setTemplateVariableValues({});
+            setHasTemplateVariableChanges(false);
+            localStorage.removeItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
             setGeneratedPetition(petitionFromState.content || '');
             setPetitionVersion(v => v + 1);
             setCurrentStep(4);
@@ -511,23 +714,30 @@ export default function AlternativeApp() {
         }
     }, [petitionFromState?.id]);
 
-    // Otomatik AI güçlendirme: şablon kararlarla taşındığında çalışır
+    // Otomatik AI guclendirme: sablon aktariminda karar olmasa da calisir.
     useEffect(() => {
         if (!pendingTemplateAutoEnhancement || !generatedPetition || isLoadingChat) return;
         setPendingTemplateAutoEnhancement(false);
         setTemplateEnhancementError(null);
+        const hasSelectedDecisions = legalSearchResults.length > 0;
 
         const autoEnhanceMessage = [
-            'Bu taslağı seçili emsal kararlarla güçlendir.',
-            'Taslak metni hukuki dille geliştir, emsal kararları gerekçe bölümünde atıf olarak kullan.',
-            'Eksik bilgileri [...] olarak işaretle.',
-        ].join(' ');
+            'Asagidaki mevcut sablon taslagini detaylandir ve nihai belgeyi olustur.',
+            hasSelectedDecisions
+                ? 'Secili emsal kararlari gerekce bolumunde atif yaparak kullan.'
+                : 'Emsal karar secilmemisse genel hukuki gerekce dilini kullan.',
+            'Baslik ve bolum yapisini koru, eksik bilgileri [...] olarak isaretle.',
+            'Sadece nihai metni ver.',
+            '',
+            '[MEVCUT TASLAK]',
+            generatedPetition,
+        ].join('\n');
 
         handleSendChatMessage(autoEnhanceMessage).catch((enhanceError: any) => {
-            const msg = enhanceError instanceof Error ? enhanceError.message : 'AI güçlendirme sırasında bilinmeyen bir hata oluştu.';
+            const msg = enhanceError instanceof Error ? enhanceError.message : 'AI glendirme srasnda bilinmeyen bir hata olutu.';
             setTemplateEnhancementError(msg);
         });
-    }, [pendingTemplateAutoEnhancement, generatedPetition, isLoadingChat]);
+    }, [pendingTemplateAutoEnhancement, generatedPetition, isLoadingChat, legalSearchResults.length]);
 
     const runLegalSearch = async (keywordsForSearch: string[]) => {
         if (keywordsForSearch.length === 0) return;
@@ -578,6 +788,19 @@ export default function AlternativeApp() {
     const handleSelectedFiles = useCallback((rawFiles: FileList | null) => {
         if (!rawFiles) return;
 
+        const currentBatchRemaining = activeUploadLimit - files.length;
+        const totalRemaining = MAX_TOTAL_UPLOAD_FILES - files.length;
+        const availableSlots = Math.min(currentBatchRemaining, totalRemaining);
+
+        if (availableSlots <= 0) {
+            if (files.length >= MAX_TOTAL_UPLOAD_FILES) {
+                addToast(`En fazla ${MAX_TOTAL_UPLOAD_FILES} dosya yukleyebilirsiniz.`, 'info');
+            } else {
+                addToast(`${FILE_BATCH_SIZE} dosyalik bu parcayi doldurdunuz. Devam etmek icin "Ekleme Yap" butonunu kullanin.`, 'info');
+            }
+            return;
+        }
+
         const selectedFiles = Array.from(rawFiles);
         const allowedExtensions = ['.pdf', '.udf', '.jpg', '.jpeg', '.png', '.webp', '.tif', '.tiff', '.doc', '.docx'];
         const validFiles = selectedFiles.filter(file =>
@@ -588,12 +811,130 @@ export default function AlternativeApp() {
             addToast('Sadece PDF, UDF, Word veya resim dosyalari desteklenir.', 'info');
         }
 
-        if (validFiles.length > 10) {
-            addToast('En fazla 10 dosya secilebilir. Ilk 10 dosya alindi.', 'info');
+        if (validFiles.length > availableSlots) {
+            addToast(`Bu adimda en fazla ${availableSlots} dosya ekleyebilirsiniz.`, 'info');
         }
 
-        setFiles(validFiles.slice(0, 10));
-    }, [addToast]);
+        setFiles(prev => [...prev, ...validFiles.slice(0, availableSlots)]);
+    }, [addToast, activeUploadLimit, files.length, FILE_BATCH_SIZE, MAX_TOTAL_UPLOAD_FILES]);
+
+    const handleUnlockNextUploadBatch = useCallback(() => {
+        if (!canUnlockNextUploadBatch) return;
+        const nextBatch = enabledUploadBatches + 1;
+        setEnabledUploadBatches(nextBatch);
+        addToast(`${nextBatch}. parca acildi. 15 dosya daha ekleyebilirsiniz.`, 'success');
+    }, [addToast, canUnlockNextUploadBatch, enabledUploadBatches]);
+
+    const handleApproveAndDownloadBulkPackage = useCallback(async () => {
+        if (!pendingBulkPackage) return;
+
+        const rowVariables = Array.isArray(pendingBulkPackage.rowVariables) ? pendingBulkPackage.rowVariables : [];
+        if (rowVariables.length === 0) {
+            addToast('Seri paket icin indirilecek satir bulunamadi.', 'error');
+            return;
+        }
+
+        const baseTemplateContent = (generatedPetition || pendingBulkPackage.templateContent || '').trim();
+        if (!baseTemplateContent) {
+            addToast('Paket olusturmak icin bir taslak metin bulunamadi.', 'error');
+            return;
+        }
+
+        setIsBulkPackageDownloading(true);
+        try {
+            const zip = new JSZip();
+            const failedDocxRows: string[] = [];
+            const usedNames = new Set<string>();
+
+            for (let index = 0; index < rowVariables.length; index += 1) {
+                const values = rowVariables[index] || {};
+                const content = replaceTemplateVariables(baseTemplateContent, values);
+
+                const preferredName =
+                    Object.entries(values).find(([key, value]) => key.endsWith('_AD') && String(value || '').trim())?.[1] ||
+                    Object.values(values).find(value => String(value || '').trim()) ||
+                    '';
+
+                let fileBase = sanitizeFileName(`${index + 1}_${preferredName || 'dilekce'}`);
+                while (usedNames.has(fileBase)) {
+                    fileBase = `${fileBase}_${index + 1}`;
+                }
+                usedNames.add(fileBase);
+
+                zip.file(`${fileBase}.txt`, content);
+
+                if (pendingBulkPackage.includeDocx) {
+                    try {
+                        const response = await fetch('/api/html-to-docx', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                html: plainTextToHtml(content),
+                                options: {
+                                    font: 'Calibri',
+                                    fontSize: '22',
+                                },
+                            }),
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`DOCX endpoint hatasi: ${response.status}`);
+                        }
+
+                        const docxBuffer = await response.arrayBuffer();
+                        zip.file(`${fileBase}.docx`, docxBuffer);
+                    } catch (docxError) {
+                        const reason = docxError instanceof Error ? docxError.message : 'Bilinmeyen hata';
+                        failedDocxRows.push(`Satir ${index + 2}: ${reason}`);
+                    }
+                }
+            }
+
+            if (failedDocxRows.length > 0) {
+                zip.file('_docx_hatalari.txt', failedDocxRows.join('\n'));
+            }
+
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            saveAs(zipBlob, `${sanitizeFileName(pendingBulkPackage.templateTitle || 'seri_dilekceler')}_seri_dilekceler.zip`);
+
+            if (failedDocxRows.length === 0) {
+                addToast(`${rowVariables.length} satirlik seri paket indirildi.`, 'success');
+            } else {
+                addToast(`${rowVariables.length} satirlik paket indirildi. ${failedDocxRows.length} satirda DOCX hatasi var.`, 'info');
+            }
+
+            localStorage.removeItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
+            setPendingBulkPackage(null);
+        } catch (downloadError) {
+            const message = downloadError instanceof Error ? downloadError.message : 'Seri paket indirilirken hata olustu.';
+            addToast(message, 'error');
+        } finally {
+            setIsBulkPackageDownloading(false);
+        }
+    }, [pendingBulkPackage, generatedPetition, addToast]);
+
+    const handleTemplateVariableInputChange = useCallback((key: string, value: string) => {
+        setTemplateVariableValues(prev => ({ ...prev, [key]: value }));
+        setHasTemplateVariableChanges(true);
+    }, []);
+
+    const handleApplyTemplateVariables = useCallback(() => {
+        if (!editableTemplateContent || templateVariableItems.length === 0) return;
+
+        const missingRequired = templateVariableItems.filter(item =>
+            item.required && !String(templateVariableValues[item.key] || '').trim()
+        );
+        if (missingRequired.length > 0) {
+            const listed = missingRequired.slice(0, 4).map(item => item.label).join(', ');
+            addToast(`Zorunlu alanlar bo?: ${listed}${missingRequired.length > 4 ? ' ...' : ''}`, 'info');
+        }
+
+        const nextContent = applyTemplateVariablesForEditor(editableTemplateContent, templateVariableValues);
+        setGeneratedPetition(nextContent);
+        setPetitionVersion(v => v + 1);
+        setHasTemplateVariableChanges(false);
+        addToast('Şablon değişkenleri metne uygulandı.', 'success');
+    }, [editableTemplateContent, templateVariableItems, templateVariableValues, addToast]);
 
     const handleAnalyze = async () => {
         if (files.length === 0) {
@@ -609,6 +950,10 @@ export default function AlternativeApp() {
         setWebSearchResult(null);
         setLegalSearchResults([]);
         setGeneratedPetition('');
+        setEditableTemplateContent(null);
+        setTemplateVariableItems([]);
+        setTemplateVariableValues({});
+        setHasTemplateVariableChanges(false);
 
         try {
             const allUploadedFiles: UploadedFile[] = [];
@@ -728,10 +1073,10 @@ export default function AlternativeApp() {
                 });
             }
             setManualPartyName('');
-            addToast('Belgeler başarıyla analiz edildi!', 'success');
+            addToast('Belgeler baaryla analiz edildi!', 'success');
             setCurrentStep(3);
         } catch (e: any) {
-            setError(`Analiz hatası: ${e.message}`);
+            setError(`Analiz hatas: ${e.message}`);
         } finally {
             setIsAnalyzing(false);
         }
@@ -745,7 +1090,7 @@ export default function AlternativeApp() {
             const keywords = await generateSearchKeywords(analysisData.summary, userRole);
             setSearchKeywords(keywords);
             await runLegalSearch(keywords);
-            addToast('Anahtar kelimeler oluşturuldu!', 'success');
+            addToast('Anahtar kelimeler oluturuldu!', 'success');
         } catch (e: any) {
             setError(`Hata: ${e.message}`);
         } finally {
@@ -1182,7 +1527,7 @@ export default function AlternativeApp() {
 
                     if (fc.name === 'search_yargitay') {
                         functionCallDetected = true;
-                        setChatProgressText('Emsal kararlar aran�yor...');
+                        setChatProgressText('Emsal kararlar aranyor...');
 
                         const args = parseFunctionCallArgs(fc.args);
                         const queryKeywords = typeof args.searchQuery === 'string'
@@ -1265,7 +1610,7 @@ export default function AlternativeApp() {
             }
 
             if (userRequestedPetition && !generatedDocument) {
-                setChatProgressText('Dilekce olusturma adimi tamamlan�yor...');
+                setChatProgressText('Dileke oluturma adm tamamlanyor...');
                 let fallbackPetition = '';
 
                 if (analysisData?.summary?.trim()) {
@@ -1350,7 +1695,7 @@ export default function AlternativeApp() {
 
     const handleGeneratePetition = async () => {
         if (!analysisData?.summary) {
-            setError('Önce analiz aşaması tamamlanmalıdır.');
+            setError('nce analiz aamas tamamlanmaldr.');
             return;
         }
         setIsLoadingPetition(true);
@@ -1367,9 +1712,13 @@ export default function AlternativeApp() {
                 lawyerInfo: analysisData.lawyerInfo, contactInfo: analysisData.contactInfo,
             });
             setGeneratedPetition(result);
+            setEditableTemplateContent(null);
+            setTemplateVariableItems([]);
+            setTemplateVariableValues({});
+            setHasTemplateVariableChanges(false);
             setPetitionVersion(v => v + 1);
             setCurrentStep(4);
-            addToast('Dilekçe başarıyla oluşturuldu! ✅', 'success');
+            addToast('Dilekçe başarıyla oluşturuldu! ', 'success');
 
             if (user) {
                 await savePetitionToSupabase(result);
@@ -1384,6 +1733,11 @@ export default function AlternativeApp() {
     const lawyerInfo = analysisData?.lawyerInfo || DEFAULT_LAWYER_INFO;
     const contactInfoList = analysisData?.contactInfo || [];
     const detectedPartyCandidates = Array.isArray(analysisData?.potentialParties) ? analysisData.potentialParties : [];
+    const showTemplateVariableEditor = Boolean(
+        !pendingBulkPackage &&
+        editableTemplateContent &&
+        templateVariableItems.length > 0
+    );
 
     if (loading) {
         return (
@@ -1427,7 +1781,7 @@ export default function AlternativeApp() {
                         </svg>
                         <div className="flex-1">
                             <h4 className="text-sm font-semibold text-red-300 mb-1">
-                                AI Güçlendirme Başarısız
+                                AI Glendirme Baarsz
                             </h4>
                             <p className="text-xs text-red-200/80 mb-3">
                                 {templateEnhancementError}
@@ -1597,7 +1951,8 @@ export default function AlternativeApp() {
                                             type="file"
                                             multiple
                                             onChange={(e) => handleSelectedFiles(e.target.files)}
-                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                            disabled={!canSelectMoreFiles}
+                                            className={`absolute inset-0 w-full h-full opacity-0 z-10 ${canSelectMoreFiles ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                                         />
                                         <div className="w-16 h-16 bg-[#1A1A1D] rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                                             <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1605,14 +1960,29 @@ export default function AlternativeApp() {
                                             </svg>
                                         </div>
                                         <span className="text-lg font-medium text-white mb-2">Dosyaları Sürükleyin veya Seçin</span>
-                                        <span className="text-sm text-gray-500">PDF, PNG, JPG, UDF (Maks 10 dosya)</span>
+                                        <span className="text-sm text-gray-500">PDF, PNG, JPG, UDF, Word (15 dosya x 3 parca, toplam 45)</span>
+                                        {!canSelectMoreFiles && canUnlockNextUploadBatch && (
+                                            <span className="text-xs text-amber-400 mt-2">Bu parcayi doldurdunuz. Yeni 15 dosya icin asagidaki "Ekleme Yap" butonuna basin.</span>
+                                        )}
 
                                         {files.length > 0 && (
                                             <div className="absolute inset-x-0 bottom-0 bg-[#1C1C1F] p-4 text-sm text-red-400 text-center font-medium border-t border-white/5">
-                                                {files.length} dosya seçildi
+                                                {files.length} dosya secildi (Acik parca: {enabledUploadBatches}/{MAX_UPLOAD_BATCHES})
                                             </div>
                                         )}
                                     </div>
+
+                                    {files.length >= activeUploadLimit && canUnlockNextUploadBatch && (
+                                        <div className="flex justify-center -mt-3">
+                                            <button
+                                                type="button"
+                                                onClick={handleUnlockNextUploadBatch}
+                                                className="px-5 py-2.5 bg-[#1A1A1D] border border-red-500/50 text-red-300 hover:bg-red-500/10 hover:text-red-200 rounded-xl text-sm font-medium transition-colors"
+                                            >
+                                                Ekleme Yap (+15 Dosya)
+                                            </button>
+                                        </div>
+                                    )}
 
                                     {/* Seçilen dosyalar listesi */}
                                     {files.length > 0 && (
@@ -1628,10 +1998,10 @@ export default function AlternativeApp() {
                                                         <li key={idx} className="flex items-center justify-between p-3 bg-[#1A1A1D] rounded-lg border border-white/5 hover:border-white/10 transition-colors">
                                                             <div className="flex items-center gap-3 overflow-hidden">
                                                                 <div className="shrink-0 w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center">
-                                                                    {isPdf ? <span className="text-xl">📕</span> :
-                                                                        isImg ? <span className="text-xl">🖼️</span> :
-                                                                            isUdf ? <span className="text-xl">📄</span> :
-                                                                                <span className="text-xl">📁</span>}
+                                                                    {isPdf ? <span className="text-xl"></span> :
+                                                                        isImg ? <span className="text-xl"></span> :
+                                                                            isUdf ? <span className="text-xl"></span> :
+                                                                                <span className="text-xl"></span>}
                                                                 </div>
                                                                 <div className="min-w-0">
                                                                     <p className="text-sm font-medium text-gray-200 truncate">{file.name}</p>
@@ -1681,7 +2051,7 @@ export default function AlternativeApp() {
                                             className="px-8 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:opacity-50 text-white rounded-xl font-medium transition-all shadow-lg shadow-red-900/50 flex items-center gap-2"
                                         >
                                             {isAnalyzing ? <LoadingSpinner className="w-5 h-5 text-white" /> : 'Analiz Et'}
-                                            {isAnalyzing ? 'Analiz Ediliyor...' : '✨'}
+                                            {isAnalyzing ? 'Analiz Ediliyor...' : ''}
                                         </button>
                                     </div>
                                 </div>
@@ -2032,7 +2402,7 @@ export default function AlternativeApp() {
                                                     disabled={isLegalSearching || searchKeywords.length === 0}
                                                     className="w-full py-2.5 bg-[#1A1A1D] hover:bg-[#1C1C1F] border border-white/10 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-all"
                                                 >
-                                                    {isLegalSearching ? <span className="flex items-center justify-center gap-2"><LoadingSpinner className="w-4 h-4 text-white" /> Ictihat Araniyor...</span> : 'Yargitay Karari Ara (MCP)'}
+                                                    {isLegalSearching ? <span className="flex items-center justify-center gap-2"><LoadingSpinner className="w-4 h-4 text-white" /> İçtihat Aranıyor...</span> : 'Yargıtay Kararı Ara (MCP)'}
                                                 </button>
                                             </div>
                                         </div>
@@ -2049,7 +2419,7 @@ export default function AlternativeApp() {
                                             <textarea
                                                 value={specifics}
                                                 onChange={(e) => setSpecifics(e.target.value)}
-                                                placeholder="Örn: Manevi tazminat talebinin altını özellikler çiz..."
+                                                placeholder="Örn: Manevi tazminat talebinin altını özellikle çiz..."
                                                 className="w-full bg-[#1A1A1D] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-all min-h-[120px] resize-y"
                                             />
                                         </div>
@@ -2058,7 +2428,7 @@ export default function AlternativeApp() {
                                     {(isSearching || webSearchResult) && (
                                         <div className="bg-[#111113] border border-white/5 rounded-2xl overflow-hidden shadow-sm">
                                             <div className="p-6 bg-[#1A1A1D] border-b border-white/5 flex items-center justify-between">
-                                                <h3 className="font-semibold text-white">Web Arama Sonuclari</h3>
+                                                <h3 className="font-semibold text-white">Web Arama Sonuçları</h3>
                                                 <span className="px-3 py-1 bg-blue-500/10 text-blue-400 text-xs font-bold rounded-full border border-blue-500/20">
                                                     {webSearchResult?.sources?.length || 0} kaynak
                                                 </span>
@@ -2067,7 +2437,7 @@ export default function AlternativeApp() {
                                                 {isSearching && (
                                                     <div className="flex items-center gap-2 text-sm text-gray-400">
                                                         <LoadingSpinner className="w-4 h-4 text-white" />
-                                                        Sonuclar getiriliyor...
+                                                        Sonuçlar getiriliyor...
                                                     </div>
                                                 )}
                                                 {webSearchResult && (
@@ -2102,7 +2472,7 @@ export default function AlternativeApp() {
                                     {(isLegalSearching || legalSearchResults.length > 0) && (
                                         <div className="bg-[#111113] border border-white/5 rounded-2xl overflow-hidden shadow-sm">
                                             <div className="p-6 bg-[#1A1A1D] border-b border-white/5 flex items-center justify-between">
-                                                <h3 className="font-semibold text-white">Yargitay Kararlari (MCP)</h3>
+                                                <h3 className="font-semibold text-white">Yargıtay Kararları (MCP)</h3>
                                                 <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full border border-emerald-500/20">
                                                     {legalSearchResults.length} karar
                                                 </span>
@@ -2111,11 +2481,11 @@ export default function AlternativeApp() {
                                                 {isLegalSearching && (
                                                     <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
                                                         <LoadingSpinner className="w-4 h-4 text-white" />
-                                                        Yargitay kararlari aran1yor...
+                                                        Yargıtay kararları aranıyor...
                                                     </div>
                                                 )}
                                                 {!isLegalSearching && legalSearchResults.length === 0 && (
-                                                    <p className="text-sm text-gray-400">Bu konuda listelenecek karar bulunamadi.</p>
+                                                    <p className="text-sm text-gray-400">Bu konuda listelenecek karar bulunamad?.</p>
                                                 )}
                                                 {legalSearchResults.length > 0 && (
                                                     <div className="space-y-4">
@@ -2204,6 +2574,22 @@ export default function AlternativeApp() {
                                                     Editöre Gönder
                                                 </button>
                                             )}
+                                            {pendingBulkPackage && (
+                                                <button
+                                                    onClick={handleApproveAndDownloadBulkPackage}
+                                                    disabled={isBulkPackageDownloading}
+                                                    className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 text-white rounded-lg font-medium transition-all text-sm flex items-center gap-2"
+                                                >
+                                                    {isBulkPackageDownloading ? (
+                                                        <>
+                                                            <LoadingSpinner className="w-4 h-4 text-white" />
+                                                            Paket Hazırlanıyor...
+                                                        </>
+                                                    ) : (
+                                                        <>Onayla ve Seri Paketi İndir ({pendingBulkPackage.rowVariables.length})</>
+                                                    )}
+                                                </button>
+                                            )}
                                             {generatedPetition && (
                                                 <button
                                                     onClick={() => setCurrentStep(5)}
@@ -2221,6 +2607,44 @@ export default function AlternativeApp() {
                                             )}
                                         </div>
                                     </div>
+
+                                    {showTemplateVariableEditor && (
+                                        <div className="bg-[#111113] border border-white/10 rounded-2xl p-5 sm:p-6 space-y-4">
+                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                                <div>
+                                                    <h2 className="text-lg font-semibold text-white">Şablon Değişkenleri</h2>
+                                                    <p className="text-xs text-gray-400 mt-1">
+                                                        Değerleri güncelleyip metne uygula. Bu işlem mevcut metni şablon bazından yeniden oluşturur.
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    onClick={handleApplyTemplateVariables}
+                                                    disabled={!hasTemplateVariableChanges}
+                                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors"
+                                                >
+                                                    Değişkenleri Uygula
+                                                </button>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                {templateVariableItems.map(item => (
+                                                    <label key={item.key} className="flex flex-col gap-1">
+                                                        <span className="text-xs text-gray-300">
+                                                            {item.label}
+                                                            {item.required ? ' *' : ''}
+                                                        </span>
+                                                        <input
+                                                            type="text"
+                                                            value={templateVariableValues[item.key] || ''}
+                                                            onChange={(event) => handleTemplateVariableInputChange(item.key, event.target.value)}
+                                                            placeholder={`{{${item.key}}}`}
+                                                            className="px-3 py-2 bg-[#0D0D0F] border border-white/10 focus:border-blue-500 outline-none rounded-lg text-sm text-white"
+                                                        />
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {generatedPetition ? (
                                         <div className="bg-[#111113] border border-white/5 rounded-2xl overflow-hidden shadow-2xl min-h-[800px]">
@@ -2245,10 +2669,10 @@ export default function AlternativeApp() {
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                 </svg>
                                             </div>
-                                            <h3 className="text-xl font-medium text-white mb-2">Henuz Dilekce Uretilmedi</h3>
-                                            <p className="text-gray-400 max-w-sm mb-6">Onceki adimlara donup belgelerinizi analiz edin ve dilekceyi olustur butonuna tiklayin.</p>
+                                            <h3 className="text-xl font-medium text-white mb-2">Henüz Dilekçe Üretilmedi</h3>
+                                            <p className="text-gray-400 max-w-sm mb-6">Önceki adımlara dönüp belgelerinizi analiz edin ve dilekçeyi oluştur butonuna tıklayın.</p>
                                             <button onClick={() => setCurrentStep(3)} className="px-6 py-2.5 bg-[#1C1C1F] hover:bg-[#27272A] border border-white/10 text-white rounded-lg text-sm font-medium transition-all">
-                                                Onceki Adima Don
+                                                Önceki Adıma Dön
                                             </button>
                                         </div>
                                     )}
@@ -2271,7 +2695,7 @@ export default function AlternativeApp() {
                     >
                         <div className="flex items-start justify-between gap-4 p-5 border-b border-white/10">
                             <div className="min-w-0">
-                                <h3 className="text-lg font-semibold text-white truncate">{selectedDecision?.title || 'Karar Detayi'}</h3>
+                                <h3 className="text-lg font-semibold text-white truncate">{selectedDecision?.title || 'Karar Detayı'}</h3>
                                 <p className="text-xs text-gray-400 mt-1">
                                     {selectedDecision?.esasNo ? `E. ${selectedDecision.esasNo} ` : ''}
                                     {selectedDecision?.kararNo ? `K. ${selectedDecision.kararNo} ` : ''}
@@ -2292,7 +2716,7 @@ export default function AlternativeApp() {
                             {isDecisionContentLoading ? (
                                 <div className="py-12 flex flex-col items-center justify-center text-gray-400">
                                     <LoadingSpinner className="w-8 h-8 text-white mb-3" />
-                                    Tam metin yukleniyor...
+                                    Tam metin yükleniyor...
                                 </div>
                             ) : (
                                 <pre className="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed font-sans">
@@ -2395,9 +2819,3 @@ export default function AlternativeApp() {
         </div >
     );
 }
-
-
-
-
-
-

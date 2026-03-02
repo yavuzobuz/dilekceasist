@@ -155,6 +155,13 @@ export const InputPanel: React.FC<InputPanelProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const FILE_BATCH_SIZE = 15;
+  const MAX_UPLOAD_BATCHES = 3;
+  const MAX_TOTAL_UPLOAD_FILES = FILE_BATCH_SIZE * MAX_UPLOAD_BATCHES;
+  const [enabledUploadBatches, setEnabledUploadBatches] = useState(1);
+  const activeUploadLimit = enabledUploadBatches * FILE_BATCH_SIZE;
+  const canUnlockNextUploadBatch = enabledUploadBatches < MAX_UPLOAD_BATCHES;
+  const canSelectMoreFiles = files.length < Math.min(activeUploadLimit, MAX_TOTAL_UPLOAD_FILES);
 
   // Cascading dropdown state
   const [selectedCategory, setSelectedCategory] = useState<PetitionCategory>(PetitionCategory.Hukuk);
@@ -170,6 +177,12 @@ export const InputPanel: React.FC<InputPanelProps> = ({
       setUserRole(availableRoles[0]);
     }
   }, [selectedCategory, availableRoles, userRole, setUserRole]);
+
+  useEffect(() => {
+    if (files.length === 0 && enabledUploadBatches !== 1) {
+      setEnabledUploadBatches(1);
+    }
+  }, [files.length, enabledUploadBatches]);
   // Get party labels based on category
   const getPartyLabels = (): { [key: string]: string } => {
     switch (selectedCategory) {
@@ -198,8 +211,16 @@ export const InputPanel: React.FC<InputPanelProps> = ({
 
 
   const handleFileChange = (newFiles: File[]) => {
-    if (files.length + newFiles.length > 10) {
-      alert("En fazla 10 dosya yükleyebilirsiniz.");
+    const currentBatchRemaining = activeUploadLimit - files.length;
+    const totalRemaining = MAX_TOTAL_UPLOAD_FILES - files.length;
+    const availableSlots = Math.min(currentBatchRemaining, totalRemaining);
+
+    if (availableSlots <= 0) {
+      if (files.length >= MAX_TOTAL_UPLOAD_FILES) {
+        alert(`En fazla ${MAX_TOTAL_UPLOAD_FILES} dosya yükleyebilirsiniz.`);
+      } else {
+        alert(`${FILE_BATCH_SIZE} dosyalik bu parcayi doldurdunuz. Yeni 15 dosya icin "Ekleme Yap" butonuna basin.`);
+      }
       return;
     }
     const allowedExtensions = ['.pdf', '.udf', '.jpg', '.jpeg', '.png', '.webp', '.tif', '.tiff', '.doc', '.docx'];
@@ -210,7 +231,15 @@ export const InputPanel: React.FC<InputPanelProps> = ({
     if (allowedFiles.length !== newFiles.length) {
       alert("Lütfen sadece PDF, UDF, Word (.doc, .docx) veya resim formatında (.jpg, .png, .webp, .tif) dosyalar yükleyin.");
     }
-    setFiles([...files, ...allowedFiles]);
+    if (allowedFiles.length > availableSlots) {
+      alert(`Bu adimda en fazla ${availableSlots} dosya ekleyebilirsiniz.`);
+    }
+    setFiles([...files, ...allowedFiles.slice(0, availableSlots)]);
+  };
+
+  const handleUnlockNextUploadBatch = () => {
+    if (!canUnlockNextUploadBatch) return;
+    setEnabledUploadBatches(prev => Math.min(prev + 1, MAX_UPLOAD_BATCHES));
   };
 
   const onFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -340,11 +369,31 @@ export const InputPanel: React.FC<InputPanelProps> = ({
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">Belgeleri Yükleyin (PDF, UDF, Word, Resim)</label>
-          <div onClick={() => fileInputRef.current?.click()} onDragOver={(e) => handleDragEvents(e, true)} onDragLeave={(e) => handleDragEvents(e, false)} onDrop={handleDrop} className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md cursor-pointer transition-all duration-300 transform hover:scale-[1.01] ${isDragging ? 'border-blue-500 bg-[#1A1A1D]/80 scale-[1.02] shadow-lg shadow-blue-500/20' : 'border-white/10 hover:border-blue-500 hover:bg-[#1A1A1D]/30'}`}>
-            <div className="space-y-1 text-center"><DocumentPlusIcon className="mx-auto h-12 w-12 text-gray-400" /><div className="flex text-sm text-gray-400"><p className="pl-1">Dosya seçmek için tıklayın veya sürükleyip bırakın</p></div><p className="text-xs text-gray-500">PDF, UDF, Word, JPG, PNG, WEBP, TIF (en fazla 10 dosya)</p></div>
+          <div onClick={() => { if (canSelectMoreFiles) fileInputRef.current?.click(); }} onDragOver={(e) => handleDragEvents(e, true)} onDragLeave={(e) => handleDragEvents(e, false)} onDrop={handleDrop} className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md transition-all duration-300 transform hover:scale-[1.01] ${canSelectMoreFiles ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'} ${isDragging ? 'border-blue-500 bg-[#1A1A1D]/80 scale-[1.02] shadow-lg shadow-blue-500/20' : 'border-white/10 hover:border-blue-500 hover:bg-[#1A1A1D]/30'}`}>
+            <div className="space-y-1 text-center">
+              <DocumentPlusIcon className="mx-auto h-12 w-12 text-gray-400" />
+              <div className="flex text-sm text-gray-400">
+                <p className="pl-1">Dosya secmek icin tiklayin veya surukleyip birakin</p>
+              </div>
+              <p className="text-xs text-gray-500">PDF, UDF, Word, JPG, PNG, WEBP, TIF (15 dosya x 3 parca, toplam 45)</p>
+              {!canSelectMoreFiles && canUnlockNextUploadBatch && (
+                <p className="text-xs text-amber-400">Bu parcayi doldurdunuz. Yeni 15 dosya icin "Ekleme Yap" butonuna basin.</p>
+              )}
+            </div>
           </div>
-          <input ref={fileInputRef} type="file" multiple accept=".pdf,.udf,.jpg,.jpeg,.png,.webp,.tif,.tiff,.doc,.docx" onChange={onFileInputChange} className="hidden" />
-          {files.length > 0 && <div className="mt-4 space-y-2 animate-fade-in-up"><h4 className="text-sm font-medium text-gray-300">Yüklenen Dosyalar:</h4><ul className="space-y-1">{files.map((file, index) => (<li key={index} className="flex items-center justify-between bg-[#1A1A1D] p-2 rounded-md text-sm transform transition-all duration-200 hover:scale-[1.02] hover:bg-[#232327] animate-scale-in"><span className="text-gray-200 truncate pr-2">{file.name}</span><button onClick={() => handleRemoveFile(index)} className="text-gray-400 hover:text-red-400 transition-all duration-200 flex-shrink-0 hover:scale-110 active:scale-95"><XCircleIcon className="h-5 w-5" /></button></li>))}</ul></div>}
+          <input ref={fileInputRef} type="file" multiple disabled={!canSelectMoreFiles} accept=".pdf,.udf,.jpg,.jpeg,.png,.webp,.tif,.tiff,.doc,.docx" onChange={onFileInputChange} className="hidden" />
+          {files.length >= activeUploadLimit && canUnlockNextUploadBatch && (
+            <div className="mt-3 flex justify-center">
+              <button
+                type="button"
+                onClick={handleUnlockNextUploadBatch}
+                className="px-4 py-2 bg-[#1A1A1D] border border-red-500/50 text-red-300 hover:bg-red-500/10 hover:text-red-200 rounded-lg text-sm font-medium transition-colors"
+              >
+                Ekleme Yap (+15 Dosya)
+              </button>
+            </div>
+          )}
+          {files.length > 0 && <div className="mt-4 space-y-2 animate-fade-in-up"><h4 className="text-sm font-medium text-gray-300">Yuklenen Dosyalar ({files.length} / {MAX_TOTAL_UPLOAD_FILES})</h4><ul className="space-y-1">{files.map((file, index) => (<li key={index} className="flex items-center justify-between bg-[#1A1A1D] p-2 rounded-md text-sm transform transition-all duration-200 hover:scale-[1.02] hover:bg-[#232327] animate-scale-in"><span className="text-gray-200 truncate pr-2">{file.name}</span><button onClick={() => handleRemoveFile(index)} className="text-gray-400 hover:text-red-400 transition-all duration-200 flex-shrink-0 hover:scale-110 active:scale-95"><XCircleIcon className="h-5 w-5" /></button></li>))}</ul></div>}
         </div>
       </div>
 

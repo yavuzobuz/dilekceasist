@@ -4,6 +4,7 @@ export interface UserCustomTemplate {
     id: string;
     user_id: string;
     template_type: 'dilekce' | 'sozlesme' | 'ihtarname';
+    petition_category: 'Hukuk' | 'Ceza' | 'Is Hukuku' | 'Icra' | 'Idari' | null;
     title: string;
     description: string | null;
     content: string;

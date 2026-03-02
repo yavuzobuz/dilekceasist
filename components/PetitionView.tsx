@@ -499,7 +499,7 @@ export const PetitionView: React.FC<PetitionViewProps> = ({ petition, setGenerat
       const { generateUdfBlob } = await import('../services/udfGenerator');
       const blob = await generateUdfBlob({
         html: editorRef.current.innerHTML,
-        title: 'DilekÃ§e',
+        title: 'Dilekçe',
         corporateHeader: corporateHeader || undefined,
       });
       saveAs(blob, 'dilekce.udf');

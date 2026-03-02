@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   User, Users, FileText, Calendar, Trash2, Eye, LogOut, ArrowLeft, Share2,
   Plus, TrendingUp, Clock, CheckCircle, AlertCircle, Settings,
-  Download, Filter, Search, BarChart3, Briefcase, Edit3, Upload, Image, Save, X,
+  Download, Filter, Search, BarChart3, Briefcase, Edit3, Upload, Image, Save, X, Calculator,
   Building2, Phone, Mail, MapPin, ExternalLink, Loader2
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -16,12 +16,37 @@ import { Client } from '../types';
 import { clientService } from '../services/clientService';
 import { FeeCalculator } from '../components/FeeCalculator';
 import { LaborReceivablesCalculator } from '../components/LaborReceivablesCalculator';
-import { Calculator, Briefcase as BriefcaseIcon } from 'lucide-react';
+import { Briefcase as BriefcaseIcon } from 'lucide-react';
+
+interface UserPlanSummary {
+  user_id: string;
+  plan_code: string;
+  status: string;
+  daily_limit: number | null;
+  used_today: number;
+  remaining_today: number | null;
+  trial_starts_at: string | null;
+  trial_ends_at: string | null;
+}
+
+const PLAN_LABELS: Record<string, string> = {
+  trial: 'Trial',
+  pro: 'Pro',
+  team: 'Team',
+  enterprise: 'Enterprise',
+};
+
+const getPlanLabel = (planCode?: string | null): string => {
+  const normalized = String(planCode || 'trial').toLowerCase();
+  return PLAN_LABELS[normalized] || normalized.toUpperCase();
+};
 
 const Profile: React.FC = () => {
   const { user, profile, signOut } = useAuth();
   const [petitions, setPetitions] = useState<Petition[]>([]);
   const [loading, setLoading] = useState(true);
+  const [planSummary, setPlanSummary] = useState<UserPlanSummary | null>(null);
+  const [loadingPlanSummary, setLoadingPlanSummary] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [selectedPetition, setSelectedPetition] = useState<Petition | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
@@ -69,8 +94,38 @@ const Profile: React.FC = () => {
   useEffect(() => {
     if (user) {
       loadPetitions();
+      loadPlanSummary();
+    } else {
+      setPlanSummary(null);
     }
-  }, [user]);
+  }, [user?.id]);
+
+  const loadPlanSummary = async () => {
+    if (!user) return;
+
+    try {
+      setLoadingPlanSummary(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+
+      const response = await fetch('/api/user-plan-summary', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Plan bilgisi alinamadi');
+      }
+
+      const data = await response.json();
+      setPlanSummary(data.summary || null);
+    } catch (error) {
+      console.error('Error loading plan summary:', error);
+    } finally {
+      setLoadingPlanSummary(false);
+    }
+  };
 
   const loadPetitions = async () => {
     if (!user) return;
@@ -342,20 +397,20 @@ const Profile: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#0A0A0B]">
       {/* Header */}
-      <header className="bg-gray-800/50 backdrop-blur-lg border-b border-gray-700 sticky top-0 z-50">
+      <header className="premium-topbar sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <button
               onClick={() => navigate('/')}
-              className="flex items-center text-gray-300 hover:text-white transition-colors"
+              className="premium-back-button"
             >
-              <ArrowLeft className="w-5 h-5 mr-2" />
-              Ana Sayfa
+              <ArrowLeft className="w-5 h-5 premium-back-icon" />
+              <span className="premium-back-label">Ana Sayfa</span>
             </button>
             <div className="flex items-center space-x-2 sm:space-x-4">
               <button
                 onClick={() => navigate('/app')}
-                className="flex items-center px-3 sm:px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg transition-all shadow-lg text-sm sm:text-base"
+                className="premium-cta-button premium-cta-button--brand text-sm sm:text-base"
               >
                 <Plus className="w-4 h-4 sm:mr-2" />
                 <span className="hidden sm:inline">Yeni Dilekçe</span>
@@ -399,11 +454,46 @@ const Profile: React.FC = () => {
               </div>
             </div>
             <div className="mt-4 md:mt-0 flex">
-              <button className="px-3 sm:px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors flex items-center text-sm sm:text-base">
-                <Edit3 className="w-4 h-4 mr-1 sm:mr-2" />
-                <span className="hidden xs:inline">Profili Düzenle</span>
-                <span className="xs:hidden">Düzenle</span>
-              </button>
+              <div className="w-full md:w-auto space-y-3">
+                <div className="bg-black/25 border border-gray-600 rounded-xl p-3 sm:p-4 min-w-[250px]">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-gray-400 uppercase tracking-wide">Mevcut Plan</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${planSummary?.status === 'active' ? 'bg-green-600/20 text-green-400' : 'bg-yellow-600/20 text-yellow-300'}`}>
+                      {planSummary?.status === 'active' ? 'Aktif' : 'Pasif'}
+                    </span>
+                  </div>
+                  <p className="text-white text-lg font-bold">{getPlanLabel(planSummary?.plan_code)}</p>
+                  <div className="mt-2 text-sm">
+                    <p className="text-gray-400">Kalan belge üretme hakkı</p>
+                    <p className="text-white font-semibold">
+                      {loadingPlanSummary
+                        ? 'Yukleniyor...'
+                        : planSummary?.remaining_today === null
+                          ? 'Sinirsiz'
+                          : `${planSummary?.remaining_today ?? 0} / ${planSummary?.daily_limit ?? 0}`}
+                    </p>
+                  </div>
+                  {planSummary?.trial_ends_at && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      Trial bitis: {formatDate(planSummary.trial_ends_at)}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => navigate('/fiyatlandirma')}
+                    className="px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm sm:text-base"
+                  >
+                    Plan Yukselt
+                  </button>
+                  <button className="px-3 sm:px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors flex items-center text-sm sm:text-base">
+                    <Edit3 className="w-4 h-4 mr-1 sm:mr-2" />
+                    <span className="hidden xs:inline">Profili Duzenle</span>
+                    <span className="xs:hidden">Duzenle</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -495,8 +585,8 @@ const Profile: React.FC = () => {
               }`}
           >
             <Calculator className="w-4 h-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">Harç Hesapla</span>
-            <span className="sm:hidden">Harç</span>
+            <span className="hidden sm:inline">Harc Hesapla</span>
+            <span className="sm:hidden">Harc</span>
           </button>
           <button
             onClick={() => setActiveTab('labor')}
@@ -575,7 +665,7 @@ const Profile: React.FC = () => {
                   {!searchQuery && filterType === 'all' && (
                     <button
                       onClick={() => navigate('/app')}
-                      className="px-8 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white font-semibold rounded-xl hover:from-red-700 hover:to-red-800 transition-all shadow-lg inline-flex items-center"
+                      className="premium-cta-button premium-cta-button--brand px-8 py-4 rounded-xl inline-flex items-center"
                     >
                       <Plus className="w-5 h-5 mr-2" />
                       Yeni Dilekçe Oluştur
@@ -1402,17 +1492,15 @@ const Profile: React.FC = () => {
             </div>
           </div>
         )}
-
-        {/* Calculator Tab */}
+        {/* Fee Calculator Tab */}
         {activeTab === 'calculator' && (
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-4xl mr-auto">
             <FeeCalculator />
           </div>
         )}
-
         {/* Labor Receivables Calculator Tab */}
         {activeTab === 'labor' && (
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-4xl mr-auto">
             <LaborReceivablesCalculator />
           </div>
         )}
@@ -1437,3 +1525,5 @@ const Profile: React.FC = () => {
 };
 
 export default Profile;
+
+

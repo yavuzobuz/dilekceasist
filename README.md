@@ -28,3 +28,21 @@ Use prompts like:
 - `agent team: implement X`
 - `planner coder reviewer mode`
 - `takim modu ile ilerle`
+
+## Word Add-in (MVP)
+
+Word taskpane prototype files are under:
+
+- `public/office/word/taskpane.html`
+- `public/office/word/taskpane.js`
+- `public/office/word/manifest.xml`
+
+Setup summary:
+
+1. Manifest currently points to `https://dilekceasist.vercel.app`. If you use another domain, update `public/office/word/manifest.xml`.
+2. Ensure taskpane URL is reachable: `/office/word/taskpane.html`.
+3. In Word, open `My Add-ins` and upload the manifest file.
+4. Select text in Word and use:
+   - `Metni Duzelt`
+   - `Metni Guclendir`
+   - `Metni Yeniden Yaz`

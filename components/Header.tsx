@@ -8,6 +8,7 @@ import {
   Library,
   BookOpen,
   HelpCircle,
+  CreditCard,
   Home,
   Key,
   Sparkles,
@@ -95,6 +96,16 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
                   <span className="relative flex items-center gap-2">
                     <BookOpen className="w-4 h-4 text-red-500 group-hover:-rotate-12 group-hover:scale-110 transition-all duration-300" />
                     <span className="group-hover:translate-x-0.5 transition-transform duration-300">Hakkında</span>
+                  </span>
+                </button>
+                <button
+                  onClick={() => handleNavigate('/fiyatlandirma')}
+                  className="group relative shrink-0 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-xs 2xl:text-sm font-medium rounded-lg overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-red-600/0 via-red-600/20 to-red-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                  <span className="relative flex items-center gap-2">
+                    <CreditCard className="w-4 h-4 text-red-500 group-hover:scale-110 transition-all duration-300" />
+                    <span className="group-hover:translate-x-0.5 transition-transform duration-300">Fiyatlandırma</span>
                   </span>
                 </button>
                 <button
@@ -219,6 +230,13 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
               >
                 <BookOpen className="w-5 h-5 text-red-500" />
                 Hakkında
+              </button>
+              <button
+                onClick={() => handleNavigate('/fiyatlandirma')}
+                className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
+              >
+                <CreditCard className="w-5 h-5 text-red-500" />
+                Fiyatlandırma
               </button>
               <button
                 onClick={() => handleNavigate('/faq')}

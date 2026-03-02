@@ -13,6 +13,12 @@ interface UserProfile {
     office_name: string | null;
     created_at: string;
     petition_count?: number;
+    plan_code?: string | null;
+    plan_status?: string | null;
+    daily_limit?: number | null;
+    used_today?: number;
+    remaining_today?: number | null;
+    trial_ends_at?: string | null;
 }
 
 interface UserPetition {
@@ -25,6 +31,13 @@ interface UserPetition {
 // Use empty string for Vite proxy or same-origin deployment.
 const API_BASE = '';
 
+const PLAN_LABELS: Record<string, string> = {
+    trial: 'Trial',
+    pro: 'Pro',
+    team: 'Team',
+    enterprise: 'Enterprise',
+};
+
 export const UserManagement: React.FC = () => {
     const [users, setUsers] = useState<UserProfile[]>([]);
     const [loading, setLoading] = useState(true);
@@ -34,7 +47,32 @@ export const UserManagement: React.FC = () => {
     const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
     const [userPetitions, setUserPetitions] = useState<UserPetition[]>([]);
     const [loadingPetitions, setLoadingPetitions] = useState(false);
+    const [savingRights, setSavingRights] = useState(false);
+    const [rightsForm, setRightsForm] = useState<{
+        plan_code: string;
+        plan_status: string;
+        daily_limit: string;
+        reset_today_usage: boolean;
+    }>({
+        plan_code: 'trial',
+        plan_status: 'active',
+        daily_limit: '',
+        reset_today_usage: false
+    });
     const pageSize = 10;
+
+    const getAuthHeaders = async (includeJson = false): Promise<Record<string, string>> => {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session?.access_token) {
+            throw new Error('Admin oturumu bulunamadi');
+        }
+
+        return {
+            ...(includeJson ? { 'Content-Type': 'application/json' } : {}),
+            Authorization: `Bearer ${session.access_token}`
+        };
+    };
 
     useEffect(() => {
         loadUsers();
@@ -43,11 +81,6 @@ export const UserManagement: React.FC = () => {
     const loadUsers = async () => {
         try {
             setLoading(true);
-            const { data: { session } } = await supabase.auth.getSession();
-
-            if (!session?.access_token) {
-                throw new Error('Admin oturumu bulunamadı');
-            }
 
             // Use admin API endpoint to get users with emails
             const params = new URLSearchParams({
@@ -57,9 +90,7 @@ export const UserManagement: React.FC = () => {
             });
 
             const response = await fetch(`${API_BASE}/api/admin-users?${params}`, {
-                headers: {
-                    Authorization: `Bearer ${session.access_token}`
-                }
+                headers: await getAuthHeaders()
             });
 
             if (!response.ok) {
@@ -121,7 +152,13 @@ export const UserManagement: React.FC = () => {
                         ...user,
                         email: null,
                         office_name: null,
-                        petition_count: count || 0
+                        petition_count: count || 0,
+                        plan_code: 'trial',
+                        plan_status: 'active',
+                        daily_limit: null,
+                        used_today: 0,
+                        remaining_today: null,
+                        trial_ends_at: null,
                     };
                 })
             );
@@ -155,6 +192,12 @@ export const UserManagement: React.FC = () => {
 
     const handleViewUser = (user: UserProfile) => {
         setSelectedUser(user);
+        setRightsForm({
+            plan_code: String(user.plan_code || 'trial').toLowerCase(),
+            plan_status: String(user.plan_status || 'active').toLowerCase(),
+            daily_limit: user.daily_limit == null ? '' : String(user.daily_limit),
+            reset_today_usage: false
+        });
         loadUserPetitions(user.id);
     };
 
@@ -164,6 +207,70 @@ export const UserManagement: React.FC = () => {
             month: 'short',
             day: 'numeric'
         });
+    };
+
+    const formatPlanLabel = (planCode?: string | null) => {
+        const normalized = String(planCode || 'trial').toLowerCase();
+        return PLAN_LABELS[normalized] || normalized.toUpperCase();
+    };
+
+    const formatRemainingRights = (user: UserProfile) => {
+        if (user.remaining_today == null || user.daily_limit == null) {
+            return 'Sınırsız';
+        }
+        return `${user.remaining_today} / ${user.daily_limit}`;
+    };
+
+    const handleSaveUserRights = async () => {
+        if (!selectedUser) return;
+
+        try {
+            setSavingRights(true);
+
+            if (rightsForm.daily_limit !== '' && (!Number.isFinite(Number(rightsForm.daily_limit)) || Number(rightsForm.daily_limit) <= 0)) {
+                toast.error('Günlük limit pozitif bir sayı olmalıdır');
+                return;
+            }
+
+            const response = await fetch(`${API_BASE}/api/admin-users`, {
+                method: 'PATCH',
+                headers: await getAuthHeaders(true),
+                body: JSON.stringify({
+                    userId: selectedUser.id,
+                    planCode: rightsForm.plan_code,
+                    status: rightsForm.plan_status,
+                    dailyLimit: rightsForm.daily_limit === '' ? null : Number(rightsForm.daily_limit),
+                    resetTodayUsage: rightsForm.reset_today_usage
+                })
+            });
+
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || 'Hak güncellemesi başarısız');
+            }
+
+            const summary = payload.summary || {};
+            const updatedUser: UserProfile = {
+                ...selectedUser,
+                plan_code: summary.plan_code || selectedUser.plan_code || 'trial',
+                plan_status: summary.status || selectedUser.plan_status || 'active',
+                daily_limit: summary.daily_limit ?? null,
+                used_today: summary.used_today ?? 0,
+                remaining_today: summary.remaining_today ?? null,
+                trial_ends_at: summary.trial_ends_at ?? selectedUser.trial_ends_at ?? null
+            };
+
+            setUsers(prev => prev.map(item => item.id === selectedUser.id ? { ...item, ...updatedUser } : item));
+            setSelectedUser(updatedUser);
+            setRightsForm(prev => ({ ...prev, reset_today_usage: false }));
+            toast.success('Kullanıcı hakları güncellendi');
+        } catch (error) {
+            console.error('Rights update error:', error);
+            const message = error instanceof Error ? error.message : 'Hak güncellemesi başarısız';
+            toast.error(message);
+        } finally {
+            setSavingRights(false);
+        }
     };
 
     const totalPages = Math.ceil(totalUsers / pageSize);
@@ -214,6 +321,8 @@ export const UserManagement: React.FC = () => {
                                     <tr className="border-b border-gray-700 bg-gray-700/50">
                                         <th className="text-left px-6 py-4 text-sm font-medium text-gray-300">Kullanıcı</th>
                                         <th className="text-left px-6 py-4 text-sm font-medium text-gray-300">E-posta</th>
+                                        <th className="text-left px-6 py-4 text-sm font-medium text-gray-300">Paket</th>
+                                        <th className="text-left px-6 py-4 text-sm font-medium text-gray-300">Kalan Hak</th>
                                         <th className="text-left px-6 py-4 text-sm font-medium text-gray-300">Kayıt Tarihi</th>
                                         <th className="text-left px-6 py-4 text-sm font-medium text-gray-300">Dilekçe</th>
                                         <th className="text-right px-6 py-4 text-sm font-medium text-gray-300">İşlemler</th>

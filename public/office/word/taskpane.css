@@ -1,0 +1,140 @@
+:root {
+    color-scheme: light;
+    --bg: #f7f8fb;
+    --card: #ffffff;
+    --text: #111827;
+    --muted: #4b5563;
+    --border: #e5e7eb;
+    --primary: #b91c1c;
+    --primary-hover: #991b1b;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+}
+
+.container {
+    padding: 16px;
+    display: grid;
+    gap: 12px;
+}
+
+h1, h2 {
+    margin: 0 0 8px;
+}
+
+h1 {
+    font-size: 18px;
+}
+
+h2 {
+    font-size: 14px;
+}
+
+p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    display: grid;
+    gap: 10px;
+}
+
+.field {
+    display: grid;
+    gap: 6px;
+}
+
+.field span {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+textarea,
+input[type="text"],
+input[type="password"] {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 13px;
+    font-family: inherit;
+}
+
+textarea {
+    resize: vertical;
+    min-height: 120px;
+}
+
+.mode-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+
+.actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn {
+    border: none;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: var(--primary-hover);
+}
+
+.btn-secondary {
+    background: #111827;
+    color: #fff;
+}
+
+.checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.status {
+    font-size: 12px;
+    min-height: 18px;
+}
+
+.status.error {
+    color: #991b1b;
+}
+
+.status.success {
+    color: #166534;
+}

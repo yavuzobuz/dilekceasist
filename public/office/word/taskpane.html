@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DilekceAsist Word Panel</title>
+    <link rel="stylesheet" href="./taskpane.css" />
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h1>AI Metin Editoru</h1>
+            <p>Word icindeki secili metni AI ile duzelt, guclendir veya yeniden yaz.</p>
+        </header>
+
+        <section class="card">
+            <h2>1) Secimi Al</h2>
+            <button id="readSelectionBtn" class="btn btn-secondary" type="button">Secili Metni Getir</button>
+            <label class="field">
+                <span>Secili metin</span>
+                <textarea id="sourceText" rows="8" placeholder="Word'de bir metin secin ve butona basin."></textarea>
+            </label>
+        </section>
+
+        <section class="card">
+            <h2>2) AI Islemi</h2>
+            <div class="mode-grid">
+                <button class="btn btn-primary" data-mode="fix" type="button">Metni Duzelt</button>
+                <button class="btn btn-primary" data-mode="strengthen" type="button">Metni Guclendir</button>
+                <button class="btn btn-primary" data-mode="rewrite" type="button">Metni Yeniden Yaz</button>
+            </div>
+
+            <label class="checkbox">
+                <input type="checkbox" id="autoReplace" checked />
+                <span>Sonucu otomatik secime uygula</span>
+            </label>
+        </section>
+
+        <section class="card">
+            <h2>3) Sonuc</h2>
+            <label class="field">
+                <span>AI cikti metni</span>
+                <textarea id="resultText" rows="10" placeholder="AI sonucu burada gorunur."></textarea>
+            </label>
+            <div class="actions">
+                <button id="replaceSelectionBtn" class="btn btn-secondary" type="button">Secime Uygula</button>
+            </div>
+        </section>
+
+        <details class="card">
+            <summary>Gelismis Ayarlar</summary>
+            <label class="field">
+                <span>API Base URL</span>
+                <input id="apiBaseUrl" type="text" placeholder="https://your-domain.com" />
+            </label>
+            <label class="field">
+                <span>Opsiyonel x-api-key</span>
+                <input id="apiKey" type="password" placeholder="SERVER_API_KEY varsa girin" />
+            </label>
+        </details>
+
+        <p id="status" class="status" role="status" aria-live="polite">Office yukleniyor...</p>
+    </main>
+    <script type="module" src="./taskpane.js"></script>
+</body>
+</html>
