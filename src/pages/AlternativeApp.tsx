@@ -431,6 +431,8 @@ export default function AlternativeApp() {
     const [isLoadingPetition, setIsLoadingPetition] = useState(false);
     const [isReviewingPetition, setIsReviewingPetition] = useState(false);
     const [pendingTemplateAutoEnhancement, setPendingTemplateAutoEnhancement] = useState(false);
+    const [templateEnhancementError, setTemplateEnhancementError] = useState<string | null>(null);
+    const [rawTemplateContent, setRawTemplateContent] = useState<string | null>(null);
     const [isLoadingChat, setIsLoadingChat] = useState(false);
     const [chatProgressText, setChatProgressText] = useState('');
 
@@ -461,11 +463,32 @@ export default function AlternativeApp() {
 
     useEffect(() => {
         const templateContent = localStorage.getItem('templateContent');
+        const rawTemplateCtx = localStorage.getItem('templateContext');
+        const templateCtx = parseTemplateTransferContext(rawTemplateCtx);
+
         if (templateContent) {
             setGeneratedPetition(templateContent);
+            setRawTemplateContent(templateContent);
             setPetitionVersion(v => v + 1);
             setCurrentStep(4);
             localStorage.removeItem('templateContent');
+            localStorage.removeItem('templateContext');
+
+            // TemplateContext varsa: kararları, alan değerlerini ve AI güçlendirme flag'ini aktar
+            if (templateCtx) {
+                const transferredDecisions = normalizeTemplateDecisions(templateCtx.selectedDecisions);
+                if (transferredDecisions.length > 0) {
+                    mergeLegalResults(transferredDecisions);
+                }
+                const variableContext = formatTemplateVariableContext(templateCtx.variableValues);
+                if (variableContext) {
+                    setSpecifics(prev => [prev, variableContext].filter(Boolean).join('\n\n'));
+                }
+                if (templateCtx.aiRequested && transferredDecisions.length > 0) {
+                    setPendingTemplateAutoEnhancement(true);
+                }
+            }
+
             addToast('Şablon yüklendi! ✅', 'success');
         } else if (petitionFromState) {
             setGeneratedPetition(petitionFromState.content || '');
@@ -484,9 +507,27 @@ export default function AlternativeApp() {
                 if (Array.isArray(metadata.legalSearchResults)) setLegalSearchResults(metadata.legalSearchResults);
                 if (metadata.chatHistory) setChatMessages(metadata.chatHistory);
             }
-            addToast('Dilekçe yüklendi! x', 'success');
+            addToast('Dilekçe yüklendi!', 'success');
         }
     }, [petitionFromState?.id]);
+
+    // Otomatik AI güçlendirme: şablon kararlarla taşındığında çalışır
+    useEffect(() => {
+        if (!pendingTemplateAutoEnhancement || !generatedPetition || isLoadingChat) return;
+        setPendingTemplateAutoEnhancement(false);
+        setTemplateEnhancementError(null);
+
+        const autoEnhanceMessage = [
+            'Bu taslağı seçili emsal kararlarla güçlendir.',
+            'Taslak metni hukuki dille geliştir, emsal kararları gerekçe bölümünde atıf olarak kullan.',
+            'Eksik bilgileri [...] olarak işaretle.',
+        ].join(' ');
+
+        handleSendChatMessage(autoEnhanceMessage).catch((enhanceError: any) => {
+            const msg = enhanceError instanceof Error ? enhanceError.message : 'AI güçlendirme sırasında bilinmeyen bir hata oluştu.';
+            setTemplateEnhancementError(msg);
+        });
+    }, [pendingTemplateAutoEnhancement, generatedPetition, isLoadingChat]);
 
     const runLegalSearch = async (keywordsForSearch: string[]) => {
         if (keywordsForSearch.length === 0) return;
@@ -1376,6 +1417,50 @@ export default function AlternativeApp() {
         <div className="min-h-screen bg-[#0A0A0B] text-gray-200 font-sans selection:bg-blue-500/30 flex flex-col overflow-hidden">
             <ToastContainer toasts={toasts} removeToast={removeToast} />
             <Header onShowLanding={() => navigate('/')} />
+
+            {/* AI Güçlendirme Hata Banner'ı */}
+            {templateEnhancementError && (
+                <div className="mx-4 mt-2 p-4 bg-red-900/30 border border-red-500/50 rounded-xl animate-in fade-in">
+                    <div className="flex items-start gap-3">
+                        <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                        </svg>
+                        <div className="flex-1">
+                            <h4 className="text-sm font-semibold text-red-300 mb-1">
+                                AI Güçlendirme Başarısız
+                            </h4>
+                            <p className="text-xs text-red-200/80 mb-3">
+                                {templateEnhancementError}
+                            </p>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => {
+                                        // Ham metinle devam et
+                                        if (rawTemplateContent) {
+                                            setGeneratedPetition(rawTemplateContent);
+                                            setPetitionVersion(v => v + 1);
+                                        }
+                                        setTemplateEnhancementError(null);
+                                        addToast('Ham metin ile devam ediliyor.', 'info');
+                                    }}
+                                    className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded-lg transition-colors"
+                                >
+                                    Ham Metinle Devam Et
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setTemplateEnhancementError(null);
+                                        setPendingTemplateAutoEnhancement(true);
+                                    }}
+                                    className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg transition-colors"
+                                >
+                                    Tekrar Dene
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="flex flex-1 overflow-hidden">
                 {/* Left Sidebar / Stepper */}

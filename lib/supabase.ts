@@ -76,6 +76,44 @@ export type Database = {
           updated_at?: string;
         };
       };
+      user_custom_templates: {
+        Row: {
+          id: string;
+          user_id: string;
+          template_type: 'dilekce' | 'sozlesme' | 'ihtarname';
+          title: string;
+          description: string | null;
+          content: string;
+          style_notes: string | null;
+          source_file_name: string | null;
+          variables: any;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          template_type: 'dilekce' | 'sozlesme' | 'ihtarname';
+          title: string;
+          description?: string | null;
+          content: string;
+          style_notes?: string | null;
+          source_file_name?: string | null;
+          variables?: any;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          template_type?: 'dilekce' | 'sozlesme' | 'ihtarname';
+          title?: string;
+          description?: string | null;
+          content?: string;
+          style_notes?: string | null;
+          source_file_name?: string | null;
+          variables?: any;
+          updated_at?: string;
+        };
+      };
     };
   };
 };
@@ -83,3 +121,4 @@ export type Database = {
 // Helper types
 export type Profile = Database['public']['Tables']['profiles']['Row'];
 export type Petition = Database['public']['Tables']['petitions']['Row'];
+export type UserCustomTemplateRow = Database['public']['Tables']['user_custom_templates']['Row'];

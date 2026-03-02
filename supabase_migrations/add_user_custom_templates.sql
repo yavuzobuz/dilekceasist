@@ -7,6 +7,7 @@ create table if not exists public.user_custom_templates (
   description text,
   content text not null,
   style_notes text,
+  source_file_name text,
   variables jsonb not null default '[]'::jsonb,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
     FileText,
@@ -25,13 +25,29 @@ import {
     Download,
     Table,
     Archive,
+    User,
+    Plus,
+    Pencil,
+    Trash2,
+    UploadCloud,
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { marked } from 'marked';
+import mammoth from 'mammoth';
 import { ClientManager } from '../components/ClientManager';
 import { Client } from '../types';
 import { searchLegalDecisions, type NormalizedLegalDecision } from '../utils/legalSearch';
+import { useAuth } from '../contexts/AuthContext';
+import {
+    fetchUserTemplates,
+    createUserTemplate,
+    updateUserTemplate,
+    deleteUserTemplate,
+    extractVariablesFromContent,
+    type UserCustomTemplate,
+    type UserCustomTemplateInsert,
+} from '../services/customTemplateService';
 
 const IconMap: Record<string, React.FC<any>> = {
     HeartCrack,
@@ -61,6 +77,7 @@ interface Template {
     isPremium: boolean;
     usageCount: number;
     variableCount: number;
+    isCustom?: boolean;
 }
 
 interface TemplateVariable {
@@ -82,6 +99,7 @@ interface TemplateDetail {
     variables: TemplateVariable[];
     isPremium: boolean;
     usageCount: number;
+    isCustom?: boolean;
 }
 
 interface BulkSheetData {
@@ -676,6 +694,24 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
     const [clientManagerMode, setClientManagerMode] = useState<'manage' | 'select'>('manage');
     const [targetVariablePrefix, setTargetVariablePrefix] = useState<string | null>(null);
 
+    // Özel şablon yönetimi
+    const { user } = useAuth();
+    const [customTemplates, setCustomTemplates] = useState<UserCustomTemplate[]>([]);
+    const [isLoadingCustom, setIsLoadingCustom] = useState(false);
+    const [showCustomTemplateModal, setShowCustomTemplateModal] = useState(false);
+    const [editingCustomTemplate, setEditingCustomTemplate] = useState<UserCustomTemplate | null>(null);
+    const [customForm, setCustomForm] = useState({
+        title: '',
+        description: '',
+        template_type: 'dilekce' as 'dilekce' | 'sozlesme' | 'ihtarname',
+        content: '',
+        style_notes: '',
+        source_file_name: null as string | null,
+    });
+    const [customFormVariables, setCustomFormVariables] = useState<TemplateVariable[]>([]);
+    const [customFormSaving, setCustomFormSaving] = useState(false);
+    const [customFormError, setCustomFormError] = useState<string | null>(null);
+
     const effectiveCategory = isContractsNoticesPage ? CONTRACTS_NOTICES_CATEGORY : selectedCategory;
     const visibleCategories = useMemo(
         () => CATEGORIES.filter(category => category.id !== 'contracts' && category.id !== 'notices'),
@@ -721,6 +757,175 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
         resetBulkModeState();
         resetSingleModeEnhancementState();
     };
+
+    // Özel şablonları Supabase'den yükle
+    const loadCustomTemplates = useCallback(async () => {
+        if (!user) {
+            setCustomTemplates([]);
+            return;
+        }
+        setIsLoadingCustom(true);
+        try {
+            const data = await fetchUserTemplates(user.id);
+            setCustomTemplates(data);
+        } catch (loadErr) {
+            console.error('Custom templates load error:', loadErr);
+        } finally {
+            setIsLoadingCustom(false);
+        }
+    }, [user]);
+
+    useEffect(() => {
+        loadCustomTemplates();
+    }, [loadCustomTemplates]);
+
+    // Özel şablon oluşturma/düzenleme modal'ını aç
+    const openCustomTemplateModal = useCallback((template?: UserCustomTemplate) => {
+        if (template) {
+            setEditingCustomTemplate(template);
+            setCustomForm({
+                title: template.title,
+                description: template.description || '',
+                template_type: template.template_type,
+                content: template.content,
+                style_notes: template.style_notes || '',
+                source_file_name: template.source_file_name,
+            });
+            setCustomFormVariables(template.variables || []);
+        } else {
+            setEditingCustomTemplate(null);
+            setCustomForm({
+                title: '',
+                description: '',
+                template_type: 'dilekce',
+                content: '',
+                style_notes: '',
+                source_file_name: null,
+            });
+            setCustomFormVariables([]);
+        }
+        setCustomFormError(null);
+        setShowCustomTemplateModal(true);
+    }, []);
+
+    // İçerikteki {{ALAN}} değişkenlerini otomatik çıkar
+    const handleCustomContentChange = useCallback((newContent: string) => {
+        setCustomForm(prev => ({ ...prev, content: newContent }));
+        const detected = extractVariablesFromContent(newContent);
+        setCustomFormVariables(detected);
+    }, []);
+
+    // Dosya yükleme: .txt, .md, .docx
+    const handleCustomFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        event.currentTarget.value = '';
+        if (!file) return;
+
+        const extension = file.name.split('.').pop()?.toLowerCase();
+        let fileText = '';
+
+        try {
+            if (extension === 'txt' || extension === 'md') {
+                fileText = await file.text();
+            } else if (extension === 'docx') {
+                const arrayBuffer = await file.arrayBuffer();
+                const result = await mammoth.extractRawText({ arrayBuffer });
+                fileText = result.value;
+            } else {
+                setCustomFormError('Desteklenmeyen format. .txt, .md veya .docx yükleyin.');
+                return;
+            }
+
+            setCustomForm(prev => ({ ...prev, content: fileText, source_file_name: file.name }));
+            const detected = extractVariablesFromContent(fileText);
+            setCustomFormVariables(detected);
+            setCustomFormError(null);
+        } catch (fileErr) {
+            setCustomFormError(fileErr instanceof Error ? fileErr.message : 'Dosya okunamadı.');
+        }
+    }, []);
+
+    // Özel şablonu kaydet veya güncelle
+    const handleSaveCustomTemplate = useCallback(async () => {
+        if (!user) return;
+        if (!customForm.title.trim()) {
+            setCustomFormError('Şablon başlığı zorunludur.');
+            return;
+        }
+        if (!customForm.content.trim()) {
+            setCustomFormError('Şablon içeriği zorunludur.');
+            return;
+        }
+
+        setCustomFormSaving(true);
+        setCustomFormError(null);
+
+        try {
+            if (editingCustomTemplate) {
+                await updateUserTemplate(editingCustomTemplate.id, {
+                    title: customForm.title.trim(),
+                    description: customForm.description.trim() || null,
+                    template_type: customForm.template_type,
+                    content: customForm.content,
+                    style_notes: customForm.style_notes.trim() || null,
+                    source_file_name: customForm.source_file_name,
+                    variables: customFormVariables,
+                });
+            } else {
+                await createUserTemplate({
+                    user_id: user.id,
+                    title: customForm.title.trim(),
+                    description: customForm.description.trim() || null,
+                    template_type: customForm.template_type,
+                    content: customForm.content,
+                    style_notes: customForm.style_notes.trim() || null,
+                    source_file_name: customForm.source_file_name,
+                    variables: customFormVariables,
+                });
+            }
+
+            setShowCustomTemplateModal(false);
+            await loadCustomTemplates();
+        } catch (saveErr) {
+            setCustomFormError(saveErr instanceof Error ? saveErr.message : 'Kayıt hatası.');
+        } finally {
+            setCustomFormSaving(false);
+        }
+    }, [user, customForm, customFormVariables, editingCustomTemplate, loadCustomTemplates]);
+
+    // Özel şablon sil
+    const handleDeleteCustomTemplate = useCallback(async (id: string) => {
+        if (!confirm('Bu özel şablonu silmek istediğinize emin misiniz?')) return;
+
+        try {
+            await deleteUserTemplate(id);
+            await loadCustomTemplates();
+        } catch (delErr) {
+            console.error('Delete custom template error:', delErr);
+        }
+    }, [loadCustomTemplates]);
+
+    // Özel şablonu TemplateDetail olarak aç (mevcut modal ile)
+    const openCustomTemplateAsDetail = useCallback((ct: UserCustomTemplate) => {
+        const detail: TemplateDetail = {
+            id: `custom-${ct.id}`,
+            category: ct.template_type === 'sozlesme' ? 'contracts' : ct.template_type === 'ihtarname' ? 'notices' : 'templates',
+            subcategory: ct.template_type === 'sozlesme' ? 'Sözleşme' : ct.template_type === 'ihtarname' ? 'İhtarname' : 'Dilekçe',
+            title: ct.title,
+            description: ct.description || '',
+            icon: 'FileText',
+            content: ct.content,
+            variables: ct.variables || [],
+            isPremium: false,
+            usageCount: 0,
+            isCustom: true,
+        };
+        setSelectedTemplate(detail);
+        setVariableValues({});
+        setGenerationMode('single');
+        resetBulkModeState();
+        resetSingleModeEnhancementState();
+    }, []);
 
     useEffect(() => {
         fetchTemplates();
@@ -1141,10 +1346,27 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
         }
     };
 
-    const templatesBySelectedCategory = useMemo(() => {
-        return templates.filter(template => {
-            const section = resolveTemplateSection(template);
+    // Özel şablonları Template formatına dönüştür
+    const customTemplatesAsCards: Template[] = useMemo(() => {
+        const typeToCategory: Record<string, string> = { dilekce: 'templates', sozlesme: 'contracts', ihtarname: 'notices' };
+        const typeToSubcategory: Record<string, string> = { dilekce: 'Dilekçe', sozlesme: 'Sözleşme', ihtarname: 'İhtarname' };
+        return customTemplates.map(ct => ({
+            id: `custom-${ct.id}`,
+            category: typeToCategory[ct.template_type] || 'templates',
+            subcategory: typeToSubcategory[ct.template_type] || 'Dilekçe',
+            title: ct.title,
+            description: ct.description || '',
+            icon: 'FileText',
+            isPremium: false,
+            usageCount: 0,
+            variableCount: (ct.variables || []).length,
+            isCustom: true,
+        }));
+    }, [customTemplates]);
 
+    const templatesBySelectedCategory = useMemo(() => {
+        const presetFiltered = templates.filter(template => {
+            const section = resolveTemplateSection(template);
             if (effectiveCategory === CONTRACTS_NOTICES_CATEGORY) {
                 return section === 'contracts' || section === 'notices';
             }
@@ -1153,7 +1375,21 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
             if (effectiveCategory === 'notices') return section === 'notices';
             return true;
         });
-    }, [templates, effectiveCategory]);
+
+        // Özel şablonları da kategoriye göre filtrele ve başa ekle
+        const customFiltered = customTemplatesAsCards.filter(ct => {
+            const section = resolveTemplateSection(ct);
+            if (effectiveCategory === CONTRACTS_NOTICES_CATEGORY) {
+                return section === 'contracts' || section === 'notices';
+            }
+            if (effectiveCategory === 'templates') return section === 'other';
+            if (effectiveCategory === 'contracts') return section === 'contracts';
+            if (effectiveCategory === 'notices') return section === 'notices';
+            return true;
+        });
+
+        return [...customFiltered, ...presetFiltered];
+    }, [templates, customTemplatesAsCards, effectiveCategory]);
 
     const filteredTemplates = useMemo(() => {
         const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -1189,46 +1425,87 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
         ? 'Tum sozlesme ve ihtarname sablonlarini buradan kullanabilirsiniz'
         : 'Hazir dilekce sablonlarindan secin';
 
-    const renderTemplateCard = (template: Template) => (
-        <div
-            key={template.id}
-            onClick={() => fetchTemplateDetail(template.id)}
-            className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 cursor-pointer hover:border-red-500 hover:bg-gray-800 transition-all group"
-        >
-            <div className="flex items-start justify-between mb-4">
-                <span className="text-4xl text-red-500">
-                    {(() => {
-                        const Icon = IconMap[template.icon] || FileText;
-                        return <Icon className="w-10 h-10" />;
-                    })()}
-                </span>
-                {template.isPremium && (
-                    <span className="flex items-center gap-1 px-2 py-1 bg-yellow-600/20 text-yellow-400 rounded-full text-xs font-medium">
-                        <Crown className="w-3 h-3" />
-                        Premium
+    const renderTemplateCard = (template: Template) => {
+        const isCustom = template.isCustom === true;
+        const realCustomId = isCustom ? template.id.replace('custom-', '') : null;
+        const matchingCustom = realCustomId ? customTemplates.find(ct => ct.id === realCustomId) : null;
+
+        return (
+            <div
+                key={template.id}
+                onClick={() => {
+                    if (isCustom && matchingCustom) {
+                        openCustomTemplateAsDetail(matchingCustom);
+                    } else {
+                        fetchTemplateDetail(template.id);
+                    }
+                }}
+                className={`bg-gray-800/50 border rounded-xl p-6 cursor-pointer hover:bg-gray-800 transition-all group ${isCustom ? 'border-blue-500/40 hover:border-blue-400' : 'border-gray-700 hover:border-red-500'
+                    }`}
+            >
+                <div className="flex items-start justify-between mb-4">
+                    <span className={`text-4xl ${isCustom ? 'text-blue-400' : 'text-red-500'}`}>
+                        {(() => {
+                            const Icon = IconMap[template.icon] || FileText;
+                            return <Icon className="w-10 h-10" />;
+                        })()}
                     </span>
-                )}
+                    <div className="flex items-center gap-2">
+                        {isCustom && (
+                            <span className="flex items-center gap-1 px-2 py-1 bg-blue-600/20 text-blue-400 rounded-full text-xs font-medium">
+                                <User className="w-3 h-3" />
+                                Kendi Şablonum
+                            </span>
+                        )}
+                        {template.isPremium && (
+                            <span className="flex items-center gap-1 px-2 py-1 bg-yellow-600/20 text-yellow-400 rounded-full text-xs font-medium">
+                                <Crown className="w-3 h-3" />
+                                Premium
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                <h3 className={`text-lg font-semibold text-white mb-2 transition-colors ${isCustom ? 'group-hover:text-blue-400' : 'group-hover:text-red-400'
+                    }`}>
+                    {template.title}
+                </h3>
+
+                <p className="text-sm text-gray-400 mb-4 line-clamp-2">
+                    {template.description}
+                </p>
+
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span className="bg-gray-700 px-2 py-1 rounded">
+                        {template.subcategory}
+                    </span>
+                    {isCustom && matchingCustom ? (
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); openCustomTemplateModal(matchingCustom); }}
+                                className="p-1 hover:bg-gray-600 rounded transition-colors"
+                                title="Düzenle"
+                            >
+                                <Pencil className="w-3.5 h-3.5 text-gray-400" />
+                            </button>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteCustomTemplate(matchingCustom.id); }}
+                                className="p-1 hover:bg-red-900/50 rounded transition-colors"
+                                title="Sil"
+                            >
+                                <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                            </button>
+                        </div>
+                    ) : (
+                        <span className="flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            {template.usageCount} kullanim
+                        </span>
+                    )}
+                </div>
             </div>
-
-            <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-red-400 transition-colors">
-                {template.title}
-            </h3>
-
-            <p className="text-sm text-gray-400 mb-4 line-clamp-2">
-                {template.description}
-            </p>
-
-            <div className="flex items-center justify-between text-xs text-gray-500">
-                <span className="bg-gray-700 px-2 py-1 rounded">
-                    {template.subcategory}
-                </span>
-                <span className="flex items-center gap-1">
-                    <Users className="w-3 h-3" />
-                    {template.usageCount} kullanim
-                </span>
-            </div>
-        </div>
-    );
+        );
+    };
 
     return (
         <div className="min-h-screen bg-[#0A0A0B] text-white">
@@ -1242,6 +1519,15 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                             >
                                 <ArrowLeft className="w-5 h-5" />
                             </button>
+                            {user && (
+                                <button
+                                    onClick={() => openCustomTemplateModal()}
+                                    className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Yeni Özel Şablon</span>
+                                </button>
+                            )}
                             <button
                                 onClick={() => {
                                     setClientManagerMode('manage');
@@ -1406,351 +1692,351 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                         <div className="min-h-0 overflow-y-auto pr-1 pb-2 space-y-4">
                                             <p className="text-gray-400 mb-4">{selectedTemplate.description}</p>
 
-                                    <div className="flex items-center gap-2 bg-gray-800 p-1 rounded-xl border border-gray-700 mb-5">
-                                        <button
-                                            onClick={() => setGenerationMode('single')}
-                                            className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${generationMode === 'single'
-                                                ? 'bg-red-600 text-white'
-                                                : 'text-gray-300 hover:bg-gray-700'
-                                                }`}
-                                        >
-                                            Tekli Doldur
-                                        </button>
-                                        <button
-                                            onClick={() => setGenerationMode('bulk')}
-                                            className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${generationMode === 'bulk'
-                                                ? 'bg-red-600 text-white'
-                                                : 'text-gray-300 hover:bg-gray-700'
-                                                }`}
-                                        >
-                                            <FileSpreadsheet className="w-4 h-4" />
-                                            Seri (Excel/CSV)
-                                        </button>
-                                    </div>
+                                            <div className="flex items-center gap-2 bg-gray-800 p-1 rounded-xl border border-gray-700 mb-5">
+                                                <button
+                                                    onClick={() => setGenerationMode('single')}
+                                                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${generationMode === 'single'
+                                                        ? 'bg-red-600 text-white'
+                                                        : 'text-gray-300 hover:bg-gray-700'
+                                                        }`}
+                                                >
+                                                    Tekli Doldur
+                                                </button>
+                                                <button
+                                                    onClick={() => setGenerationMode('bulk')}
+                                                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${generationMode === 'bulk'
+                                                        ? 'bg-red-600 text-white'
+                                                        : 'text-gray-300 hover:bg-gray-700'
+                                                        }`}
+                                                >
+                                                    <FileSpreadsheet className="w-4 h-4" />
+                                                    Seri (Excel/CSV)
+                                                </button>
+                                            </div>
 
-                                    {generationMode === 'single' && (
-                                        <>
-                                            <h3 className="font-semibold text-white flex items-center gap-2">
-                                                <Filter className="w-4 h-4 text-red-500" />
-                                                Bilgileri Doldurun
-                                            </h3>
+                                            {generationMode === 'single' && (
+                                                <>
+                                                    <h3 className="font-semibold text-white flex items-center gap-2">
+                                                        <Filter className="w-4 h-4 text-red-500" />
+                                                        Bilgileri Doldurun
+                                                    </h3>
 
-                                            <div className="bg-gray-800/40 border border-gray-700 rounded-xl p-4 space-y-3">
-                                                <label className="flex items-center gap-2 text-sm text-gray-200">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={isAiEnhanced}
-                                                        onChange={(event) => setIsAiEnhanced(event.target.checked)}
-                                                        className="rounded border-gray-500 bg-gray-700 text-red-600 focus:ring-red-500"
-                                                    />
-                                                    AI ile dilekceyi zenginlestir
-                                                </label>
-                                                {isAiEnhanced && (
-                                                    <p className="text-xs text-gray-400">
-                                                        Secilen kararlar ve alan degerleri alt uygulamada chatbot mantigi ile otomatik islenecek.
-                                                    </p>
-                                                )}
+                                                    <div className="bg-gray-800/40 border border-gray-700 rounded-xl p-4 space-y-3">
+                                                        <label className="flex items-center gap-2 text-sm text-gray-200">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isAiEnhanced}
+                                                                onChange={(event) => setIsAiEnhanced(event.target.checked)}
+                                                                className="rounded border-gray-500 bg-gray-700 text-red-600 focus:ring-red-500"
+                                                            />
+                                                            AI ile dilekceyi zenginlestir
+                                                        </label>
+                                                        {isAiEnhanced && (
+                                                            <p className="text-xs text-gray-400">
+                                                                Secilen kararlar ve alan degerleri alt uygulamada chatbot mantigi ile otomatik islenecek.
+                                                            </p>
+                                                        )}
 
-                                                <div className="space-y-2">
-                                                    <p className="text-xs text-gray-400">
-                                                        MCP ile Yargitay karari ara ve secilen kararlarini dilekceye ekle.
-                                                    </p>
-                                                    <div className="flex flex-col sm:flex-row gap-2">
-                                                        <input
-                                                            type="text"
-                                                            value={mcpKeyword}
-                                                            onChange={(event) => setMcpKeyword(event.target.value)}
-                                                            onKeyDown={(event) => {
-                                                                if (event.key === 'Enter') {
-                                                                    event.preventDefault();
-                                                                    handleMcpSearch();
-                                                                }
-                                                            }}
-                                                            placeholder="Orn: kidem tazminati fesih hakli nedenle"
-                                                            className="flex-1 p-2.5 bg-gray-800 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
-                                                        />
-                                                        <button
-                                                            onClick={handleMcpSearch}
-                                                            disabled={isSearchingMcp || !mcpKeyword.trim()}
-                                                            className="px-4 py-2.5 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-700/60 disabled:text-gray-500 text-white rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
-                                                        >
-                                                            {isSearchingMcp ? (
-                                                                <>
-                                                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                                                    Araniyor...
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <Search className="w-4 h-4" />
-                                                                    Yargitay Ara (MCP)
-                                                                </>
-                                                            )}
-                                                        </button>
-                                                    </div>
-                                                </div>
-
-                                                {mcpSearchError && (
-                                                    <div className="text-xs text-red-300 bg-red-900/30 border border-red-700 rounded-lg p-2">
-                                                        {mcpSearchError}
-                                                    </div>
-                                                )}
-
-                                                {selectedMcpDecisions.length > 0 && (
-                                                    <div className="text-xs text-emerald-300 bg-emerald-900/20 border border-emerald-700/60 rounded-lg p-2">
-                                                        {selectedMcpDecisions.length} karar secildi. Uretimde dilekceye eklenecek.
-                                                    </div>
-                                                )}
-
-                                                {mcpSearchResults.length > 0 && (
-                                                    <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
-                                                        {mcpSearchResults.slice(0, 12).map((decision, index) => {
-                                                            const selected = isMcpDecisionSelected(decision);
-                                                            const decisionKey = buildDecisionIdentity(decision) || `decision-${index}`;
-
-                                                            return (
+                                                        <div className="space-y-2">
+                                                            <p className="text-xs text-gray-400">
+                                                                MCP ile Yargitay karari ara ve secilen kararlarini dilekceye ekle.
+                                                            </p>
+                                                            <div className="flex flex-col sm:flex-row gap-2">
+                                                                <input
+                                                                    type="text"
+                                                                    value={mcpKeyword}
+                                                                    onChange={(event) => setMcpKeyword(event.target.value)}
+                                                                    onKeyDown={(event) => {
+                                                                        if (event.key === 'Enter') {
+                                                                            event.preventDefault();
+                                                                            handleMcpSearch();
+                                                                        }
+                                                                    }}
+                                                                    placeholder="Orn: kidem tazminati fesih hakli nedenle"
+                                                                    className="flex-1 p-2.5 bg-gray-800 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
+                                                                />
                                                                 <button
-                                                                    key={decisionKey}
-                                                                    type="button"
-                                                                    onClick={() => toggleMcpDecision(decision)}
-                                                                    className={`w-full text-left p-3 rounded-lg border transition-colors ${selected
-                                                                        ? 'border-red-500/70 bg-red-900/20'
-                                                                        : 'border-gray-700 bg-gray-800/60 hover:border-gray-500'
-                                                                        }`}
+                                                                    onClick={handleMcpSearch}
+                                                                    disabled={isSearchingMcp || !mcpKeyword.trim()}
+                                                                    className="px-4 py-2.5 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-700/60 disabled:text-gray-500 text-white rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
                                                                 >
-                                                                    <div className="flex items-start justify-between gap-3">
-                                                                        <div className="min-w-0">
-                                                                            <p className="text-sm text-white font-medium">{decision.title || 'Yargitay Karari'}</p>
-                                                                            <p className="text-xs text-gray-400 mt-1">
-                                                                                {decision.esasNo ? `E. ${decision.esasNo} ` : ''}
-                                                                                {decision.kararNo ? `K. ${decision.kararNo} ` : ''}
-                                                                                {decision.tarih ? `T. ${decision.tarih}` : ''}
-                                                                            </p>
-                                                                        </div>
-                                                                        <span className={`text-[11px] px-2 py-1 rounded-full border ${selected
-                                                                            ? 'border-red-500 text-red-300'
-                                                                            : 'border-gray-600 text-gray-300'
-                                                                            }`}>
-                                                                            {selected ? 'Eklendi' : 'Ekle'}
-                                                                        </span>
-                                                                    </div>
-                                                                    {decision.ozet && (
-                                                                        <p className="text-xs text-gray-300 mt-2 line-clamp-3">
-                                                                            {decision.ozet}
-                                                                        </p>
+                                                                    {isSearchingMcp ? (
+                                                                        <>
+                                                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                                                            Araniyor...
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <Search className="w-4 h-4" />
+                                                                            Yargitay Ara (MCP)
+                                                                        </>
                                                                     )}
                                                                 </button>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                )}
-                                            </div>
+                                                            </div>
+                                                        </div>
 
-                                            {selectedTemplate.variables.map(variable => (
-                                                <div key={variable.key}>
-                                                    <div className="flex justify-between items-end mb-1">
-                                                        <label className="block text-sm font-medium text-gray-300">
-                                                            {variable.label}
-                                                            {variable.required && <span className="text-red-500 ml-1">*</span>}
-                                                        </label>
+                                                        {mcpSearchError && (
+                                                            <div className="text-xs text-red-300 bg-red-900/30 border border-red-700 rounded-lg p-2">
+                                                                {mcpSearchError}
+                                                            </div>
+                                                        )}
 
-                                                        {isClientField(variable.key) && (
-                                                            <button
-                                                                onClick={() => {
-                                                                    setTargetVariablePrefix(variable.key);
-                                                                    setClientManagerMode('select');
-                                                                    setShowClientManager(true);
-                                                                }}
-                                                                className="text-xs flex items-center gap-1 text-red-400 hover:text-red-300 transition-colors bg-red-900/20 px-2 py-0.5 rounded"
-                                                            >
-                                                                <UserPlus className="w-3 h-3" />
-                                                                Kisi Sec
-                                                            </button>
+                                                        {selectedMcpDecisions.length > 0 && (
+                                                            <div className="text-xs text-emerald-300 bg-emerald-900/20 border border-emerald-700/60 rounded-lg p-2">
+                                                                {selectedMcpDecisions.length} karar secildi. Uretimde dilekceye eklenecek.
+                                                            </div>
+                                                        )}
+
+                                                        {mcpSearchResults.length > 0 && (
+                                                            <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
+                                                                {mcpSearchResults.slice(0, 12).map((decision, index) => {
+                                                                    const selected = isMcpDecisionSelected(decision);
+                                                                    const decisionKey = buildDecisionIdentity(decision) || `decision-${index}`;
+
+                                                                    return (
+                                                                        <button
+                                                                            key={decisionKey}
+                                                                            type="button"
+                                                                            onClick={() => toggleMcpDecision(decision)}
+                                                                            className={`w-full text-left p-3 rounded-lg border transition-colors ${selected
+                                                                                ? 'border-red-500/70 bg-red-900/20'
+                                                                                : 'border-gray-700 bg-gray-800/60 hover:border-gray-500'
+                                                                                }`}
+                                                                        >
+                                                                            <div className="flex items-start justify-between gap-3">
+                                                                                <div className="min-w-0">
+                                                                                    <p className="text-sm text-white font-medium">{decision.title || 'Yargitay Karari'}</p>
+                                                                                    <p className="text-xs text-gray-400 mt-1">
+                                                                                        {decision.esasNo ? `E. ${decision.esasNo} ` : ''}
+                                                                                        {decision.kararNo ? `K. ${decision.kararNo} ` : ''}
+                                                                                        {decision.tarih ? `T. ${decision.tarih}` : ''}
+                                                                                    </p>
+                                                                                </div>
+                                                                                <span className={`text-[11px] px-2 py-1 rounded-full border ${selected
+                                                                                    ? 'border-red-500 text-red-300'
+                                                                                    : 'border-gray-600 text-gray-300'
+                                                                                    }`}>
+                                                                                    {selected ? 'Eklendi' : 'Ekle'}
+                                                                                </span>
+                                                                            </div>
+                                                                            {decision.ozet && (
+                                                                                <p className="text-xs text-gray-300 mt-2 line-clamp-3">
+                                                                                    {decision.ozet}
+                                                                                </p>
+                                                                            )}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
                                                         )}
                                                     </div>
-                                                    {variable.type === 'textarea' ? (
-                                                        <textarea
-                                                            value={variableValues[variable.key] || ''}
-                                                            onChange={(event) => setVariableValues(prev => ({
-                                                                ...prev,
-                                                                [variable.key]: event.target.value,
-                                                            }))}
-                                                            placeholder={variable.placeholder}
-                                                            rows={3}
-                                                            className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
-                                                        />
-                                                    ) : (
-                                                        <input
-                                                            type={variable.type === 'date' ? 'date' : variable.type === 'number' ? 'number' : 'text'}
-                                                            value={variableValues[variable.key] || ''}
-                                                            onChange={(event) => setVariableValues(prev => ({
-                                                                ...prev,
-                                                                [variable.key]: event.target.value,
-                                                            }))}
-                                                            placeholder={variable.placeholder}
-                                                            className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
-                                                        />
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </>
-                                    )}
 
-                                    {generationMode === 'bulk' && (
-                                        <div className="space-y-5">
-                                            <div className="bg-gray-800/60 border border-gray-700 rounded-xl p-4">
-                                                <h3 className="font-semibold text-white flex items-center gap-2 mb-2">
-                                                    <FileSpreadsheet className="w-4 h-4 text-red-500" />
-                                                    Seri Dilekce Uretimi
-                                                </h3>
-                                                <p className="text-sm text-gray-300 mb-4">
-                                                    Excel/CSV yükleyin, kolonları şablon değişkenleriyle eşleyin ve tek tıkla toplu dilekçe paketi oluşturun.
-                                                </p>
-                                                <div className="flex flex-wrap gap-2">
-                                                    <label className="inline-flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg cursor-pointer transition-colors">
-                                                        <Upload className="w-4 h-4" />
-                                                        Excel/CSV Yukle
-                                                        <input
-                                                            type="file"
-                                                            accept=".xlsx,.csv"
-                                                            className="hidden"
-                                                            onChange={handleSpreadsheetUpload}
-                                                        />
-                                                    </label>
-                                                    <button
-                                                        onClick={downloadSampleCsv}
-                                                        className="inline-flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg transition-colors"
-                                                    >
-                                                        <Download className="w-4 h-4" />
-                                                        Sablon Olustur (CSV)
-                                                    </button>
-                                                    <button
-                                                        onClick={downloadSampleCsv}
-                                                        className="inline-flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors"
-                                                    >
-                                                        <FileSpreadsheet className="w-4 h-4" />
-                                                        Seri Dilekce Sablonu
-                                                    </button>
-                                                </div>
-                                                <p className="text-xs text-gray-500 mt-3">
-                                                    Not: CSV dosyasini Excel ile acabilirsiniz. XLSX ve CSV desteklenir.
-                                                </p>
-                                            </div>
+                                                    {selectedTemplate.variables.map(variable => (
+                                                        <div key={variable.key}>
+                                                            <div className="flex justify-between items-end mb-1">
+                                                                <label className="block text-sm font-medium text-gray-300">
+                                                                    {variable.label}
+                                                                    {variable.required && <span className="text-red-500 ml-1">*</span>}
+                                                                </label>
 
-                                            {bulkError && (
-                                                <div className="bg-red-900/30 border border-red-700 text-red-200 rounded-lg p-3 text-sm">
-                                                    {bulkError}
-                                                </div>
-                                            )}
-
-                                            {bulkSuccess && (
-                                                <div className="bg-emerald-900/25 border border-emerald-700 text-emerald-200 rounded-lg p-3 text-sm">
-                                                    {bulkSuccess}
-                                                </div>
-                                            )}
-
-                                            {bulkSheetData && (
-                                                <>
-                                                    <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 space-y-2">
-                                                        <div className="flex items-center gap-2 text-sm text-gray-200">
-                                                            <Table className="w-4 h-4 text-red-400" />
-                                                            Dosya: <span className="font-semibold">{bulkSheetData.fileName}</span>
-                                                        </div>
-                                                        <p className="text-sm text-gray-300">
-                                                            {bulkSheetData.rows.length} veri satiri, {bulkSheetData.headers.length} kolon algilandi.
-                                                        </p>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {bulkSheetData.headers.slice(0, 20).map(header => (
-                                                                <span key={header} className="px-2 py-1 text-xs bg-gray-700 text-gray-200 rounded border border-gray-600">
-                                                                    {header}
-                                                                </span>
-                                                            ))}
-                                                            {bulkSheetData.headers.length > 20 && (
-                                                                <span className="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded border border-gray-600">
-                                                                    +{bulkSheetData.headers.length - 20} kolon
-                                                                </span>
+                                                                {isClientField(variable.key) && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setTargetVariablePrefix(variable.key);
+                                                                            setClientManagerMode('select');
+                                                                            setShowClientManager(true);
+                                                                        }}
+                                                                        className="text-xs flex items-center gap-1 text-red-400 hover:text-red-300 transition-colors bg-red-900/20 px-2 py-0.5 rounded"
+                                                                    >
+                                                                        <UserPlus className="w-3 h-3" />
+                                                                        Kisi Sec
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                            {variable.type === 'textarea' ? (
+                                                                <textarea
+                                                                    value={variableValues[variable.key] || ''}
+                                                                    onChange={(event) => setVariableValues(prev => ({
+                                                                        ...prev,
+                                                                        [variable.key]: event.target.value,
+                                                                    }))}
+                                                                    placeholder={variable.placeholder}
+                                                                    rows={3}
+                                                                    className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
+                                                                />
+                                                            ) : (
+                                                                <input
+                                                                    type={variable.type === 'date' ? 'date' : variable.type === 'number' ? 'number' : 'text'}
+                                                                    value={variableValues[variable.key] || ''}
+                                                                    onChange={(event) => setVariableValues(prev => ({
+                                                                        ...prev,
+                                                                        [variable.key]: event.target.value,
+                                                                    }))}
+                                                                    placeholder={variable.placeholder}
+                                                                    className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
+                                                                />
                                                             )}
                                                         </div>
-                                                    </div>
-
-                                                    <div className="space-y-3">
-                                                        <h4 className="font-semibold text-white flex items-center gap-2">
-                                                            <Archive className="w-4 h-4 text-red-500" />
-                                                            Degisken - Kolon Esleme
-                                                        </h4>
-                                                        {selectedTemplate.variables.map(variable => {
-                                                            const selectedHeader = bulkColumnMapping[variable.key] || '';
-                                                            const previewValue = selectedHeader ? (previewValueByHeader[selectedHeader] || '') : '';
-
-                                                            return (
-                                                                <div key={variable.key} className="border border-gray-700 rounded-lg p-3 bg-gray-800/40">
-                                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                                                        <div>
-                                                                            <p className="text-sm font-medium text-white">
-                                                                                {variable.label}
-                                                                                {variable.required && <span className="text-red-500 ml-1">*</span>}
-                                                                            </p>
-                                                                            <p className="text-xs text-gray-500 mt-1">{variable.key}</p>
-                                                                        </div>
-                                                                        <div>
-                                                                            <label className="block text-xs text-gray-400 mb-1">Kolon secimi</label>
-                                                                            <select
-                                                                                value={selectedHeader}
-                                                                                onChange={(event) => setBulkColumnMapping(prev => ({
-                                                                                    ...prev,
-                                                                                    [variable.key]: event.target.value,
-                                                                                }))}
-                                                                                className="w-full p-2.5 bg-gray-800 border border-gray-600 rounded-lg text-sm text-white focus:outline-none focus:border-red-500"
-                                                                            >
-                                                                                <option value="">Kolon esleme yok</option>
-                                                                                {bulkSheetData.headers.map(header => (
-                                                                                    <option key={header} value={header}>{header}</option>
-                                                                                ))}
-                                                                            </select>
-                                                                        </div>
-                                                                        <div>
-                                                                            <label className="block text-xs text-gray-400 mb-1">Sabit deger (opsiyonel)</label>
-                                                                            <input
-                                                                                type="text"
-                                                                                value={bulkFallbackValues[variable.key] || ''}
-                                                                                onChange={(event) => setBulkFallbackValues(prev => ({
-                                                                                    ...prev,
-                                                                                    [variable.key]: event.target.value,
-                                                                                }))}
-                                                                                placeholder="Kolon bos ise kullanilir"
-                                                                                className="w-full p-2.5 bg-gray-800 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
-                                                                            />
-                                                                            <p className="text-xs text-gray-500 mt-1 truncate">
-                                                                                Onizleme: {previewValue || bulkFallbackValues[variable.key] || '-'}
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-
-                                                    <div className="flex items-center gap-2 p-3 bg-gray-800 border border-gray-700 rounded-lg">
-                                                        <input
-                                                            id="include-docx-in-bulk"
-                                                            type="checkbox"
-                                                            checked={includeDocxInBulk}
-                                                            onChange={(event) => setIncludeDocxInBulk(event.target.checked)}
-                                                            className="rounded border-gray-500 bg-gray-700 text-red-600 focus:ring-red-500"
-                                                        />
-                                                        <label htmlFor="include-docx-in-bulk" className="text-sm text-gray-200 cursor-pointer">
-                                                            Toplu ciktiya Word (.docx) dosyalari da eklensin
-                                                        </label>
-                                                    </div>
-
-                                                    {isBulkGenerating && (
-                                                        <div className="bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm text-gray-200">
-                                                            Isleniyor: {bulkProgress.current} / {bulkProgress.total}
-                                                        </div>
-                                                    )}
+                                                    ))}
                                                 </>
                                             )}
-                                        </div>
-                                    )}
+
+                                            {generationMode === 'bulk' && (
+                                                <div className="space-y-5">
+                                                    <div className="bg-gray-800/60 border border-gray-700 rounded-xl p-4">
+                                                        <h3 className="font-semibold text-white flex items-center gap-2 mb-2">
+                                                            <FileSpreadsheet className="w-4 h-4 text-red-500" />
+                                                            Seri Dilekce Uretimi
+                                                        </h3>
+                                                        <p className="text-sm text-gray-300 mb-4">
+                                                            Excel/CSV yükleyin, kolonları şablon değişkenleriyle eşleyin ve tek tıkla toplu dilekçe paketi oluşturun.
+                                                        </p>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            <label className="inline-flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg cursor-pointer transition-colors">
+                                                                <Upload className="w-4 h-4" />
+                                                                Excel/CSV Yukle
+                                                                <input
+                                                                    type="file"
+                                                                    accept=".xlsx,.csv"
+                                                                    className="hidden"
+                                                                    onChange={handleSpreadsheetUpload}
+                                                                />
+                                                            </label>
+                                                            <button
+                                                                onClick={downloadSampleCsv}
+                                                                className="inline-flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg transition-colors"
+                                                            >
+                                                                <Download className="w-4 h-4" />
+                                                                Sablon Olustur (CSV)
+                                                            </button>
+                                                            <button
+                                                                onClick={downloadSampleCsv}
+                                                                className="inline-flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors"
+                                                            >
+                                                                <FileSpreadsheet className="w-4 h-4" />
+                                                                Seri Dilekce Sablonu
+                                                            </button>
+                                                        </div>
+                                                        <p className="text-xs text-gray-500 mt-3">
+                                                            Not: CSV dosyasini Excel ile acabilirsiniz. XLSX ve CSV desteklenir.
+                                                        </p>
+                                                    </div>
+
+                                                    {bulkError && (
+                                                        <div className="bg-red-900/30 border border-red-700 text-red-200 rounded-lg p-3 text-sm">
+                                                            {bulkError}
+                                                        </div>
+                                                    )}
+
+                                                    {bulkSuccess && (
+                                                        <div className="bg-emerald-900/25 border border-emerald-700 text-emerald-200 rounded-lg p-3 text-sm">
+                                                            {bulkSuccess}
+                                                        </div>
+                                                    )}
+
+                                                    {bulkSheetData && (
+                                                        <>
+                                                            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 space-y-2">
+                                                                <div className="flex items-center gap-2 text-sm text-gray-200">
+                                                                    <Table className="w-4 h-4 text-red-400" />
+                                                                    Dosya: <span className="font-semibold">{bulkSheetData.fileName}</span>
+                                                                </div>
+                                                                <p className="text-sm text-gray-300">
+                                                                    {bulkSheetData.rows.length} veri satiri, {bulkSheetData.headers.length} kolon algilandi.
+                                                                </p>
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {bulkSheetData.headers.slice(0, 20).map(header => (
+                                                                        <span key={header} className="px-2 py-1 text-xs bg-gray-700 text-gray-200 rounded border border-gray-600">
+                                                                            {header}
+                                                                        </span>
+                                                                    ))}
+                                                                    {bulkSheetData.headers.length > 20 && (
+                                                                        <span className="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded border border-gray-600">
+                                                                            +{bulkSheetData.headers.length - 20} kolon
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="space-y-3">
+                                                                <h4 className="font-semibold text-white flex items-center gap-2">
+                                                                    <Archive className="w-4 h-4 text-red-500" />
+                                                                    Degisken - Kolon Esleme
+                                                                </h4>
+                                                                {selectedTemplate.variables.map(variable => {
+                                                                    const selectedHeader = bulkColumnMapping[variable.key] || '';
+                                                                    const previewValue = selectedHeader ? (previewValueByHeader[selectedHeader] || '') : '';
+
+                                                                    return (
+                                                                        <div key={variable.key} className="border border-gray-700 rounded-lg p-3 bg-gray-800/40">
+                                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                                                <div>
+                                                                                    <p className="text-sm font-medium text-white">
+                                                                                        {variable.label}
+                                                                                        {variable.required && <span className="text-red-500 ml-1">*</span>}
+                                                                                    </p>
+                                                                                    <p className="text-xs text-gray-500 mt-1">{variable.key}</p>
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label className="block text-xs text-gray-400 mb-1">Kolon secimi</label>
+                                                                                    <select
+                                                                                        value={selectedHeader}
+                                                                                        onChange={(event) => setBulkColumnMapping(prev => ({
+                                                                                            ...prev,
+                                                                                            [variable.key]: event.target.value,
+                                                                                        }))}
+                                                                                        className="w-full p-2.5 bg-gray-800 border border-gray-600 rounded-lg text-sm text-white focus:outline-none focus:border-red-500"
+                                                                                    >
+                                                                                        <option value="">Kolon esleme yok</option>
+                                                                                        {bulkSheetData.headers.map(header => (
+                                                                                            <option key={header} value={header}>{header}</option>
+                                                                                        ))}
+                                                                                    </select>
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label className="block text-xs text-gray-400 mb-1">Sabit deger (opsiyonel)</label>
+                                                                                    <input
+                                                                                        type="text"
+                                                                                        value={bulkFallbackValues[variable.key] || ''}
+                                                                                        onChange={(event) => setBulkFallbackValues(prev => ({
+                                                                                            ...prev,
+                                                                                            [variable.key]: event.target.value,
+                                                                                        }))}
+                                                                                        placeholder="Kolon bos ise kullanilir"
+                                                                                        className="w-full p-2.5 bg-gray-800 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
+                                                                                    />
+                                                                                    <p className="text-xs text-gray-500 mt-1 truncate">
+                                                                                        Onizleme: {previewValue || bulkFallbackValues[variable.key] || '-'}
+                                                                                    </p>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+
+                                                            <div className="flex items-center gap-2 p-3 bg-gray-800 border border-gray-700 rounded-lg">
+                                                                <input
+                                                                    id="include-docx-in-bulk"
+                                                                    type="checkbox"
+                                                                    checked={includeDocxInBulk}
+                                                                    onChange={(event) => setIncludeDocxInBulk(event.target.checked)}
+                                                                    className="rounded border-gray-500 bg-gray-700 text-red-600 focus:ring-red-500"
+                                                                />
+                                                                <label htmlFor="include-docx-in-bulk" className="text-sm text-gray-200 cursor-pointer">
+                                                                    Toplu ciktiya Word (.docx) dosyalari da eklensin
+                                                                </label>
+                                                            </div>
+
+                                                            {isBulkGenerating && (
+                                                                <div className="bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm text-gray-200">
+                                                                    Isleniyor: {bulkProgress.current} / {bulkProgress.total}
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -1844,6 +2130,185 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                         }
                     }}
                 />
+            )}
+
+            {/* Özel Şablon Oluşturma/Düzenleme Modalı */}
+            {showCustomTemplateModal && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-gray-900 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-gray-700 shadow-2xl overflow-hidden">
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-5 border-b border-gray-700">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-blue-600/20 rounded-xl flex items-center justify-center">
+                                    <User className="w-5 h-5 text-blue-400" />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">
+                                        {editingCustomTemplate ? 'Şablonu Düzenle' : 'Yeni Özel Şablon'}
+                                    </h2>
+                                    <p className="text-xs text-gray-400">Kendi şablonunuzu oluşturun veya dosyadan yükleyin</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowCustomTemplateModal(false)}
+                                className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+                            >
+                                <X className="w-5 h-5 text-gray-400" />
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                            {customFormError && (
+                                <div className="p-3 bg-red-900/30 border border-red-500/50 rounded-lg text-red-300 text-sm">
+                                    {customFormError}
+                                </div>
+                            )}
+
+                            {/* Başlık */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-1">Şablon Başlığı *</label>
+                                <input
+                                    type="text"
+                                    value={customForm.title}
+                                    onChange={(e) => setCustomForm(prev => ({ ...prev, title: e.target.value }))}
+                                    placeholder="Örn: İş Akdi Fesih İhbarnamesi"
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                                />
+                            </div>
+
+                            {/* Açıklama */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-1">Açıklama</label>
+                                <input
+                                    type="text"
+                                    value={customForm.description}
+                                    onChange={(e) => setCustomForm(prev => ({ ...prev, description: e.target.value }))}
+                                    placeholder="Kısa açıklama"
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                                />
+                            </div>
+
+                            {/* Tür Seçimi */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-1">Şablon Türü</label>
+                                <div className="flex gap-2">
+                                    {([
+                                        { value: 'dilekce', label: 'Dilekçe' },
+                                        { value: 'sozlesme', label: 'Sözleşme' },
+                                        { value: 'ihtarname', label: 'İhtarname' },
+                                    ] as const).map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            onClick={() => setCustomForm(prev => ({ ...prev, template_type: opt.value }))}
+                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${customForm.template_type === opt.value
+                                                    ? 'bg-blue-600 text-white'
+                                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                                }`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Dosya Yükleme */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                                    Dosyadan Yükle <span className="text-gray-500 font-normal">(opsiyonel)</span>
+                                </label>
+                                <label className="flex items-center gap-3 p-4 bg-gray-800/50 border border-dashed border-gray-600 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-gray-800 transition-colors">
+                                    <UploadCloud className="w-6 h-6 text-gray-400" />
+                                    <div className="flex-1">
+                                        <p className="text-sm text-gray-300">
+                                            {customForm.source_file_name || '.txt, .md veya .docx dosyası yükleyin'}
+                                        </p>
+                                        <p className="text-xs text-gray-500">İçerik ve {'{{ALAN}}'} değişkenleri otomatik çıkarılır</p>
+                                    </div>
+                                    <input
+                                        type="file"
+                                        accept=".txt,.md,.docx"
+                                        onChange={handleCustomFileUpload}
+                                        className="hidden"
+                                    />
+                                </label>
+                            </div>
+
+                            {/* İçerik */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                                    Şablon İçeriği *
+                                    <span className="text-gray-500 font-normal ml-2">{'{{DEGISKEN_ADI}}'} formatında değişken kullanın</span>
+                                </label>
+                                <textarea
+                                    value={customForm.content}
+                                    onChange={(e) => handleCustomContentChange(e.target.value)}
+                                    placeholder={"Sayın {{MAHKEME_ADI}},\n\nDavacı: {{DAVACI_ADI}}\nDavalı: {{DAVALI_ADI}}\n\n...şablon içeriğiniz..."}
+                                    rows={10}
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 font-mono text-sm resize-y"
+                                />
+                            </div>
+
+                            {/* Otomatik Tespit Edilen Değişkenler */}
+                            {customFormVariables.length > 0 && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        Tespit Edilen Değişkenler ({customFormVariables.length})
+                                    </label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {customFormVariables.map(v => (
+                                            <span
+                                                key={v.key}
+                                                className="px-2.5 py-1 bg-blue-600/20 text-blue-400 rounded-md text-xs font-mono"
+                                            >
+                                                {`{{${v.key}}}`}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Stil Notları */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-1">Stil Notları (opsiyonel)</label>
+                                <input
+                                    type="text"
+                                    value={customForm.style_notes}
+                                    onChange={(e) => setCustomForm(prev => ({ ...prev, style_notes: e.target.value }))}
+                                    placeholder="Örn: Resmi dil, kısa paragraflar"
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="flex items-center justify-end gap-3 p-5 border-t border-gray-700">
+                            <button
+                                onClick={() => setShowCustomTemplateModal(false)}
+                                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors text-sm"
+                            >
+                                İptal
+                            </button>
+                            <button
+                                onClick={handleSaveCustomTemplate}
+                                disabled={customFormSaving}
+                                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
+                            >
+                                {customFormSaving ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Kaydediliyor...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Check className="w-4 h-4" />
+                                        {editingCustomTemplate ? 'Güncelle' : 'Kaydet'}
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

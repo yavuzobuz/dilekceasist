@@ -19,7 +19,7 @@ const Login: React.FC = () => {
 
     try {
       await signIn(email, password);
-      navigate('/app');
+      navigate('/alt-app');
     } catch (error: any) {
       // Email doğrulama hatası kontrolü
       if (error.message?.includes('Email not confirmed')) {
