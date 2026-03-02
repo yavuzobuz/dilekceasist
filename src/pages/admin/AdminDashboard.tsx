@@ -2,9 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../../lib/supabase';
 import {
     Users, FileText, BarChart3, TrendingUp, Clock, CheckCircle,
-    AlertTriangle, Activity, Calendar, ArrowUpRight
+    Activity, Calendar, ArrowUpRight
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+
+interface RecentUserPlan {
+    id: string;
+    email: string | null;
+    full_name: string | null;
+    plan_code: string | null;
+    plan_status: string | null;
+    daily_limit: number | null;
+    remaining_today: number | null;
+}
 
 interface DashboardStats {
     totalUsers: number;
@@ -13,11 +23,28 @@ interface DashboardStats {
     petitionsThisMonth: number;
     recentUsers: { email: string; created_at: string }[];
     recentPetitions: { title: string; petition_type: string; created_at: string }[];
+    recentUserPlans: RecentUserPlan[];
 }
+
+const API_BASE = '';
+const PLAN_LABELS: Record<string, string> = {
+    trial: 'Trial',
+    pro: 'Pro',
+    team: 'Team',
+    enterprise: 'Enterprise',
+};
 
 export const AdminDashboard: React.FC = () => {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
+
+    const getAuthHeaders = async (): Promise<Record<string, string>> => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+            throw new Error('Admin oturumu bulunamadi');
+        }
+        return { Authorization: `Bearer ${session.access_token}` };
+    };
 
     useEffect(() => {
         loadDashboardData();
@@ -61,13 +88,28 @@ export const AdminDashboard: React.FC = () => {
                 .order('created_at', { ascending: false })
                 .limit(5);
 
+            // Get user package / rights summary from admin API
+            let recentUserPlans: RecentUserPlan[] = [];
+            try {
+                const response = await fetch(`${API_BASE}/api/admin-users?page=1&pageSize=6`, {
+                    headers: await getAuthHeaders()
+                });
+                if (response.ok) {
+                    const payload = await response.json();
+                    recentUserPlans = Array.isArray(payload.users) ? payload.users : [];
+                }
+            } catch (apiError) {
+                console.warn('Recent user plans could not be loaded:', apiError);
+            }
+
             setStats({
                 totalUsers: userCount || 0,
                 totalPetitions: petitionCount || 0,
                 totalTemplates: 20, // From templates config
                 petitionsThisMonth: monthlyPetitions || 0,
                 recentUsers: recentUsers || [],
-                recentPetitions: recentPetitions || []
+                recentPetitions: recentPetitions || [],
+                recentUserPlans
             });
 
         } catch (error) {
@@ -86,6 +128,18 @@ export const AdminDashboard: React.FC = () => {
             hour: '2-digit',
             minute: '2-digit'
         });
+    };
+
+    const formatPlanLabel = (planCode?: string | null) => {
+        const normalized = String(planCode || 'trial').toLowerCase();
+        return PLAN_LABELS[normalized] || normalized.toUpperCase();
+    };
+
+    const formatRemainingRights = (userPlan: RecentUserPlan) => {
+        if (userPlan.daily_limit == null || userPlan.remaining_today == null) {
+            return 'Sinirsiz';
+        }
+        return `${userPlan.remaining_today} / ${userPlan.daily_limit}`;
     };
 
     if (loading) {
@@ -226,6 +280,45 @@ export const AdminDashboard: React.FC = () => {
                             </span>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {/* User Package Status */}
+            <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-700 flex items-center justify-between">
+                    <h2 className="font-semibold text-white flex items-center gap-2">
+                        <Users className="w-5 h-5 text-indigo-400" />
+                        Kullanici Paket Durumu
+                    </h2>
+                    <a href="/admin/users" className="text-xs text-indigo-300 hover:text-indigo-200 underline">
+                        Tumu
+                    </a>
+                </div>
+                <div className="divide-y divide-gray-700">
+                    {stats?.recentUserPlans?.length ? (
+                        stats.recentUserPlans.map(userPlan => (
+                            <div key={userPlan.id} className="px-5 py-3 hover:bg-gray-700/50 transition-colors">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <p className="text-sm text-white font-medium truncate">
+                                            {userPlan.full_name || userPlan.email || 'Kullanici'}
+                                        </p>
+                                        <p className="text-xs text-gray-500 truncate">{userPlan.email || '-'}</p>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                        <p className={`text-xs px-2 py-1 rounded-full inline-flex ${String(userPlan.plan_status || 'active').toLowerCase() === 'active' ? 'bg-emerald-900/30 text-emerald-300' : 'bg-yellow-900/30 text-yellow-300'}`}>
+                                            {formatPlanLabel(userPlan.plan_code)}
+                                        </p>
+                                        <p className="text-xs text-gray-400 mt-1">{formatRemainingRights(userPlan)}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="px-5 py-8 text-center text-gray-500">
+                            Paket verisi yüklenemedi
+                        </div>
+                    )}
                 </div>
             </div>
 

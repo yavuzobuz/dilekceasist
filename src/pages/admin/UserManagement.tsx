@@ -355,6 +355,16 @@ export const UserManagement: React.FC = () => {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
+                                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-sm ${String(user.plan_status || 'active').toLowerCase() === 'active' ? 'bg-emerald-900/30 text-emerald-400' : 'bg-yellow-900/30 text-yellow-300'}`}>
+                                                    {formatPlanLabel(user.plan_code)}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-900/30 text-indigo-300 rounded text-sm">
+                                                    {formatRemainingRights(user)}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">
                                                 <span className="text-gray-300 flex items-center gap-2">
                                                     <Calendar className="w-4 h-4 text-gray-500" />
                                                     {formatDate(user.created_at)}
@@ -442,7 +452,7 @@ export const UserManagement: React.FC = () => {
                             </div>
 
                             {/* Stats */}
-                            <div className="grid grid-cols-2 gap-4 mb-6">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
                                 <div className="bg-gray-800 rounded-lg p-4">
                                     <p className="text-2xl font-bold text-white">{selectedUser.petition_count}</p>
                                     <p className="text-gray-400 text-sm">Toplam Dilekçe</p>
@@ -451,6 +461,76 @@ export const UserManagement: React.FC = () => {
                                     <p className="text-sm font-medium text-white">{formatDate(selectedUser.created_at)}</p>
                                     <p className="text-gray-400 text-sm">Kayıt Tarihi</p>
                                 </div>
+                                <div className="bg-gray-800 rounded-lg p-4">
+                                    <p className="text-sm font-medium text-white">{formatPlanLabel(selectedUser.plan_code)}</p>
+                                    <p className="text-gray-400 text-sm">Mevcut Paket</p>
+                                </div>
+                            </div>
+
+                            {/* Plan & Rights Management */}
+                            <div className="bg-gray-800 rounded-xl border border-gray-700 p-4 mb-6 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="text-sm font-semibold text-gray-200">Paket ve Belge Hakkı Tanımla</h4>
+                                    <span className="text-xs text-gray-400">Anlık kalan: {formatRemainingRights(selectedUser)}</span>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div>
+                                        <label className="block text-xs text-gray-400 mb-1">Paket</label>
+                                        <select
+                                            value={rightsForm.plan_code}
+                                            onChange={(event) => setRightsForm(prev => ({ ...prev, plan_code: event.target.value }))}
+                                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
+                                        >
+                                            <option value="trial">Trial</option>
+                                            <option value="pro">Pro</option>
+                                            <option value="team">Team</option>
+                                            <option value="enterprise">Enterprise</option>
+                                            <option value="custom">Custom</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-400 mb-1">Durum</label>
+                                        <select
+                                            value={rightsForm.plan_status}
+                                            onChange={(event) => setRightsForm(prev => ({ ...prev, plan_status: event.target.value }))}
+                                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
+                                        >
+                                            <option value="active">Aktif</option>
+                                            <option value="inactive">Pasif</option>
+                                            <option value="suspended">Askıda</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-400 mb-1">Günlük Limit (boş: sınırsız)</label>
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            value={rightsForm.daily_limit}
+                                            onChange={(event) => setRightsForm(prev => ({ ...prev, daily_limit: event.target.value }))}
+                                            placeholder="örn 10"
+                                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
+                                        />
+                                    </div>
+                                </div>
+
+                                <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={rightsForm.reset_today_usage}
+                                        onChange={(event) => setRightsForm(prev => ({ ...prev, reset_today_usage: event.target.checked }))}
+                                        className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-red-600"
+                                    />
+                                    Bugünkü kullanım kaydını sıfırla
+                                </label>
+
+                                <button
+                                    onClick={handleSaveUserRights}
+                                    disabled={savingRights}
+                                    className="w-full sm:w-auto px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white rounded-lg text-sm transition-colors"
+                                >
+                                    {savingRights ? 'Kaydediliyor...' : 'Hakları Güncelle'}
+                                </button>
                             </div>
 
                             {/* Recent Petitions */}
