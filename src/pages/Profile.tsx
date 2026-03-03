@@ -128,7 +128,7 @@ const Profile: React.FC = () => {
         response = await fetch('/api/admin-users?action=plan-summary', { headers: authHeaders });
       }
       if (!response.ok) {
-        throw new Error('Plan bilgisi alinamadi');
+        throw new Error('Plan bilgisi alınamadı');
       }
 
       const data = await response.json();
@@ -292,15 +292,15 @@ const Profile: React.FC = () => {
 
   const handleUpdatePassword = async () => {
     if (!newPassword || !confirmNewPassword) {
-      toast.error('Sifre alanlarini doldurun');
+      toast.error('Şifre alanlarını doldurun');
       return;
     }
     if (newPassword.length < 6) {
-      toast.error('Sifre en az 6 karakter olmali');
+      toast.error('Şifre en az 6 karakter olmalı');
       return;
     }
     if (newPassword !== confirmNewPassword) {
-      toast.error('Sifreler eslesmiyor');
+      toast.error('Şifreler eşleşmiyor');
       return;
     }
 
@@ -311,10 +311,10 @@ const Profile: React.FC = () => {
 
       setNewPassword('');
       setConfirmNewPassword('');
-      toast.success('Sifre guncellendi');
+      toast.success('Şifre güncellendi');
     } catch (error: any) {
       console.error('Error updating password:', error);
-      toast.error(error?.message || 'Sifre guncellenemedi');
+      toast.error(error?.message || 'Şifre güncellenemedi');
     } finally {
       setIsUpdatingPassword(false);
     }
@@ -447,7 +447,7 @@ const Profile: React.FC = () => {
     if (!file) return;
 
     if (file.type !== 'application/pdf') {
-      toast.error('Lutfen sadece PDF dosyasi yukleyin');
+      toast.error('Lütfen sadece PDF dosyası yükleyin');
       return;
     }
 
@@ -581,11 +581,11 @@ const Profile: React.FC = () => {
                     <p className="text-gray-400">Kalan belge üretme hakkı</p>
                     <p className="text-white font-semibold">
                       {loadingPlanSummary
-                        ? 'Yukleniyor...'
+                        ? 'Yükleniyor...'
                         : !planSummary
                           ? '-'
                           : (planSummary.remaining_today == null || planSummary.daily_limit == null)
-                            ? 'Sinirsiz'
+                            ? 'Sınırsız'
                             : `${planSummary.remaining_today} / ${planSummary.daily_limit}`}
                     </p>
                   </div>
@@ -601,7 +601,7 @@ const Profile: React.FC = () => {
                     onClick={() => navigate('/fiyatlandirma')}
                     className="px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm sm:text-base"
                   >
-                    Plan Yukselt
+                    Plan Yükselt
                   </button>
                   <button
                     onClick={() => setActiveTab('settings')}
@@ -1145,7 +1145,7 @@ const Profile: React.FC = () => {
                         {selectedClient.vekalet_pdf_url && !removeExistingVekaletPdf && !editVekaletPdf && (
                           <div className="text-sm text-green-400 flex items-center gap-2">
                             <FileText className="w-4 h-4" />
-                            Mevcut vekaletname kayitli
+                            Mevcut vekaletname kayıtlı
                           </div>
                         )}
 
@@ -1178,7 +1178,7 @@ const Profile: React.FC = () => {
                               onClick={() => setEditVekaletPdf(null)}
                               className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
                             >
-                              Secimi Temizle
+                              Seçimi Temizle
                             </button>
                           )}
 
@@ -1448,7 +1448,7 @@ const Profile: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="block text-gray-300 text-sm font-medium">Yeni Sifre</label>
+                    <label className="block text-gray-300 text-sm font-medium">Yeni Şifre</label>
                     <input
                       type="password"
                       value={newPassword}
@@ -1460,7 +1460,7 @@ const Profile: React.FC = () => {
                       type="password"
                       value={confirmNewPassword}
                       onChange={(e) => setConfirmNewPassword(e.target.value)}
-                      placeholder="Yeni sifre tekrar"
+                      placeholder="Yeni şifre tekrar"
                       className="w-full px-4 py-2.5 bg-gray-600 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors"
                     />
                     <button
@@ -1468,7 +1468,7 @@ const Profile: React.FC = () => {
                       disabled={isUpdatingPassword}
                       className="w-full sm:w-auto px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white font-medium rounded-lg transition-colors"
                     >
-                      {isUpdatingPassword ? 'Guncelleniyor...' : 'Sifreyi Guncelle'}
+                      {isUpdatingPassword ? 'Güncelleniyor...' : 'Şifreyi Güncelle'}
                     </button>
                   </div>
                 </div>

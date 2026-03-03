@@ -18,10 +18,10 @@ const el = {
 };
 
 const QUICK_PROMPTS = {
-    'decision-search': 'Bu konu icin emsal Yargitay ve Danistay kararlari ara. Her karar icin daire, esas no, karar no, tarih ve kisa ozet ver.',
-    'text-fix': 'Asagidaki metni anlami degistirmeden dil bilgisi, imla, noktalama ve akicilik acisindan duzelt.',
-    brainstorm: 'Bu konu icin farkli hukuki strateji seceneklerini, avantaj ve riskleriyle madde madde beyin firtinasi yap.',
-    'web-search': 'Bu konu icin web aramasi yap. Guvenilir kaynaklardan kisa ozet ve uygulanabilir oneriler sun.',
+    'decision-search': 'Bu konu için emsal Yargıtay ve Danıştay kararları ara. Her karar için daire, esas no, karar no, tarih ve kısa özet ver.',
+    'text-fix': 'Aşağıdaki metni anlamı değiştirmeden dil bilgisi, imla, noktalama ve akıcılık açısından düzelt.',
+    brainstorm: 'Bu konu için farklı hukuki strateji seçeneklerini, avantaj ve riskleriyle madde madde beyin fırtınası yap.',
+    'web-search': 'Bu konu için web araması yap. Güvenilir kaynaklardan kısa özet ve uygulanabilir öneriler sun.',
 };
 
 const MAX_HISTORY_MESSAGES = 8;
@@ -146,7 +146,7 @@ const findTokenFromLocalStorage = () => {
             if (token) return token;
         }
     } catch (error) {
-        console.warn('Auth token localStorage icinden okunamadi:', error);
+        console.warn('Auth token localStorage içinden okunamadı:', error);
     }
     return '';
 };
@@ -189,8 +189,8 @@ const formatDate = (isoDate) => {
 };
 
 const formatQuotaText = (usage) => {
-    if (!usage) return 'Kota bilgisi alinamadi.';
-    if (usage.dailyLimit == null) return 'Kota: Sinirsiz paket.';
+    if (!usage) return 'Kota bilgisi alınamadı.';
+    if (usage.dailyLimit == null) return 'Kota: Sınırsız paket.';
 
     const dailyLimit = Number(usage.dailyLimit);
     const usedToday = usage.usedToday == null
@@ -200,10 +200,10 @@ const formatQuotaText = (usage) => {
         ? Math.max(0, dailyLimit - usedToday)
         : Number(usage.remainingToday);
 
-    let text = `Kota: ${remainingToday} / ${dailyLimit} (kalan/gunluk)`;
+    let text = `Kota: ${remainingToday} / ${dailyLimit} (kalan/günlük)`;
     const trialEndText = formatDate(usage.trialEndsAt);
     if (trialEndText) {
-        text += ` | Trial bitis: ${trialEndText}`;
+        text += ` | Trial bitiş: ${trialEndText}`;
     }
     return text;
 };
@@ -230,7 +230,7 @@ const refreshPlanSummary = async ({ silent = false } = {}) => {
     if (!authToken) {
         lastPlanUsage = null;
         if (!silent) {
-            setQuotaInfo('Kota: giris gerekli. Giris yaptiktan sonra limit otomatik guncellenir.');
+            setQuotaInfo('Kota: giriş gerekli. Giriş yaptıktan sonra limit otomatik güncellenir.');
         }
         return null;
     }
@@ -261,7 +261,7 @@ const refreshPlanSummary = async ({ silent = false } = {}) => {
         const payload = await response.json().catch(() => ({}));
         const usage = normalizeUsage(payload?.summary);
         if (!usage) {
-            throw new Error('Plan ozeti bos geldi.');
+            throw new Error('Plan özeti boş geldi.');
         }
 
         lastPlanUsage = usage;
@@ -271,7 +271,7 @@ const refreshPlanSummary = async ({ silent = false } = {}) => {
         lastPlanUsage = null;
         if (!silent) {
             setQuotaInfo(
-                `Kota bilgisi alinamadi: ${error instanceof Error ? error.message : 'bilinmeyen hata'}`,
+                `Kota bilgisi alınamadı: ${error instanceof Error ? error.message : 'bilinmeyen hata'}`,
                 'error'
             );
         }
@@ -305,17 +305,17 @@ const truncateContext = (text, maxChars) => {
     const normalized = String(text || '').trim();
     if (!normalized) return '';
     if (normalized.length <= maxChars) return normalized;
-    return `${normalized.slice(0, maxChars)}\n\n...[BELGE BAGLAMI KISALTILDI]`;
+    return `${normalized.slice(0, maxChars)}\n\n...[BELGE BAĞLAMI KISALTILDI]`;
 };
 
 const buildUserMessage = ({ prompt, selectionText, hasDocumentContext }) => {
     if (!selectionText) {
         return hasDocumentContext
-            ? `${prompt}\n\nNot: Belgenin tamami baglam olarak eklendi.`
+            ? `${prompt}\n\nNot: Belgenin tamamı bağlam olarak eklendi.`
             : prompt;
     }
-    const base = `${prompt}\n\nWord secimi:\n"""${selectionText}"""`;
-    return hasDocumentContext ? `${base}\n\nNot: Belgenin tamami baglam olarak eklendi.` : base;
+    const base = `${prompt}\n\nWord seçimi:\n"""${selectionText}"""`;
+    return hasDocumentContext ? `${base}\n\nNot: Belgenin tamamı bağlam olarak eklendi.` : base;
 };
 
 const extractTextFromChunk = (chunk) => {
@@ -342,7 +342,7 @@ const callChatApi = async ({ history, selectionText, documentText, onTextChunk, 
     const headers = buildAuthHeaders();
 
     const contextDoc = [
-        selectionText ? `Secili Metin:\n${selectionText}` : '',
+        selectionText ? `Seçili Metin:\n${selectionText}` : '',
         documentText ? `Belge Metni:\n${documentText}` : '',
     ].filter(Boolean).join('\n\n---\n\n');
 
@@ -357,8 +357,8 @@ const callChatApi = async ({ history, selectionText, documentText, onTextChunk, 
                 searchSummary: '',
                 docContent: contextDoc,
                 specifics: documentText
-                    ? `Word belge baglami aktif. Uzunluk: ${documentText.length} karakter.`
-                    : 'Yalnizca secili metin baglami aktif.',
+                    ? `Word belge bağlamı aktif. Uzunluk: ${documentText.length} karakter.`
+                    : 'Yalnızca seçili metin bağlamı aktif.',
             },
         }),
     });
@@ -383,7 +383,7 @@ const callChatApi = async ({ history, selectionText, documentText, onTextChunk, 
     }
 
     if (!response.body) {
-        throw new Error('Chat API response body bos geldi.');
+        throw new Error('Chat API response body boş geldi.');
     }
 
     const reader = response.body.getReader();
@@ -417,7 +417,7 @@ const callChatApi = async ({ history, selectionText, documentText, onTextChunk, 
                     quotaBlocked = true;
                     quotaMessage = typeof chunk?.errorMessage === 'string'
                         ? chunk.errorMessage.trim()
-                        : (typeof chunk?.text === 'string' ? chunk.text.trim() : 'Belge uretim kotaniz doldu.');
+                        : (typeof chunk?.text === 'string' ? chunk.text.trim() : 'Belge üretim kotanız doldu.');
                     if (typeof onQuotaBlocked === 'function') onQuotaBlocked(chunk, quotaMessage);
                 }
 
@@ -444,16 +444,16 @@ const handleReadSelection = async () => {
     if (isBusy) return;
     setBusy(true);
     try {
-        setStatus('Word secimi okunuyor...');
+        setStatus('Word seçimi okunuyor...');
         const selectedText = await readSelection();
         el.sourceText.value = selectedText;
         if (!selectedText.trim()) {
-            setStatus('Lutfen Word icinde bir metin secin.', 'error');
+            setStatus('Lütfen Word içinde bir metin seçin.', 'error');
             return;
         }
-        setStatus('Secim panele alindi.', 'success');
+        setStatus('Seçim panele alındı.', 'success');
     } catch (error) {
-        setStatus(error instanceof Error ? error.message : 'Secim okunamadi.', 'error');
+        setStatus(error instanceof Error ? error.message : 'Seçim okunamadı.', 'error');
     } finally {
         setBusy(false);
     }
@@ -464,7 +464,7 @@ const sendChat = async (promptOverride) => {
 
     const prompt = (promptOverride || el.promptText.value || '').trim();
     if (!prompt) {
-        setStatus('Lutfen chatbot icin bir mesaj girin.', 'error');
+        setStatus('Lütfen chatbot için bir mesaj girin.', 'error');
         return;
     }
 
@@ -475,27 +475,27 @@ const sendChat = async (promptOverride) => {
     const authToken = resolveAuthToken();
     if (!authToken) {
         setAuthUiState(false);
-        setStatus('Giris gerekli. Giris sayfasina yonlendiriliyorsunuz...', 'error');
-        setQuotaInfo('Kota: giris olmadan kontrol edilemez.');
+        setStatus('Giriş gerekli. Giriş sayfasına yönlendiriliyorsunuz...', 'error');
+        setQuotaInfo('Kota: giriş olmadan kontrol edilemez.');
         redirectToLogin();
         return;
     }
 
     const usageBeforeSend = await refreshPlanSummary({ silent: true });
     if (!usageBeforeSend) {
-        setStatus('Limit bilgisi alinamadi. Lutfen tekrar deneyin.', 'error');
+        setStatus('Limit bilgisi alınamadı. Lütfen tekrar deneyin.', 'error');
         return;
     }
     if (isUsageBlocked(usageBeforeSend)) {
         applyUsageToUi(usageBeforeSend, 'error');
-        setStatus('Gunluk belge uretim limitiniz dolu. Islem durduruldu.', 'error');
+        setStatus('Günlük belge üretim limitiniz dolu. İşlem durduruldu.', 'error');
         return;
     }
 
     setBusy(true);
 
     try {
-        setStatus('Word baglami okunuyor...');
+        setStatus('Word bağlamı okunuyor...');
 
         if (!selectionText) {
             selectionText = (await readSelection()).trim();
@@ -509,12 +509,12 @@ const sendChat = async (promptOverride) => {
                 const fullDocumentText = await readDocumentText();
                 documentText = truncateContext(fullDocumentText, MAX_DOCUMENT_CONTEXT_CHARS);
             } catch (error) {
-                console.error('Word belge metni okunamadi:', error);
+                console.error('Word belge metni okunamadı:', error);
             }
         }
 
         if (!selectionText && !documentText) {
-            setStatus('Lutfen Word icinde secim yapin veya belge metni oldugundan emin olun.', 'error');
+            setStatus('Lütfen Word içinde seçim yapın veya belge metni olduğundan emin olun.', 'error');
             return;
         }
 
@@ -525,7 +525,7 @@ const sendChat = async (promptOverride) => {
         });
         const requestHistory = limitHistory([...chatHistory, { role: 'user', text: userMessage }]);
 
-        setStatus('Chatbot yaniti uretiyor...');
+        setStatus('Chatbot yanıtı üretiyor...');
         el.resultText.value = '';
 
         const response = await callChatApi({
@@ -547,7 +547,7 @@ const sendChat = async (promptOverride) => {
 
         const finalText = (response.text || el.resultText.value || '').trim();
         if (!finalText && !response.quotaBlocked) {
-            throw new Error('Chatbot bos yanit dondurdu.');
+            throw new Error('Chatbot boş yanıt döndürdü.');
         }
 
         if (finalText) {
@@ -560,33 +560,33 @@ const sendChat = async (promptOverride) => {
         }
 
         if (response.quotaBlocked) {
-            setStatus(response.quotaMessage || 'Belge uretim kotaniz dolu.', 'error');
+            setStatus(response.quotaMessage || 'Belge üretim kotanız dolu.', 'error');
             refreshPlanSummary({ silent: true }).catch(() => {});
             return;
         }
 
         if (el.autoReplace.checked) {
             await replaceSelection(finalText);
-            setStatus('Chatbot sonucu Word secimine uygulandi.', 'success');
+            setStatus('Chatbot sonucu Word seçimine uygulandı.', 'success');
         } else {
-            setStatus('Chatbot sonucu hazirlandi. Isterseniz "Secime Uygula" ile yazabilirsiniz.', 'success');
+            setStatus('Chatbot sonucu hazırlandı. İsterseniz "Seçime Uygula" ile yazabilirsiniz.', 'success');
         }
 
         refreshPlanSummary({ silent: true }).catch(() => {});
     } catch (error) {
         const status = typeof error?.status === 'number' ? error.status : null;
         const code = typeof error?.code === 'string' ? error.code : '';
-        const message = error instanceof Error ? error.message : 'Chatbot islemi basarisiz.';
+        const message = error instanceof Error ? error.message : 'Chatbot işlemi başarısız.';
 
         if (status === 401 || code === 'AUTH_REQUIRED' || code === 'INVALID_SESSION') {
-            setStatus('Oturum gecersiz. Giris sayfasina yonlendiriliyorsunuz...', 'error');
+            setStatus('Oturum geçersiz. Giriş sayfasına yönlendiriliyorsunuz...', 'error');
             setAuthUiState(false);
             redirectToLogin();
             return;
         }
 
         if (status === 429 || code === 'TRIAL_DAILY_LIMIT_REACHED' || code === 'PLAN_DAILY_LIMIT_REACHED' || code === 'TRIAL_EXPIRED') {
-            setStatus(message || 'Gunluk limit dolu. Islem durduruldu.', 'error');
+            setStatus(message || 'Günlük limit dolu. İşlem durduruldu.', 'error');
             if (lastPlanUsage) {
                 applyUsageToUi(lastPlanUsage, 'error');
             }
@@ -604,7 +604,7 @@ const handleQuickAction = (action) => {
     if (!template) return;
     el.promptText.value = template;
     el.promptText.focus();
-    setStatus('Hazir prompt eklendi. "Chatbot\'a Gonder"e basin.');
+    setStatus('Hazır prompt eklendi. "Chatbot\'a Gönder"e basın.');
 };
 
 const handleReplaceSelection = async () => {
@@ -617,11 +617,11 @@ const handleReplaceSelection = async () => {
 
     setBusy(true);
     try {
-        setStatus('Chatbot sonucu Word secimine yaziliyor...');
+        setStatus('Chatbot sonucu Word seçimine yazılıyor...');
         await replaceSelection(resultText);
-        setStatus('Chatbot sonucu secime yazildi.', 'success');
+        setStatus('Chatbot sonucu seçime yazıldı.', 'success');
     } catch (error) {
-        setStatus(error instanceof Error ? error.message : 'Secime yazma basarisiz.', 'error');
+        setStatus(error instanceof Error ? error.message : 'Seçime yazma başarısız.', 'error');
     } finally {
         setBusy(false);
     }
@@ -656,28 +656,28 @@ const initialize = () => {
     el.actionButtons.forEach((btn) => {
         btn.addEventListener('click', () => handleQuickAction(btn.dataset.action || ''));
     });
-    setStatus('Hazir. Word secimini alin, hizli aksiyon secin ve chatbot ile devam edin.');
+    setStatus('Hazır. Word seçimini alın, hızlı aksiyon seçin ve chatbot ile devam edin.');
 
     if (!resolveAuthToken()) {
-        setQuotaInfo('Kota: giris gerekli.');
+        setQuotaInfo('Kota: giriş gerekli.');
         if (!hasLoginPromptedFlag()) {
-            setStatus('Giris yapmaniz gerekiyor. Giris sayfasina yonlendiriliyorsunuz...', 'error');
+            setStatus('Giriş yapmanız gerekiyor. Giriş sayfasına yönlendiriliyorsunuz...', 'error');
             setTimeout(() => {
                 redirectToLogin();
             }, 120);
             return;
         }
-        setStatus('Giris yaparak devam edin. Giris butonunu kullanabilirsiniz.', 'error');
+        setStatus('Giriş yaparak devam edin. Giriş butonunu kullanabilirsiniz.', 'error');
         return;
     }
 
-    setQuotaInfo('Kota bilgisi yukleniyor...');
+    setQuotaInfo('Kota bilgisi yükleniyor...');
     refreshPlanSummary().catch(() => {});
 };
 
 Office.onReady((info) => {
     if (info.host !== Office.HostType.Word) {
-        setStatus('Bu panel yalnizca Word icin tasarlanmistir.', 'error');
+        setStatus('Bu panel yalnızca Word için tasarlanmıştır.', 'error');
         return;
     }
     initialize();

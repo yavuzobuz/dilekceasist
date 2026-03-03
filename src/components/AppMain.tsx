@@ -19,6 +19,12 @@ import { Petition, supabase } from '../../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { searchLegalDecisions } from '../utils/legalSearch';
+import {
+  buildMissingInfoQuestions,
+  getMissingInfoAnswerCounts,
+  mergeSpecificsWithChecklist,
+} from '../../components/missingInfoChecklist';
+import type { MissingInfoQuestion } from '../../components/missingInfoChecklist';
 
 // Helper function to convert a File object to a base64 string
 const fileToBase64 = (file: File): Promise<string> => {
@@ -88,6 +94,9 @@ export const AppMain: React.FC = () => {
   const [docContent, setDocContent] = useState('');
   const [specifics, setSpecifics] = useState('');
   const [parties, setParties] = useState<{ [key: string]: string }>({});
+  const [missingInfoQuestions, setMissingInfoQuestions] = useState<MissingInfoQuestion[]>([]);
+  const [missingInfoAnswers, setMissingInfoAnswers] = useState<Record<string, string>>({});
+  const [hasScannedMissingInfo, setHasScannedMissingInfo] = useState(false);
 
   // Initialize chat messages from petition metadata or empty array
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => {
@@ -122,6 +131,12 @@ export const AppMain: React.FC = () => {
   const [isFullPageEditorMode, setIsFullPageEditorMode] = useState(false);
   const [editorReturnRoute, setEditorReturnRoute] = useState('/app');
   const [isLegalSearchOpen, setIsLegalSearchOpen] = useState(false);
+
+  const {
+    totalUnanswered: missingInfoTotalUnansweredCount,
+    blockingUnanswered: missingInfoBlockingUnansweredCount,
+  } = getMissingInfoAnswerCounts(missingInfoQuestions, missingInfoAnswers);
+  const specificsWithMissingInfo = mergeSpecificsWithChecklist(specifics, missingInfoQuestions, missingInfoAnswers);
 
   // Toast notifications
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
@@ -197,6 +212,9 @@ export const AppMain: React.FC = () => {
     setSearchKeywords([]);
     setWebSearchResult(null);
     setGeneratedPetition('');
+    setMissingInfoQuestions([]);
+    setMissingInfoAnswers({});
+    setHasScannedMissingInfo(false);
 
     try {
       const allUploadedFiles: UploadedFile[] = [];
@@ -315,6 +333,41 @@ export const AppMain: React.FC = () => {
       setIsAnalyzing(false);
     }
   }, [files]);
+
+  const handleRunMissingInfoScan = useCallback(() => {
+    const nextQuestions = buildMissingInfoQuestions({
+      petitionType,
+      caseDetails,
+      parties,
+      analysisSummary: analysisData?.summary || '',
+      docContent,
+      specifics,
+    });
+
+    setMissingInfoQuestions(nextQuestions);
+    setMissingInfoAnswers(prev => nextQuestions.reduce<Record<string, string>>((acc, question) => {
+      const preservedAnswer = String(prev[question.id] || '').trim();
+      if (preservedAnswer) {
+        acc[question.id] = preservedAnswer;
+      }
+      return acc;
+    }, {}));
+    setHasScannedMissingInfo(true);
+
+    if (nextQuestions.length === 0) {
+      addToast('Eksik bilgi bulunmadi. Dilersen dogrudan uretime gecebilirsin.', 'success');
+      return;
+    }
+
+    addToast(`${nextQuestions.length} soru uretildi. Bloklayici olanlari once cevaplayin.`, 'info');
+  }, [petitionType, caseDetails, parties, analysisData, docContent, specifics, addToast]);
+
+  const handleMissingInfoAnswerChange = useCallback((questionId: string, value: string) => {
+    setMissingInfoAnswers(prev => ({
+      ...prev,
+      [questionId]: value,
+    }));
+  }, []);
 
   const addManualParty = (partyName: string) => {
     if (partyName && analysisData && !analysisData.potentialParties.includes(partyName)) {
@@ -569,6 +622,13 @@ export const AppMain: React.FC = () => {
         {
           keywords: searchKeywords.join(', '),
           searchSummary: webSearchResult?.summary || '',
+          legalSummary: legalSearchResults.length > 0
+            ? legalSearchResults
+              .map(r => `${r.title || 'Karar'} ${r.esasNo ? `E.${r.esasNo}` : ''} ${r.kararNo ? `K.${r.kararNo}` : ''} ${r.tarih || ''}: ${r.ozet || ''}`)
+              .join('\n')
+            : '',
+          webSourceCount: webSearchResult?.sources?.length || 0,
+          legalResultCount: legalSearchResults.length,
           docContent: docContent,
           specifics: specifics,
         },

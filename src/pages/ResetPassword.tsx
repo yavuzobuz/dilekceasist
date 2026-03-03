@@ -46,11 +46,11 @@ const ResetPassword: React.FC = () => {
       return;
     }
     if (newPassword.length < 6) {
-      toast.error('Sifre en az 6 karakter olmali.');
+      toast.error('Şifre en az 6 karakter olmalı.');
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error('Sifreler eslesmiyor.');
+      toast.error('Şifreler eşleşmiyor.');
       return;
     }
 
@@ -60,11 +60,11 @@ const ResetPassword: React.FC = () => {
       if (error) throw error;
 
       await supabase.auth.signOut();
-      toast.success('Sifreniz guncellendi. Lutfen tekrar giris yapin.');
+      toast.success('Şifreniz güncellendi. Lütfen tekrar giriş yapın.');
       navigate('/login');
     } catch (error: any) {
       console.error('Password update error:', error);
-      toast.error(error?.message || 'Sifre guncellenemedi.');
+      toast.error(error?.message || 'Şifre güncellenemedi.');
     } finally {
       setIsSubmitting(false);
     }
@@ -79,8 +79,8 @@ const ResetPassword: React.FC = () => {
               <Scale className="w-10 h-10 text-white" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Yeni Sifre Belirle</h1>
-          <p className="text-gray-400">Hesabiniz icin yeni sifrenizi girin.</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Yeni Şifre Belirle</h1>
+          <p className="text-gray-400">Hesabınız için yeni şifrenizi girin.</p>
         </div>
 
         <div className="bg-gray-800 rounded-2xl shadow-2xl p-8 border border-gray-700">
@@ -97,7 +97,7 @@ const ResetPassword: React.FC = () => {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label htmlFor="new-password" className="block text-sm font-medium text-gray-300 mb-2">
-                    Yeni Sifre
+                    Yeni Şifre
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -118,7 +118,7 @@ const ResetPassword: React.FC = () => {
 
                 <div>
                   <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-300 mb-2">
-                    Yeni Sifre Tekrar
+                    Yeni Şifre Tekrar
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -132,7 +132,7 @@ const ResetPassword: React.FC = () => {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       className="block w-full pl-10 pr-3 py-3 border border-gray-600 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
-                      placeholder="Sifrenizi tekrar girin"
+                      placeholder="Şifrenizi tekrar girin"
                     />
                   </div>
                 </div>
@@ -144,7 +144,7 @@ const ResetPassword: React.FC = () => {
                 >
                   {isSubmitting ? 'Guncelleniyor...' : (
                     <>
-                      Sifreyi Guncelle
+                      Şifreyi Güncelle
                       <ArrowRight className="ml-2 w-5 h-5" />
                     </>
                   )}
@@ -155,7 +155,7 @@ const ResetPassword: React.FC = () => {
 
           <div className="mt-6 text-center">
             <Link to="/sifremi-unuttum" className="text-red-400 hover:text-red-300 transition-colors">
-              Tekrar sifirlama linki iste
+              Tekrar sıfırlama linki iste
             </Link>
           </div>
         </div>

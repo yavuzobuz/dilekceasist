@@ -146,7 +146,7 @@ const normalizeLegalSearchResults = (payload: any): AlternativeLegalSearchResult
 
             const mahkeme = result.mahkeme || result.court || '';
             const daire = result.daire || result.chamber || '';
-            const title = (result.title || `${mahkeme || 'Yargitay'} ${daire}`.trim() || `Karar ${index + 1}`).trim();
+            const title = (result.title || `${mahkeme || 'Yargıtay'} ${daire}`.trim() || `Karar ${index + 1}`).trim();
             const relevanceScore = Number(result.relevanceScore);
 
             return {
@@ -208,12 +208,72 @@ const mergeWebSearchResults = (
     };
 };
 
+const KEYWORD_STOPWORDS = new Set([
+    've', 'veya', 'ile', 'olan', 'olduğu', 'oldugu', 'iddia', 'edilen',
+    'üzerine', 'uzerine', 'kapsamında', 'kapsaminda', 'gibi', 'için', 'icin',
+    'üzere', 'uzere', 'bu', 'şu', 'su', 'o', 'bir', 'de', 'da', 'mi', 'mı', 'mu', 'mü'
+]);
+
 const extractKeywordCandidates = (rawValue: string): string[] => {
-    if (!rawValue) return [];
-    return rawValue
+    const text = String(rawValue || '').trim();
+    if (!text) return [];
+
+    const candidates: string[] = [];
+    const seen = new Set<string>();
+
+    const addCandidate = (value: string) => {
+        const normalized = String(value || '').replace(/[“”"']/g, ' ').replace(/\s+/g, ' ').trim();
+        if (!normalized || normalized.length < 3) return;
+
+        const words = normalized.split(/\s+/).filter(Boolean);
+        const nonStopCount = words.filter(word => !KEYWORD_STOPWORDS.has(word.toLocaleLowerCase('tr-TR'))).length;
+        if (nonStopCount === 0) return;
+
+        const key = normalized.toLocaleLowerCase('tr-TR');
+        if (seen.has(key)) return;
+        seen.add(key);
+        candidates.push(normalized);
+    };
+
+    const tckMatches = text.match(/TCK\s*\d+(?:\s*\/\s*\d+)?(?:\s*[-–]\s*\d+)?/gi) || [];
+    for (const match of tckMatches) {
+        addCandidate(match);
+    }
+
+    if (/uyuşturucu|uyusturucu/i.test(text) && /ticaret|satıc|satic/i.test(text)) {
+        addCandidate('uyuşturucu ticareti');
+        addCandidate('uyuşturucu satıcılığı iddiası');
+    }
+
+    if (/evine gelen\s*\d+\s*kişi|evine gelen.*kişi/i.test(text)) {
+        addCandidate('evine gelen kişilerde farklı uyuşturucu ele geçirilmesi');
+    }
+
+    if (/kullanım sınırını aşan|kullanim sinirini asan|kullanım sınırı|kullanim siniri/i.test(text)) {
+        addCandidate('kullanım sınırını aşan miktarda madde');
+    }
+
+    const fullNameMatches = text.match(/[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+/g) || [];
+    for (const match of fullNameMatches) {
+        addCandidate(match);
+    }
+
+    const phraseChunks = text.split(/[,\n;]+/g);
+    for (const chunk of phraseChunks) {
+        addCandidate(chunk);
+    }
+
+    const tokenFallback = text
         .split(/[\s,;:.!?()\/\\-]+/g)
         .map(token => token.trim())
-        .filter(token => token.length >= 3);
+        .filter(token => token.length >= 4 && !KEYWORD_STOPWORDS.has(token.toLocaleLowerCase('tr-TR')));
+
+    for (const token of tokenFallback) {
+        addCandidate(token);
+        if (candidates.length >= 12) break;
+    }
+
+    return candidates.slice(0, 12);
 };
 
 const isLikelyPetitionRequest = (rawMessage: string): boolean => {
@@ -221,6 +281,61 @@ const isLikelyPetitionRequest = (rawMessage: string): boolean => {
     return /(dilekce|dilekçe|belge|taslak|template|ihtarname|itiraz|temyiz|feragat|talep)/i.test(rawMessage)
         && /(olustur|olutur|hazirla|hazırla|yaz)/i.test(rawMessage);
 };
+
+const isSimpleGuidanceQuestion = (rawMessage: string): boolean => {
+    if (!rawMessage) return false;
+
+    const normalized = rawMessage.toLowerCase().trim();
+    if (!normalized) return false;
+    if (isLikelyPetitionRequest(normalized)) return false;
+
+    const tokenCount = normalized.split(/\s+/).filter(Boolean).length;
+    const hasSimpleIntent = /(nereye|hangi mahkeme|hangi mahkemeye|nasil|sure|kac gun|harc|gorevli|yetkili|acabilir miyim|acmaliyim|gerekli mi)/i.test(normalized);
+    const hasComplexIntent = /(emsal|ictihat|karar no|esas no|detayli analiz|madde madde|belge olustur|dilekce|taslak)/i.test(normalized);
+
+    return hasSimpleIntent && !hasComplexIntent && tokenCount <= 24;
+};
+
+const hasWebEvidence = (result: WebSearchResult | null): boolean => {
+    if (!result) return false;
+    const summary = typeof result.summary === 'string' ? result.summary.trim() : '';
+    const hasSummary = summary.length >= 40;
+    const hasSource = Array.isArray(result.sources) && result.sources.some(source => typeof source?.uri === 'string' && source.uri.trim().length > 0);
+    return hasSummary && hasSource;
+};
+
+const hasLegalEvidenceForChat = (results: AlternativeLegalSearchResult[]): boolean => {
+    return results.some(result => {
+        const title = typeof result.title === 'string' ? result.title.trim() : '';
+        const summary = typeof result.ozet === 'string' ? result.ozet.trim() : '';
+        return title.length > 0 && summary.length > 0;
+    });
+};
+
+const hasLegalEvidenceForGeneration = (results: AlternativeLegalSearchResult[]): boolean => {
+    return results.some(result => {
+        const title = typeof result.title === 'string' ? result.title.trim() : '';
+        const summary = typeof result.ozet === 'string' ? result.ozet.trim() : '';
+        const citation = [result.esasNo, result.kararNo, result.tarih]
+            .map(value => typeof value === 'string' ? value.trim() : '')
+            .some(Boolean);
+
+        return title.length > 0 && summary.length > 0 && citation;
+    });
+};
+
+const ANALYSIS_SUMMARY_HELP_TEXT = [
+    'Analiz özeti, yüklediğiniz belgelerden çıkarılan olay özetidir.',
+    'Örnek belgeler: tapu kayıtları, veraset ilamı, sözleşmeler, tutanaklar, mahkeme evrakları.',
+].join(' ');
+
+const DOCUMENT_REQUIREMENTS_HELP_TEXT = [
+    `${ANALYSIS_SUMMARY_HELP_TEXT}`,
+    'Belge oluşturma için şu 3 adım zorunludur:',
+    '1) Belgeleri yükleyip analiz et.',
+    "2) Web'de araştırma yap.",
+    '3) Emsal karar araması yap.',
+].join('\n');
 
 const buildLegalResultsPrompt = (results: AlternativeLegalSearchResult[]): string => {
     if (results.length === 0) return '';
@@ -424,7 +539,7 @@ const normalizeTemplateDecisions = (decisions?: TemplateTransferDecision[]): Alt
     return decisions
         .filter(decision => decision && typeof decision === 'object')
         .map((decision, index) => {
-            const title = (decision.title || 'Yargitay Karari').trim();
+            const title = (decision.title || 'Yargıtay Kararı').trim();
             return {
                 id: `template-decision-${index + 1}`,
                 title,
@@ -668,7 +783,7 @@ export default function AlternativeApp() {
                 localStorage.removeItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
             }
 
-            // TemplateContext varsa: kararlar, alan deerlerini ve AI glendirme flag'ini aktar
+            // TemplateContext varsa: kararları, alan değerlerini ve AI güçlendirme flag'ini aktar
             if (templateCtx) {
                 const transferredDecisions = normalizeTemplateDecisions(templateCtx.selectedDecisions);
                 if (transferredDecisions.length > 0) {
@@ -684,7 +799,7 @@ export default function AlternativeApp() {
             }
 
             if (hasPendingBulkPackage) {
-                addToast(`Seri paket taslagi acildi. Duzenleme sonrasi ${bulkPackage.rowVariables.length || 0} dilekceyi onayla ve indir.`, 'success');
+                addToast(`Seri paket taslağı açıldı. Düzenleme sonrası ${bulkPackage.rowVariables.length || 0} dilekçeyi onayla ve indir.`, 'success');
             } else {
                 addToast('ablon yklendi! ', 'success');
             }
@@ -723,9 +838,9 @@ export default function AlternativeApp() {
         const hasSelectedDecisions = legalSearchResults.length > 0;
 
         const autoEnhanceMessage = [
-            'Asagidaki mevcut sablon taslagini detaylandir ve nihai belgeyi olustur.',
+            'Aşağıdaki mevcut şablon taslağını detaylandır ve nihai belgeyi oluştur.',
             hasSelectedDecisions
-                ? 'Secili emsal kararlari gerekce bolumunde atif yaparak kullan.'
+                ? 'Seçili emsal kararları gerekçe bölümünde atıf yaparak kullan.'
                 : 'Emsal karar secilmemisse genel hukuki gerekce dilini kullan.',
             'Baslik ve bolum yapisini koru, eksik bilgileri [...] olarak isaretle.',
             'Sadece nihai metni ver.',
@@ -740,11 +855,16 @@ export default function AlternativeApp() {
         });
     }, [pendingTemplateAutoEnhancement, generatedPetition, isLoadingChat, legalSearchResults.length]);
 
-    const runLegalSearch = async (keywordsForSearch: string[]) => {
-        if (keywordsForSearch.length === 0) return;
+    const runLegalSearch = useCallback(async (
+        keywordsForSearch: string[],
+        options?: { silent?: boolean; suppressError?: boolean }
+    ): Promise<AlternativeLegalSearchResult[]> => {
+        if (keywordsForSearch.length === 0) return [];
 
         setIsLegalSearching(true);
-        setError(null);
+        if (!options?.silent) {
+            setError(null);
+        }
 
         try {
             const keyword = keywordsForSearch.slice(0, 5).join(' ');
@@ -774,17 +894,24 @@ export default function AlternativeApp() {
             const normalizedResults = normalizeLegalSearchResults(payload);
             mergeLegalResults(normalizedResults);
 
-            if (normalizedResults.length > 0) {
-                addToast(`${normalizedResults.length} adet emsal karar bulundu!`, 'success');
-            } else {
-                addToast('Bu konuda emsal karar bulunamadi.', 'info');
+            if (!options?.silent) {
+                if (normalizedResults.length > 0) {
+                    addToast(`${normalizedResults.length} adet emsal karar bulundu!`, 'success');
+                } else {
+                    addToast('Bu konuda emsal karar bulunamadi.', 'info');
+                }
             }
+
+            return normalizedResults;
         } catch (e: any) {
-            setError(`Ictihat arama hatasi: ${e.message}`);
+            if (!options?.suppressError) {
+                setError(`Ictihat arama hatasi: ${e.message}`);
+            }
+            return [];
         } finally {
             setIsLegalSearching(false);
         }
-    };
+    }, [addToast, mergeLegalResults]);
 
     const handleSelectedFiles = useCallback((rawFiles: FileList | null) => {
         if (!rawFiles) return;
@@ -795,7 +922,7 @@ export default function AlternativeApp() {
 
         if (availableSlots <= 0) {
             if (files.length >= MAX_TOTAL_UPLOAD_FILES) {
-                addToast(`En fazla ${MAX_TOTAL_UPLOAD_FILES} dosya yukleyebilirsiniz.`, 'info');
+                addToast(`En fazla ${MAX_TOTAL_UPLOAD_FILES} dosya yükleyebilirsiniz.`, 'info');
             } else {
                 addToast(`${FILE_BATCH_SIZE} dosyalik bu parcayi doldurdunuz. Devam etmek icin "Ekleme Yap" butonunu kullanin.`, 'info');
             }
@@ -831,13 +958,13 @@ export default function AlternativeApp() {
 
         const rowVariables = Array.isArray(pendingBulkPackage.rowVariables) ? pendingBulkPackage.rowVariables : [];
         if (rowVariables.length === 0) {
-            addToast('Seri paket icin indirilecek satir bulunamadi.', 'error');
+            addToast('Seri paket için indirilecek satır bulunamadı.', 'error');
             return;
         }
 
         const baseTemplateContent = (generatedPetition || pendingBulkPackage.templateContent || '').trim();
         if (!baseTemplateContent) {
-            addToast('Paket olusturmak icin bir taslak metin bulunamadi.', 'error');
+            addToast('Paket oluşturmak için bir taslak metin bulunamadı.', 'error');
             return;
         }
 
@@ -907,7 +1034,7 @@ export default function AlternativeApp() {
             localStorage.removeItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
             setPendingBulkPackage(null);
         } catch (downloadError) {
-            const message = downloadError instanceof Error ? downloadError.message : 'Seri paket indirilirken hata olustu.';
+            const message = downloadError instanceof Error ? downloadError.message : 'Seri paket indirilirken hata oluştu.';
             addToast(message, 'error');
         } finally {
             setIsBulkPackageDownloading(false);
@@ -927,14 +1054,14 @@ export default function AlternativeApp() {
         );
         if (missingRequired.length > 0) {
             const listed = missingRequired.slice(0, 4).map(item => item.label).join(', ');
-            addToast(`Zorunlu alanlar bo?: ${listed}${missingRequired.length > 4 ? ' ...' : ''}`, 'info');
+            addToast(`Zorunlu alanlar boş: ${listed}${missingRequired.length > 4 ? ' ...' : ''}`, 'info');
         }
 
         const nextContent = applyTemplateVariablesForEditor(editableTemplateContent, templateVariableValues);
         setGeneratedPetition(nextContent);
         setPetitionVersion(v => v + 1);
         setHasTemplateVariableChanges(false);
-        addToast('Şablon değişkenleri metne uygulandı.', 'success');
+        addToast('Sablon degiskenleri metne uygulandi.', 'success');
     }, [editableTemplateContent, templateVariableItems, templateVariableValues, addToast]);
 
     const handleAnalyze = async () => {
@@ -973,7 +1100,7 @@ export default function AlternativeApp() {
                         const firstPage = ifds[0];
 
                         if (!firstPage) {
-                            throw new Error('TIFF icinde sayfa bulunamadi.');
+                            throw new Error('TIFF içinde sayfa bulunamadı.');
                         }
 
                         UTIF.decodeImage(arrayBuffer, firstPage);
@@ -984,7 +1111,7 @@ export default function AlternativeApp() {
                         const ctx = canvas.getContext('2d');
 
                         if (!ctx) {
-                            throw new Error('Canvas context olusturulamadi.');
+                            throw new Error('Canvas context oluşturulamadı.');
                         }
 
                         const imageData = ctx.createImageData(firstPage.width, firstPage.height);
@@ -1022,7 +1149,7 @@ export default function AlternativeApp() {
                         if (xmlFile) {
                             xmlContent = await xmlFile.async('string');
                         } else {
-                            xmlContent = 'UDF arsivinde .xml uzantili icerik dosyasi bulunamadi.';
+                            xmlContent = 'UDF arşivinde .xml uzantılı içerik dosyası bulunamadı.';
                         }
                         udfContent += `\n\n--- UDF Belgesi: ${file.name} ---\n${xmlContent}`;
                     } catch (e) {
@@ -1101,7 +1228,7 @@ export default function AlternativeApp() {
 
     const handleSearch = async () => {
         if (searchKeywords.length === 0) {
-            setError('Lutfen once arama anahtar kelimelerini olusturun.');
+            setError('Lütfen önce arama anahtar kelimelerini oluşturun.');
             return;
         }
         setIsSearching(true);
@@ -1119,7 +1246,7 @@ export default function AlternativeApp() {
 
     const handleLegalSearch = async () => {
         if (searchKeywords.length === 0) {
-            setError('Lutfen once arama anahtar kelimelerini olusturun.');
+            setError('Lütfen önce arama anahtar kelimelerini oluşturun.');
             return;
         }
 
@@ -1308,10 +1435,10 @@ export default function AlternativeApp() {
             ]);
 
             if (insertError) throw insertError;
-            addToast('Dilekce profile kaydedildi.', 'success');
+            addToast('Dilekçe profile kaydedildi.', 'success');
         } catch (saveError: any) {
             console.error('Error saving petition in AlternativeApp:', saveError);
-            addToast('Dilekce profile kaydedilemedi.', 'error');
+            addToast('Dilekçe profile kaydedilemedi.', 'error');
         }
     }, [
         user,
@@ -1334,19 +1461,19 @@ export default function AlternativeApp() {
         try {
             return await rewriteText(text);
         } catch (e) {
-            const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata olustu.';
-            setError(`Metin gelistirilirken bir hata olustu: ${errorMessage}`);
+            const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata oluştu.';
+            setError(`Metin geliştirilirken bir hata oluştu: ${errorMessage}`);
             throw e;
         }
     }, []);
 
     const handleReviewPetition = useCallback(async () => {
         if (!generatedPetition) {
-            setError('Iyilestirilecek bir dilekce taslagi bulunmuyor.');
+            setError('İyileştirilecek bir dilekçe taslağı bulunmuyor.');
             return;
         }
         if (!analysisData?.summary) {
-            setError('Dilekce baglami (analiz ozeti) olmadan iyilestirme yapilamaz.');
+            setError('Dilekçe bağlamı (analiz özeti) olmadan iyileştirme yapılamaz.');
             return;
         }
 
@@ -1370,10 +1497,10 @@ export default function AlternativeApp() {
             });
             setGeneratedPetition(result);
             setPetitionVersion(v => v + 1);
-            addToast('Dilekce gozden gecirildi ve iyilestirildi!', 'success');
+            addToast('Dilekçe gözden geçirildi ve iyileştirildi!', 'success');
         } catch (e) {
-            const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata olustu.';
-            setError(`Dilekce gozden gecirilirken bir hata olustu: ${errorMessage}`);
+            const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata oluştu.';
+            setError(`Dilekçe gözden geçirilirken bir hata oluştu: ${errorMessage}`);
         } finally {
             setIsReviewingPetition(false);
         }
@@ -1381,13 +1508,13 @@ export default function AlternativeApp() {
 
     const handleSendToEditor = useCallback(() => {
         if (!generatedPetition || !generatedPetition.trim()) {
-            setError('Editor sayfasina gondermek icin once dilekce olusturun.');
+            setError('Editör sayfasına göndermek için önce dilekçe oluşturun.');
             return;
         }
 
         localStorage.setItem('templateContent', generatedPetition);
         localStorage.setItem('editorReturnRoute', '/alt-app');
-        addToast('Taslak editor sayfasina gonderildi.', 'success');
+        addToast('Taslak editör sayfasına gönderildi.', 'success');
         navigate('/app');
     }, [generatedPetition, addToast, navigate]);
 
@@ -1406,14 +1533,14 @@ export default function AlternativeApp() {
 
         const userMessage: ChatMessage = {
             role: 'user',
-            text: normalizedMessage || (chatFiles.length > 0 ? `[Dosya] ${chatFiles.length} dosya yuklendi` : ''),
+            text: normalizedMessage || (chatFiles.length > 0 ? `[Dosya] ${chatFiles.length} dosya yüklendi` : ''),
             files: chatFiles.length > 0 ? chatFiles : undefined,
         };
         const newMessages: ChatMessage[] = [...chatMessages, userMessage];
         setChatMessages(newMessages);
         setIsLoadingChat(true);
         setError(null);
-        setChatProgressText(chatFiles.length > 0 ? 'Yuklenen dosyalar analiz ediliyor...' : 'Dusunuyorum...');
+        setChatProgressText(chatFiles.length > 0 ? 'Yüklenen dosyalar analiz ediliyor...' : 'Düşünüyorum...');
 
         let mergedKeywords = [...searchKeywords];
         let mergedWebSearchResult: WebSearchResult | null = webSearchResult;
@@ -1421,14 +1548,65 @@ export default function AlternativeApp() {
         let mergedDocContent = docContent;
         let assistantText = '';
         const userRequestedPetition = isLikelyPetitionRequest(normalizedMessage);
+        const isSimpleQuestion = isSimpleGuidanceQuestion(normalizedMessage);
+        const requiresEvidenceForChat = !isSimpleQuestion;
+        const requiresStrictEvidenceForDocument = userRequestedPetition;
 
         try {
+            if ((requiresEvidenceForChat || requiresStrictEvidenceForDocument) && normalizedMessage) {
+                const messageKeywords = extractKeywordCandidates(normalizedMessage).slice(0, 8);
+                if (messageKeywords.length > 0) {
+                    mergedKeywords = Array.from(new Set([...mergedKeywords, ...messageKeywords]));
+                    setSearchKeywords(mergedKeywords);
+                }
+            }
+
+            if (requiresEvidenceForChat || requiresStrictEvidenceForDocument) {
+                if (!hasWebEvidence(mergedWebSearchResult) && mergedKeywords.length > 0) {
+                    setChatProgressText('Web arastirmasiyla cevap dogrulaniyor...');
+                    try {
+                        const autoWebSearchResult = await performWebSearch(mergedKeywords);
+                        mergedWebSearchResult = mergeWebSearchResults(mergedWebSearchResult, autoWebSearchResult);
+                        if (mergedWebSearchResult) {
+                            setWebSearchResult(mergedWebSearchResult);
+                        }
+                    } catch (searchError) {
+                        console.error('Pre-chat web verification failed:', searchError);
+                    }
+                }
+
+                if (!hasLegalEvidenceForChat(mergedLegalResults) && mergedKeywords.length > 0) {
+                    setChatProgressText('Emsal kararlarla cevap dogrulaniyor...');
+                    const searchedResults = await runLegalSearch(mergedKeywords, { silent: true, suppressError: true });
+                    if (searchedResults.length > 0) {
+                        mergedLegalResults = mergeUniqueLegalResults(mergedLegalResults, searchedResults);
+                    }
+                }
+            }
+
+            if (requiresEvidenceForChat && (!hasWebEvidence(mergedWebSearchResult) || !hasLegalEvidenceForChat(mergedLegalResults))) {
+                const blockedText = 'Bu soruya güvenli cevap verebilmem için web ve emsal karar doğrulaması tamamlanmalı. Lütfen tekrar deneyin veya soruyu daha kısa/sade sorun.';
+                setChatMessages(prev => [...prev, { role: 'model', text: blockedText }]);
+                setError(blockedText);
+                return;
+            }
+
+            if (requiresStrictEvidenceForDocument && (!analysisData?.summary?.trim() || !hasWebEvidence(mergedWebSearchResult) || !hasLegalEvidenceForGeneration(mergedLegalResults))) {
+                const blockedText = `Belge oluşturma engellendi.\n\n${DOCUMENT_REQUIREMENTS_HELP_TEXT}`;
+                setChatMessages(prev => [...prev, { role: 'model', text: blockedText }]);
+                setError(blockedText);
+                return;
+            }
+
             const responseStream = streamChatResponse(
                 newMessages,
                 analysisData?.summary || '',
                 {
                     keywords: mergedKeywords.join(', '),
                     searchSummary: mergedWebSearchResult?.summary || '',
+                    legalSummary: buildLegalResultsPrompt(mergedLegalResults),
+                    webSourceCount: mergedWebSearchResult?.sources?.length || 0,
+                    legalResultCount: mergedLegalResults.length,
                     docContent: mergedDocContent,
                     specifics,
                 },
@@ -1444,7 +1622,7 @@ export default function AlternativeApp() {
 
             for await (const chunk of responseStream) {
                 if (chunk.functionCallResults && chunk.searchResults) {
-                    setChatProgressText('Emsal kararlar baglama ekleniyor...');
+                    setChatProgressText('Emsal kararlar bağlama ekleniyor...');
                     const newResults = normalizeLegalSearchResults(chunk.searchResults);
                     if (newResults.length > 0) {
                         mergedLegalResults = mergeUniqueLegalResults(mergedLegalResults, newResults);
@@ -1510,7 +1688,7 @@ export default function AlternativeApp() {
                 for (const fc of functionCalls) {
                     if (fc.name === 'update_search_keywords') {
                         functionCallDetected = true;
-                        setChatProgressText('Anahtar kelimeler baglama ekleniyor...');
+                        setChatProgressText('Anahtar kelimeler bağlama ekleniyor...');
 
                         const args = parseFunctionCallArgs(fc.args);
                         const rawKeywords = Array.isArray(args.keywordsToAdd) ? args.keywordsToAdd : [];
@@ -1548,7 +1726,25 @@ export default function AlternativeApp() {
                     }
 
                     if (fc.name === 'generate_document') {
-                        setChatProgressText('Dilekce olusturuluyor...');
+                        setChatProgressText('Dilekçe oluşturuluyor...');
+                        const canGenerateDocument = Boolean(
+                            analysisData?.summary?.trim()
+                            && hasWebEvidence(mergedWebSearchResult)
+                            && hasLegalEvidenceForGeneration(mergedLegalResults)
+                        );
+
+                        if (!canGenerateDocument) {
+                            const blockedGenerationText = `\n\nBelge oluşturma engellendi.\n\n${DOCUMENT_REQUIREMENTS_HELP_TEXT}`;
+                            assistantText += blockedGenerationText;
+                            setError(`Belge oluşturma için zorunlu kanıtlar eksik.\n\n${DOCUMENT_REQUIREMENTS_HELP_TEXT}`);
+                            setChatMessages(prev => prev.map((msg, index) =>
+                                index === prev.length - 1
+                                    ? { ...msg, text: msg.text + blockedGenerationText }
+                                    : msg
+                            ));
+                            continue;
+                        }
+
                         const payload = extractGeneratedDocumentPayload(fc.args);
                         if (!payload || generatedDocument) {
                             continue;
@@ -1560,7 +1756,7 @@ export default function AlternativeApp() {
                         setPetitionVersion(v => v + 1);
                         setCurrentStep(4);
 
-                        const generationNote = `\n\n${payload.title} olusturuldu.\n\nBelge "Olusturulan Dilekce" bolumune eklendi.`;
+                        const generationNote = `\n\n${payload.title} oluşturuldu.\n\nBelge "Oluşturulan Dilekçe" bölümüne eklendi.`;
                         assistantText += generationNote;
                         setChatMessages(prev => prev.map((msg, index) =>
                             index === prev.length - 1
@@ -1568,13 +1764,13 @@ export default function AlternativeApp() {
                                 : msg
                         ));
 
-                        addToast(`${payload.title} olusturuldu.`, 'success');
+                        addToast(`${payload.title} oluşturuldu.`, 'success');
                     }
                 }
             }
 
             if (chatFiles.length > 0 && assistantText.trim()) {
-                setChatProgressText('Dosya analizi baglama kaydediliyor...');
+                setChatProgressText('Dosya analizi bağlama kaydediliyor...');
                 const fileNames = chatFiles.map(file => file.name).join(', ');
                 const analysisSnippet = assistantText.trim().slice(0, 1600);
                 const contextEntry = [
@@ -1585,25 +1781,25 @@ export default function AlternativeApp() {
 
                 mergedDocContent = [mergedDocContent, contextEntry].filter(Boolean).join('\n\n').trim();
                 setDocContent(mergedDocContent);
-                addToast('Dosya analizi dilekce baglamina eklendi.', 'success');
+                addToast('Dosya analizi dilekçe bağlamına eklendi.', 'success');
             }
 
-            if (addedKeywordsCount > 0 && mergedKeywords.length > 0 && (!mergedWebSearchResult?.summary || mergedWebSearchResult.summary.trim().length === 0)) {
-                setChatProgressText('Web arastirmasi yapiliyor...');
+            if (addedKeywordsCount > 0 && mergedKeywords.length > 0 && !hasWebEvidence(mergedWebSearchResult)) {
+                setChatProgressText('Web araştırması yapılıyor...');
                 try {
                     const autoWebSearchResult = await performWebSearch(mergedKeywords);
                     mergedWebSearchResult = mergeWebSearchResults(mergedWebSearchResult, autoWebSearchResult);
                     if (mergedWebSearchResult) {
                         setWebSearchResult(mergedWebSearchResult);
                     }
-                    addToast('Web arastirmasi tamamlandi ve baglama eklendi.', 'success');
+                    addToast('Web araştırması tamamlandı ve bağlama eklendi.', 'success');
                 } catch (searchError) {
                     console.error('Auto web search after keyword update failed:', searchError);
                 }
             }
 
             if (functionCallDetected && addedKeywordsCount > 0 && !generatedDocument && assistantText.trim() === '') {
-                const confirmation = `Tamam, ${addedKeywordsCount} adet anahtar kelime baglama eklendi.`;
+                const confirmation = `Tamam, ${addedKeywordsCount} adet anahtar kelime bağlama eklendi.`;
                 assistantText += confirmation;
                 setChatMessages(prev => prev.map((msg, index) =>
                     index === prev.length - 1 ? { ...msg, text: confirmation } : msg
@@ -1613,8 +1809,21 @@ export default function AlternativeApp() {
             if (userRequestedPetition && !generatedDocument) {
                 setChatProgressText('Dileke oluturma adm tamamlanyor...');
                 let fallbackPetition = '';
+                const canGeneratePetition = Boolean(
+                    analysisData?.summary?.trim()
+                    && hasWebEvidence(mergedWebSearchResult)
+                    && hasLegalEvidenceForGeneration(mergedLegalResults)
+                );
 
-                if (analysisData?.summary?.trim()) {
+                if (!canGeneratePetition) {
+                    const blockedText = `Belge oluşturma engellendi.\n\n${DOCUMENT_REQUIREMENTS_HELP_TEXT}`;
+                    setError(blockedText);
+                    setChatMessages(prev => prev.map((msg, index) =>
+                        index === prev.length - 1
+                            ? { ...msg, text: `${msg.text}\n\n${blockedText}`.trim() }
+                            : msg
+                    ));
+                } else {
                     try {
                         fallbackPetition = await generatePetition({
                             userRole,
@@ -1627,6 +1836,8 @@ export default function AlternativeApp() {
                             specifics,
                             chatHistory: [...newMessages, { role: 'model', text: assistantText }],
                             parties,
+                            webSourceCount: mergedWebSearchResult?.sources?.length || 0,
+                            legalResultCount: mergedLegalResults.length,
                             lawyerInfo: analysisData.lawyerInfo,
                             contactInfo: analysisData.contactInfo,
                         });
@@ -1635,18 +1846,14 @@ export default function AlternativeApp() {
                     }
                 }
 
-                if (!fallbackPetition && assistantText.trim().length > 180) {
-                    fallbackPetition = assistantText.trim();
-                }
-
                 if (fallbackPetition) {
                     setGeneratedPetition(fallbackPetition);
                     setPetitionVersion(v => v + 1);
                     setCurrentStep(4);
-                    addToast('Dilekce olusturuldu ve taslak alana eklendi.', 'success');
+                    addToast('Dilekçe oluşturuldu ve taslak alana eklendi.', 'success');
 
                     if (user) {
-                        await savePetitionToSupabase(fallbackPetition, 'Sohbetten Uretilen Dilekce', {
+                        await savePetitionToSupabase(fallbackPetition, 'Sohbetten Üretilen Dilekçe', {
                             chatHistory: [...newMessages, { role: 'model', text: assistantText }],
                             searchKeywords: mergedKeywords,
                             docContent: mergedDocContent,
@@ -1669,8 +1876,8 @@ export default function AlternativeApp() {
                 });
             }
         } catch (e) {
-            const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata olustu.';
-            setError(`Sohbet sirasinda bir hata olustu: ${errorMessage}`);
+            const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata oluştu.';
+            setError(`Sohbet sırasında bir hata oluştu: ${errorMessage}`);
             setChatMessages(prev => prev.slice(0, -1));
         } finally {
             setIsLoadingChat(false);
@@ -1685,6 +1892,7 @@ export default function AlternativeApp() {
         docContent,
         specifics,
         mergeLegalResults,
+        runLegalSearch,
         addToast,
         user,
         savePetitionToSupabase,
@@ -1696,7 +1904,15 @@ export default function AlternativeApp() {
 
     const handleGeneratePetition = async () => {
         if (!analysisData?.summary) {
-            setError('nce analiz aamas tamamlanmaldr.');
+            setError(`Belge oluşturma engellendi.\n\n${DOCUMENT_REQUIREMENTS_HELP_TEXT}`);
+            return;
+        }
+        if (!hasWebEvidence(webSearchResult)) {
+            setError(`Web araması eksik.\n\n${DOCUMENT_REQUIREMENTS_HELP_TEXT}`);
+            return;
+        }
+        if (!hasLegalEvidenceForGeneration(legalSearchResults)) {
+            setError(`Emsal karar araması eksik.\n\n${DOCUMENT_REQUIREMENTS_HELP_TEXT}`);
             return;
         }
         setIsLoadingPetition(true);
@@ -1710,6 +1926,8 @@ export default function AlternativeApp() {
                 webSearchResult: webSearchResult?.summary || '',
                 legalSearchResult: legalResultsText,
                 docContent, specifics, chatHistory: chatMessages, parties,
+                webSourceCount: webSearchResult?.sources?.length || 0,
+                legalResultCount: legalSearchResults.length,
                 lawyerInfo: analysisData.lawyerInfo, contactInfo: analysisData.contactInfo,
             });
             setGeneratedPetition(result);
@@ -1968,7 +2186,7 @@ export default function AlternativeApp() {
 
                                         {files.length > 0 && (
                                             <div className="absolute inset-x-0 bottom-0 bg-[#1C1C1F] p-4 text-sm text-red-400 text-center font-medium border-t border-white/5">
-                                                {files.length} dosya secildi (Acik parca: {enabledUploadBatches}/{MAX_UPLOAD_BATCHES})
+                                                {files.length} dosya seçildi (Açık parça: {enabledUploadBatches}/{MAX_UPLOAD_BATCHES})
                                             </div>
                                         )}
                                     </div>
@@ -2318,24 +2536,24 @@ export default function AlternativeApp() {
 
                                                 <div className="bg-[#0F0F11] border border-white/10 rounded-2xl p-5 space-y-4">
                                                     <div className="flex items-center justify-between gap-3">
-                                                        <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-300">Ek Taraf / Iletisim Kayitlari</h4>
+                                                        <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-300">Ek Taraf / İletişim Kayıtları</h4>
                                                         <button
                                                             type="button"
                                                             onClick={addContactInfoRow}
                                                             className="px-3 py-1.5 bg-[#1A1A1D] border border-white/10 rounded-lg text-xs text-white hover:border-indigo-400/40 transition-colors"
                                                         >
-                                                            + Yeni Kayit
+                                                            + Yeni Kayıt
                                                         </button>
                                                     </div>
 
                                                     {contactInfoList.length === 0 ? (
-                                                        <p className="text-xs text-gray-500">Analizde ek taraf/iletisim bilgisi bulunamadi. Istiyorsaniz manuel kayit ekleyebilirsiniz.</p>
+                                                        <p className="text-xs text-gray-500">Analizde ek taraf/iletişim bilgisi bulunamadı. İstiyorsanız manuel kayıt ekleyebilirsiniz.</p>
                                                     ) : (
                                                         <div className="space-y-4">
                                                             {contactInfoList.map((contact, index) => (
                                                                 <div key={`contact-${index}`} className="border border-white/10 rounded-xl p-4 bg-[#111113]">
                                                                     <div className="flex items-center justify-between mb-3">
-                                                                        <h5 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Kayit #{index + 1}</h5>
+                                                                        <h5 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Kayıt #{index + 1}</h5>
                                                                         <button
                                                                             type="button"
                                                                             onClick={() => removeContactInfoRow(index)}
@@ -2632,7 +2850,7 @@ export default function AlternativeApp() {
                                         <div className="bg-[#111113] border border-white/10 rounded-2xl p-5 sm:p-6 space-y-4">
                                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                                 <div>
-                                                    <h2 className="text-lg font-semibold text-white">Şablon Değişkenleri</h2>
+                                                    <h2 className="text-lg font-semibold text-white">Sablon Degiskenleri</h2>
                                                     <p className="text-xs text-gray-400 mt-1">
                                                         Değerleri güncelleyip metne uygula. Bu işlem mevcut metni şablon bazından yeniden oluşturur.
                                                     </p>
@@ -2839,3 +3057,4 @@ export default function AlternativeApp() {
         </div >
     );
 }
+

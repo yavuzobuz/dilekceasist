@@ -462,7 +462,7 @@ const parseXlsxFile = async (file: File): Promise<BulkSheetData> => {
     }
 
     if (!worksheetXml) {
-        throw new Error('XLSX worksheet okunamadi.');
+        throw new Error('XLSX worksheet okunamadı.');
     }
 
     const worksheetDoc = parseXml(worksheetXml);
@@ -542,7 +542,7 @@ const parseSpreadsheetFile = async (file: File): Promise<BulkSheetData> => {
     const extension = file.name.split('.').pop()?.toLowerCase();
     if (extension === 'csv') return parseCsvFile(file);
     if (extension === 'xlsx') return parseXlsxFile(file);
-    throw new Error('Desteklenmeyen format. Lutfen .xlsx veya .csv yukleyin.');
+    throw new Error('Desteklenmeyen format. Lütfen .xlsx veya .csv yükleyin.');
 };
 
 const scoreHeaderMatch = (variableCandidate: string, headerCandidate: string): number => {
@@ -698,14 +698,14 @@ const buildDecisionIdentity = (decision: Pick<NormalizedLegalDecision, 'title' |
 
 const formatDecisionCitation = (decision: Pick<NormalizedLegalDecision, 'title' | 'esasNo' | 'kararNo' | 'tarih' | 'ozet'>): string => {
     const citation = [
-        decision.title || 'Yargitay Karari',
+        decision.title || 'Yargıtay Kararı',
         decision.esasNo ? `E. ${decision.esasNo}` : '',
         decision.kararNo ? `K. ${decision.kararNo}` : '',
         decision.tarih ? `T. ${decision.tarih}` : '',
     ].filter(Boolean).join(' - ');
 
     const summary = (decision.ozet || '').trim();
-    return summary ? `${citation}\n  Ozet: ${summary}` : citation;
+    return summary ? `${citation}\n  Özet: ${summary}` : citation;
 };
 
 const buildMcpDecisionAppendix = (decisions: Array<Pick<NormalizedLegalDecision, 'title' | 'esasNo' | 'kararNo' | 'tarih' | 'ozet'>>): string => {
@@ -757,7 +757,7 @@ const resolveCustomTemplateCategoryInfo = (
     }
 
     const petitionCategory = template.petition_category || 'templates';
-    return { category: petitionCategory, subcategory: template.petition_category || 'Dilekce' };
+    return { category: petitionCategory, subcategory: template.petition_category || 'Dilekçe' };
 };
 
 const templateMatchesCategory = (template: Template, categoryId: string): boolean => {
@@ -1087,7 +1087,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
             const data = await response.json();
             setTemplates(deepSanitizeText(data.templates || []));
         } catch (fetchError) {
-            setError(fetchError instanceof Error ? fetchError.message : 'Bir hata olustu');
+            setError(fetchError instanceof Error ? fetchError.message : 'Bir hata oluştu');
         } finally {
             setIsLoading(false);
         }
@@ -1144,7 +1144,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
             });
             setMcpSearchResults(results);
         } catch (searchError) {
-            const message = searchError instanceof Error ? searchError.message : 'MCP Yargitay aramasinda hata olustu.';
+            const message = searchError instanceof Error ? searchError.message : 'MCP Yargıtay aramasında hata oluştu.';
             setMcpSearchError(message);
             setMcpSearchResults([]);
         } finally {
@@ -1159,15 +1159,15 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
         const variableContext = buildVariableContext(variableValues);
 
         const enhancementPrompt = [
-            'GOREV: Asagidaki Turkce hukuk dilekce taslagini profesyonel bir hukuk dili ile gelistir.',
+            'GÖREV: Aşağıdaki Türkçe hukuk dilekçe taslağını profesyonel bir hukuk dili ile geliştir.',
             'KURALLAR:',
             '- Baslik yapisini koru.',
             '- Somut olgu uydurma, sadece verilen bilgi ve taslaktan ilerle.',
-            '- Etiket gibi duran metinleri (ornegin "TC Kimlik No", "Ise Giris Tarihi") hukuki anlatima uygun hale getir.',
+            '- Etiket gibi duran metinleri (örneğin "TC Kimlik No", "İşe Giriş Tarihi") hukuki anlatıma uygun hale getir.',
             '- Bilgi eksikse [ ... ] yaz.',
             selectedMcpDecisions.length > 0
-                ? '- Secilen MCP Yargitay kararlarini gerekce ve talep bolumunde atif yaparak kullan.'
-                : '- Hukuki gerekceyi guclendirirken metni bos birakma.',
+                ? '- Seçilen MCP Yargıtay kararlarını gerekçe ve talep bölümünde atıf yaparak kullan.'
+                : '- Hukuki gerekçeyi güçlendirirken metni boş bırakma.',
             '',
             '[TASLAK METIN]',
             draftContent,
@@ -1178,8 +1178,8 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
             '[MCP YARGITAY KARARLARI]',
             decisionContext,
             '',
-            '[CIKTI]',
-            'Sadece iyilestirilmis nihai dilekce metnini dondur.',
+            '[ÇIKTI]',
+            'Sadece iyileştirilmiş nihai dilekçe metnini döndür.',
         ].join('\n');
 
         const response = await fetch(`${API_BASE_URL}/api/gemini/rewrite`, {
@@ -1190,7 +1190,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
 
         if (!response.ok) {
             const errorText = await response.text().catch(() => '');
-            throw new Error(errorText || 'AI zenginlestirme basarisiz oldu.');
+            throw new Error(errorText || 'AI zenginleştirme başarısız oldu.');
         }
 
         const data = await response.json();
@@ -1242,7 +1242,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                 templateSubcategory: selectedTemplate.subcategory,
                 variableValues: { ...variableValues },
                 selectedDecisions: selectedMcpDecisions.map(decision => ({
-                    title: decision.title || 'Yargitay Karari',
+                    title: decision.title || 'Yargıtay Kararı',
                     esasNo: decision.esasNo || '',
                     kararNo: decision.kararNo || '',
                     tarih: decision.tarih || '',
@@ -1281,9 +1281,9 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
             setBulkColumnMapping(autoMapping);
             setBulkFallbackValues({});
             setBulkProgress({ current: 0, total: sheetData.rows.length });
-            setBulkSuccess(`${sheetData.rows.length} satir yuklendi. Kolon eslemeleri otomatik onerildi.`);
+            setBulkSuccess(`${sheetData.rows.length} satır yüklendi. Kolon eşlemeleri otomatik önerildi.`);
         } catch (uploadError) {
-            const message = uploadError instanceof Error ? uploadError.message : 'Dosya okunurken hata olustu.';
+            const message = uploadError instanceof Error ? uploadError.message : 'Dosya okunurken hata oluştu.';
             setBulkError(message);
             setBulkSheetData(null);
             setBulkColumnMapping({});
@@ -1363,8 +1363,8 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
 
     const activePreviewContent = generationMode === 'bulk' ? bulkPreviewContent : singlePreviewContent;
     const previewHint = generationMode === 'bulk'
-        ? 'Kolon eslemeleri ve sabit degerler degistikce onizleme otomatik guncellenir.'
-        : 'Sag taraftaki alanlari doldurdukca onizleme canli olarak guncellenir.';
+        ? 'Kolon eşlemeleri ve sabit değerler değiştikçe önizleme otomatik güncellenir.'
+        : 'Sağ taraftaki alanları doldurdukça önizleme canlı olarak güncellenir.';
 
     const handleBulkGenerate = async () => {
         if (!selectedTemplate || !bulkSheetData) return;
@@ -1429,7 +1429,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
 
             onUseTemplate(selectedTemplate.content, transferContext);
         } catch (generationError) {
-            const message = generationError instanceof Error ? generationError.message : 'Seri uretim sirasinda hata olustu.';
+            const message = generationError instanceof Error ? generationError.message : 'Seri üretim sırasında hata oluştu.';
             setBulkError(message);
         } finally {
             setIsBulkGenerating(false);
@@ -1491,8 +1491,8 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
     const isContractsNoticesView = effectiveCategory === CONTRACTS_NOTICES_CATEGORY;
     const pageTitle = isContractsNoticesView ? 'Sozlesmeler & Ihtarnameler' : 'Sablon Galerisi';
     const pageDescription = isContractsNoticesView
-        ? 'Tum sozlesme ve ihtarname sablonlarini buradan kullanabilirsiniz'
-        : 'Hazir dilekce sablonlarindan secin';
+        ? 'Tüm sözleşme ve ihtarname şablonlarını buradan kullanabilirsiniz'
+        : 'Hazır dilekçe şablonlarından seçin';
 
     const renderTemplateCard = (template: Template) => {
         const isCustom = template.isCustom === true;
@@ -1710,7 +1710,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                     <div className="text-center py-20">
                         <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                         <h3 className="text-xl font-semibold text-gray-400 mb-2">Şablon bulunamadı</h3>
-                        <p className="text-gray-500">Farkli bir kategori veya arama terimi deneyin</p>
+                        <p className="text-gray-500">Farklı bir kategori veya arama terimi deneyin</p>
                     </div>
                 )}
             </div>
@@ -1750,12 +1750,12 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                         <div className="min-h-0 bg-black/30 border border-gray-700 rounded-xl p-4 flex flex-col">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <FileText className="w-4 h-4 text-red-500" />
-                                                <h3 className="font-semibold text-white">Dilekce Onizleme</h3>
+                                                <h3 className="font-semibold text-white">Dilekçe Önizleme</h3>
                                             </div>
                                             <p className="text-xs text-gray-400 mb-3">{previewHint}</p>
                                             <div className="flex-1 min-h-0 overflow-auto rounded-lg border border-gray-700 bg-black/40 p-3">
                                                 <pre className="whitespace-pre-wrap text-sm leading-relaxed text-gray-200 font-serif">
-                                                    {activePreviewContent || 'Onizleme icin alanlari doldurmaya baslayin.'}
+                                                    {activePreviewContent || 'Önizleme için alanları doldurmaya başlayın.'}
                                                 </pre>
                                             </div>
                                         </div>
@@ -1800,17 +1800,17 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                                                 onChange={(event) => setIsAiEnhanced(event.target.checked)}
                                                                 className="rounded border-gray-500 bg-gray-700 text-red-600 focus:ring-red-500"
                                                             />
-                                                            AI ile dilekceyi zenginlestir
+                                                            AI ile dilekçeyi zenginleştir
                                                         </label>
                                                         {isAiEnhanced && (
                                                             <p className="text-xs text-gray-400">
-                                                                Secilen kararlar ve alan degerleri alt uygulamada chatbot mantigi ile otomatik islenecek.
+                                                                Seçilen kararlar ve alan değerleri alt uygulamada chatbot mantığı ile otomatik işlenecek.
                                                             </p>
                                                         )}
 
                                                         <div className="space-y-2">
                                                             <p className="text-xs text-gray-400">
-                                                                MCP ile Yargitay karari ara ve secilen kararlarini dilekceye ekle.
+                                                                MCP ile Yargıtay kararı ara ve seçilen kararlarını dilekçeye ekle.
                                                             </p>
                                                             <div className="flex flex-col sm:flex-row gap-2">
                                                                 <input
@@ -1823,7 +1823,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                                                             handleMcpSearch();
                                                                         }
                                                                     }}
-                                                                    placeholder="Orn: kidem tazminati fesih hakli nedenle"
+                                                                    placeholder="Örn: kıdem tazminatı fesih haklı nedenle"
                                                                     className="flex-1 p-2.5 bg-gray-800 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
                                                                 />
                                                                 <button
@@ -1834,12 +1834,12 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                                                     {isSearchingMcp ? (
                                                                         <>
                                                                             <Loader2 className="w-4 h-4 animate-spin" />
-                                                                            Araniyor...
+                                                                            Aranıyor...
                                                                         </>
                                                                     ) : (
                                                                         <>
                                                                             <Search className="w-4 h-4" />
-                                                                            Yargitay Ara (MCP)
+                                                                            Yargıtay Ara (MCP)
                                                                         </>
                                                                     )}
                                                                 </button>
@@ -1854,7 +1854,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
 
                                                         {selectedMcpDecisions.length > 0 && (
                                                             <div className="text-xs text-emerald-300 bg-emerald-900/20 border border-emerald-700/60 rounded-lg p-2">
-                                                                {selectedMcpDecisions.length} karar secildi. Uretimde dilekceye eklenecek.
+                                                                {selectedMcpDecisions.length} karar seçildi. Üretimde dilekçeye eklenecek.
                                                             </div>
                                                         )}
 
@@ -1876,7 +1876,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                                                         >
                                                                             <div className="flex items-start justify-between gap-3">
                                                                                 <div className="min-w-0">
-                                                                                    <p className="text-sm text-white font-medium">{decision.title || 'Yargitay Karari'}</p>
+                                                                                    <p className="text-sm text-white font-medium">{decision.title || 'Yargıtay Kararı'}</p>
                                                                                     <p className="text-xs text-gray-400 mt-1">
                                                                                         {decision.esasNo ? `E. ${decision.esasNo} ` : ''}
                                                                                         {decision.kararNo ? `K. ${decision.kararNo} ` : ''}
@@ -1920,7 +1920,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                                                         className="text-xs flex items-center gap-1 text-red-400 hover:text-red-300 transition-colors bg-red-900/20 px-2 py-0.5 rounded"
                                                                     >
                                                                         <UserPlus className="w-3 h-3" />
-                                                                        Kisi Sec
+                                                                        Kişi Seç
                                                                     </button>
                                                                 )}
                                                             </div>
@@ -1957,7 +1957,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                                     <div className="bg-gray-800/60 border border-gray-700 rounded-xl p-4">
                                                         <h3 className="font-semibold text-white flex items-center gap-2 mb-2">
                                                             <FileSpreadsheet className="w-4 h-4 text-red-500" />
-                                                            Seri Dilekce Uretimi
+                                                            Seri Dilekçe Üretimi
                                                         </h3>
                                                         <p className="text-sm text-gray-300 mb-4">
                                                             Excel/CSV yükleyin, kolonları şablon değişkenleriyle eşleyin ve tek tıkla toplu dilekçe paketi oluşturun.
@@ -1965,7 +1965,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                                         <div className="flex flex-wrap gap-2">
                                                             <label className="inline-flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg cursor-pointer transition-colors">
                                                                 <Upload className="w-4 h-4" />
-                                                                Excel/CSV Yukle
+                                                                Excel/CSV Yükle
                                                                 <input
                                                                     type="file"
                                                                     accept=".xlsx,.csv"
@@ -1978,18 +1978,18 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                                                 className="inline-flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg transition-colors"
                                                             >
                                                                 <Download className="w-4 h-4" />
-                                                                Sablon Olustur (CSV)
+                                                                Şablon Oluştur (CSV)
                                                             </button>
                                                             <button
                                                                 onClick={downloadSampleCsv}
                                                                 className="inline-flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors"
                                                             >
                                                                 <FileSpreadsheet className="w-4 h-4" />
-                                                                Seri Dilekce Sablonu
+                                                                Seri Dilekçe Şablonu
                                                             </button>
                                                         </div>
                                                         <p className="text-xs text-gray-500 mt-3">
-                                                            Not: CSV dosyasini Excel ile acabilirsiniz. XLSX ve CSV desteklenir.
+                                                            Not: CSV dosyasını Excel ile açabilirsiniz. XLSX ve CSV desteklenir.
                                                         </p>
                                                     </div>
 
@@ -2013,7 +2013,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                                                     Dosya: <span className="font-semibold">{bulkSheetData.fileName}</span>
                                                                 </div>
                                                                 <p className="text-sm text-gray-300">
-                                                                    {bulkSheetData.rows.length} veri satiri, {bulkSheetData.headers.length} kolon algilandi.
+                                                                    {bulkSheetData.rows.length} veri satırı, {bulkSheetData.headers.length} kolon algılandı.
                                                                 </p>
                                                                 <div className="flex flex-wrap gap-2">
                                                                     {bulkSheetData.headers.slice(0, 20).map(header => (
@@ -2032,7 +2032,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                                             <div className="space-y-3">
                                                                 <h4 className="font-semibold text-white flex items-center gap-2">
                                                                     <Archive className="w-4 h-4 text-red-500" />
-                                                                    Degisken - Kolon Esleme
+                                                                    Değişken - Kolon Eşleme
                                                                 </h4>
                                                                 {selectedTemplate.variables.map(variable => {
                                                                     const selectedHeader = bulkColumnMapping[variable.key] || '';
@@ -2049,7 +2049,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                                                                     <p className="text-xs text-gray-500 mt-1">{variable.key}</p>
                                                                                 </div>
                                                                                 <div>
-                                                                                    <label className="block text-xs text-gray-400 mb-1">Kolon secimi</label>
+                                                                                    <label className="block text-xs text-gray-400 mb-1">Kolon seçimi</label>
                                                                                     <select
                                                                                         value={selectedHeader}
                                                                                         onChange={(event) => setBulkColumnMapping(prev => ({
@@ -2058,14 +2058,14 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                                                                         }))}
                                                                                         className="w-full p-2.5 bg-gray-800 border border-gray-600 rounded-lg text-sm text-white focus:outline-none focus:border-red-500"
                                                                                     >
-                                                                                        <option value="">Kolon esleme yok</option>
+                                                                                        <option value="">Kolon eşleme yok</option>
                                                                                         {bulkSheetData.headers.map(header => (
                                                                                             <option key={header} value={header}>{header}</option>
                                                                                         ))}
                                                                                     </select>
                                                                                 </div>
                                                                                 <div>
-                                                                                    <label className="block text-xs text-gray-400 mb-1">Sabit deger (opsiyonel)</label>
+                                                                                    <label className="block text-xs text-gray-400 mb-1">Sabit değer (opsiyonel)</label>
                                                                                     <input
                                                                                         type="text"
                                                                                         value={bulkFallbackValues[variable.key] || ''}
@@ -2073,11 +2073,11 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                                                                             ...prev,
                                                                                             [variable.key]: event.target.value,
                                                                                         }))}
-                                                                                        placeholder="Kolon bos ise kullanilir"
+                                                                                        placeholder="Kolon boş ise kullanılır"
                                                                                         className="w-full p-2.5 bg-gray-800 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
                                                                                     />
                                                                                     <p className="text-xs text-gray-500 mt-1 truncate">
-                                                                                        Onizleme: {previewValue || bulkFallbackValues[variable.key] || '-'}
+                                                                                        Önizleme: {previewValue || bulkFallbackValues[variable.key] || '-'}
                                                                                     </p>
                                                                                 </div>
                                                                             </div>
@@ -2095,13 +2095,13 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                                                     className="rounded border-gray-500 bg-gray-700 text-red-600 focus:ring-red-500"
                                                                 />
                                                                 <label htmlFor="include-docx-in-bulk" className="text-sm text-gray-200 cursor-pointer">
-                                                                    Toplu ciktiya Word (.docx) dosyalari da eklensin
+                                                                    Toplu çıktıya Word (.docx) dosyaları da eklensin
                                                                 </label>
                                                             </div>
 
                                                             {isBulkGenerating && (
                                                                 <div className="bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm text-gray-200">
-                                                                    Isleniyor: {bulkProgress.current} / {bulkProgress.total}
+                                                                    İşleniyor: {bulkProgress.current} / {bulkProgress.total}
                                                                 </div>
                                                             )}
                                                         </>
@@ -2117,7 +2117,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                         onClick={closeTemplateModal}
                                         className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors"
                                     >
-                                        Iptal
+                                        İptal
                                     </button>
                                     {generationMode === 'single' ? (
                                         <button
@@ -2128,12 +2128,12 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                             {isGenerating ? (
                                                 <>
                                                     <Loader2 className="w-5 h-5 animate-spin" />
-                                                    {isAiEnhanced ? 'AI ile gelistiriliyor...' : 'Olusturuluyor...'}
+                                                    {isAiEnhanced ? 'AI ile geliştiriliyor...' : 'Oluşturuluyor...'}
                                                 </>
                                             ) : (
                                                 <>
                                                     <Check className="w-5 h-5" />
-                                                    Dilekce Olustur
+                                                    Dilekçe Oluştur
                                                 </>
                                             )}
                                         </button>
@@ -2146,12 +2146,12 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                             {isBulkGenerating ? (
                                                 <>
                                                     <Loader2 className="w-5 h-5 animate-spin" />
-                                                    Alt-app'e aktariliyor...
+                                                    Alt-app'e aktarılıyor...
                                                 </>
                                             ) : (
                                                 <>
                                                     <Archive className="w-5 h-5" />
-                                                    Alt-app'te Onayla ve Indir
+                                                    Alt-app'te Onayla ve İndir
                                                 </>
                                             )}
                                         </button>

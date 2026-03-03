@@ -96,13 +96,13 @@ const Login: React.FC = () => {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label htmlFor="password" className="block text-sm font-medium text-gray-300">
-                  Sifre
+                  Şifre
                 </label>
                 <Link
                   to="/sifremi-unuttum"
                   className="text-xs text-red-400 hover:text-red-300 transition-colors"
                 >
-                  Sifremi Unuttum
+                  Şifremi Unuttum
                 </Link>
               </div>
               <div className="relative">

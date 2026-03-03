@@ -137,7 +137,7 @@ export const AdminDashboard: React.FC = () => {
 
     const formatRemainingRights = (userPlan: RecentUserPlan) => {
         if (userPlan.daily_limit == null || userPlan.remaining_today == null) {
-            return 'Sinirsiz';
+            return 'Sınırsız';
         }
         return `${userPlan.remaining_today} / ${userPlan.daily_limit}`;
     };

@@ -11,6 +11,152 @@ const getAiClient = () => {
     return new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 };
 
+const normalizeText = (value) => (typeof value === 'string' ? value.trim() : '');
+
+const KEYWORD_STOPWORDS = new Set([
+    've', 'veya', 'ile', 'olan', 'oldugu', 'olduğu', 'iddia', 'edilen',
+    'uzerine', 'üzerine', 'kapsaminda', 'kapsamında', 'gibi', 'icin', 'için',
+    'uzere', 'üzere', 'bu', 'su', 'şu', 'o', 'bir', 'de', 'da'
+]);
+
+const extractKeywordCandidates = (rawValue = '') => {
+    const text = normalizeText(rawValue);
+    if (!text) return [];
+
+    const candidates = [];
+    const seen = new Set();
+
+    const addCandidate = (value) => {
+        const normalized = String(value || '').replace(/[“”"']/g, ' ').replace(/\s+/g, ' ').trim();
+        if (!normalized || normalized.length < 3) return;
+
+        const words = normalized.split(/\s+/).filter(Boolean);
+        const nonStopCount = words.filter((word) => !KEYWORD_STOPWORDS.has(word.toLocaleLowerCase('tr-TR'))).length;
+        if (nonStopCount === 0) return;
+
+        const key = normalized.toLocaleLowerCase('tr-TR');
+        if (seen.has(key)) return;
+        seen.add(key);
+        candidates.push(normalized);
+    };
+
+    const tckMatches = text.match(/TCK\s*\d+(?:\s*\/\s*\d+)?(?:\s*[-–]\s*\d+)?/gi) || [];
+    tckMatches.forEach(addCandidate);
+
+    if (/uyusturucu|uyuşturucu/i.test(text) && /ticaret|satic|satıc/i.test(text)) {
+        addCandidate('uyusturucu ticareti');
+        addCandidate('uyusturucu saticiligi iddiasi');
+    }
+
+    if (/evine gelen\s*\d+\s*kisi|evine gelen.*kisi|evine gelen.*kişi/i.test(text)) {
+        addCandidate('evine gelen kisilerde farkli uyusturucu ele gecirilmesi');
+    }
+
+    if (/kullanim sinirini asan|kullanım sınırını aşan|kullanim siniri|kullanım sınırı/i.test(text)) {
+        addCandidate('kullanim sinirini asan miktarda madde');
+    }
+
+    const fullNameMatches = text.match(/[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+/g) || [];
+    fullNameMatches.forEach(addCandidate);
+
+    text.split(/[,\n;]+/g).forEach(addCandidate);
+
+    const tokenFallback = text
+        .split(/[\s,;:.!?()\/\\-]+/g)
+        .map((token) => token.trim())
+        .filter((token) => token.length >= 4 && !KEYWORD_STOPWORDS.has(token.toLocaleLowerCase('tr-TR')));
+
+    for (const token of tokenFallback) {
+        addCandidate(token);
+        if (candidates.length >= 10) break;
+    }
+
+    return candidates.slice(0, 10);
+};
+
+const getLastUserMessageText = (chatHistory = []) => {
+    for (let i = chatHistory.length - 1; i >= 0; i -= 1) {
+        const message = chatHistory[i];
+        if (message?.role === 'user') {
+            return normalizeText(message?.text || '');
+        }
+    }
+
+    return '';
+};
+
+const isLikelyDocumentRequest = (text = '') => {
+    if (!text) return false;
+    const hasDocumentWord = /(dilekce|dilekçe|belge|taslak|template|ihtarname|itiraz|temyiz|feragat|talep)/i.test(text);
+    const hasCreationWord = /(olustur|oluştur|hazirla|hazırla|yaz|uret|üret)/i.test(text);
+    return hasDocumentWord && hasCreationWord;
+};
+
+const isSimpleGuidanceQuestion = (text = '') => {
+    const normalized = normalizeText(text.toLowerCase());
+    if (!normalized) return false;
+    if (isLikelyDocumentRequest(normalized)) return false;
+
+    const tokenCount = normalized.split(/\s+/).filter(Boolean).length;
+    const hasSimpleIntent = /(nereye|hangi mahkeme|hangi mahkemeye|nasil|nasil|sure|süre|kac gun|kaç gün|harc|harç|gorevli|görevli|yetkili|acabilir miyim|açabilir miyim|acmaliyim|açmalıyım|gerekli mi)/i.test(normalized);
+    const hasComplexIntent = /(emsal|ictihat|içtihat|karar no|esas no|detayli analiz|detaylı analiz|madde madde|belge olustur|belge oluştur|dilekce|dilekçe|taslak)/i.test(normalized);
+
+    return hasSimpleIntent && !hasComplexIntent && tokenCount <= 24;
+};
+
+const hasWebEvidence = (summary, sourceCount) => {
+    const safeSummary = normalizeText(summary);
+    const count = Number(sourceCount || 0);
+    return safeSummary.length >= 40 && (count > 0 || safeSummary.length >= 280);
+};
+
+const hasLegalEvidence = (summary, resultCount) => {
+    const safeSummary = normalizeText(summary);
+    const count = Number(resultCount || 0);
+    const hasCitationToken = /(?:E\.\s*\S+|K\.\s*\S+|esas|karar|yargitay|danistay)/i.test(safeSummary);
+    return safeSummary.length >= 40 && hasCitationToken && (count > 0 || safeSummary.length >= 280);
+};
+
+const ANALYSIS_SUMMARY_HELP_TEXT = [
+    'Analiz özeti, yüklediğiniz belgelerden çıkarılan olay özetidir.',
+    'Örnek belgeler: tapu kayıtları, veraset ilamı, sözleşmeler, tutanaklar ve mahkeme evrakları.',
+].join(' ');
+
+const DOCUMENT_REQUIREMENTS_HELP_TEXT = [
+    `${ANALYSIS_SUMMARY_HELP_TEXT}`,
+    'Belge oluşturma için şu 3 adım zorunludur: 1) Belgeleri yükleyip analiz et, 2) Web araştırması yap, 3) Emsal karar araması yap.',
+].join(' ');
+
+const parseFunctionArgs = (rawArgs) => {
+    if (!rawArgs) return {};
+    if (typeof rawArgs === 'string') {
+        try {
+            const parsed = JSON.parse(rawArgs);
+            return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch {
+            return {};
+        }
+    }
+
+    return typeof rawArgs === 'object' ? rawArgs : {};
+};
+
+const formatLegalResultsForContext = (results = []) => {
+    if (!Array.isArray(results) || results.length === 0) return '';
+
+    return results
+        .slice(0, 10)
+        .map((result) => {
+            const meta = [
+                result?.esasNo ? `E. ${result.esasNo}` : '',
+                result?.kararNo ? `K. ${result.kararNo}` : '',
+                result?.tarih ? `T. ${result.tarih}` : '',
+            ].filter(Boolean).join(' ');
+            return `- ${result?.title || 'Karar'} ${meta} ${result?.ozet || ''}`.trim();
+        })
+        .join('\n');
+};
+
 // Fallback search function for legal decisions
 async function searchEmsalFallback(ai, keyword) {
     try {
@@ -19,37 +165,73 @@ async function searchEmsalFallback(ai, keyword) {
             contents: `Turkiye'de "${keyword}" konusunda emsal Yargitay ve Danistay kararlari bul. Her karar icin:
             - Mahkeme, Daire, Esas No, Karar No, Tarih, Ozet, Ilgi Skoru (0-100)
 
-            En az 10 karar bul ve JSON formatinda dondur:
+            En az 6 karar bul ve JSON formatinda dondur:
             [{"mahkeme": "...", "daire": "...", "esasNo": "...", "kararNo": "...", "tarih": "...", "ozet": "...", "relevanceScore": 85}]
 
             Sadece JSON array dondur.`,
-            config: { tools: [{ googleSearch: {} }] }
+            config: {
+                tools: [{ googleSearch: {} }],
+                temperature: 0.1,
+            }
         });
 
         const text = response.text || '';
         const jsonMatch = text.match(/\[[\s\S]*\]/);
         if (jsonMatch) {
-            const results = JSON.parse(jsonMatch[0]);
+            const parsedResults = JSON.parse(jsonMatch[0]);
+            const results = Array.isArray(parsedResults) ? parsedResults : [];
+
             return {
                 success: true,
                 results: results
-                    .map((r, i) => ({
-                        id: `search-${i}`,
-                        title: `${r.mahkeme || 'Yargitay'} ${r.daire || ''}`.trim(),
-                        esasNo: r.esasNo || '',
-                        kararNo: r.kararNo || '',
-                        tarih: r.tarih || '',
-                        daire: r.daire || '',
-                        ozet: r.ozet || '',
-                        relevanceScore: r.relevanceScore || Math.max(0, 100 - (i * 8))
+                    .map((result, index) => ({
+                        id: `search-${index}`,
+                        title: `${result.mahkeme || 'Yargitay'} ${result.daire || ''}`.trim(),
+                        esasNo: result.esasNo || '',
+                        kararNo: result.kararNo || '',
+                        tarih: result.tarih || '',
+                        daire: result.daire || '',
+                        ozet: result.ozet || '',
+                        relevanceScore: result.relevanceScore || Math.max(0, 100 - (index * 8))
                     }))
+                    .filter((item) => item.title && (item.ozet || item.esasNo || item.kararNo))
                     .sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
             };
         }
+
         return { success: true, results: [] };
     } catch (error) {
         console.error('Search error:', error);
         return { success: false, results: [] };
+    }
+}
+
+async function runWebVerificationSearch(ai, keyword, question) {
+    const query = normalizeText([keyword, question].filter(Boolean).join(' '));
+    if (!query) {
+        return { summary: '', sourceCount: 0 };
+    }
+
+    try {
+        const response = await ai.models.generateContent({
+            model: MODEL_NAME,
+            contents: `Turk hukukunda su soruya yonelik guvenilir web arastirmasi yap:\n\nSoru: ${question || query}\n\nArama odagi: ${query}\n\nKisa bir hukuki arastirma ozeti ver.`,
+            config: {
+                tools: [{ googleSearch: {} }],
+                temperature: 0.1,
+            },
+        });
+
+        const summary = normalizeText(response.text || '');
+        const groundingChunks = response?.candidates?.[0]?.groundingMetadata?.groundingChunks;
+        const sourceCount = Array.isArray(groundingChunks)
+            ? groundingChunks.filter((chunk) => chunk?.web?.uri).length
+            : 0;
+
+        return { summary, sourceCount };
+    } catch (error) {
+        console.error('Web verification search error:', error);
+        return { summary: '', sourceCount: 0 };
     }
 }
 
@@ -70,11 +252,69 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'chatHistory must be a non-empty array' });
         }
 
+        const lastUserMessage = getLastUserMessageText(chatHistory);
+        const isDocumentRequest = isLikelyDocumentRequest(lastUserMessage);
+        const isSimpleQuestion = isSimpleGuidanceQuestion(lastUserMessage);
+        const requiresEvidenceForAnswer = !isSimpleQuestion || isDocumentRequest || (Array.isArray(files) && files.length > 0);
+
+        let effectiveSearchSummary = normalizeText(safeContext.searchSummary || '');
+        let effectiveLegalSummary = normalizeText(safeContext.legalSummary || '');
+        let effectiveWebSourceCount = Number(safeContext.webSourceCount || 0);
+        let effectiveLegalResultCount = Number(safeContext.legalResultCount || 0);
+
+        const keywordSeed = Array.from(new Set([
+            ...extractKeywordCandidates(safeContext.keywords || ''),
+            ...extractKeywordCandidates(lastUserMessage),
+        ])).join(' ').trim();
+
+        const evidenceQuery = keywordSeed || normalizeText(lastUserMessage) || 'turk hukuku';
+
+        if (requiresEvidenceForAnswer) {
+            if (!hasWebEvidence(effectiveSearchSummary, effectiveWebSourceCount)) {
+                const webEvidence = await runWebVerificationSearch(ai, evidenceQuery, lastUserMessage);
+                if (webEvidence.summary) {
+                    effectiveSearchSummary = [effectiveSearchSummary, webEvidence.summary].filter(Boolean).join('\n\n').trim();
+                    effectiveWebSourceCount = Math.max(effectiveWebSourceCount, webEvidence.sourceCount);
+                }
+            }
+
+            if (!hasLegalEvidence(effectiveLegalSummary, effectiveLegalResultCount)) {
+                const legalEvidence = await searchEmsalFallback(ai, evidenceQuery);
+                if (Array.isArray(legalEvidence.results) && legalEvidence.results.length > 0) {
+                    const legalSummaryFromResults = formatLegalResultsForContext(legalEvidence.results);
+                    effectiveLegalSummary = [effectiveLegalSummary, legalSummaryFromResults].filter(Boolean).join('\n').trim();
+                    effectiveLegalResultCount = Math.max(effectiveLegalResultCount, legalEvidence.results.length);
+                }
+            }
+        }
+
+        const hasVerifiedWebEvidence = hasWebEvidence(effectiveSearchSummary, effectiveWebSourceCount);
+        const hasVerifiedLegalEvidence = hasLegalEvidence(effectiveLegalSummary, effectiveLegalResultCount);
+
+        if (isDocumentRequest && (!hasVerifiedWebEvidence || !hasVerifiedLegalEvidence)) {
+            return res.status(422).json({
+                error: `Belge oluşturma engellendi. ${DOCUMENT_REQUIREMENTS_HELP_TEXT}`,
+                code: 'MISSING_REQUIRED_EVIDENCE_FOR_DOCUMENT'
+            });
+        }
+
+        if (requiresEvidenceForAnswer && !isDocumentRequest && (!hasVerifiedWebEvidence || !hasVerifiedLegalEvidence)) {
+            return res.status(422).json({
+                error: 'Bu soruya güvenli yanıt için web ve emsal karar doğrulaması tamamlanamadı. Lütfen tekrar deneyin.',
+                code: 'MISSING_REQUIRED_EVIDENCE_FOR_CHAT'
+            });
+        }
+
+        const documentGenerationAllowed = hasVerifiedWebEvidence && hasVerifiedLegalEvidence;
+
         const contextPrompt = `
 **MEVCUT DURUM:**
 - Vaka Ozeti: ${analysisSummary || 'Henuz analiz yapilmadi.'}
-- Anahtar Kelimeler: ${safeContext.keywords || 'Yok'}
-- Web Arastirma: ${safeContext.searchSummary || 'Yok'}
+- Anahtar Kelimeler: ${safeContext.keywords || evidenceQuery || 'Yok'}
+- Web Arastirma: ${effectiveSearchSummary || 'Yok'}
+- Emsal Karar Arastirmasi: ${effectiveLegalSummary || 'Yok'}
+- Web Kaynak Sayisi: ${effectiveWebSourceCount}
+- Emsal Karar Sayisi: ${effectiveLegalResultCount}
 ${Array.isArray(files) && files.length > 0 ? `- Yuklenen Belgeler: ${files.length} adet` : ''}
 `;
 
@@ -84,12 +324,14 @@ ${Array.isArray(files) && files.length > 0 ? `- Yuklenen Belgeler: ${files.lengt
 1. Hukuki sorulari yanitla
 2. Dava stratejisi konusunda yardimci ol
 3. Belge yuklendiyse analiz et
-4. generate_document fonksiyonu ile belge olustur
-5. search_yargitay fonksiyonu ile ictihat ara
+4. Emsal karar numarasi/kunyesi uydurma
+5. Sadece dogrulanmis bulgulara dayan
+${documentGenerationAllowed ? '6. generate_document fonksiyonunu sadece dogrulanmis kanit varken kullan' : '6. generate_document kullanma, kanit eksigini bildir'}
+7. search_yargitay fonksiyonu ile ictihat ara
 
 ${contextPrompt}
 
-Turkce yanit ver.`;
+Ek kural: Basit sorularda (or. hangi mahkeme, sure) kisa ve net cevap ver.`;
 
         const updateKeywordsFunction = {
             name: 'update_search_keywords',
@@ -130,6 +372,10 @@ Turkce yanit ver.`;
             },
         };
 
+        const functionDeclarations = documentGenerationAllowed
+            ? [updateKeywordsFunction, generateDocumentFunction, searchYargitayFunction]
+            : [updateKeywordsFunction, searchYargitayFunction];
+
         const contents = chatHistory.map((msg) => {
             const parts = [{ text: msg?.text || '' }];
             if (Array.isArray(msg?.files) && msg.files.length > 0) {
@@ -154,7 +400,7 @@ Turkce yanit ver.`;
             contents,
             config: {
                 systemInstruction,
-                tools: [{ functionDeclarations: [updateKeywordsFunction, generateDocumentFunction, searchYargitayFunction] }],
+                tools: [{ functionDeclarations }],
             },
         });
 
@@ -171,6 +417,15 @@ Turkce yanit ver.`;
                 for (const part of candidate.content.parts) {
                     if (part.functionCall?.name === 'search_yargitay') {
                         pendingSearchCalls.push(part.functionCall);
+                    }
+
+                    if (part.functionCall?.name === 'generate_document' && !documentGenerationAllowed) {
+                        res.write(JSON.stringify({
+                            text: `\n\nBelge oluşturma engellendi.\n${DOCUMENT_REQUIREMENTS_HELP_TEXT}\n`,
+                            error: true,
+                            code: 'MISSING_REQUIRED_EVIDENCE_FOR_DOCUMENT',
+                        }) + '\n');
+                        continue;
                     }
 
                     if (part.functionCall?.name === 'generate_document' && !hasConsumedDocumentCredit) {
@@ -232,19 +487,19 @@ Turkce yanit ver.`;
 
         if (pendingSearchCalls.length > 0) {
             for (const fc of pendingSearchCalls) {
-                const searchQuery = fc.args?.searchQuery || '';
-                console.log(`[AI] legal search: "${searchQuery}"`);
+                const args = parseFunctionArgs(fc.args);
+                const searchQuery = normalizeText(args?.searchQuery || evidenceQuery || '');
                 const searchResult = await searchEmsalFallback(ai, searchQuery);
 
                 let formattedResults = '\n\n### BULUNAN YARGITAY KARARLARI\n\n';
                 if (searchResult.results?.length > 0) {
-                    searchResult.results.forEach((r, i) => {
-                        formattedResults += `**${i + 1}. ${r.title}**\n`;
-                        if (r.esasNo) formattedResults += `E. ${r.esasNo} `;
-                        if (r.kararNo) formattedResults += `K. ${r.kararNo} `;
-                        if (r.tarih) formattedResults += `T. ${r.tarih}`;
+                    searchResult.results.forEach((result, index) => {
+                        formattedResults += `**${index + 1}. ${result.title}**\n`;
+                        if (result.esasNo) formattedResults += `E. ${result.esasNo} `;
+                        if (result.kararNo) formattedResults += `K. ${result.kararNo} `;
+                        if (result.tarih) formattedResults += `T. ${result.tarih}`;
                         formattedResults += '\n';
-                        if (r.ozet) formattedResults += `Ozet: ${r.ozet}\n\n`;
+                        if (result.ozet) formattedResults += `Ozet: ${result.ozet}\n\n`;
                     });
                 } else {
                     formattedResults += 'Bu konuda emsal karar bulunamadi.\n';
@@ -265,7 +520,7 @@ Turkce yanit ver.`;
             res.status(500).json({ error: error?.message || 'Internal Server Error' });
         } else {
             res.write(JSON.stringify({
-                text: '\n\nSohbet servisi gecici olarak kullanilamiyor. Lutfen tekrar deneyin.\n',
+                text: '\n\nSohbet servisi geçici olarak kullanılamıyor. Lütfen tekrar deneyin.\n',
                 error: true
             }) + '\n');
             res.end();

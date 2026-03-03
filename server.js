@@ -276,6 +276,214 @@ const formatContactInfoForPrompt = (contactInfo) => {
     }).join('\n\n');
 }
 
+const RAG_CHUNK_SIZE = Math.max(300, Number.parseInt(process.env.RAG_CHUNK_SIZE || '900', 10));
+const RAG_CHUNK_OVERLAP = Math.max(40, Number.parseInt(process.env.RAG_CHUNK_OVERLAP || '120', 10));
+const RAG_MAX_CHUNKS = Math.max(3, Number.parseInt(process.env.RAG_MAX_CHUNKS || '8', 10));
+const RAG_MAX_TOTAL_CHARS = Math.max(1200, Number.parseInt(process.env.RAG_MAX_TOTAL_CHARS || '7000', 10));
+const RAG_TEMPLATE_TOP_K = Math.max(1, Number.parseInt(process.env.RAG_TEMPLATE_TOP_K || '4', 10));
+const RAG_MAX_QUERY_TOKENS = Math.max(6, Number.parseInt(process.env.RAG_MAX_QUERY_TOKENS || '22', 10));
+
+const RAG_STOPWORDS = new Set([
+    've', 'veya', 'ile', 'icin', 'için', 'ama', 'fakat', 'gibi', 'daha', 'kadar',
+    'olan', 'olanlar', 'olarak', 'bu', 'su', 'şu', 'o', 'bir', 'iki', 'uc', 'üç',
+    'de', 'da', 'mi', 'mu', 'mü', 'mı', 'ki', 'ya', 'yada', 'hem',
+    'en', 'cok', 'çok', 'az', 'sonra', 'once', 'önce', 'son', 'ilk', 'her', 'tum',
+    'tüm', 'hakkinda', 'hakkında', 'oldu', 'olur', 'olsun'
+]);
+
+const normalizeRagText = (value = '') => String(value || '')
+    .toLocaleLowerCase('tr-TR')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9çğıöşü\s]/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const tokenizeRagText = (value = '') => {
+    const normalized = normalizeRagText(value);
+    if (!normalized) return [];
+    const seen = new Set();
+    const tokens = [];
+
+    normalized.split(' ').forEach((token) => {
+        const t = token.trim();
+        if (!t || t.length < 2) return;
+        if (RAG_STOPWORDS.has(t)) return;
+        if (seen.has(t)) return;
+        seen.add(t);
+        tokens.push(t);
+    });
+
+    return tokens;
+};
+
+const scoreRagText = (normalizedHaystack = '', queryTokens = []) => {
+    if (!normalizedHaystack || !Array.isArray(queryTokens) || queryTokens.length === 0) return 0;
+    let score = 0;
+
+    for (const token of queryTokens) {
+        if (!token) continue;
+        if (normalizedHaystack.includes(token)) {
+            score += token.length >= 7 ? 4 : token.length >= 5 ? 3 : 2;
+        }
+    }
+
+    return score;
+};
+
+const chunkTextForRag = (text = '', source = 'source') => {
+    const normalized = String(text || '').replace(/\r/g, '').trim();
+    if (!normalized) return [];
+
+    if (normalized.length <= RAG_CHUNK_SIZE) {
+        return [{ source, text: normalized }];
+    }
+
+    const chunks = [];
+    let start = 0;
+    let index = 0;
+
+    while (start < normalized.length) {
+        const end = Math.min(normalized.length, start + RAG_CHUNK_SIZE);
+        const chunkText = normalized.slice(start, end).trim();
+        if (chunkText) {
+            chunks.push({ source: `${source}#${index + 1}`, text: chunkText });
+            index += 1;
+        }
+        if (end >= normalized.length) break;
+        start = Math.max(0, end - RAG_CHUNK_OVERLAP);
+    }
+
+    return chunks;
+};
+
+const buildTemplateRagDocs = (queryTokens = []) => {
+    const templates = Array.isArray(SANITIZED_TEMPLATES) ? SANITIZED_TEMPLATES : [];
+    if (templates.length === 0) return [];
+
+    const ranked = templates
+        .map((template) => {
+            const lookupText = [
+                template?.title || '',
+                template?.description || '',
+                template?.category || '',
+                template?.subcategory || '',
+                Array.isArray(template?.variables)
+                    ? template.variables.map(v => `${v?.key || ''} ${v?.label || ''}`).join(' ')
+                    : '',
+                String(template?.content || '').slice(0, 1800),
+            ].join('\n');
+
+            return {
+                template,
+                score: scoreRagText(normalizeRagText(lookupText), queryTokens),
+            };
+        })
+        .filter(item => item.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, RAG_TEMPLATE_TOP_K);
+
+    return ranked.map(({ template }) => ({
+        source: `template:${template.id}:${template.title || 'untitled'}`,
+        text: [
+            `Template Title: ${template.title || ''}`,
+            `Category: ${template.category || ''} / ${template.subcategory || ''}`,
+            `Description: ${template.description || ''}`,
+            `Variables: ${Array.isArray(template.variables) ? template.variables.map(v => v?.key).filter(Boolean).join(', ') : ''}`,
+            `Content: ${String(template.content || '').slice(0, 2600)}`,
+        ].filter(Boolean).join('\n'),
+    }));
+};
+
+const buildLightweightRagContext = ({
+    queryText = '',
+    analysisSummary = '',
+    context = {},
+    chatHistory = [],
+    petitionPayload = null,
+} = {}) => {
+    let queryTokens = tokenizeRagText(queryText).slice(0, RAG_MAX_QUERY_TOKENS);
+    if (queryTokens.length === 0) {
+        queryTokens = tokenizeRagText(`${analysisSummary || ''} ${context?.specifics || ''}`).slice(0, RAG_MAX_QUERY_TOKENS);
+    }
+
+    const docs = [];
+    const pushDoc = (source, text) => {
+        if (typeof text !== 'string') return;
+        const cleaned = text.trim();
+        if (!cleaned) return;
+        docs.push({ source, text: cleaned });
+    };
+
+    pushDoc('analysis_summary', analysisSummary);
+    pushDoc('keywords', context?.keywords || '');
+    pushDoc('web_summary', context?.searchSummary || '');
+    pushDoc('legal_summary', context?.legalSummary || '');
+    pushDoc('doc_content', context?.docContent || '');
+    pushDoc('specifics', context?.specifics || '');
+
+    if (Array.isArray(chatHistory) && chatHistory.length > 0) {
+        const recent = chatHistory.slice(-8);
+        recent.forEach((message, idx) => {
+            if (message?.role !== 'user') return;
+            if (typeof message?.text !== 'string') return;
+            pushDoc(`chat_user_${idx + 1}`, message.text);
+        });
+    }
+
+    if (petitionPayload && typeof petitionPayload === 'object') {
+        pushDoc('petition_web_research', String(petitionPayload.webSearchResult || ''));
+        pushDoc('petition_legal_research', String(petitionPayload.legalSearchResult || ''));
+    }
+
+    const templateDocs = buildTemplateRagDocs(queryTokens);
+    templateDocs.forEach(doc => docs.push(doc));
+
+    if (docs.length === 0) return '';
+
+    const chunkCandidates = docs.flatMap(doc => chunkTextForRag(doc.text, doc.source));
+    const scored = chunkCandidates
+        .map(chunk => {
+            const normalizedChunk = normalizeRagText(chunk.text);
+            return {
+                ...chunk,
+                score: scoreRagText(normalizedChunk, queryTokens),
+            };
+        })
+        .sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            return b.text.length - a.text.length;
+        });
+
+    let selected = scored.filter(item => item.score > 0);
+    if (selected.length === 0) {
+        selected = scored.slice(0, RAG_MAX_CHUNKS);
+    }
+
+    const lines = [];
+    let totalChars = 0;
+    let emitted = 0;
+
+    for (const item of selected) {
+        if (emitted >= RAG_MAX_CHUNKS) break;
+        const compact = item.text.replace(/\s+/g, ' ').trim();
+        if (!compact) continue;
+
+        const bounded = compact.length > 900 ? `${compact.slice(0, 900)}...` : compact;
+        const line = `[${emitted + 1}] ${item.source}: ${bounded}`;
+
+        if (totalChars + line.length > RAG_MAX_TOTAL_CHARS && emitted > 0) {
+            break;
+        }
+
+        lines.push(line);
+        totalChars += line.length;
+        emitted += 1;
+    }
+
+    return lines.join('\n');
+};
+
 // --- API Endpoints ---
 
 // Apply auth middleware to all /api/gemini routes
@@ -545,6 +753,26 @@ app.post('/api/gemini/generate-petition', async (req, res) => {
 
         const params = req.body;
         const model = AI_CONFIG.MODEL_NAME;
+        const ragContext = buildLightweightRagContext({
+            queryText: [
+                params?.petitionType || '',
+                params?.userRole || '',
+                params?.analysisSummary || '',
+                params?.specifics || '',
+                params?.webSearchResult || '',
+                params?.legalSearchResult || '',
+            ].join(' '),
+            analysisSummary: params?.analysisSummary || '',
+            context: {
+                keywords: '',
+                searchSummary: params?.webSearchResult || '',
+                legalSummary: params?.legalSearchResult || '',
+                docContent: params?.docContent || '',
+                specifics: params?.specifics || '',
+            },
+            chatHistory: Array.isArray(params?.chatHistory) ? params.chatHistory : [],
+            petitionPayload: params,
+        });
 
         const systemInstruction = `Sen, TÃ¼rk hukuk sisteminde 20+ yÄ±l deneyime sahip, Ã¼st dÃ¼zey bir hukuk danÄ±ÅŸmanÄ± ve dilekÃ§e yazÄ±m uzmanÄ±sÄ±n.
 
@@ -698,6 +926,9 @@ ${params.specifics || "Ã–zel talimat saÄŸlanmadÄ±."}
 **Sohbet GeÃ§miÅŸi:**
 ${formatChatHistoryForPrompt(params.chatHistory)}
 
+**RAG Destek Baglami (ilgili parcalar):**
+${ragContext || "RAG baglami bulunamadi."}
+
 ---
 
 ## BEKLENEN Ã‡IKTI
@@ -732,8 +963,22 @@ YukarÄ±daki ham verileri kullanarak:
 app.post('/api/gemini/chat', async (req, res) => {
     try {
         const { chatHistory, analysisSummary, context, files } = req.body;
+        const safeChatHistory = Array.isArray(chatHistory) ? chatHistory : [];
+        const safeContext = context && typeof context === 'object' ? context : {};
+        const requestFiles = Array.isArray(files) ? files : [];
         const model = AI_CONFIG.MODEL_NAME;
-        const latestUserMessage = extractLatestUserMessage(chatHistory);
+        const latestUserMessage = extractLatestUserMessage(safeChatHistory);
+        const ragContext = buildLightweightRagContext({
+            queryText: [
+                latestUserMessage || '',
+                safeContext?.keywords || '',
+                safeContext?.specifics || '',
+                safeContext?.docContent || '',
+            ].join(' '),
+            analysisSummary: analysisSummary || '',
+            context: safeContext,
+            chatHistory: safeChatHistory,
+        });
         let hasConsumedDocumentCredit = false;
 
         if (isLikelyDocumentGenerationRequest(latestUserMessage)) {
@@ -747,11 +992,13 @@ app.post('/api/gemini/chat', async (req, res) => {
         const contextPrompt = `
 **MEVCUT DURUM VE BAÄLAM:**
 - **Vaka Ã–zeti:** ${analysisSummary || "HenÃ¼z analiz yapÄ±lmadÄ±."}
-- **Mevcut Arama Anahtar Kelimeleri:** ${context.keywords || "HenÃ¼z anahtar kelime oluÅŸturulmadÄ±."}
-- **Web AraÅŸtÄ±rma Ã–zeti:** ${context.searchSummary || "HenÃ¼z web araÅŸtÄ±rmasÄ± yapÄ±lmadÄ±."}
-- **KullanÄ±cÄ±nÄ±n Ek Metinleri:** ${context.docContent || "Ek metin saÄŸlanmadÄ±."}
-- **KullanÄ±cÄ±nÄ±n Ã–zel TalimatlarÄ±:** ${context.specifics || "Ã–zel talimat saÄŸlanmadÄ±."}
-${files && files.length > 0 ? `- **YÃ¼klenen Belgeler:** ${files.length} adet dosya yÃ¼klendi (${files.map(f => f.name).join(', ')})` : ''}
+- **Mevcut Arama Anahtar Kelimeleri:** ${safeContext.keywords || "HenÃ¼z anahtar kelime oluÅŸturulmadÄ±."}
+- **Web AraÅŸtÄ±rma Ã–zeti:** ${safeContext.searchSummary || "HenÃ¼z web araÅŸtÄ±rmasÄ± yapÄ±lmadÄ±."}
+- **Emsal Karar Ã–zeti:** ${safeContext.legalSummary || "HenÃ¼z emsal karar Ã¶zeti saÄŸlanmadÄ±."}
+- **KullanÄ±cÄ±nÄ±n Ek Metinleri:** ${safeContext.docContent || "Ek metin saÄŸlanmadÄ±."}
+- **KullanÄ±cÄ±nÄ±n Ã–zel TalimatlarÄ±:** ${safeContext.specifics || "Ã–zel talimat saÄŸlanmadÄ±."}
+- **RAG Destek Baglami:** ${ragContext || "RAG baglami bulunamadi."}
+${requestFiles.length > 0 ? `- **YÃ¼klenen Belgeler:** ${requestFiles.length} adet dosya yÃ¼klendi (${requestFiles.map(f => f.name).join(', ')})` : ''}
 `;
 
         const systemInstruction = `Sen, TÃ¼rk Hukuku konusunda uzman, yardÄ±msever ve proaktif bir hukuk asistanÄ±sÄ±n.
@@ -881,7 +1128,7 @@ TÃ¼rkÃ§e yanÄ±t ver. YargÄ±tay kararÄ± aranmasÄ± istendiÄŸinde Goo
         };
 
         // Build contents array - include files if provided
-        const contents = chatHistory.map(msg => {
+        const contents = safeChatHistory.map(msg => {
             const parts = [{ text: msg.text }];
 
             // If this message has files attached, add them as inline data
@@ -903,10 +1150,10 @@ TÃ¼rkÃ§e yanÄ±t ver. YargÄ±tay kararÄ± aranmasÄ± istendiÄŸinde Goo
         });
 
         // Also add files from request body to the last user message if present
-        if (files && files.length > 0 && contents.length > 0) {
+        if (requestFiles.length > 0 && contents.length > 0) {
             const lastUserMsgIndex = contents.length - 1;
             if (contents[lastUserMsgIndex].role === 'user') {
-                files.forEach(file => {
+                requestFiles.forEach(file => {
                     contents[lastUserMsgIndex].parts.push({
                         inlineData: {
                             mimeType: file.mimeType,

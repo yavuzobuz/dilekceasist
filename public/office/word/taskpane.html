@@ -3,23 +3,23 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>DilekceAsist Word Panel</title>
-    <link rel="stylesheet" href="./taskpane.css?v=20260303-6" />
+    <title>DilekçeAsist Word Panel</title>
+    <link rel="stylesheet" href="./taskpane.css?v=20260303-7" />
     <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 </head>
 <body>
     <main class="container">
         <header>
             <h1>AI Hukuk Chatbotu</h1>
-            <p>Word icindeki secili metin uzerinden karar arama, metin duzeltme, beyin firtinasi ve web aramasi yapin.</p>
+            <p>Word içindeki seçili metin üzerinden karar arama, metin düzeltme, beyin fırtınası ve web araması yapın.</p>
         </header>
 
         <section class="card">
-            <h2>1) Secimi Al</h2>
-            <button id="readSelectionBtn" class="btn btn-secondary" type="button">Secili Metni Getir</button>
+            <h2>1) Seçimi Al</h2>
+            <button id="readSelectionBtn" class="btn btn-secondary" type="button">Seçili Metni Getir</button>
             <label class="field">
-                <span>Secili metin</span>
-                <textarea id="sourceText" rows="8" placeholder="Word'de bir metin secin ve butona basin."></textarea>
+                <span>Seçili metin</span>
+                <textarea id="sourceText" rows="8" placeholder="Word'de bir metin seçin ve butona basın."></textarea>
             </label>
         </section>
 
@@ -27,43 +27,43 @@
             <h2>2) Chatbot</h2>
             <div class="quick-grid">
                 <button class="btn btn-primary" data-action="decision-search" type="button">Karar Arama</button>
-                <button class="btn btn-primary" data-action="text-fix" type="button">Metin Duzeltme</button>
-                <button class="btn btn-primary" data-action="brainstorm" type="button">Beyin Firtinasi</button>
-                <button class="btn btn-primary" data-action="web-search" type="button">Web Aramasi</button>
+                <button class="btn btn-primary" data-action="text-fix" type="button">Metin Düzeltme</button>
+                <button class="btn btn-primary" data-action="brainstorm" type="button">Beyin Fırtınası</button>
+                <button class="btn btn-primary" data-action="web-search" type="button">Web Araması</button>
             </div>
 
             <label class="field">
-                <span>Mesajiniz</span>
-                <textarea id="promptText" rows="5" placeholder="Ornek: Bu metni resmi ve ikna edici dille duzelt."></textarea>
+                <span>Mesajınız</span>
+                <textarea id="promptText" rows="5" placeholder="Örnek: Bu metni resmi ve ikna edici dille düzelt."></textarea>
             </label>
 
             <div class="actions">
-                <button id="sendChatBtn" class="btn btn-primary" type="button">Chatbot'a Gonder</button>
+                <button id="sendChatBtn" class="btn btn-primary" type="button">Chatbot'a Gönder</button>
             </div>
 
             <label class="checkbox">
                 <input type="checkbox" id="autoReplace" />
-                <span>Sonucu otomatik secime uygula</span>
+                <span>Sonucu otomatik seçime uygula</span>
             </label>
             <label class="checkbox">
                 <input type="checkbox" id="includeDocumentContext" checked />
-                <span>Belgenin tamamini baglam olarak gonder</span>
+                <span>Belgenin tamamını bağlam olarak gönder</span>
             </label>
         </section>
 
         <section class="card">
             <h2>3) Chatbot Sonucu</h2>
             <label class="field">
-                <span>AI cikti metni</span>
-                <textarea id="resultText" rows="10" placeholder="AI sonucu burada gorunur."></textarea>
+                <span>AI çıktı metni</span>
+                <textarea id="resultText" rows="10" placeholder="AI sonucu burada görünür."></textarea>
             </label>
             <div class="actions">
-                <button id="replaceSelectionBtn" class="btn btn-secondary" type="button">Secime Uygula</button>
+                <button id="replaceSelectionBtn" class="btn btn-secondary" type="button">Seçime Uygula</button>
             </div>
         </section>
 
         <details class="card">
-            <summary>Gelismis Ayarlar</summary>
+            <summary>Gelişmiş Ayarlar</summary>
             <label class="field">
                 <span>API Base URL</span>
                 <input id="apiBaseUrl" type="text" placeholder="https://your-domain.com" />
@@ -78,13 +78,13 @@
             </label>
         </details>
 
-        <p id="status" class="status" role="status" aria-live="polite">Office yukleniyor...</p>
-        <p id="quotaInfo" class="status" role="status" aria-live="polite">Kota: giris yapildiginda otomatik takip edilir.</p>
+        <p id="status" class="status" role="status" aria-live="polite">Office yükleniyor...</p>
+        <p id="quotaInfo" class="status" role="status" aria-live="polite">Kota: giriş yapıldığında otomatik takip edilir.</p>
         <div class="actions">
-            <button id="loginBtn" class="btn btn-secondary" type="button">Giris Yap</button>
-            <button id="upgradePlanBtn" class="btn btn-primary" type="button">Plan Yukselt</button>
+            <button id="loginBtn" class="btn btn-secondary" type="button">Giriş Yap</button>
+            <button id="upgradePlanBtn" class="btn btn-primary" type="button">Plan Yükselt</button>
         </div>
     </main>
-    <script type="module" src="./taskpane.js?v=20260303-6"></script>
+    <script type="module" src="./taskpane.js?v=20260303-7"></script>
 </body>
 </html>

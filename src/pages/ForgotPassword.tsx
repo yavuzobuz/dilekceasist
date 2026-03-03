@@ -21,10 +21,10 @@ const ForgotPassword: React.FC = () => {
       if (error) throw error;
 
       setIsSent(true);
-      toast.success('Sifre sifirlama baglantisi gonderildi.');
+      toast.success('Şifre sıfırlama bağlantısı gönderildi.');
     } catch (error: any) {
       console.error('Password reset request error:', error);
-      toast.error(error?.message || 'Sifirlama baglantisi gonderilemedi.');
+      toast.error(error?.message || 'Sıfırlama bağlantısı gönderilemedi.');
     } finally {
       setIsSubmitting(false);
     }
@@ -39,8 +39,8 @@ const ForgotPassword: React.FC = () => {
               <Scale className="w-10 h-10 text-white" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Sifremi Unuttum</h1>
-          <p className="text-gray-400">E-posta adresinize sifre yenileme baglantisi gonderelim.</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Şifremi Unuttum</h1>
+          <p className="text-gray-400">E-posta adresinize şifre yenileme bağlantısı gönderelim.</p>
         </div>
 
         <div className="bg-gray-800 rounded-2xl shadow-2xl p-8 border border-gray-700">
@@ -67,7 +67,7 @@ const ForgotPassword: React.FC = () => {
 
             {isSent && (
               <div className="rounded-lg border border-green-600/40 bg-green-900/20 px-4 py-3 text-sm text-green-200">
-                Sifirlama baglantisi gonderildi. E-posta kutunuzu kontrol edin.
+                Sıfırlama bağlantısı gönderildi. E-posta kutunuzu kontrol edin.
               </div>
             )}
 
@@ -76,9 +76,9 @@ const ForgotPassword: React.FC = () => {
               disabled={isSubmitting}
               className="w-full flex items-center justify-center px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white font-semibold rounded-lg hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Gonderiliyor...' : (
+              {isSubmitting ? 'Gönderiliyor...' : (
                 <>
-                  Sifirlama Linki Gonder
+                  Sıfırlama Linki Gönder
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </>
               )}
@@ -87,7 +87,7 @@ const ForgotPassword: React.FC = () => {
 
           <div className="mt-6 text-center">
             <Link to="/login" className="text-red-400 hover:text-red-300 transition-colors">
-              Giris sayfasina don
+              Giriş sayfasına dön
             </Link>
           </div>
         </div>

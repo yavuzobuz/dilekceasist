@@ -24,6 +24,32 @@ function formatChatHistoryForPrompt(chatHistory) {
     if (!chatHistory || chatHistory.length === 0) return "Sohbet geçmişi yok.";
     return chatHistory.map(m => `${m.role === 'user' ? 'Kullanıcı' : 'Asistan'}: ${m.text}`).join('\n');
 }
+function normalizeText(value) {
+    return typeof value === 'string' ? value.trim() : '';
+}
+
+function hasWebEvidence(params) {
+    const summary = normalizeText(params?.webSearchResult);
+    const sourceCount = Number(params?.webSourceCount || 0);
+    return summary.length >= 40 && sourceCount > 0;
+}
+
+function hasLegalEvidence(params) {
+    const legalText = normalizeText(params?.legalSearchResult);
+    const legalCount = Number(params?.legalResultCount || 0);
+    const hasCitationToken = /(?:E\.\s*\S+|K\.\s*\S+|esas|karar|yargitay|danistay)/i.test(legalText);
+    return legalText.length >= 40 && legalCount > 0 && hasCitationToken;
+}
+
+const ANALYSIS_SUMMARY_HELP_TEXT = [
+    'Analiz özeti, yüklediğiniz belgelerden çıkarılan olay özetidir.',
+    'Örnek belgeler: tapu kayıtları, veraset ilamı, sözleşmeler, tutanaklar ve mahkeme evrakları.',
+].join(' ');
+
+const DOCUMENT_REQUIREMENTS_HELP_TEXT = [
+    `${ANALYSIS_SUMMARY_HELP_TEXT}`,
+    'Belge oluşturma için şu 3 adım zorunludur: 1) Belgeleri yükleyip analiz et, 2) Web araştırması yap, 3) Emsal karar araması yap.',
+].join(' ');
 
 export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -42,7 +68,29 @@ export default async function handler(req, res) {
             });
         }
 
-        const params = req.body;
+        const params = req.body || {};
+        const analysisSummary = normalizeText(params.analysisSummary);
+
+        if (!analysisSummary) {
+            return res.status(422).json({
+                error: `Belge oluşturma engellendi. ${DOCUMENT_REQUIREMENTS_HELP_TEXT}`,
+                code: 'MISSING_ANALYSIS_SUMMARY'
+            });
+        }
+
+        if (!hasWebEvidence(params)) {
+            return res.status(422).json({
+                error: `Web araştırması eksik. ${DOCUMENT_REQUIREMENTS_HELP_TEXT}`,
+                code: 'MISSING_WEB_EVIDENCE'
+            });
+        }
+
+        if (!hasLegalEvidence(params)) {
+            return res.status(422).json({
+                error: `Emsal karar araması eksik. ${DOCUMENT_REQUIREMENTS_HELP_TEXT}`,
+                code: 'MISSING_LEGAL_EVIDENCE'
+            });
+        }
 
         const systemInstruction = `Sen, Türk hukuk sisteminde 20+ yıl deneyime sahip, üst düzey bir hukuk danışmanı ve dilekçe yazım uzmanısın.
 
@@ -63,7 +111,7 @@ Yargıtay kararlarını ilgili argümanla birlikte AÇIKLAMALAR bölümünde ent
 - Hukuki terimler kullan`;
 
         const promptText = `
-## DİLEKÇE OLUŞTURMA TALİMATI
+## DILEKCE OLUSTURMA TALIMATI
 
 ### GİRDİ VERİLERİ
 **Dilekçe Türü:** ${params.petitionType}
@@ -98,3 +146,5 @@ Yargıtay kararlarını ilgili argümanla birlikte AÇIKLAMALAR bölümünde ent
         res.status(500).json({ error: error.message });
     }
 }
+
+

@@ -430,6 +430,8 @@ export interface GeneratePetitionParams {
   specifics: string;
   chatHistory: ChatMessage[];
   parties: { [key: string]: string };
+  webSourceCount?: number;
+  legalResultCount?: number;
   lawyerInfo?: LawyerInfo;
   contactInfo?: ContactInfo[];
 }
@@ -451,6 +453,9 @@ export interface PetitionViewProps {
 export interface ChatContext {
   keywords: string;
   searchSummary: string;
+  legalSummary?: string;
+  webSourceCount?: number;
+  legalResultCount?: number;
   docContent: string;
   specifics: string;
 }
