@@ -421,9 +421,30 @@ const hasLegalEvidenceForChat = (results: AlternativeLegalSearchResult[]): boole
     });
 };
 
+const CHAT_INLINE_SUPPORTED_MIME_TYPES = new Set([
+    'application/pdf',
+    'image/png',
+    'image/jpeg',
+    'image/webp',
+    'image/heic',
+    'image/heif',
+    'image/gif',
+]);
+
+const normalizeChatMimeType = (value: string): string => String(value || '')
+    .split(';')[0]
+    .trim()
+    .toLowerCase();
+
+const isChatMimeTypeSupported = (mimeType: string): boolean => {
+    const normalized = normalizeChatMimeType(mimeType);
+    if (!normalized) return false;
+    return CHAT_INLINE_SUPPORTED_MIME_TYPES.has(normalized) || normalized.startsWith('text/');
+};
+
 const resolveChatMimeType = (file: File): string => {
     const directType = typeof file.type === 'string' ? file.type.trim() : '';
-    if (directType) return directType;
+    if (directType) return normalizeChatMimeType(directType);
 
     const lowerName = String(file.name || '').toLowerCase();
     if (lowerName.endsWith('.pdf')) return 'application/pdf';
@@ -437,6 +458,30 @@ const resolveChatMimeType = (file: File): string => {
     if (lowerName.endsWith('.tif') || lowerName.endsWith('.tiff')) return 'image/tiff';
 
     return 'application/octet-stream';
+};
+
+let toastIdCounter = 0;
+const createToastId = (): string => {
+    toastIdCounter += 1;
+    const randomPart = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2, 10);
+    return `${Date.now()}-${toastIdCounter}-${randomPart}`;
+};
+
+const sanitizeChatFilesForApi = (
+    files?: { name: string; mimeType: string; data: string }[]
+): { name: string; mimeType: string; data: string }[] | undefined => {
+    if (!Array.isArray(files) || files.length === 0) return undefined;
+    const sanitized = files
+        .map(file => ({
+            name: String(file?.name || '').trim(),
+            mimeType: normalizeChatMimeType(file?.mimeType || ''),
+            data: typeof file?.data === 'string' ? file.data.trim() : '',
+        }))
+        .filter(file => Boolean(file.name) && Boolean(file.data) && isChatMimeTypeSupported(file.mimeType));
+
+    return sanitized.length > 0 ? sanitized : undefined;
 };
 
 const hasLegalEvidenceForGeneration = (results: AlternativeLegalSearchResult[]): boolean => {
@@ -602,7 +647,7 @@ const buildTemplateVariableEditorItems = (
 
 const seedTemplateVariableValues = (
     items: TemplateVariableEditorItem[],
-    incomingValues: Record<string, string>
+    incomingValues?: Record<string, string>
 ): Record<string, string> => {
     const seeded: Record<string, string> = {};
     items.forEach(item => {
@@ -865,7 +910,7 @@ export default function AlternativeApp() {
     const specificsWithMissingInfo = mergeSpecificsWithChecklist(specifics, missingInfoQuestions, missingInfoAnswers);
     const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
     const addToast = useCallback((message: string, type: ToastType) => {
-        const id = Date.now().toString();
+        const id = createToastId();
         setToasts(prev => [...prev, { id, message, type }]);
     }, []);
 
@@ -895,13 +940,13 @@ export default function AlternativeApp() {
         const bulkPackage = parsePendingBulkTemplatePackage(rawBulkPackage);
 
         if (templateContent) {
-            const hasPendingBulkPackage = Boolean(templateCtx.bulkPackagePending && bulkPackage);
-            const variableEditorEnabled = Boolean(templateCtx.enableVariableEditor) && !hasPendingBulkPackage;
-            const editableSourceContent = String(templateCtx.editableTemplateContent || templateContent || '');
+            const hasPendingBulkPackage = Boolean(templateCtx?.bulkPackagePending && bulkPackage);
+            const variableEditorEnabled = Boolean(templateCtx?.enableVariableEditor) && !hasPendingBulkPackage;
+            const editableSourceContent = String(templateCtx?.editableTemplateContent || templateContent || '');
             const nextTemplateVariableItems = variableEditorEnabled
-                ? buildTemplateVariableEditorItems(templateCtx.templateVariables, editableSourceContent)
+                ? buildTemplateVariableEditorItems(templateCtx?.templateVariables, editableSourceContent)
                 : [];
-            const nextTemplateVariableValues = seedTemplateVariableValues(nextTemplateVariableItems, templateCtx.variableValues);
+            const nextTemplateVariableValues = seedTemplateVariableValues(nextTemplateVariableItems, templateCtx?.variableValues);
             const hasTemplateVariableEditor = variableEditorEnabled
                 && editableSourceContent.trim().length > 0
                 && nextTemplateVariableItems.length > 0;
@@ -944,7 +989,7 @@ export default function AlternativeApp() {
             }
 
             if (hasPendingBulkPackage) {
-                addToast(`Seri paket taslağı açıldı. Düzenleme sonrası ${bulkPackage.rowVariables.length || 0} dilekçeyi onayla ve indir.`, 'success');
+                addToast(`Seri paket taslağı açıldı. Düzenleme sonrası ${bulkPackage?.rowVariables.length || 0} dilekçeyi onayla ve indir.`, 'success');
             } else {
                 addToast('ablon yklendi! ', 'success');
             }
@@ -1763,27 +1808,46 @@ export default function AlternativeApp() {
 
     const handleSendChatMessage = useCallback(async (message: string, files?: File[]) => {
         const normalizedMessage = (message || '').trim();
+        const chatSourceFiles = Array.isArray(files) ? files : [];
         let chatFiles: { name: string; mimeType: string; data: string }[] = [];
-        if (files && files.length > 0) {
-            chatFiles = await Promise.all(
-                files.map(async (file) => ({
-                    name: file.name,
-                    mimeType: resolveChatMimeType(file),
-                    data: await fileToBase64(file),
-                }))
+        const skippedChatFileNames: string[] = [];
+        if (chatSourceFiles.length > 0) {
+            const preparedFiles = await Promise.all(
+                chatSourceFiles.map(async (file) => {
+                    const resolvedMimeType = normalizeChatMimeType(resolveChatMimeType(file));
+                    if (!isChatMimeTypeSupported(resolvedMimeType)) {
+                        skippedChatFileNames.push(file.name || 'isimsiz dosya');
+                        return null;
+                    }
+
+                    return {
+                        name: file.name,
+                        mimeType: resolvedMimeType,
+                        data: await fileToBase64(file),
+                    };
+                })
             );
+
+            chatFiles = preparedFiles.filter((file): file is { name: string; mimeType: string; data: string } => Boolean(file));
+        }
+
+        if (skippedChatFileNames.length > 0) {
+            const previewNames = skippedChatFileNames.slice(0, 3).join(', ');
+            const remainingCount = skippedChatFileNames.length - 3;
+            const remainingSuffix = remainingCount > 0 ? ` +${remainingCount} dosya` : '';
+            addToast(`Bazı dosyalar sohbet ekine eklenemedi: ${previewNames}${remainingSuffix}.`, 'warning');
         }
 
         const userMessage: ChatMessage = {
             role: 'user',
-            text: normalizedMessage || (chatFiles.length > 0 ? `[Dosya] ${chatFiles.length} dosya yüklendi` : ''),
+            text: normalizedMessage || (chatSourceFiles.length > 0 ? `[Dosya] ${chatSourceFiles.length} dosya yüklendi` : ''),
             files: chatFiles.length > 0 ? chatFiles : undefined,
         };
         const newMessages: ChatMessage[] = [...chatMessages, userMessage];
         setChatMessages(newMessages);
         setIsLoadingChat(true);
         setError(null);
-        setChatProgressText(chatFiles.length > 0 ? 'Yüklenen dosyalar analiz ediliyor...' : 'Düşünüyorum...');
+        setChatProgressText(chatSourceFiles.length > 0 ? 'Yüklenen dosyalar analiz ediliyor...' : 'Düşünüyorum...');
 
         let mergedKeywords = [...searchKeywords];
         let mergedWebSearchResult: WebSearchResult | null = webSearchResult;
@@ -1804,7 +1868,6 @@ export default function AlternativeApp() {
         const requiresStrictEvidenceForDocument = userRequestedPetition;
 
         try {
-            const chatSourceFiles = Array.isArray(files) ? files : [];
             const hasUploadedDocumentContext = chatSourceFiles.length > 0 || chatFiles.length > 0 || Boolean(mergedDocContent?.trim());
 
             if (hasUploadedDocumentContext && !activeAnalysisSummary && chatSourceFiles.length > 0) {
@@ -2012,8 +2075,13 @@ export default function AlternativeApp() {
                 return;
             }
 
+            const chatHistoryForApi = newMessages.map(msg => ({
+                ...msg,
+                files: sanitizeChatFilesForApi(msg.files),
+            }));
+
             const responseStream = streamChatResponse(
-                newMessages,
+                chatHistoryForApi,
                 activeAnalysisSummary || '',
                 {
                     keywords: evidenceKeywords.join(', '),
@@ -2024,7 +2092,7 @@ export default function AlternativeApp() {
                     docContent: mergedDocContent,
                     specifics: specificsWithMissingInfo,
                 },
-                chatFiles
+                sanitizeChatFilesForApi(chatFiles)
             );
             const modelMessage: ChatMessage = { role: 'model', text: '' };
             setChatMessages(prev => [...prev, modelMessage]);
@@ -2317,7 +2385,6 @@ export default function AlternativeApp() {
         legalSearchResults,
         docContent,
         specificsWithMissingInfo,
-        files,
         mergeLegalResults,
         runLegalSearch,
         addToast,

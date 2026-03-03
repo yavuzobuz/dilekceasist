@@ -225,6 +225,19 @@ interface ChatViewProps {
     setSpecifics: React.Dispatch<React.SetStateAction<string>>;
 }
 
+const CHAT_ALLOWED_EXTENSIONS = ['.pdf', '.udf', '.doc', '.docx', '.txt', '.jpg', '.jpeg', '.png', '.webp', '.tif', '.tiff'];
+
+const hasAllowedChatExtension = (fileName: string): boolean => {
+    const lowerName = String(fileName || '').toLowerCase();
+    return CHAT_ALLOWED_EXTENSIONS.some(ext => lowerName.endsWith(ext));
+};
+
+const isImageLikeFile = (file: File): boolean => {
+    if (file.type.startsWith('image/')) return true;
+    const lowerName = file.name.toLowerCase();
+    return ['.jpg', '.jpeg', '.png', '.webp', '.tif', '.tiff'].some(ext => lowerName.endsWith(ext));
+};
+
 export const ChatView: React.FC<ChatViewProps> = (props) => {
     const { messages, onSendMessage, isLoading, statusText } = props;
     const [input, setInput] = useState('');
@@ -252,10 +265,9 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             const newFiles: File[] = Array.from(e.target.files);
-            const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-            const validFiles = newFiles.filter((f: File) => allowedTypes.includes(f.type));
+            const validFiles = newFiles.filter((f: File) => hasAllowedChatExtension(f.name));
             if (validFiles.length !== newFiles.length) {
-                alert('Sadece PDF ve resim dosyaları desteklenmektedir.');
+                alert('Sadece PDF, UDF, Word (.doc/.docx), TXT ve resim (.jpg/.png/.webp/.tif) dosyalari desteklenmektedir.');
             }
             setSelectedFiles(prev => [...prev, ...validFiles].slice(0, 5)); // Max 5 files
         }
@@ -316,7 +328,7 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
                     <div className="flex flex-wrap gap-2 p-2 bg-gray-800/50 rounded-lg border border-gray-700">
                         {selectedFiles.map((file, index) => (
                             <div key={index} className="flex items-center gap-2 px-2 py-1 bg-gray-700 rounded-lg text-sm">
-                                {file.type.startsWith('image/') ? (
+                                {isImageLikeFile(file) ? (
                                     <ImageIcon className="w-4 h-4 text-blue-400" />
                                 ) : (
                                     <FileText className="w-4 h-4 text-red-400" />
@@ -340,7 +352,7 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
                         ref={fileInputRef}
                         type="file"
                         multiple
-                        accept=".pdf,.jpg,.jpeg,.png,.webp,.gif"
+                        accept=".pdf,.udf,.doc,.docx,.txt,.jpg,.jpeg,.png,.webp,.tif,.tiff"
                         onChange={handleFileSelect}
                         className="hidden"
                     />
@@ -349,7 +361,7 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         className="p-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white transition-colors"
-                        title="Dosya Ekle (PDF, Resim)"
+                        title="Dosya Ekle (PDF, UDF, Word, TXT, Resim)"
                         disabled={isLoading || selectedFiles.length >= 5}
                     >
                         <Paperclip className="h-5 w-5" />

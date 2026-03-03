@@ -187,7 +187,7 @@ const aiRateLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute window
     max: 30, // Max 30 requests per minute per IP
     message: {
-        error: 'Ã‡ok fazla istek gÃ¶nderdiniz. LÃ¼tfen bir dakika bekleyip tekrar deneyin.',
+        error: 'Çok fazla istek gönderdiniz. Lütfen bir dakika bekleyip tekrar deneyin.',
         retryAfter: 60
     },
     standardHeaders: true, // Return rate limit info in headers
@@ -205,22 +205,22 @@ app.use('/api/gemini', aiRateLimiter);
 // --- Helper Functions (Copied from geminiService.ts) ---
 
 const formatChatHistoryForPrompt = (history) => {
-    if (!history || history.length === 0) return "Sohbet geÃ§miÅŸi yok.";
-    return history.map(msg => `${msg.role === 'user' ? 'KullanÄ±cÄ±' : 'Asistan'}: ${msg.text}`).join('\n');
+    if (!history || history.length === 0) return "Sohbet geçmişi yok.";
+    return history.map(msg => `${msg.role === 'user' ? 'Kullanıcı' : 'Asistan'}: ${msg.text}`).join('\n');
 };
 
 const formatPartiesForPrompt = (parties) => {
-    if (!parties) return "Taraf bilgisi saÄŸlanmadÄ±.";
+    if (!parties) return "Taraf bilgisi sağlanmadı.";
     const partyEntries = Object.entries(parties).filter(([, value]) => value && value.trim() !== '');
-    if (partyEntries.length === 0) return "Taraf bilgisi saÄŸlanmadÄ±.";
+    if (partyEntries.length === 0) return "Taraf bilgisi sağlanmadı.";
 
     const labelMap = {
-        plaintiff: 'DavacÄ±',
-        defendant: 'DavalÄ±',
-        appellant: 'BaÅŸvuran / Ä°tiraz Eden',
-        counterparty: 'KarÅŸÄ± Taraf',
-        complainant: 'MÃ¼ÅŸteki / ÅikayetÃ§i',
-        suspect: 'ÅÃ¼pheli',
+        plaintiff: 'Davacı',
+        defendant: 'Davalı',
+        appellant: 'Başvuran / İtiraz Eden',
+        counterparty: 'Karşı Taraf',
+        complainant: 'Müşteki / Şikayetçi',
+        suspect: 'Şüpheli',
         party1: 'Taraf 1',
         party2: 'Taraf 2',
     };
@@ -231,20 +231,20 @@ const formatPartiesForPrompt = (parties) => {
 };
 
 const formatCaseDetailsForPrompt = (details) => {
-    if (!details) return "Dava kÃ¼nye bilgisi saÄŸlanmadÄ±.";
+    if (!details) return "Dava künye bilgisi sağlanmadı.";
     const detailEntries = [
         details.court && `Mahkeme: ${details.court}`,
-        details.fileNumber && `Dosya NumarasÄ± (Esas No): ${details.fileNumber}`,
-        details.decisionNumber && `Karar NumarasÄ±: ${details.decisionNumber}`,
+        details.fileNumber && `Dosya Numarası (Esas No): ${details.fileNumber}`,
+        details.decisionNumber && `Karar Numarası: ${details.decisionNumber}`,
         details.decisionDate && `Karar Tarihi: ${details.decisionDate}`,
     ].filter(Boolean);
 
-    if (detailEntries.length === 0) return "Dava kÃ¼nye bilgisi saÄŸlanmadÄ±.";
+    if (detailEntries.length === 0) return "Dava künye bilgisi sağlanmadı.";
     return detailEntries.join('\n');
 }
 
 const formatLawyerInfoForPrompt = (lawyerInfo) => {
-    if (!lawyerInfo || !lawyerInfo.name) return "Vekil bilgisi saÄŸlanmadÄ±.";
+    if (!lawyerInfo || !lawyerInfo.name) return "Vekil bilgisi sağlanmadı.";
 
     const entries = [
         `Ad Soyad: ${lawyerInfo.name}`,
@@ -261,11 +261,11 @@ const formatLawyerInfoForPrompt = (lawyerInfo) => {
 }
 
 const formatContactInfoForPrompt = (contactInfo) => {
-    if (!contactInfo || contactInfo.length === 0) return "Ä°letiÅŸim bilgisi saÄŸlanmadÄ±.";
+    if (!contactInfo || contactInfo.length === 0) return "İletişim bilgisi sağlanmadı.";
 
     return contactInfo.map((contact, index) => {
         const entries = [
-            `--- KiÅŸi/Kurum ${index + 1} ---`,
+            `--- Kişi/Kurum ${index + 1} ---`,
             contact.name && `Ad: ${contact.name}`,
             contact.address && `Adres: ${contact.address}`,
             contact.phone && `Telefon: ${contact.phone}`,
@@ -505,32 +505,32 @@ app.post('/api/gemini/analyze', async (req, res) => {
         console.log('Analyze Request Received');
 
         const model = AI_CONFIG.MODEL_NAME;
-        const systemInstruction = `Sen TÃ¼rk hukukunda uzmanlaÅŸmÄ±ÅŸ bir hukuk asistanÄ±sÄ±n. GÃ¶revin, saÄŸlanan belgeleri, resimleri ve metinleri titizlikle analiz etmektir. Temel bilgileri Ã§Ä±kar, tÃ¼m potansiyel taraflarÄ± (ÅŸahÄ±slar, ÅŸirketler) belirle ve eÄŸer varsa dava kÃ¼nyesi bilgilerini (mahkeme adÄ±, dosya/esas no, karar no, karar tarihi) tespit et. AyrÄ±ca belgelerden avukat/vekil bilgilerini (isim, baro, baro sicil no, adres, telefon, email) ve diÄŸer iletiÅŸim bilgilerini Ã§Ä±kar. Ã‡Ä±ktÄ±nÄ± JSON nesnesi olarak yapÄ±landÄ±r. Analiz Ã¶zetinin HER ZAMAN TÃ¼rkÃ§e olmasÄ±nÄ± saÄŸla.`;
+        const systemInstruction = `Sen Türk hukukunda uzmanlaşmış bir hukuk asistanısın. Görevin, sağlanan belgeleri, resimleri ve metinleri titizlikle analiz etmektir. Temel bilgileri çıkar, tüm potansiyel tarafları (şahıslar, şirketler) belirle ve eğer varsa dava künyesi bilgilerini (mahkeme adı, dosya/esas no, karar no, karar tarihi) tespit et. Ayrıca belgelerden avukat/vekil bilgilerini (isim, baro, baro sicil no, adres, telefon, email) ve diğer iletişim bilgilerini çıkar. Çıktını JSON nesnesi olarak yapılandır. Analiz özetinin HER ZAMAN Türkçe olmasını sağla.`;
 
         const promptText = `
-LÃ¼tfen SANA GÃ–NDERÄ°LEN PDF belgelerini, resim dosyalarÄ±nÄ± ve aÅŸaÄŸÄ±daki metin olarak saÄŸlanan UDF ve Word belgelerinin iÃ§eriÄŸini titizlikle analiz et.
+Lütfen SANA GÖNDERİLEN PDF belgelerini, resim dosyalarını ve aşağıdaki metin olarak sağlanan UDF ve Word belgelerinin içeriğini titizlikle analiz et.
 
-**ANA GÃ–REVLER:**
-1. OlayÄ±n detaylÄ± ve TÃ¼rkÃ§e bir Ã¶zetini oluÅŸtur. **Ã–ZETÄ° MUTLAKA PARAGRAFLARA BÃ–LEREK YAZ (paragraflar arasÄ±nda '\\n\\n' boÅŸluklarÄ± bÄ±rak)**, tek parÃ§a blok yazÄ± KESÄ°NLÄ°KLE kullanma.
-2. Metinde adÄ± geÃ§en tÃ¼m potansiyel taraflarÄ± listele
-3. Dava kÃ¼nyesi bilgilerini Ã§Ä±kar (mahkeme, dosya numarasÄ±, karar numarasÄ±, karar tarihi)
-4. **Ã–NEMLÄ°:** Avukat/vekil bilgilerini bul ve Ã§Ä±kar:
-   - Avukat adÄ± soyadÄ± (genellikle "Av." veya "Avukat" ile baÅŸlar)
-   - Baro adÄ± ("... Barosu" formatÄ±nda)
-   - Baro sicil numarasÄ±
-   - Ä°ÅŸ adresi
-   - Telefon numarasÄ±
+**ANA GÖREVLER:**
+1. Olayın detaylı ve Türkçe bir özetini oluştur. **ÖZETİ MUTLAKA PARAGRAFLARA BÖLEREK YAZ (paragraflar arasında '\\n\\n' boşlukları bırak)**, tek parça blok yazı KESİNLİKLE kullanma.
+2. Metinde adı geçen tüm potansiyel tarafları listele
+3. Dava künyesi bilgilerini çıkar (mahkeme, dosya numarası, karar numarası, karar tarihi)
+4. **ÖNEMLİ:** Avukat/vekil bilgilerini bul ve çıkar:
+   - Avukat adı soyadı (genellikle "Av." veya "Avukat" ile başlar)
+   - Baro adı ("... Barosu" formatında)
+   - Baro sicil numarası
+   - İş adresi
+   - Telefon numarası
    - Email adresi
-5. DiÄŸer iletiÅŸim bilgilerini Ã§Ä±kar (taraflarÄ±n adres, telefon, email bilgileri)
+5. Diğer iletişim bilgilerini çıkar (tarafların adres, telefon, email bilgileri)
 
-**UDF Belge Ä°Ã§erikleri:**
-${udfTextContent || "UDF belgesi yÃ¼klenmedi."}
+**UDF Belge İçerikleri:**
+${udfTextContent || "UDF belgesi yüklenmedi."}
 
-**Word Belge Ä°Ã§erikleri:**
-${wordTextContent || "Word belgesi yÃ¼klenmedi."}
+**Word Belge İçerikleri:**
+${wordTextContent || "Word belgesi yüklenmedi."}
 
-**Ã‡IKTI FORMATI:**
-Sonucu 'summary', 'potentialParties', 'caseDetails', 'lawyerInfo' ve 'contactInfo' anahtarlarÄ±na sahip bir JSON nesnesi olarak dÃ¶ndÃ¼r.
+**ÇIKTI FORMATI:**
+Sonucu 'summary', 'potentialParties', 'caseDetails', 'lawyerInfo' ve 'contactInfo' anahtarlarına sahip bir JSON nesnesi olarak döndür.
 `;
 
         const contentParts = [
@@ -552,7 +552,7 @@ Sonucu 'summary', 'potentialParties', 'caseDetails', 'lawyerInfo' ve 'contactInf
                 responseSchema: {
                     type: Type.OBJECT,
                     properties: {
-                        summary: { type: Type.STRING, description: 'DocumentslarÄ±n detaylÄ± TÃ¼rkÃ§e Ã¶zeti.' },
+                        summary: { type: Type.STRING, description: 'Documentsların detaylı Türkçe özeti.' },
                         potentialParties: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'Benzersiz potansiyel taraf isimlerinin listesi.' },
                         caseDetails: {
                             type: Type.OBJECT,
@@ -565,29 +565,29 @@ Sonucu 'summary', 'potentialParties', 'caseDetails', 'lawyerInfo' ve 'contactInf
                         },
                         lawyerInfo: {
                             type: Type.OBJECT,
-                            description: 'Avukat/vekil bilgileri (eÄŸer belgede varsa)',
+                            description: 'Avukat/vekil bilgileri (eğer belgede varsa)',
                             properties: {
-                                name: { type: Type.STRING, description: 'AvukatÄ±n tam adÄ±' },
-                                address: { type: Type.STRING, description: 'AvukatÄ±n iÅŸ adresi' },
-                                phone: { type: Type.STRING, description: 'Telefon numarasÄ±' },
+                                name: { type: Type.STRING, description: 'Avukatın tam adı' },
+                                address: { type: Type.STRING, description: 'Avukatın iş adresi' },
+                                phone: { type: Type.STRING, description: 'Telefon numarası' },
                                 email: { type: Type.STRING, description: 'Email adresi' },
-                                barNumber: { type: Type.STRING, description: 'Baro sicil numarasÄ±' },
-                                bar: { type: Type.STRING, description: 'Baro adÄ± (Ã¶rn: Ankara Barosu)' },
-                                title: { type: Type.STRING, description: 'Unvan (Ã¶rn: Avukat)' },
-                                tcNo: { type: Type.STRING, description: 'TC Kimlik No (eÄŸer varsa)' }
+                                barNumber: { type: Type.STRING, description: 'Baro sicil numarası' },
+                                bar: { type: Type.STRING, description: 'Baro adı (örn: Ankara Barosu)' },
+                                title: { type: Type.STRING, description: 'Unvan (örn: Avukat)' },
+                                tcNo: { type: Type.STRING, description: 'TC Kimlik No (eğer varsa)' }
                             }
                         },
                         contactInfo: {
                             type: Type.ARRAY,
-                            description: 'DiÄŸer iletiÅŸim bilgileri (taraflarÄ±n adresleri, telefonlarÄ±)',
+                            description: 'Diğer iletişim bilgileri (tarafların adresleri, telefonları)',
                             items: {
                                 type: Type.OBJECT,
                                 properties: {
-                                    name: { type: Type.STRING, description: 'KiÅŸi/Kurum adÄ±' },
+                                    name: { type: Type.STRING, description: 'Kişi/Kurum adı' },
                                     address: { type: Type.STRING, description: 'Adres' },
                                     phone: { type: Type.STRING, description: 'Telefon' },
                                     email: { type: Type.STRING, description: 'Email' },
-                                    tcNo: { type: Type.STRING, description: 'TC Kimlik No (eÄŸer varsa)' }
+                                    tcNo: { type: Type.STRING, description: 'TC Kimlik No (eğer varsa)' }
                                 }
                             }
                         }
@@ -612,8 +612,8 @@ app.post('/api/gemini/keywords', async (req, res) => {
     try {
         const { analysisText, userRole } = req.body;
         const model = AI_CONFIG.MODEL_NAME;
-        const systemInstruction = `Sen TÃ¼rk Hukuku alanÄ±nda uzman, stratejik bir araÅŸtÄ±rma asistanÄ±sÄ±n. GÃ¶revin, verilen vaka Ã¶zetini analiz ederek, kullanÄ±cÄ±nÄ±n '${userRole}' olan rolÃ¼nÃ¼ hukuki olarak en gÃ¼Ã§lÃ¼ konuma getirecek anahtar kelimeleri belirlemektir. OluÅŸturacaÄŸÄ±n anahtar kelimeler, kullanÄ±cÄ±nÄ±n lehine olan YargÄ±tay kararlarÄ±nÄ±, mevzuatÄ± ve hukuki argÃ¼manlarÄ± bulmaya odaklanmalÄ±dÄ±r. Ã‡Ä±ktÄ± olarak SADECE 'keywords' anahtarÄ±nÄ± iÃ§eren ve bu anahtarÄ±n deÄŸerinin bir string dizisi olduÄŸu bir JSON nesnesi dÃ¶ndÃ¼r.`;
-        const promptText = `SaÄŸlanan vaka Ã¶zeti:\n\n"${analysisText}"\n\nBu Ã¶zete dayanarak... (kÄ±saltÄ±ldÄ±)`; // Simplified prompt for brevity in this file context
+        const systemInstruction = `Sen Türk Hukuku alanında uzman, stratejik bir araştırma asistanısın. Görevin, verilen vaka özetini analiz ederek, kullanıcının '${userRole}' olan rolünü hukuki olarak en güçlü konuma getirecek anahtar kelimeleri belirlemektir. Oluşturacağın anahtar kelimeler, kullanıcının lehine olan Yargıtay kararlarını, mevzuatı ve hukuki argümanları bulmaya odaklanmalıdır. Çıktı olarak SADECE 'keywords' anahtarını içeren ve bu anahtarın değerinin bir string dizisi olduğu bir JSON nesnesi döndür.`;
+        const promptText = `Sağlanan vaka özeti:\n\n"${analysisText}"\n\nBu özete dayanarak... (kısaltıldı)`; // Simplified prompt for brevity in this file context
 
         const response = await ai.models.generateContent({
             model,
@@ -640,7 +640,7 @@ app.post('/api/gemini/keywords', async (req, res) => {
     }
 });
 
-// 3. Web Search - Enhanced for YargÄ±tay Decisions
+// 3. Web Search - Enhanced for Yargıtay Decisions
 app.post('/api/gemini/web-search', async (req, res) => {
     try {
         const { keywords, query } = req.body;
@@ -654,73 +654,73 @@ app.post('/api/gemini/web-search', async (req, res) => {
 
         const model = AI_CONFIG.MODEL_NAME;
 
-        const systemInstruction = `Sen, TÃ¼rk hukuku alanÄ±nda uzman bir araÅŸtÄ±rma asistanÄ±sÄ±n. 
-GÃ¶revin Ã¶zellikle YARGITAY KARARLARI bulmak ve bunlarÄ± dilekÃ§ede kullanÄ±labilir formatta sunmaktÄ±r.
+        const systemInstruction = `Sen, Türk hukuku alanında uzman bir araştırma asistanısın. 
+Görevin özellikle YARGITAY KARARLARI bulmak ve bunları dilekçede kullanılabilir formatta sunmaktır.
 
-## KRÄ°TÄ°K GÃ–REV: YARGITAY KARARLARI BULMA
+## KRİTİK GÖREV: YARGITAY KARARLARI BULMA
 
-Her aramada ÅŸunlarÄ± tespit etmeye Ã§alÄ±ÅŸ:
-1. **Karar KÃ¼nyesi:** Daire, Esas No, Karar No, Tarih (Ã¶rn: "YargÄ±tay 9. HD., E. 2023/1234, K. 2023/5678, T. 15.03.2023")
-2. **Karar Ã–zeti:** 1-2 cÃ¼mlelik Ã¶zet
-3. **Ä°lgili Kanun Maddesi:** Kararda atÄ±f yapÄ±lan mevzuat
+Her aramada şunları tespit etmeye çalış:
+1. **Karar Künyesi:** Daire, Esas No, Karar No, Tarih (örn: "Yargıtay 9. HD., E. 2023/1234, K. 2023/5678, T. 15.03.2023")
+2. **Karar Özeti:** 1-2 cümlelik özet
+3. **İlgili Kanun Maddesi:** Kararda atıf yapılan mevzuat
 
-## Ã‡IKTI FORMATI
+## ÇIKTI FORMATI
 
-Ã‡Ä±ktÄ±nÄ± ÅŸu ÅŸekilde yapÄ±landÄ±r:
+Çıktını şu şekilde yapılandır:
 
 ### EMSAL YARGITAY KARARLARI
 
-**1. [YargÄ±tay X. HD., E. XXXX/XXXX, K. XXXX/XXXX, T. XX.XX.XXXX]**
-Ã–zet: [KararÄ±n Ã¶zeti]
-Ä°lgili Mevzuat: [Kanun maddesi]
+**1. [Yargıtay X. HD., E. XXXX/XXXX, K. XXXX/XXXX, T. XX.XX.XXXX]**
+Özet: [Kararın özeti]
+İlgili Mevzuat: [Kanun maddesi]
 
-**2. [DiÄŸer karar]**
+**2. [Diğer karar]**
 ...
 
-### Ä°LGÄ°LÄ° MEVZUAT
+### İLGİLİ MEVZUAT
 
-- [Kanun AdÄ±] m. [madde no]: [madde Ã¶zeti]
+- [Kanun Adı] m. [madde no]: [madde özeti]
 
-### ARAÅTIRMA Ã–ZETÄ°
+### ARAŞTIRMA ÖZETİ
 
-[Bulunan karar ve mevzuata dayalÄ± genel hukuki deÄŸerlendirme]
+[Bulunan karar ve mevzuata dayalı genel hukuki değerlendirme]
 
-NOT: En az 3-5 emsal karar bulmaya Ã§alÄ±ÅŸ. Bulamazsan "Bu konuda emsal karar bulunamadÄ±" yaz.`;
+NOT: En az 3-5 emsal karar bulmaya çalış. Bulamazsan "Bu konuda emsal karar bulunamadı" yaz.`;
 
-        // Generate search queries for YargÄ±tay and legislation
-        const yargitayQueries = searchTerms.map(kw => `"${kw}" YargÄ±tay karar emsal`);
-        const mevzuatQueries = searchTerms.map(kw => `"${kw}" kanun maddesi hÃ¼kÃ¼m`);
+        // Generate search queries for Yargıtay and legislation
+        const yargitayQueries = searchTerms.map(kw => `"${kw}" Yargıtay karar emsal`);
+        const mevzuatQueries = searchTerms.map(kw => `"${kw}" kanun maddesi hüküm`);
         const uyapQueries = searchTerms.map(kw => `"${kw}" site:karararama.yargitay.gov.tr`);
 
         const promptText = `
-## ARAMA GÃ–REVÄ°: YARGITAY KARARLARI VE MEVZUAT
+## ARAMA GÖREVİ: YARGITAY KARARLARI VE MEVZUAT
 
-AÅŸaÄŸÄ±daki konularda kapsamlÄ± bir hukuki araÅŸtÄ±rma yap:
+Aşağıdaki konularda kapsamlı bir hukuki araştırma yap:
 
-### ANAHTAR KELÄ°MELER
+### ANAHTAR KELİMELER
 ${searchTerms.join(', ')}
 
-### ARAMA STRATEJÄ°SÄ°
+### ARAMA STRATEJİSİ
 
-**1. YargÄ±tay KararlarÄ± (Ã–ncelikli)**
+**1. Yargıtay Kararları (Öncelikli)**
 ${yargitayQueries.map(q => `- ${q}`).join('\n')}
 
 **2. UYAP Karar Arama**
 ${uyapQueries.map(q => `- ${q}`).join('\n')}
 
-**3. Mevzuat AramasÄ±**
+**3. Mevzuat Araması**
 ${mevzuatQueries.map(q => `- ${q}`).join('\n')}
 
 ---
 
-## BEKLENTÄ°LER
+## BEKLENTİLER
 
-1. **En az 3-5 YargÄ±tay kararÄ±** bul (mÃ¼mkÃ¼nse)
-2. Her karar iÃ§in TAM KÃœNYESÄ°NÄ° yaz (Daire, E., K., Tarih)
-3. Ä°lgili kanun maddelerini listele
-4. AraÅŸtÄ±rma Ã¶zetini hazÄ±rla
+1. **En az 3-5 Yargıtay kararı** bul (mümkünse)
+2. Her karar için TAM KÜNYESİNİ yaz (Daire, E., K., Tarih)
+3. İlgili kanun maddelerini listele
+4. Araştırma özetini hazırla
 
-âš ï¸ Ã–NEMLÄ°: Karar kÃ¼nyelerini doÄŸru ve eksiksiz yaz. Bu bilgiler dilekÃ§ede referans olarak kullanÄ±lacak.
+âš ï¸ ÖNEMLİ: Karar künyelerini doğru ve eksiksiz yaz. Bu bilgiler dilekçede referans olarak kullanılacak.
 `;
 
         const response = await ai.models.generateContent({
@@ -774,132 +774,132 @@ app.post('/api/gemini/generate-petition', async (req, res) => {
             petitionPayload: params,
         });
 
-        const systemInstruction = `Sen, TÃ¼rk hukuk sisteminde 20+ yÄ±l deneyime sahip, Ã¼st dÃ¼zey bir hukuk danÄ±ÅŸmanÄ± ve dilekÃ§e yazÄ±m uzmanÄ±sÄ±n.
+        const systemInstruction = `Sen, Türk hukuk sisteminde 20+ yıl deneyime sahip, üst düzey bir hukuk danışmanı ve dilekçe yazım uzmanısın.
 
-## SENÄ°N GÃ–REVÄ°N
-SaÄŸlanan ham verileri, profesyonel ve ikna edici bir hukuki anlatÄ±ya dÃ¶nÃ¼ÅŸtÃ¼rmek. Ham bilgileri olduÄŸu gibi kopyalamak DEÄÄ°L, bunlarÄ± hukuki bir dil ve mantÄ±ksal akÄ±ÅŸ iÃ§inde sentezlemek.
+## SENİN GÖREVİN
+Sağlanan ham verileri, profesyonel ve ikna edici bir hukuki anlatıya dönüştürmek. Ham bilgileri olduğu gibi kopyalamak DEĞİL, bunları hukuki bir dil ve mantıksal akış içinde sentezlemek.
 
-## KRÄ°TÄ°K YAZIM KURALLARI
+## KRİTİK YAZIM KURALLARI
 
-### 1. AÃ‡IKLAMALAR BÃ–LÃœMÃœ NASIL YAZILMALI
-âŒ YANLIÅ (Ham veri dÃ¶kÃ¼mÃ¼):
-"DavalÄ± kurum tarafÄ±ndan mÃ¼vekkil HÃœSEYÄ°N Ã‡ELÄ°K adÄ±na 'kaÃ§ak elektrik tahakkuk hesap detayÄ±' dÃ¼zenlenmiÅŸ olup, bu belge mÃ¼vekkilime tebliÄŸ edilmiÅŸtir. Ä°ÅŸbu tahakkukta, mÃ¼vekkilimin Tesisat No (4004311180), MÃ¼ÅŸteri No (205539133), TC Kimlik No (41038011064)..."
+### 1. AÇIKLAMALAR BÖLÜMÜ NASIL YAZILMALI
+âŒ YANLIŞ (Ham veri dökümü):
+"Davalı kurum tarafından müvekkil HÜSEYİN ÇELİK adına 'kaçak elektrik tahakkuk hesap detayı' düzenlenmiş olup, bu belge müvekkilime tebliğ edilmiştir. İşbu tahakkukta, müvekkilimin Tesisat No (4004311180), Müşteri No (205539133), TC Kimlik No (41038011064)..."
 
-âœ… DOÄRU (Profesyonel hukuki anlatÄ±):
-"1. MÃ¼vekkilim, davalÄ± kurumun abonesi olup, sÃ¶z konusu taÅŸÄ±nmazda ikamet etmektedir.
+âœ… DOĞRU (Profesyonel hukuki anlatı):
+"1. Müvekkilim, davalı kurumun abonesi olup, söz konusu taşınmazda ikamet etmektedir.
 
-2. DavalÄ± kurum, mÃ¼vekkilim aleyhine "kaÃ§ak elektrik kullanÄ±mÄ±" iddiasÄ±yla tahakkuk iÅŸlemi baÅŸlatmÄ±ÅŸ ve 25.275,55 TL tutarÄ±nda borÃ§ Ã§Ä±karmÄ±ÅŸtÄ±r.
+2. Davalı kurum, müvekkilim aleyhine "kaçak elektrik kullanımı" iddiasıyla tahakkuk işlemi başlatmış ve 25.275,55 TL tutarında borç çıkarmıştır.
 
-3. YapÄ±lan incelemede, mÃ¼vekkilimin sayacÄ±nÄ±n (Seri No: CE000624281) herhangi bir mÃ¼dahale izine rastlanmamÄ±ÅŸ olup, iddia edilen kaÃ§ak kullanÄ±m tespiti usulsÃ¼z bir ÅŸekilde gerÃ§ekleÅŸtirilmiÅŸtir.
+3. Yapılan incelemede, müvekkilimin sayacının (Seri No: CE000624281) herhangi bir müdahale izine rastlanmamış olup, iddia edilen kaçak kullanım tespiti usulsüz bir şekilde gerçekleştirilmiştir.
 
-4. ÅÃ¶yle ki; [olay detaylarÄ± kronolojik sÄ±rayla anlatÄ±lmalÄ±]..."
+4. Şöyle ki; [olay detayları kronolojik sırayla anlatılmalı]..."
 
-### 2. âš ï¸ EMSAL KARARLARIN KULLANIMI (Ã‡OK Ã–NEMLÄ°)
-YargÄ±tay/DanÄ±ÅŸtay kararlarÄ± SADECE "HUKUKÄ° SEBEPLER" bÃ¶lÃ¼mÃ¼ne listelenmemeli!
+### 2. âš ï¸ EMSAL KARARLARIN KULLANIMI (ÇOK ÖNEMLİ)
+Yargıtay/Danıştay kararları SADECE "HUKUKİ SEBEPLER" bölümüne listelenmemeli!
 
-âŒ YANLIÅ (Sadece listeleme):
-"## HUKUKÄ° SEBEPLER
-- YargÄ±tay 9. HD., E. 2023/1234, K. 2023/5678
-- YargÄ±tay 3. HD., E. 2022/5678, K. 2022/9999"
+âŒ YANLIŞ (Sadece listeleme):
+"## HUKUKİ SEBEPLER
+- Yargıtay 9. HD., E. 2023/1234, K. 2023/5678
+- Yargıtay 3. HD., E. 2022/5678, K. 2022/9999"
 
-âœ… DOÄRU (Ä°lgili argÃ¼manla entegre):
-"## AÃ‡IKLAMALAR
+âœ… DOĞRU (İlgili argümanla entegre):
+"## AÇIKLAMALAR
 ...
-4. DavalÄ± kurumun iddia ettiÄŸi kaÃ§ak elektrik kullanÄ±mÄ±nÄ±n somut delilleri bulunmamaktadÄ±r. Nitekim YargÄ±tay 3. Hukuk Dairesi'nin E. 2022/5678, K. 2022/9999, T. 15.03.2023 tarihli kararÄ±nda: 'KaÃ§ak elektrik kullanÄ±mÄ± iddiasÄ±nÄ±n ispatÄ± davalÄ±ya aittir. SayaÃ§ mÃ¼hrÃ¼ Ã¼zerinde herhangi bir mÃ¼dahale izi tespit edilememiÅŸse kaÃ§ak elektrik kullanÄ±mÄ±ndan sÃ¶z edilemez' ÅŸeklinde hÃ¼kmedilmiÅŸtir. Somut olayda da sayaÃ§ta herhangi bir mÃ¼dahale izi tespit edilememiÅŸtir.
+4. Davalı kurumun iddia ettiği kaçak elektrik kullanımının somut delilleri bulunmamaktadır. Nitekim Yargıtay 3. Hukuk Dairesi'nin E. 2022/5678, K. 2022/9999, T. 15.03.2023 tarihli kararında: 'Kaçak elektrik kullanımı iddiasının ispatı davalıya aittir. Sayaç mührü üzerinde herhangi bir müdahale izi tespit edilememişse kaçak elektrik kullanımından söz edilemez' şeklinde hükmedilmiştir. Somut olayda da sayaçta herhangi bir müdahale izi tespit edilememiştir.
 
-5. AyrÄ±ca tahakkuk edilen miktar da fahiÅŸtir. YargÄ±tay 3. HD., E. 2021/4567 kararÄ±nda da belirtildiÄŸi Ã¼zere, 'TÃ¼ketim miktarÄ±nÄ±n belirlenmesinde gerÃ§ek tÃ¼ketim deÄŸerleri esas alÄ±nmalÄ±dÄ±r.'
+5. Ayrıca tahakkuk edilen miktar da fahiştir. Yargıtay 3. HD., E. 2021/4567 kararında da belirtildiği üzere, 'Tüketim miktarının belirlenmesinde gerçek tüketim değerleri esas alınmalıdır.'
 ..."
 
-### 3. BÃ–LÃœM YAPISI (Kesin sÄ±ra)
-Her dilekÃ§ede ÅŸu bÃ¶lÃ¼mler MUTLAKA bulunmalÄ± ve bu sÄ±rayla yazÄ±lmalÄ±:
+### 3. BÖLÜM YAPISI (Kesin sıra)
+Her dilekçede şu bölümler MUTLAKA bulunmalı ve bu sırayla yazılmalı:
 
-## [MAHKEME/MAKAM ADI - BÃœYÃœK HARFLERLE, ORTALI]
+## [MAHKEME/MAKAM ADI - BÜYÜK HARFLERLE, ORTALI]
 
 **DOSYA NO:** [varsa]
 
 ---
 
-**DAVACI/BAÅVURAN:**
+**DAVACI/BAŞVURAN:**
 [Ad Soyad]
 TC: [Kimlik No]
 Adres: [Adres]
 
-**VEKÄ°LÄ°:** [varsa]
+**VEKİLİ:** [varsa]
 [Avukat bilgileri]
 
-**DAVALI/KARÅI TARAF:**
-[Kurum/KiÅŸi adÄ±]
+**DAVALI/KARŞI TARAF:**
+[Kurum/Kişi adı]
 Adres: [Adres]
 
 ---
 
-**KONU:** [Tek cÃ¼mlelik Ã¶zet - Ã¶rn: "KaÃ§ak elektrik tahakkuku iddiasÄ±na itiraz hakkÄ±ndadÄ±r."]
+**KONU:** [Tek cümlelik özet - örn: "Kaçak elektrik tahakkuku iddiasına itiraz hakkındadır."]
 
 ---
 
-## AÃ‡IKLAMALAR
+## AÇIKLAMALAR
 
-[NumaralÄ± maddeler halinde, her madde ayrÄ± paragraf]
+[Numaralı maddeler halinde, her madde ayrı paragraf]
 
-1. [GiriÅŸ: TaraflarÄ±n tanÄ±tÄ±mÄ± ve temel iliÅŸki]
+1. [Giriş: Tarafların tanıtımı ve temel ilişki]
 
-2. [Olay: Ne oldu, kronolojik anlatÄ±m]
+2. [Olay: Ne oldu, kronolojik anlatım]
 
-3. [Sorun: Neden haksÄ±z/hukuka aykÄ±rÄ± + DESTEKLEYÄ°CÄ° EMSAL KARAR]
+3. [Sorun: Neden haksız/hukuka aykırı + DESTEKLEYİCİ EMSAL KARAR]
 
-4. [Deliller ve destekleyici argÃ¼manlar + Ä°LGÄ°LÄ° YARGITAY KARARI]
+4. [Deliller ve destekleyici argümanlar + İLGİLİ YARGITAY KARARI]
 
-5. [SonuÃ§ Ã§Ä±karÄ±mÄ±]
-
----
-
-## HUKUKÄ° SEBEPLER
-
-- [Ä°lgili Kanun maddesi ve aÃ§Ä±klamasÄ±]
-- [YukarÄ±da atÄ±f yapÄ±lan emsal kararlarÄ±n Ã¶zet listesi]
+5. [Sonuç çıkarımı]
 
 ---
 
-## DELÄ°LLER
+## HUKUKİ SEBEPLER
+
+- [İlgili Kanun maddesi ve açıklaması]
+- [Yukarıda atıf yapılan emsal kararların özet listesi]
+
+---
+
+## DELİLLER
 
 1. [Delil listesi]
 
 ---
 
-## SONUÃ‡ VE Ä°STEM
+## SONUÇ VE İSTEM
 
-YukarÄ±da arz ve izah edilen sebeplerle;
+Yukarıda arz ve izah edilen sebeplerle;
 - [Talep 1]
 - [Talep 2]
-... kararÄ± verilmesini saygÄ±larÄ±mla arz ve talep ederim.
+... kararı verilmesini saygılarımla arz ve talep ederim.
 
 [Tarih]
 [Ad Soyad / Vekil]
 
-### 4. DÄ°L VE ÃœSLUP KURALLARI
-- "MÃ¼vekkil" kelimesini tutarlÄ± kullan
-- Resmi hitap formu kullan: "SayÄ±n Mahkemeniz", "arz ve talep ederim"
-- Teknik verileri (TC No, dosya no) akÄ±cÄ± cÃ¼mle iÃ§inde yerleÅŸtir, liste olarak deÄŸil
-- Hukuki terimler kullan: "haksÄ±z fiil", "usulsÃ¼z iÅŸlem", "hukuka aykÄ±rÄ±lÄ±k" vb.
-- Her paragraf bir ana fikir iÃ§ermeli
-- Gereksiz tekrarlardan kaÃ§Ä±n
-- EMSAL KARARLARI ilgili argÃ¼mana entegre et, ayrÄ± liste yapma`;
+### 4. DİL VE ÜSLUP KURALLARI
+- "Müvekkil" kelimesini tutarlı kullan
+- Resmi hitap formu kullan: "Sayın Mahkemeniz", "arz ve talep ederim"
+- Teknik verileri (TC No, dosya no) akıcı cümle içinde yerleştir, liste olarak değil
+- Hukuki terimler kullan: "haksız fiil", "usulsüz işlem", "hukuka aykırılık" vb.
+- Her paragraf bir ana fikir içermeli
+- Gereksiz tekrarlardan kaçın
+- EMSAL KARARLARI ilgili argümana entegre et, ayrı liste yapma`;
 
         const promptText = `
-## DÄ°LEKÃ‡E OLUÅTURMA TALÄ°MATI
+## DİLEKÇE OLUŞTURMA TALİMATI
 
-AÅŸaÄŸÄ±daki HAM VERÄ°LERÄ° kullanarak PROFESYONEL bir TÃ¼rk hukuk dilekÃ§esi hazÄ±rla.
+Aşağıdaki HAM VERİLERİ kullanarak PROFESYONEL bir Türk hukuk dilekçesi hazırla.
 
-âš ï¸ Ã–NEMLÄ°: Ham verileri olduÄŸu gibi kopyalama! BunlarÄ± hukuki bir anlatÄ±ya dÃ¶nÃ¼ÅŸtÃ¼r.
+âš ï¸ ÖNEMLİ: Ham verileri olduğu gibi kopyalama! Bunları hukuki bir anlatıya dönüştür.
 
 ---
 
-### GÄ°RDÄ° VERÄ°LERÄ°
+### GİRDİ VERİLERİ
 
-**DilekÃ§e TÃ¼rÃ¼:** ${params.petitionType}
-**KullanÄ±cÄ±nÄ±n RolÃ¼:** ${params.userRole}
+**Dilekçe Türü:** ${params.petitionType}
+**Kullanıcının Rolü:** ${params.userRole}
 
-**Dava KÃ¼nyesi:**
+**Dava Künyesi:**
 ${formatCaseDetailsForPrompt(params.caseDetails)}
 
 **Vekil Bilgileri:**
@@ -908,22 +908,22 @@ ${formatLawyerInfoForPrompt(params.lawyerInfo)}
 **Taraflar:**
 ${formatPartiesForPrompt(params.parties)}
 
-**Olay Ã–zeti (Ham):**
-${params.analysisSummary || "Olay Ã¶zeti saÄŸlanmadÄ±."}
+**Olay Özeti (Ham):**
+${params.analysisSummary || "Olay özeti sağlanmadı."}
 
-**Hukuki AraÅŸtÄ±rma:**
-${params.webSearchResult || "Web araÅŸtÄ±rmasÄ± sonucu saÄŸlanmadÄ±."}
+**Hukuki Araştırma:**
+${params.webSearchResult || "Web araştırması sonucu sağlanmadı."}
 
-**Emsal YargÄ±tay/DanÄ±ÅŸtay KararlarÄ±:**
-${params.legalSearchResult || "Emsal karar araÅŸtÄ±rmasÄ± yapÄ±lmadÄ±."}
+**Emsal Yargıtay/Danıştay Kararları:**
+${params.legalSearchResult || "Emsal karar araştırması yapılmadı."}
 
 **Ek Notlar:**
-${params.docContent || "Ek metin saÄŸlanmadÄ±."}
+${params.docContent || "Ek metin sağlanmadı."}
 
-**Ã–zel Talimatlar:**
-${params.specifics || "Ã–zel talimat saÄŸlanmadÄ±."}
+**Özel Talimatlar:**
+${params.specifics || "Özel talimat sağlanmadı."}
 
-**Sohbet GeÃ§miÅŸi:**
+**Sohbet Geçmişi:**
 ${formatChatHistoryForPrompt(params.chatHistory)}
 
 **RAG Destek Baglami (ilgili parcalar):**
@@ -931,15 +931,15 @@ ${ragContext || "RAG baglami bulunamadi."}
 
 ---
 
-## BEKLENEN Ã‡IKTI
+## BEKLENEN ÇIKTI
 
-YukarÄ±daki ham verileri kullanarak:
-1. Profesyonel, ikna edici bir hukuki anlatÄ± oluÅŸtur
-2. Her bÃ¶lÃ¼mÃ¼ (AÃ‡IKLAMALAR, HUKUKÄ° SEBEPLER, DELÄ°LLER, SONUÃ‡ VE Ä°STEM) ayrÄ± ayrÄ± formatla
-3. NumaralÄ± maddelerde akÄ±cÄ± paragraflar kullan, ham veri listesi deÄŸil
-4. Mahkemeye sunulmaya hazÄ±r, resmi bir dilekÃ§e formatÄ±nda yaz
-5. Markdown formatÄ±nÄ± kullan (## baÅŸlÄ±klar, **kalÄ±n**, 1. 2. 3. listeler)
-6. âš ï¸ EMSAL KARARLARI: YargÄ±tay kararlarÄ±nÄ± ilgili argÃ¼manla birlikte AÃ‡IKLAMALAR bÃ¶lÃ¼mÃ¼nde kullan. "Nitekim YargÄ±tay X. HD., E. .../..., K. .../... kararÄ±nda '...' ÅŸeklinde hÃ¼kmedilmiÅŸtir" formatÄ±nda entegre et.
+Yukarıdaki ham verileri kullanarak:
+1. Profesyonel, ikna edici bir hukuki anlatı oluştur
+2. Her bölümü (AÇIKLAMALAR, HUKUKİ SEBEPLER, DELİLLER, SONUÇ VE İSTEM) ayrı ayrı formatla
+3. Numaralı maddelerde akıcı paragraflar kullan, ham veri listesi değil
+4. Mahkemeye sunulmaya hazır, resmi bir dilekçe formatında yaz
+5. Markdown formatını kullan (## başlıklar, **kalın**, 1. 2. 3. listeler)
+6. âš ï¸ EMSAL KARARLARI: Yargıtay kararlarını ilgili argümanla birlikte AÇIKLAMALAR bölümünde kullan. "Nitekim Yargıtay X. HD., E. .../..., K. .../... kararında '...' şeklinde hükmedilmiştir" formatında entegre et.
 `;
 
         const response = await ai.models.generateContent({
@@ -958,6 +958,66 @@ YukarÄ±daki ham verileri kullanarak:
         res.status(statusCode).json({ error: error.message });
     }
 });
+
+const GEMINI_INLINE_SUPPORTED_MIME_TYPES = new Set([
+    'application/pdf',
+    'image/png',
+    'image/jpeg',
+    'image/webp',
+    'image/heic',
+    'image/heif',
+    'image/gif',
+]);
+
+const MAX_GEMINI_TEXT_FILE_CHARS = 12000;
+
+const normalizeGeminiMimeType = (value = '') => String(value || '')
+    .split(';')[0]
+    .trim()
+    .toLowerCase();
+
+const decodeBase64Utf8 = (base64Value = '') => {
+    try {
+        return Buffer.from(String(base64Value || ''), 'base64').toString('utf8').replace(/\0/g, '').trim();
+    } catch {
+        return '';
+    }
+};
+
+const appendGeminiFileParts = (parts, files = []) => {
+    if (!Array.isArray(parts) || !Array.isArray(files)) return;
+
+    files.forEach((file, index) => {
+        const mimeType = normalizeGeminiMimeType(file?.mimeType || '');
+        const data = typeof file?.data === 'string' ? file.data.trim() : '';
+        const safeName = String(file?.name || `dosya-${index + 1}`).trim();
+        if (!data) return;
+
+        if (GEMINI_INLINE_SUPPORTED_MIME_TYPES.has(mimeType)) {
+            parts.push({
+                inlineData: {
+                    mimeType,
+                    data,
+                }
+            });
+            return;
+        }
+
+        if (mimeType.startsWith('text/')) {
+            const decodedText = decodeBase64Utf8(data);
+            if (decodedText) {
+                parts.push({
+                    text: `[Yuklenen Metin Dosyasi: ${safeName}]\n${decodedText.slice(0, MAX_GEMINI_TEXT_FILE_CHARS)}`
+                });
+                return;
+            }
+        }
+
+        parts.push({
+            text: `[Desteklenmeyen dosya turu atlandi: ${safeName} (${mimeType || 'bilinmiyor'})]`
+        });
+    });
+};
 
 // 5. Chat Stream - Enhanced with document generation capability
 app.post('/api/gemini/chat', async (req, res) => {
@@ -990,86 +1050,86 @@ app.post('/api/gemini/chat', async (req, res) => {
         }
 
         const contextPrompt = `
-**MEVCUT DURUM VE BAÄLAM:**
-- **Vaka Ã–zeti:** ${analysisSummary || "HenÃ¼z analiz yapÄ±lmadÄ±."}
-- **Mevcut Arama Anahtar Kelimeleri:** ${safeContext.keywords || "HenÃ¼z anahtar kelime oluÅŸturulmadÄ±."}
-- **Web AraÅŸtÄ±rma Ã–zeti:** ${safeContext.searchSummary || "HenÃ¼z web araÅŸtÄ±rmasÄ± yapÄ±lmadÄ±."}
-- **Emsal Karar Ã–zeti:** ${safeContext.legalSummary || "HenÃ¼z emsal karar Ã¶zeti saÄŸlanmadÄ±."}
-- **KullanÄ±cÄ±nÄ±n Ek Metinleri:** ${safeContext.docContent || "Ek metin saÄŸlanmadÄ±."}
-- **KullanÄ±cÄ±nÄ±n Ã–zel TalimatlarÄ±:** ${safeContext.specifics || "Ã–zel talimat saÄŸlanmadÄ±."}
+**MEVCUT DURUM VE BAĞLAM:**
+- **Vaka Özeti:** ${analysisSummary || "Henüz analiz yapılmadı."}
+- **Mevcut Arama Anahtar Kelimeleri:** ${safeContext.keywords || "Henüz anahtar kelime oluşturulmadı."}
+- **Web Araştırma Özeti:** ${safeContext.searchSummary || "Henüz web araştırması yapılmadı."}
+- **Emsal Karar Özeti:** ${safeContext.legalSummary || "Henüz emsal karar özeti sağlanmadı."}
+- **Kullanıcının Ek Metinleri:** ${safeContext.docContent || "Ek metin sağlanmadı."}
+- **Kullanıcının Özel Talimatları:** ${safeContext.specifics || "Özel talimat sağlanmadı."}
 - **RAG Destek Baglami:** ${ragContext || "RAG baglami bulunamadi."}
-${requestFiles.length > 0 ? `- **YÃ¼klenen Belgeler:** ${requestFiles.length} adet dosya yÃ¼klendi (${requestFiles.map(f => f.name).join(', ')})` : ''}
+${requestFiles.length > 0 ? `- **Yüklenen Belgeler:** ${requestFiles.length} adet dosya yüklendi (${requestFiles.map(f => f.name).join(', ')})` : ''}
 `;
 
-        const systemInstruction = `Sen, TÃ¼rk Hukuku konusunda uzman, yardÄ±msever ve proaktif bir hukuk asistanÄ±sÄ±n.
+        const systemInstruction = `Sen, Türk Hukuku konusunda uzman, yardımsever ve proaktif bir hukuk asistanısın.
 
-**SENÄ°N GÃ–REVLERÄ°N:**
-1. KullanÄ±cÄ±nÄ±n hukuki sorularÄ±nÄ± yanÄ±tlamak
-2. Dava stratejisi konusunda beyin fÄ±rtÄ±nasÄ± yapmak
-3. Hukuki terimleri aÃ§Ä±klamak
-4. **BELGE ANALÄ°ZÄ°: KullanÄ±cÄ± dosya yÃ¼klediÄŸinde, bu dosyalarÄ± analiz et ve sorularÄ±nÄ± yanÄ±tla**
-5. **Ã–NEMLÄ°: KullanÄ±cÄ± belge/dilekÃ§e/talep hazÄ±rlamanÄ± istediÄŸinde, generate_document fonksiyonunu kullan**
-6. **KRÄ°TÄ°K: KullanÄ±cÄ± YargÄ±tay kararÄ±/emsal karar aramasÄ± istediÄŸinde, GERÃ‡EK bir Google aramasÄ± yap**
+**SENİN GÖREVLERİN:**
+1. Kullanıcının hukuki sorularını yanıtlamak
+2. Dava stratejisi konusunda beyin fırtınası yapmak
+3. Hukuki terimleri açıklamak
+4. **BELGE ANALİZİ: Kullanıcı dosya yüklediğinde, bu dosyaları analiz et ve sorularını yanıtla**
+5. **ÖNEMLİ: Kullanıcı belge/dilekçe/talep hazırlamanı istediğinde, generate_document fonksiyonunu kullan**
+6. **KRİTİK: Kullanıcı Yargıtay kararı/emsal karar araması istediğinde, GERÇEK bir Google araması yap**
 
-**BELGE ANALÄ°ZÄ° KURALLARI:**
-KullanÄ±cÄ± dosya yÃ¼klediÄŸinde:
-- PDF veya resim dosyalarÄ±nÄ± dikkatlice incele
-- Ä°Ã§eriÄŸi Ã¶zetle ve anahtar bilgileri Ã§Ä±kar
-- Hukuki aÃ§Ä±dan Ã¶nemli noktalarÄ± vurgula
-- KullanÄ±cÄ±nÄ±n sorularÄ±nÄ± belge iÃ§eriÄŸine gÃ¶re yanÄ±tla
+**BELGE ANALİZİ KURALLARI:**
+Kullanıcı dosya yüklediğinde:
+- PDF veya resim dosyalarını dikkatlice incele
+- İçeriği özetle ve anahtar bilgileri çıkar
+- Hukuki açıdan önemli noktaları vurgula
+- Kullanıcının sorularını belge içeriğine göre yanıtla
 
 **YARGITAY KARARI ARAMA KURALLARI:**
-KullanÄ±cÄ± ÅŸunlarÄ± sÃ¶ylediÄŸinde GERÃ‡EK bir web aramasÄ± yap:
-- "YargÄ±tay kararÄ± ara", "emsal karar bul", "iÃ§tihat araÅŸtÄ±r"
-- "Bu konuda YargÄ±tay ne diyor?", "YargÄ±tay kararlarÄ±nÄ± bul"
-- "Karar kÃ¼nyesi ver", "emsal karar listele"
+Kullanıcı şunları söylediğinde GERÇEK bir web araması yap:
+- "Yargıtay kararı ara", "emsal karar bul", "içtihat araştır"
+- "Bu konuda Yargıtay ne diyor?", "Yargıtay kararlarını bul"
+- "Karar künyesi ver", "emsal karar listele"
 
 Arama yaparken:
-1. Mevcut baÄŸlamdaki anahtar kelimeleri kullan
-2. "site:karararama.yargitay.gov.tr" veya "YargÄ±tay" anahtar kelimesi ekle
-3. Bulunan kararlarÄ±n TAM KÃœNYESÄ°NÄ° ver (Daire, Esas No, Karar No, Tarih)
-4. Her karar iÃ§in kÄ±sa bir Ã¶zet yaz
+1. Mevcut bağlamdaki anahtar kelimeleri kullan
+2. "site:karararama.yargitay.gov.tr" veya "Yargıtay" anahtar kelimesi ekle
+3. Bulunan kararların TAM KÜNYESİNİ ver (Daire, Esas No, Karar No, Tarih)
+4. Her karar için kısa bir özet yaz
 
-**Ã‡IKTI FORMATI (YargÄ±tay AramasÄ±):**
+**ÇIKTI FORMATI (Yargıtay Araması):**
 ### BULUNAN YARGITAY KARARLARI
 
-**1. YargÄ±tay X. HD., E. XXXX/XXXX, K. XXXX/XXXX, T. XX.XX.XXXX**
-Ã–zet: [Karar Ã¶zeti]
+**1. Yargıtay X. HD., E. XXXX/XXXX, K. XXXX/XXXX, T. XX.XX.XXXX**
+Özet: [Karar özeti]
 Kaynak: [URL varsa]
 
 **2. ...**
 
-**BELGE TALEBÄ° TESPÄ°T KURALLARI:**
-KullanÄ±cÄ± ÅŸunlarÄ± sÃ¶ylediÄŸinde generate_document fonksiyonunu MUTLAKA Ã§aÄŸÄ±r:
-- "... hazÄ±rla", "... oluÅŸtur", "... yaz" (dilekÃ§e, talep, itiraz vb. ile birlikte)
-- "haricen tahsil talebi", "ihtarname", "feragat dilekÃ§esi" vb. belge isimleri
-- "bana bir ... hazÄ±rla"
-- "... iÃ§in dilekÃ§e lazÄ±m"
+**BELGE TALEBİ TESPİT KURALLARI:**
+Kullanıcı şunları söylediğinde generate_document fonksiyonunu MUTLAKA çağır:
+- "... hazırla", "... oluştur", "... yaz" (dilekçe, talep, itiraz vb. ile birlikte)
+- "haricen tahsil talebi", "ihtarname", "feragat dilekçesi" vb. belge isimleri
+- "bana bir ... hazırla"
+- "... için dilekçe lazım"
 
-**BELGE TÃœRÃœ Ã–RNEKLERÄ°:**
-- harici_tahsil_talebi: Haricen tahsil talebi/yazÄ±sÄ±
-- ihtarname: Ä°htarname
-- dava_dilekÃ§esi: Dava dilekÃ§esi
-- itiraz_dilekÃ§esi: Ä°tiraz dilekÃ§esi
-- feragat_dilekÃ§esi: Feragat dilekÃ§esi
-- cevap_dilekÃ§esi: Cevap dilekÃ§esi
-- temyiz_dilekÃ§esi: Temyiz dilekÃ§esi
-- icra_takip_talebi: Ä°cra takip talebi
-- genel_dilekÃ§e: Genel dilekÃ§e/belge
+**BELGE TÜRÜ ÖRNEKLERİ:**
+- harici_tahsil_talebi: Haricen tahsil talebi/yazısı
+- ihtarname: İhtarname
+- dava_dilekçesi: Dava dilekçesi
+- itiraz_dilekçesi: İtiraz dilekçesi
+- feragat_dilekçesi: Feragat dilekçesi
+- cevap_dilekçesi: Cevap dilekçesi
+- temyiz_dilekçesi: Temyiz dilekçesi
+- icra_takip_talebi: İcra takip talebi
+- genel_dilekçe: Genel dilekçe/belge
 
 **LIMIT KURALI:**
 - Belge olustururken mutlaka generate_document fonksiyonunu kullan.
 - generate_document fonksiyonu cagirmadan tam belge metni verme.
 
-Ä°ÅŸte mevcut davanÄ±n baÄŸlamÄ±:
+İşte mevcut davanın bağlamı:
 ${contextPrompt}
 
-TÃ¼rkÃ§e yanÄ±t ver. YargÄ±tay kararÄ± aranmasÄ± istendiÄŸinde Google Search ile GERÃ‡EK arama yap ve kÃ¼nyeli sonuÃ§lar sun.`;
+Türkçe yanıt ver. Yargıtay kararı aranması istendiğinde Google Search ile GERÇEK arama yap ve künyeli sonuçlar sun.`;
 
         // Function for updating keywords
         const updateKeywordsFunction = {
             name: 'update_search_keywords',
-            description: 'KullanÄ±cÄ± anahtar kelime eklenmesini istediÄŸinde bu fonksiyonu kullan.',
+            description: 'Kullanıcı anahtar kelime eklenmesini istediğinde bu fonksiyonu kullan.',
             parameters: {
                 type: Type.OBJECT,
                 properties: {
@@ -1086,41 +1146,41 @@ TÃ¼rkÃ§e yanÄ±t ver. YargÄ±tay kararÄ± aranmasÄ± istendiÄŸinde Goo
         // Function for generating documents directly in chat
         const generateDocumentFunction = {
             name: 'generate_document',
-            description: 'KullanÄ±cÄ± bir belge, dilekÃ§e veya resmi yazÄ± hazÄ±rlanmasÄ±nÄ± istediÄŸinde bu fonksiyonu kullan. Ã–rnek: "harici tahsil talebi hazÄ±rla", "ihtarname yaz", "feragat dilekÃ§esi oluÅŸtur".',
+            description: 'Kullanıcı bir belge, dilekçe veya resmi yazı hazırlanmasını istediğinde bu fonksiyonu kullan. Örnek: "harici tahsil talebi hazırla", "ihtarname yaz", "feragat dilekçesi oluştur".',
             parameters: {
                 type: Type.OBJECT,
                 properties: {
                     documentType: {
                         type: Type.STRING,
-                        description: 'Belge tÃ¼rÃ¼: harici_tahsil_talebi, ihtarname, dava_dilekÃ§esi, itiraz_dilekÃ§esi, feragat_dilekÃ§esi, cevap_dilekÃ§esi, temyiz_dilekÃ§esi, icra_takip_talebi, genel_dilekÃ§e'
+                        description: 'Belge türü: harici_tahsil_talebi, ihtarname, dava_dilekçesi, itiraz_dilekçesi, feragat_dilekçesi, cevap_dilekçesi, temyiz_dilekçesi, icra_takip_talebi, genel_dilekçe'
                     },
                     documentTitle: {
                         type: Type.STRING,
-                        description: 'Belgenin baÅŸlÄ±ÄŸÄ± (Ã¶rn: "HARÄ°CEN TAHSÄ°L TALEBÄ°", "Ä°HTARNAME")'
+                        description: 'Belgenin başlığı (örn: "HARİCEN TAHSİL TALEBİ", "İHTARNAME")'
                     },
                     documentContent: {
                         type: Type.STRING,
-                        description: 'Belgenin tam iÃ§eriÄŸi - TÃ¼rk hukuk formatÄ±na uygun, markdown formatÄ±nda, bÃ¶lÃ¼mlere ayrÄ±lmÄ±ÅŸ. Mevcut baÄŸlam bilgilerini kullan.'
+                        description: 'Belgenin tam içeriği - Türk hukuk formatına uygun, markdown formatında, bölümlere ayrılmış. Mevcut bağlam bilgilerini kullan.'
                     }
                 },
                 required: ['documentType', 'documentTitle', 'documentContent'],
             },
         };
-        // Function for searching YargÄ±tay decisions
+        // Function for searching Yargıtay decisions
         const searchYargitayFunction = {
             name: 'search_yargitay',
-            description: 'KullanÄ±cÄ± YargÄ±tay kararÄ± aramasÄ± istediÄŸinde bu fonksiyonu kullan. Ã–rnek: "YargÄ±tay kararÄ± ara", "emsal karar bul", "iÃ§tihat araÅŸtÄ±r".',
+            description: 'Kullanıcı Yargıtay kararı araması istediğinde bu fonksiyonu kullan. Örnek: "Yargıtay kararı ara", "emsal karar bul", "içtihat araştır".',
             parameters: {
                 type: Type.OBJECT,
                 properties: {
                     searchQuery: {
                         type: Type.STRING,
-                        description: 'Aranacak konu. Mevcut baÄŸlamdaki anahtar kelimeleri ve konuyu iÃ§ermeli.'
+                        description: 'Aranacak konu. Mevcut bağlamdaki anahtar kelimeleri ve konuyu içermeli.'
                     },
                     keywords: {
                         type: Type.ARRAY,
                         items: { type: Type.STRING },
-                        description: 'Arama iÃ§in kullanÄ±lacak anahtar kelimeler listesi'
+                        description: 'Arama için kullanılacak anahtar kelimeler listesi'
                     }
                 },
                 required: ['searchQuery'],
@@ -1133,14 +1193,7 @@ TÃ¼rkÃ§e yanÄ±t ver. YargÄ±tay kararÄ± aranmasÄ± istendiÄŸinde Goo
 
             // If this message has files attached, add them as inline data
             if (msg.files && msg.files.length > 0) {
-                msg.files.forEach(file => {
-                    parts.push({
-                        inlineData: {
-                            mimeType: file.mimeType,
-                            data: file.data
-                        }
-                    });
-                });
+                appendGeminiFileParts(parts, msg.files);
             }
 
             return {
@@ -1153,14 +1206,7 @@ TÃ¼rkÃ§e yanÄ±t ver. YargÄ±tay kararÄ± aranmasÄ± istendiÄŸinde Goo
         if (requestFiles.length > 0 && contents.length > 0) {
             const lastUserMsgIndex = contents.length - 1;
             if (contents[lastUserMsgIndex].role === 'user') {
-                requestFiles.forEach(file => {
-                    contents[lastUserMsgIndex].parts.push({
-                        inlineData: {
-                            mimeType: file.mimeType,
-                            data: file.data
-                        }
-                    });
-                });
+                appendGeminiFileParts(contents[lastUserMsgIndex].parts, requestFiles);
             }
         }
 
@@ -1240,16 +1286,16 @@ TÃ¼rkÃ§e yanÄ±t ver. YargÄ±tay kararÄ± aranmasÄ± istendiÄŸinde Goo
                     let formattedResults = '\n\n### ğŸ“š BULUNAN YARGITAY KARARLARI\n\n';
                     if (searchResult.results && searchResult.results.length > 0) {
                         searchResult.results.forEach((result, index) => {
-                            formattedResults += `**${index + 1}. ${result.title || 'YargÄ±tay KararÄ±'}**\n`;
+                            formattedResults += `**${index + 1}. ${result.title || 'Yargıtay Kararı'}**\n`;
                             if (result.esasNo) formattedResults += `E. ${result.esasNo} `;
                             if (result.kararNo) formattedResults += `K. ${result.kararNo} `;
                             if (result.tarih) formattedResults += `T. ${result.tarih}`;
                             formattedResults += '\n';
-                            if (result.ozet) formattedResults += `Ã–zet: ${result.ozet}\n`;
+                            if (result.ozet) formattedResults += `Özet: ${result.ozet}\n`;
                             formattedResults += '\n';
                         });
                     } else {
-                        formattedResults += 'Bu konuda emsal karar bulunamadÄ±.\n';
+                        formattedResults += 'Bu konuda emsal karar bulunamadı.\n';
                     }
 
                     // Send search results as additional chunk
@@ -1262,7 +1308,7 @@ TÃ¼rkÃ§e yanÄ±t ver. YargÄ±tay kararÄ± aranmasÄ± istendiÄŸinde Goo
 
                 } catch (searchError) {
                     console.error('Legal search error in chat:', searchError);
-                    const errorChunk = { text: '\n\nâš ï¸ Emsal karar aramasÄ± sÄ±rasÄ±nda bir hata oluÅŸtu.\n' };
+                    const errorChunk = { text: '\n\nâš ï¸ Emsal karar araması sırasında bir hata oluştu.\n' };
                     res.write(JSON.stringify(errorChunk) + '\n');
                 }
             }
@@ -1640,28 +1686,28 @@ app.post('/api/gemini/review', async (req, res) => {
         const systemInstruction = `You are a senior Turkish legal editor...`;
 
         const promptText = `
-**GÃ–REV: AÅAÄIDAKÄ° MEVCUT DÄ°LEKÃ‡E TASLAÄINI, SAÄLANAN BAÄLAM BÄ°LGÄ°LERÄ°NÄ° KULLANARAK GÃ–ZDEN GEÃ‡Ä°R VE Ä°YÄ°LEÅTÄ°R.**
+**GÖREV: AŞAĞIDAKİ MEVCUT DİLEKÇE TASLAĞINI, SAĞLANAN BAĞLAM BİLGİLERİNİ KULLANARAK GÖZDEN GEÇİR VE İYİLEŞTİR.**
 
-**1. Ä°YÄ°LEÅTÄ°RÄ°LECEK MEVCUT DÄ°LEKÃ‡E TASLAÄI:**
+**1. İYİLEŞTİRİLECEK MEVCUT DİLEKÇE TASLAĞI:**
 ---
 ${params.currentPetition}
 ---
 
-**2. DÄ°LEKÃ‡ENÄ°N HAZIRLANMASINDA KULLANILAN ORÄ°JÄ°NAL BAÄLAM BÄ°LGÄ°LERÄ°:**
-- **KULLANICININ ROLÃœ:** ${params.userRole}
-- **DÄ°LEKÃ‡E TÃœRÃœ:** ${params.petitionType}
-- **DAVA KÃœNYESÄ°:** ${formatCaseDetailsForPrompt(params.caseDetails)}
-- **VEKÄ°L BÄ°LGÄ°LERÄ°:** ${formatLawyerInfoForPrompt(params.lawyerInfo)}
-- **Ä°LETÄ°ÅÄ°M BÄ°LGÄ°LERÄ°:** ${formatContactInfoForPrompt(params.contactInfo)}
-- **OLAYIN Ã–ZETÄ°:** ${params.analysisSummary}
+**2. DİLEKÇENİN HAZIRLANMASINDA KULLANILAN ORİJİNAL BAĞLAM BİLGİLERİ:**
+- **KULLANICININ ROLÜ:** ${params.userRole}
+- **DİLEKÇE TÜRÜ:** ${params.petitionType}
+- **DAVA KÜNYESİ:** ${formatCaseDetailsForPrompt(params.caseDetails)}
+- **VEKİL BİLGİLERİ:** ${formatLawyerInfoForPrompt(params.lawyerInfo)}
+- **İLETİŞİM BİLGİLERİ:** ${formatContactInfoForPrompt(params.contactInfo)}
+- **OLAYIN ÖZETİ:** ${params.analysisSummary}
 - **TARAFLAR:** ${formatPartiesForPrompt(params.parties)}
-- **Ä°LGÄ°LÄ° HUKUKÄ° ARAÅTIRMA:** ${params.webSearchResult}
-- **EK METÄ°N VE NOTLAR:** ${params.docContent}
-- **Ã–ZEL TALÄ°MATLAR:** ${params.specifics}
-- **Ã–NCEKÄ° SOHBET GEÃ‡MÄ°ÅÄ°:** ${formatChatHistoryForPrompt(params.chatHistory)}
+- **İLGİLİ HUKUKİ ARAŞTIRMA:** ${params.webSearchResult}
+- **EK METİN VE NOTLAR:** ${params.docContent}
+- **ÖZEL TALİMATLAR:** ${params.specifics}
+- **ÖNCEKİ SOHBET GEÇMİŞİ:** ${formatChatHistoryForPrompt(params.chatHistory)}
 
-**Ä°YÄ°LEÅTÄ°RÄ°LMÄ°Å NÄ°HAÄ° DÄ°LEKÃ‡E METNÄ°:**
-[Buraya, yukarÄ±daki taslaÄŸÄ± tÃ¼m baÄŸlamÄ± dikkate alarak daha gÃ¼Ã§lÃ¼, ikna edici ve hukuken saÄŸlam hale getirilmiÅŸ tam dilekÃ§e metnini yaz.]
+**İYİLEŞTİRİLMİŞ NİHAİ DİLEKÇE METNİ:**
+[Buraya, yukarıdaki taslağı tüm bağlamı dikkate alarak daha güçlü, ikna edici ve hukuken sağlam hale getirilmiş tam dilekçe metnini yaz.]
 `;
 
         const response = await ai.models.generateContent({
@@ -2144,7 +2190,7 @@ app.post('/api/legal/search-decisions', authMiddleware, async (req, res) => {
     } catch (error) {
         console.error('Legal Search Error:', error);
         res.status(500).json({
-            error: 'Ä°Ã§tihat arama sÄ±rasÄ±nda bir hata oluÅŸtu.',
+            error: 'İçtihat arama sırasında bir hata oluştu.',
             details: error.message
         });
     }
@@ -2215,7 +2261,7 @@ app.post('/api/legal/get-document', authMiddleware, async (req, res) => {
     } catch (error) {
         console.error('Get Document Error:', error);
         res.status(500).json({
-            error: 'Belge alÄ±nÄ±rken bir hata oluÅŸtu.',
+            error: 'Belge alınırken bir hata oluştu.',
             details: error.message
         });
     }
@@ -2225,11 +2271,11 @@ app.post('/api/legal/get-document', authMiddleware, async (req, res) => {
 app.get('/api/legal/sources', (req, res) => {
     res.json({
         sources: [
-            { id: 'yargitay', name: 'YargÄ±tay', description: 'YargÄ±tay KararlarÄ± (Bedesten API)' },
-            { id: 'danistay', name: 'DanÄ±ÅŸtay', description: 'DanÄ±ÅŸtay KararlarÄ± (Bedesten API)' },
+            { id: 'yargitay', name: 'Yargıtay', description: 'Yargıtay Kararları (Bedesten API)' },
+            { id: 'danistay', name: 'Danıştay', description: 'Danıştay Kararları (Bedesten API)' },
             { id: 'uyap', name: 'Emsal (UYAP)', description: 'Emsal Kararlar (UYAP Sistemi)' },
-            { id: 'anayasa', name: 'Anayasa Mahkemesi', description: 'AYM Norm Denetimi ve Bireysel BaÅŸvuru' },
-            { id: 'kik', name: 'Kamu Ä°hale Kurulu', description: 'KÄ°K KararlarÄ±' },
+            { id: 'anayasa', name: 'Anayasa Mahkemesi', description: 'AYM Norm Denetimi ve Bireysel Başvuru' },
+            { id: 'kik', name: 'Kamu İhale Kurulu', description: 'KİK Kararları' },
         ]
     });
 });
@@ -2244,88 +2290,88 @@ const TEMPLATES = [
         id: '1',
         category: 'Hukuk',
         subcategory: 'Aile Hukuku',
-        title: 'BoÅŸanma DavasÄ± DilekÃ§esi',
-        description: 'AnlaÅŸmalÄ± veya Ã§ekiÅŸmeli boÅŸanma davalarÄ± iÃ§in temel dilekÃ§e ÅŸablonu',
+        title: 'Boşanma Davası Dilekçesi',
+        description: 'Anlaşmalı veya çekişmeli boşanma davaları için temel dilekçe şablonu',
         icon: 'HeartCrack',
         variables: [
-            { key: 'MAHKEME', label: 'Mahkeme AdÄ±', type: 'text', placeholder: 'Ã–rn: Ä°stanbul Anadolu 5. Aile Mahkemesi', required: true },
-            { key: 'DAVACI_AD', label: 'DavacÄ± AdÄ± SoyadÄ±', type: 'text', placeholder: 'Ã–rn: AyÅŸe YILMAZ', required: true },
-            { key: 'DAVACI_TC', label: 'DavacÄ± TC Kimlik No', type: 'text', placeholder: 'Ã–rn: 12345678901', required: true },
-            { key: 'DAVACI_ADRES', label: 'DavacÄ± Adresi', type: 'textarea', placeholder: 'Ã–rn: AtatÃ¼rk Mah. Cumhuriyet Cad. No:15/3 KadÄ±kÃ¶y/Ä°stanbul' },
-            { key: 'DAVACI_VEKIL_AD', label: 'DavacÄ± Vekili (Avukat)', type: 'text', placeholder: 'Ã–rn: Av. Mehmet KAYA' },
-            { key: 'DAVACI_VEKIL_BARO', label: 'Baro Sicil No', type: 'text', placeholder: 'Ã–rn: Ä°stanbul Barosu 54321' },
-            { key: 'DAVALI_AD', label: 'DavalÄ± AdÄ± SoyadÄ±', type: 'text', placeholder: 'Ã–rn: Ali YILMAZ', required: true },
-            { key: 'DAVALI_TC', label: 'DavalÄ± TC Kimlik No', type: 'text', placeholder: 'Ã–rn: 98765432109' },
-            { key: 'DAVALI_ADRES', label: 'DavalÄ± Adresi', type: 'textarea', placeholder: 'Ã–rn: BahÃ§elievler Mah. Ä°nÃ¶nÃ¼ Sok. No:7 BakÄ±rkÃ¶y/Ä°stanbul' },
+            { key: 'MAHKEME', label: 'Mahkeme Adı', type: 'text', placeholder: 'Örn: İstanbul Anadolu 5. Aile Mahkemesi', required: true },
+            { key: 'DAVACI_AD', label: 'Davacı Adı Soyadı', type: 'text', placeholder: 'Örn: Ayşe YILMAZ', required: true },
+            { key: 'DAVACI_TC', label: 'Davacı TC Kimlik No', type: 'text', placeholder: 'Örn: 12345678901', required: true },
+            { key: 'DAVACI_ADRES', label: 'Davacı Adresi', type: 'textarea', placeholder: 'Örn: Atatürk Mah. Cumhuriyet Cad. No:15/3 Kadıköy/İstanbul' },
+            { key: 'DAVACI_VEKIL_AD', label: 'Davacı Vekili (Avukat)', type: 'text', placeholder: 'Örn: Av. Mehmet KAYA' },
+            { key: 'DAVACI_VEKIL_BARO', label: 'Baro Sicil No', type: 'text', placeholder: 'Örn: İstanbul Barosu 54321' },
+            { key: 'DAVALI_AD', label: 'Davalı Adı Soyadı', type: 'text', placeholder: 'Örn: Ali YILMAZ', required: true },
+            { key: 'DAVALI_TC', label: 'Davalı TC Kimlik No', type: 'text', placeholder: 'Örn: 98765432109' },
+            { key: 'DAVALI_ADRES', label: 'Davalı Adresi', type: 'textarea', placeholder: 'Örn: Bahçelievler Mah. İnönü Sok. No:7 Bakırköy/İstanbul' },
             { key: 'EVLILIK_TARIHI', label: 'Evlilik Tarihi', type: 'date', required: true },
-            { key: 'EVLILIK_YERI', label: 'Evlenme Yeri', type: 'text', placeholder: 'Ã–rn: KadÄ±kÃ¶y Evlendirme Dairesi' },
-            { key: 'COCUK_BILGI', label: 'MÃ¼ÅŸterek Ã‡ocuk Bilgileri (varsa)', type: 'textarea', placeholder: 'Ã–rn: 1. Zeynep YILMAZ (D: 01.01.2015, TC: 11122233344)' },
-            { key: 'BOSANMA_SEBEPLERI', label: 'BoÅŸanma Sebepleri', type: 'textarea', placeholder: 'Åiddetli geÃ§imsizlik, evlilik birliÄŸinin temelinden sarsÄ±lmasÄ±...', required: true },
-            { key: 'NAFAKA_TALEP', label: 'Nafaka Talebi (TL/ay)', type: 'number', placeholder: 'Ã–rn: 5000' },
-            { key: 'VELAYET_TALEP', label: 'Velayet Talebi', type: 'text', placeholder: 'Ã–rn: MÃ¼ÅŸterek Ã§ocuklarÄ±n velayetinin davacÄ± anneye verilmesi' },
+            { key: 'EVLILIK_YERI', label: 'Evlenme Yeri', type: 'text', placeholder: 'Örn: Kadıköy Evlendirme Dairesi' },
+            { key: 'COCUK_BILGI', label: 'Müşterek Çocuk Bilgileri (varsa)', type: 'textarea', placeholder: 'Örn: 1. Zeynep YILMAZ (D: 01.01.2015, TC: 11122233344)' },
+            { key: 'BOSANMA_SEBEPLERI', label: 'Boşanma Sebepleri', type: 'textarea', placeholder: 'Şiddetli geçimsizlik, evlilik birliğinin temelinden sarsılması...', required: true },
+            { key: 'NAFAKA_TALEP', label: 'Nafaka Talebi (TL/ay)', type: 'number', placeholder: 'Örn: 5000' },
+            { key: 'VELAYET_TALEP', label: 'Velayet Talebi', type: 'text', placeholder: 'Örn: Müşterek çocukların velayetinin davacı anneye verilmesi' },
         ],
-        content: `{{MAHKEME}} BAÅKANLIÄINA
+        content: `{{MAHKEME}} BAŞKANLIĞINA
 
 **DAVACI:** {{DAVACI_AD}}
 TC Kimlik No: {{DAVACI_TC}}
 Adres: {{DAVACI_ADRES}}
 
-**VEKÄ°LÄ°:** {{DAVACI_VEKIL_AD}}
+**VEKİLİ:** {{DAVACI_VEKIL_AD}}
 {{DAVACI_VEKIL_BARO}}
 
 **DAVALI:** {{DAVALI_AD}}
 TC Kimlik No: {{DAVALI_TC}}
 Adres: {{DAVALI_ADRES}}
 
-**KONU:** BoÅŸanma davasÄ± hakkÄ±ndadÄ±r.
+**KONU:** Boşanma davası hakkındadır.
 
 ---
 
-**AÃ‡IKLAMALAR:**
+**AÇIKLAMALAR:**
 
-1. MÃ¼vekkilim ile davalÄ± {{EVLILIK_TARIHI}} tarihinde {{EVLILIK_YERI}}'de evlenmiÅŸlerdir.
+1. Müvekkilim ile davalı {{EVLILIK_TARIHI}} tarihinde {{EVLILIK_YERI}}'de evlenmişlerdir.
 
-2. TaraflarÄ±n bu evlilikten doÄŸan mÃ¼ÅŸterek Ã§ocuklarÄ±:
+2. Tarafların bu evlilikten doğan müşterek çocukları:
 {{COCUK_BILGI}}
 
 3. {{BOSANMA_SEBEPLERI}}
 
-4. Evlilik birliÄŸinin temelinden sarsÄ±lmasÄ± nedeniyle taraflar arasÄ±ndaki evliliÄŸin devamÄ± mÃ¼mkÃ¼n deÄŸildir. Ortak hayatÄ±n yeniden kurulmasÄ± ihtimali bulunmamaktadÄ±r.
+4. Evlilik birliğinin temelinden sarsılması nedeniyle taraflar arasındaki evliliğin devamı mümkün değildir. Ortak hayatın yeniden kurulması ihtimali bulunmamaktadır.
 
 ---
 
-**HUKUKÄ° SEBEPLER:**
+**HUKUKİ SEBEPLER:**
 
-- 4721 sayÄ±lÄ± TÃ¼rk Medeni Kanunu m.166 (Evlilik birliÄŸinin sarsÄ±lmasÄ±)
-- 4721 sayÄ±lÄ± TÃ¼rk Medeni Kanunu m.169 (BoÅŸanmada velayet)
-- 4721 sayÄ±lÄ± TÃ¼rk Medeni Kanunu m.175 (Yoksulluk nafakasÄ±)
-- 4721 sayÄ±lÄ± TÃ¼rk Medeni Kanunu m.182 (Ã‡ocuk nafakasÄ±)
-
----
-
-**DELÄ°LLER:**
-
-1. NÃ¼fus kayÄ±t Ã¶rneÄŸi
-2. VukuatlÄ± nÃ¼fus kayÄ±t Ã¶rneÄŸi
-3. Evlilik cÃ¼zdanÄ± sureti
-4. TanÄ±k beyanlarÄ±
-5. Ekonomik durum araÅŸtÄ±rmasÄ±
-6. Her tÃ¼rlÃ¼ yasal delil
+- 4721 sayılı Türk Medeni Kanunu m.166 (Evlilik birliğinin sarsılması)
+- 4721 sayılı Türk Medeni Kanunu m.169 (Boşanmada velayet)
+- 4721 sayılı Türk Medeni Kanunu m.175 (Yoksulluk nafakası)
+- 4721 sayılı Türk Medeni Kanunu m.182 (Çocuk nafakası)
 
 ---
 
-**SONUÃ‡ VE Ä°STEM:**
+**DELİLLER:**
 
-YukarÄ±da arz ve izah edilen sebeplerle;
+1. Nüfus kayıt örneği
+2. Vukuatlı nüfus kayıt örneği
+3. Evlilik cüzdanı sureti
+4. Tanık beyanları
+5. Ekonomik durum araştırması
+6. Her türlü yasal delil
 
-1. TaraflarÄ±n TMK m.166 uyarÄ±nca BOÅANMALARINA,
-2. MÃ¼ÅŸterek Ã§ocuklarÄ±n velayetinin davacÄ± tarafa verilmesine ({{VELAYET_TALEP}}),
-3. DavalÄ±nÄ±n aylÄ±k {{NAFAKA_TALEP}} TL iÅŸtirak nafakasÄ± Ã¶demesine,
-4. YargÄ±lama giderlerinin davalÄ±ya yÃ¼kletilmesine,
+---
 
-karar verilmesini vekaleten saygÄ±larÄ±mla arz ve talep ederim. {{TARIH}}
+**SONUÇ VE İSTEM:**
 
-DavacÄ± Vekili
+Yukarıda arz ve izah edilen sebeplerle;
+
+1. Tarafların TMK m.166 uyarınca BOŞANMALARINA,
+2. Müşterek çocukların velayetinin davacı tarafa verilmesine ({{VELAYET_TALEP}}),
+3. Davalının aylık {{NAFAKA_TALEP}} TL iştirak nafakası ödemesine,
+4. Yargılama giderlerinin davalıya yükletilmesine,
+
+karar verilmesini vekaleten saygılarımla arz ve talep ederim. {{TARIH}}
+
+Davacı Vekili
 {{DAVACI_VEKIL_AD}}
 `,
         isPremium: false,
@@ -2334,69 +2380,69 @@ DavacÄ± Vekili
     {
         id: '2',
         category: 'Hukuk',
-        subcategory: 'BorÃ§lar Hukuku',
-        title: 'Tazminat DavasÄ± DilekÃ§esi',
-        description: 'Maddi ve manevi tazminat talepli dava dilekÃ§esi',
+        subcategory: 'Borçlar Hukuku',
+        title: 'Tazminat Davası Dilekçesi',
+        description: 'Maddi ve manevi tazminat talepli dava dilekçesi',
         icon: 'Banknote',
         variables: [
-            { key: 'MAHKEME', label: 'Mahkeme AdÄ±', type: 'text', placeholder: 'Asliye Hukuk Mahkemesi' },
-            { key: 'DAVACI_AD', label: 'DavacÄ± AdÄ± SoyadÄ±', type: 'text', required: true },
-            { key: 'DAVACI_TC', label: 'DavacÄ± TC No', type: 'text', required: true },
-            { key: 'DAVALI_AD', label: 'DavalÄ±/Kurum AdÄ±', type: 'text', required: true },
+            { key: 'MAHKEME', label: 'Mahkeme Adı', type: 'text', placeholder: 'Asliye Hukuk Mahkemesi' },
+            { key: 'DAVACI_AD', label: 'Davacı Adı Soyadı', type: 'text', required: true },
+            { key: 'DAVACI_TC', label: 'Davacı TC No', type: 'text', required: true },
+            { key: 'DAVALI_AD', label: 'Davalı/Kurum Adı', type: 'text', required: true },
             { key: 'OLAY_TARIHI', label: 'Olay Tarihi', type: 'date', required: true },
-            { key: 'OLAY_ACIKLAMASI', label: 'OlayÄ±n AÃ§Ä±klamasÄ±', type: 'textarea', required: true },
-            { key: 'MADDI_TAZMINAT', label: 'Maddi Tazminat TutarÄ± (TL)', type: 'number' },
-            { key: 'MANEVI_TAZMINAT', label: 'Manevi Tazminat TutarÄ± (TL)', type: 'number' },
+            { key: 'OLAY_ACIKLAMASI', label: 'Olayın Açıklaması', type: 'textarea', required: true },
+            { key: 'MADDI_TAZMINAT', label: 'Maddi Tazminat Tutarı (TL)', type: 'number' },
+            { key: 'MANEVI_TAZMINAT', label: 'Manevi Tazminat Tutarı (TL)', type: 'number' },
         ],
-        content: `{{MAHKEME}} BAÅKANLIÄINA
+        content: `{{MAHKEME}} BAŞKANLIĞINA
 
 **DAVACI:** {{DAVACI_AD}}
 TC Kimlik No: {{DAVACI_TC}}
 
 **DAVALI:** {{DAVALI_AD}}
 
-**KONU:** Maddi ve manevi tazminat talepli dava dilekÃ§esidir.
+**KONU:** Maddi ve manevi tazminat talepli dava dilekçesidir.
 
-**DAVA DEÄERÄ°:** {{MADDI_TAZMINAT}} TL (Maddi) + {{MANEVI_TAZMINAT}} TL (Manevi)
+**DAVA DEĞERİ:** {{MADDI_TAZMINAT}} TL (Maddi) + {{MANEVI_TAZMINAT}} TL (Manevi)
 
 ---
 
-**AÃ‡IKLAMALAR:**
+**AÇIKLAMALAR:**
 
-1. {{OLAY_TARIHI}} tarihinde aÅŸaÄŸÄ±da aÃ§Ä±klanan olay meydana gelmiÅŸtir.
+1. {{OLAY_TARIHI}} tarihinde aşağıda açıklanan olay meydana gelmiştir.
 
 2. {{OLAY_ACIKLAMASI}}
 
-3. Bu olay nedeniyle mÃ¼vekkilim maddi ve manevi zarara uÄŸramÄ±ÅŸtÄ±r. ZararÄ±n tazmini iÃ§in iÅŸbu dava aÃ§Ä±lmÄ±ÅŸtÄ±r.
+3. Bu olay nedeniyle müvekkilim maddi ve manevi zarara uğramıştır. Zararın tazmini için işbu dava açılmıştır.
 
 ---
 
-**HUKUKÄ° SEBEPLER:**
+**HUKUKİ SEBEPLER:**
 
-- 6098 sayÄ±lÄ± TÃ¼rk BorÃ§lar Kanunu m.49-76 (HaksÄ±z fiil)
-- 6098 sayÄ±lÄ± TÃ¼rk BorÃ§lar Kanunu m.56 (Manevi tazminat)
+- 6098 sayılı Türk Borçlar Kanunu m.49-76 (Haksız fiil)
+- 6098 sayılı Türk Borçlar Kanunu m.56 (Manevi tazminat)
 
 ---
 
-**DELÄ°LLER:**
+**DELİLLER:**
 
-1. Olay tutanaklarÄ±
+1. Olay tutanakları
 2. Fatura ve belgeler
-3. TanÄ±k beyanlarÄ±
-4. BilirkiÅŸi incelemesi
-5. Her tÃ¼rlÃ¼ yasal delil
+3. Tanık beyanları
+4. Bilirkişi incelemesi
+5. Her türlü yasal delil
 
 ---
 
-**SONUÃ‡ VE Ä°STEM:**
+**SONUÇ VE İSTEM:**
 
-1. {{MADDI_TAZMINAT}} TL MADDÄ° TAZMÄ°NATIN olay tarihinden itibaren iÅŸleyecek yasal faiziyle birlikte davalÄ±dan tahsiline,
-2. {{MANEVI_TAZMINAT}} TL MANEVÄ° TAZMÄ°NATIN davalÄ±dan tahsiline,
-3. YargÄ±lama giderlerinin davalÄ±ya yÃ¼kletilmesine,
+1. {{MADDI_TAZMINAT}} TL MADDİ TAZMİNATIN olay tarihinden itibaren işleyecek yasal faiziyle birlikte davalıdan tahsiline,
+2. {{MANEVI_TAZMINAT}} TL MANEVİ TAZMİNATIN davalıdan tahsiline,
+3. Yargılama giderlerinin davalıya yükletilmesine,
 
-karar verilmesini saygÄ±larÄ±mla arz ve talep ederim. {{TARIH}}
+karar verilmesini saygılarımla arz ve talep ederim. {{TARIH}}
 
-DavacÄ±
+Davacı
 {{DAVACI_AD}}
 `,
         isPremium: false,
@@ -2404,53 +2450,53 @@ DavacÄ±
     },
     {
         id: '3',
-        category: 'Ä°cra',
-        subcategory: 'Ä°cra Takibi',
-        title: 'Ä°cra Takibine Ä°tiraz DilekÃ§esi',
-        description: 'HaksÄ±z icra takibine karÅŸÄ± itiraz dilekÃ§esi',
+        category: 'İcra',
+        subcategory: 'İcra Takibi',
+        title: 'İcra Takibine İtiraz Dilekçesi',
+        description: 'Haksız icra takibine karşı itiraz dilekçesi',
         icon: 'Gavel',
         variables: [
-            { key: 'ICRA_MUDURLUGU', label: 'Ä°cra MÃ¼dÃ¼rlÃ¼ÄŸÃ¼', type: 'text', required: true },
-            { key: 'DOSYA_NO', label: 'Ä°cra Dosya No', type: 'text', required: true },
-            { key: 'BORCLU_AD', label: 'BorÃ§lu AdÄ± SoyadÄ±', type: 'text', required: true },
-            { key: 'ALACAKLI_AD', label: 'AlacaklÄ± AdÄ±', type: 'text', required: true },
-            { key: 'ITIRAZ_SEBEPLERI', label: 'Ä°tiraz Sebepleri', type: 'textarea', required: true },
+            { key: 'ICRA_MUDURLUGU', label: 'İcra Müdürlüğü', type: 'text', required: true },
+            { key: 'DOSYA_NO', label: 'İcra Dosya No', type: 'text', required: true },
+            { key: 'BORCLU_AD', label: 'Borçlu Adı Soyadı', type: 'text', required: true },
+            { key: 'ALACAKLI_AD', label: 'Alacaklı Adı', type: 'text', required: true },
+            { key: 'ITIRAZ_SEBEPLERI', label: 'İtiraz Sebepleri', type: 'textarea', required: true },
         ],
         content: `## {{ICRA_MUDURLUGU}}'NE
 
 **DOSYA NO:** {{DOSYA_NO}}
 
-**BORÃ‡LU (Ä°TÄ°RAZ EDEN):** {{BORCLU_AD}}
+**BORÇLU (İTİRAZ EDEN):** {{BORCLU_AD}}
 
 **ALACAKLI:** {{ALACAKLI_AD}}
 
-**KONU:** Ã–deme emrine itirazÄ±mÄ±z hakkÄ±ndadÄ±r.
+**KONU:** Ödeme emrine itirazımız hakkındadır.
 
 ---
 
-## AÃ‡IKLAMALAR
+## AÇIKLAMALAR
 
-1. MÃ¼dÃ¼rlÃ¼ÄŸÃ¼nÃ¼zce yÃ¼rÃ¼tÃ¼len {{DOSYA_NO}} sayÄ±lÄ± icra takip dosyasÄ±nda tarafÄ±ma Ã¶deme emri tebliÄŸ edilmiÅŸtir.
+1. Müdürlüğünüzce yürütülen {{DOSYA_NO}} sayılı icra takip dosyasında tarafıma ödeme emri tebliğ edilmiştir.
 
 2. {{ITIRAZ_SEBEPLERI}}
 
-3. YukarÄ±da aÃ§Ä±klanan nedenlerle sÃ¶z konusu borca itiraz etme zorunluluÄŸu doÄŸmuÅŸtur.
+3. Yukarıda açıklanan nedenlerle söz konusu borca itiraz etme zorunluluğu doğmuştur.
 
 ---
 
-## HUKUKÄ° SEBEPLER
+## HUKUKİ SEBEPLER
 
-- 2004 sayÄ±lÄ± Ä°cra ve Ä°flas Kanunu m.62 (Ä°tiraz)
-- 2004 sayÄ±lÄ± Ä°cra ve Ä°flas Kanunu m.66 (Ä°tirazÄ±n hÃ¼kÃ¼mleri)
+- 2004 sayılı İcra ve İflas Kanunu m.62 (İtiraz)
+- 2004 sayılı İcra ve İflas Kanunu m.66 (İtirazın hükümleri)
 
 ---
 
-## SONUÃ‡ VE Ä°STEM
+## SONUÇ VE İSTEM
 
-YukarÄ±da aÃ§Ä±klanan sebeplerle;
+Yukarıda açıklanan sebeplerle;
 
-1. BORCA Ä°TÄ°RAZ EDÄ°YORUM,
-2. Takibin durdurulmasÄ±na,
+1. BORCA İTİRAZ EDİYORUM,
+2. Takibin durdurulmasına,
 
 karar verilmesini arz ve talep ederim.
 
@@ -2464,63 +2510,63 @@ karar verilmesini arz ve talep ederim.
         id: '4',
         category: 'Hukuk',
         subcategory: 'Kira Hukuku',
-        title: 'Kira Tahliye DavasÄ± DilekÃ§esi',
-        description: 'KiracÄ±nÄ±n tahliyesi iÃ§in dava dilekÃ§esi',
+        title: 'Kira Tahliye Davası Dilekçesi',
+        description: 'Kiracının tahliyesi için dava dilekçesi',
         icon: 'Home',
         variables: [
-            { key: 'MAHKEME', label: 'Mahkeme AdÄ±', type: 'text', placeholder: 'Sulh Hukuk Mahkemesi' },
-            { key: 'KIRAYA_VEREN', label: 'Kiraya Veren AdÄ±', type: 'text', required: true },
-            { key: 'KIRACI', label: 'KiracÄ± AdÄ±', type: 'text', required: true },
-            { key: 'TASINMAZ_ADRES', label: 'TaÅŸÄ±nmaz Adresi', type: 'textarea', required: true },
-            { key: 'KIRA_BEDELI', label: 'AylÄ±k Kira Bedeli', type: 'number' },
+            { key: 'MAHKEME', label: 'Mahkeme Adı', type: 'text', placeholder: 'Sulh Hukuk Mahkemesi' },
+            { key: 'KIRAYA_VEREN', label: 'Kiraya Veren Adı', type: 'text', required: true },
+            { key: 'KIRACI', label: 'Kiracı Adı', type: 'text', required: true },
+            { key: 'TASINMAZ_ADRES', label: 'Taşınmaz Adresi', type: 'textarea', required: true },
+            { key: 'KIRA_BEDELI', label: 'Aylık Kira Bedeli', type: 'number' },
             { key: 'TAHLIYE_SEBEBI', label: 'Tahliye Sebebi', type: 'textarea', required: true },
         ],
-        content: `## {{MAHKEME}} BAÅKANLIÄINA
+        content: `## {{MAHKEME}} BAŞKANLIĞINA
 
-**DAVACI (KÄ°RAYA VEREN):** {{KIRAYA_VEREN}}
+**DAVACI (KİRAYA VEREN):** {{KIRAYA_VEREN}}
 
-**DAVALI (KÄ°RACI):** {{KIRACI}}
+**DAVALI (KİRACI):** {{KIRACI}}
 
-**KONU:** KiralananÄ±n tahliyesi talebimiz hakkÄ±ndadÄ±r.
+**KONU:** Kiralananın tahliyesi talebimiz hakkındadır.
 
 ---
 
-## AÃ‡IKLAMALAR
+## AÇIKLAMALAR
 
-1. DavalÄ±, aÅŸaÄŸÄ±da adresi belirtilen taÅŸÄ±nmazda kiracÄ± olarak ikamet etmektedir:
+1. Davalı, aşağıda adresi belirtilen taşınmazda kiracı olarak ikamet etmektedir:
    **Adres:** {{TASINMAZ_ADRES}}
 
-2. AylÄ±k kira bedeli {{KIRA_BEDELI}} TL olarak belirlenmiÅŸtir.
+2. Aylık kira bedeli {{KIRA_BEDELI}} TL olarak belirlenmiştir.
 
 3. {{TAHLIYE_SEBEBI}}
 
-4. Bu nedenlerle taÅŸÄ±nmazÄ±n tahliyesi gerekmektedir.
+4. Bu nedenlerle taşınmazın tahliyesi gerekmektedir.
 
 ---
 
-## HUKUKÄ° SEBEPLER
+## HUKUKİ SEBEPLER
 
-- 6098 sayÄ±lÄ± TÃ¼rk BorÃ§lar Kanunu m.347-356 (Kira sÃ¶zleÅŸmesi)
-- 6098 sayÄ±lÄ± TÃ¼rk BorÃ§lar Kanunu m.352 (KiracÄ±nÄ±n temerrÃ¼dÃ¼)
-
----
-
-## DELÄ°LLER
-
-1. Kira sÃ¶zleÅŸmesi
-2. Ä°htar belgeleri
-3. Ã–deme kayÄ±tlarÄ±
-4. TanÄ±k beyanlarÄ±
+- 6098 sayılı Türk Borçlar Kanunu m.347-356 (Kira sözleşmesi)
+- 6098 sayılı Türk Borçlar Kanunu m.352 (Kiracının temerrüdü)
 
 ---
 
-## SONUÃ‡ VE Ä°STEM
+## DELİLLER
 
-1. KiralananÄ±n TAHLÄ°YESÄ°NE,
-2. BirikmiÅŸ kira bedellerinin tahsiline,
-3. YargÄ±lama giderlerinin davalÄ±ya yÃ¼kletilmesine,
+1. Kira sözleşmesi
+2. İhtar belgeleri
+3. Ödeme kayıtları
+4. Tanık beyanları
 
-karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
+---
+
+## SONUÇ VE İSTEM
+
+1. Kiralananın TAHLİYESİNE,
+2. Birikmiş kira bedellerinin tahsiline,
+3. Yargılama giderlerinin davalıya yükletilmesine,
+
+karar verilmesini saygılarımla arz ve talep ederim.
 
 {{TARIH}}
 {{KIRAYA_VEREN}}
@@ -2530,57 +2576,57 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
     },
     {
         id: '5',
-        category: 'Ä°dari',
-        subcategory: 'Ä°ptal DavasÄ±',
-        title: 'Ä°dari Ä°ÅŸlemin Ä°ptali DavasÄ±',
-        description: 'Hukuka aykÄ±rÄ± idari iÅŸlemlerin iptali iÃ§in dava dilekÃ§esi',
+        category: 'İdari',
+        subcategory: 'İptal Davası',
+        title: 'İdari İşlemin İptali Davası',
+        description: 'Hukuka aykırı idari işlemlerin iptali için dava dilekçesi',
         icon: 'Building2',
         variables: [
-            { key: 'IDARE_MAHKEMESI', label: 'Ä°dare Mahkemesi', type: 'text', placeholder: 'Ä°stanbul Ä°dare Mahkemesi' },
-            { key: 'DAVACI_AD', label: 'DavacÄ± AdÄ±', type: 'text', required: true },
-            { key: 'DAVALI_IDARE', label: 'DavalÄ± Ä°dare', type: 'text', required: true },
-            { key: 'ISLEM_TARIHI', label: 'Ä°ÅŸlem Tarihi', type: 'date', required: true },
-            { key: 'ISLEM_KONUSU', label: 'Ä°ptali Ä°stenen Ä°ÅŸlem', type: 'textarea', required: true },
-            { key: 'HUKUKA_AYKIRILIK', label: 'Hukuka AykÄ±rÄ±lÄ±k Nedenleri', type: 'textarea', required: true },
+            { key: 'IDARE_MAHKEMESI', label: 'İdare Mahkemesi', type: 'text', placeholder: 'İstanbul İdare Mahkemesi' },
+            { key: 'DAVACI_AD', label: 'Davacı Adı', type: 'text', required: true },
+            { key: 'DAVALI_IDARE', label: 'Davalı İdare', type: 'text', required: true },
+            { key: 'ISLEM_TARIHI', label: 'İşlem Tarihi', type: 'date', required: true },
+            { key: 'ISLEM_KONUSU', label: 'İptali İstenen İşlem', type: 'textarea', required: true },
+            { key: 'HUKUKA_AYKIRILIK', label: 'Hukuka Aykırılık Nedenleri', type: 'textarea', required: true },
         ],
-        content: `## {{IDARE_MAHKEMESI}} BAÅKANLIÄINA
+        content: `## {{IDARE_MAHKEMESI}} BAŞKANLIĞINA
 
 **DAVACI:** {{DAVACI_AD}}
 
 **DAVALI:** {{DAVALI_IDARE}}
 
-**KONU:** Ä°dari iÅŸlemin iptali talebimiz hakkÄ±ndadÄ±r.
+**KONU:** İdari işlemin iptali talebimiz hakkındadır.
 
-**Ä°PTALÄ° Ä°STENEN Ä°ÅLEM:** {{ISLEM_KONUSU}}
-**Ä°ÅLEM TARÄ°HÄ°:** {{ISLEM_TARIHI}}
+**İPTALİ İSTENEN İŞLEM:** {{ISLEM_KONUSU}}
+**İŞLEM TARİHİ:** {{ISLEM_TARIHI}}
 
 ---
 
-## AÃ‡IKLAMALAR
+## AÇIKLAMALAR
 
-1. DavalÄ± idare tarafÄ±ndan {{ISLEM_TARIHI}} tarihinde tesis edilen iÅŸlem hukuka aykÄ±rÄ±dÄ±r.
+1. Davalı idare tarafından {{ISLEM_TARIHI}} tarihinde tesis edilen işlem hukuka aykırıdır.
 
 2. {{HUKUKA_AYKIRILIK}}
 
-3. SÃ¶z konusu iÅŸlem telafisi gÃ¼Ã§ zararlara neden olmaktadÄ±r.
+3. Söz konusu işlem telafisi güç zararlara neden olmaktadır.
 
 ---
 
-## HUKUKÄ° SEBEPLER
+## HUKUKİ SEBEPLER
 
-- 2577 sayÄ±lÄ± Ä°dari YargÄ±lama UsulÃ¼ Kanunu
-- Anayasa m.125 (YargÄ± yolu)
-- Ä°lgili mevzuat hÃ¼kÃ¼mleri
+- 2577 sayılı İdari Yargılama Usulü Kanunu
+- Anayasa m.125 (Yargı yolu)
+- İlgili mevzuat hükümleri
 
 ---
 
-## SONUÃ‡ VE Ä°STEM
+## SONUÇ VE İSTEM
 
-1. Dava konusu idari iÅŸlemin Ä°PTALÄ°NE,
-2. YÃ¼rÃ¼tmenin durdurulmasÄ±na,
-3. YargÄ±lama giderlerinin davalÄ±ya yÃ¼kletilmesine,
+1. Dava konusu idari işlemin İPTALİNE,
+2. Yürütmenin durdurulmasına,
+3. Yargılama giderlerinin davalıya yükletilmesine,
 
-karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
+karar verilmesini saygılarımla arz ve talep ederim.
 
 {{TARIH}}
 {{DAVACI_AD}}
@@ -2591,61 +2637,61 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
     {
         id: '6',
         category: 'Ceza',
-        subcategory: 'Åikayet',
-        title: 'SuÃ§ Duyurusu DilekÃ§esi',
-        description: 'Cumhuriyet SavcÄ±lÄ±ÄŸÄ±na suÃ§ duyurusu dilekÃ§esi',
+        subcategory: 'Şikayet',
+        title: 'Suç Duyurusu Dilekçesi',
+        description: 'Cumhuriyet Savcılığına suç duyurusu dilekçesi',
         icon: 'Siren',
         variables: [
-            { key: 'SAVCILIK', label: 'Cumhuriyet BaÅŸsavcÄ±lÄ±ÄŸÄ±', type: 'text', required: true },
-            { key: 'SIKAYET_EDEN', label: 'Åikayet Eden (MÃ¼ÅŸteki)', type: 'text', required: true },
-            { key: 'SUPHELI', label: 'ÅÃ¼pheli', type: 'text', required: true },
-            { key: 'SUC_TARIHI', label: 'SuÃ§ Tarihi', type: 'date', required: true },
-            { key: 'SUC_KONUSU', label: 'SuÃ§ Konusu Olay', type: 'textarea', required: true },
-            { key: 'ISTENEN_CEZA', label: 'Talep Edilen Ä°ÅŸlem', type: 'textarea' },
+            { key: 'SAVCILIK', label: 'Cumhuriyet Başsavcılığı', type: 'text', required: true },
+            { key: 'SIKAYET_EDEN', label: 'Şikayet Eden (Müşteki)', type: 'text', required: true },
+            { key: 'SUPHELI', label: 'Şüpheli', type: 'text', required: true },
+            { key: 'SUC_TARIHI', label: 'Suç Tarihi', type: 'date', required: true },
+            { key: 'SUC_KONUSU', label: 'Suç Konusu Olay', type: 'textarea', required: true },
+            { key: 'ISTENEN_CEZA', label: 'Talep Edilen İşlem', type: 'textarea' },
         ],
         content: `## {{SAVCILIK}}'NA
 
-**ÅÄ°KAYET EDEN (MÃœÅTEKÄ°):** {{SIKAYET_EDEN}}
+**ŞİKAYET EDEN (MÜŞTEKİ):** {{SIKAYET_EDEN}}
 
-**ÅÃœPHELÄ°:** {{SUPHELI}}
+**ŞÜPHELİ:** {{SUPHELI}}
 
-**SUÃ‡ TARÄ°HÄ°:** {{SUC_TARIHI}}
+**SUÇ TARİHİ:** {{SUC_TARIHI}}
 
-**KONU:** SuÃ§ duyurusu hakkÄ±ndadÄ±r.
+**KONU:** Suç duyurusu hakkındadır.
 
 ---
 
-## AÃ‡IKLAMALAR
+## AÇIKLAMALAR
 
-1. {{SUC_TARIHI}} tarihinde aÅŸaÄŸÄ±da aÃ§Ä±klanan olay meydana gelmiÅŸtir:
+1. {{SUC_TARIHI}} tarihinde aşağıda açıklanan olay meydana gelmiştir:
 
 2. {{SUC_KONUSU}}
 
-3. Bu eylemler TÃ¼rk Ceza Kanunu kapsamÄ±nda suÃ§ teÅŸkil etmektedir.
+3. Bu eylemler Türk Ceza Kanunu kapsamında suç teşkil etmektedir.
 
 ---
 
-## SUÃ‡ VE CEZA
+## SUÇ VE CEZA
 
-- Ä°lgili TÃ¼rk Ceza Kanunu maddeleri
-- Cezai yaptÄ±rÄ±m talep edilmektedir
-
----
-
-## DELÄ°LLER
-
-1. Olay tutanaklarÄ±
-2. GÃ¶rÃ¼ntÃ¼/Ses kayÄ±tlarÄ±
-3. TanÄ±k beyanlarÄ±
-4. DiÄŸer deliller
+- İlgili Türk Ceza Kanunu maddeleri
+- Cezai yaptırım talep edilmektedir
 
 ---
 
-## SONUÃ‡ VE Ä°STEM
+## DELİLLER
+
+1. Olay tutanakları
+2. Görüntü/Ses kayıtları
+3. Tanık beyanları
+4. Diğer deliller
+
+---
+
+## SONUÇ VE İSTEM
 
 1. {{ISTENEN_CEZA}}
 
-ÅÃ¼phelinin yakalanarak cezalandÄ±rÄ±lmasÄ± iÃ§in gerekli soruÅŸturmanÄ±n yapÄ±lmasÄ±nÄ± saygÄ±larÄ±mla arz ve talep ederim.
+Şüphelinin yakalanarak cezalandırılması için gerekli soruşturmanın yapılmasını saygılarımla arz ve talep ederim.
 
 {{TARIH}}
 {{SIKAYET_EDEN}}
@@ -2656,63 +2702,63 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
     ,
     {
         "id": "7",
-        "category": "Ä°cra",
-        "subcategory": "Ä°cra Takibi",
-        "title": "Ä°lamsÄ±z Ä°cra Takip Talebi",
-        "description": "Genel haciz yoluyla ilamsÄ±z icra takibi baÅŸlatma talebi",
+        "category": "İcra",
+        "subcategory": "İcra Takibi",
+        "title": "İlamsız İcra Takip Talebi",
+        "description": "Genel haciz yoluyla ilamsız icra takibi başlatma talebi",
         "icon": "Gavel",
         "variables": [
             {
                 "key": "ICRA_DAIRESI",
-                "label": "Ä°cra Dairesi",
+                "label": "İcra Dairesi",
                 "type": "text",
                 "required": true,
-                "placeholder": "Ä°stanbul 1. Ä°cra Dairesi"
+                "placeholder": "İstanbul 1. İcra Dairesi"
             },
             {
                 "key": "ALACAKLI_AD",
-                "label": "AlacaklÄ± AdÄ± SoyadÄ±",
+                "label": "Alacaklı Adı Soyadı",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "ALACAKLI_TC",
-                "label": "AlacaklÄ± TC No",
+                "label": "Alacaklı TC No",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "ALACAKLI_ADRES",
-                "label": "AlacaklÄ± Adresi",
+                "label": "Alacaklı Adresi",
                 "type": "textarea",
                 "required": true
             },
             {
                 "key": "BORCLU_AD",
-                "label": "BorÃ§lu AdÄ± SoyadÄ±",
+                "label": "Borçlu Adı Soyadı",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "BORCLU_TC",
-                "label": "BorÃ§lu TC No",
+                "label": "Borçlu TC No",
                 "type": "text"
             },
             {
                 "key": "BORCLU_ADRES",
-                "label": "BorÃ§lu Adresi",
+                "label": "Borçlu Adresi",
                 "type": "textarea",
                 "required": true
             },
             {
                 "key": "ALACAK_TUTARI",
-                "label": "Alacak TutarÄ± (TL)",
+                "label": "Alacak Tutarı (TL)",
                 "type": "number",
                 "required": true
             },
             {
                 "key": "ALACAK_NEDENI",
-                "label": "AlacaÄŸÄ±n Nedeni",
+                "label": "Alacağın Nedeni",
                 "type": "textarea",
                 "required": true
             },
@@ -2722,53 +2768,53 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
                 "type": "date"
             }
         ],
-        "content": "## {{ICRA_DAIRESI}}'NE\n\n## TAKÄ°P TALEBÄ°\n\n**ALACAKLI:** {{ALACAKLI_AD}}\nTC Kimlik No: {{ALACAKLI_TC}}\nAdres: {{ALACAKLI_ADRES}}\n\n**BORÃ‡LU:** {{BORCLU_AD}}\nTC Kimlik No: {{BORCLU_TC}}\nAdres: {{BORCLU_ADRES}}\n\n---\n\n**TAKÄ°P KONUSU ALACAK:**\n\n| AÃ§Ä±klama | Tutar |\n|----------|-------|\n| AsÄ±l Alacak | {{ALACAK_TUTARI}} TL |\n| Faiz (Vade Tarihinden Ä°tibaren) | Hesaplanacak |\n| **TOPLAM** | {{ALACAK_TUTARI}} TL + Faiz |\n\n**ALACAÄIN NEDENÄ°:** {{ALACAK_NEDENI}}\n\n**VADE TARÄ°HÄ°:** {{VADE_TARIHI}}\n\n---\n\n## TALEP\n\nYukarÄ±da belirtilen alacaÄŸÄ±mÄ±n tahsili iÃ§in borÃ§lu aleyhine **genel haciz yoluyla ilamsÄ±z icra takibi** baÅŸlatÄ±lmasÄ±nÄ± talep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
+        "content": "## {{ICRA_DAIRESI}}'NE\n\n## TAKİP TALEBİ\n\n**ALACAKLI:** {{ALACAKLI_AD}}\nTC Kimlik No: {{ALACAKLI_TC}}\nAdres: {{ALACAKLI_ADRES}}\n\n**BORÇLU:** {{BORCLU_AD}}\nTC Kimlik No: {{BORCLU_TC}}\nAdres: {{BORCLU_ADRES}}\n\n---\n\n**TAKİP KONUSU ALACAK:**\n\n| Açıklama | Tutar |\n|----------|-------|\n| Asıl Alacak | {{ALACAK_TUTARI}} TL |\n| Faiz (Vade Tarihinden İtibaren) | Hesaplanacak |\n| **TOPLAM** | {{ALACAK_TUTARI}} TL + Faiz |\n\n**ALACAĞIN NEDENİ:** {{ALACAK_NEDENI}}\n\n**VADE TARİHİ:** {{VADE_TARIHI}}\n\n---\n\n## TALEP\n\nYukarıda belirtilen alacağımın tahsili için borçlu aleyhine **genel haciz yoluyla ilamsız icra takibi** başlatılmasını talep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
         "isPremium": false,
         "usageCount": 523
     },
     {
         "id": "8",
-        "category": "Ä°cra",
-        "subcategory": "Ä°cra Takibi",
-        "title": "Kambiyo Senedi Ä°cra Takibi",
-        "description": "Ã‡ek, senet veya poliÃ§e ile icra takibi baÅŸlatma",
+        "category": "İcra",
+        "subcategory": "İcra Takibi",
+        "title": "Kambiyo Senedi İcra Takibi",
+        "description": "Çek, senet veya poliçe ile icra takibi başlatma",
         "icon": "Receipt",
         "variables": [
             {
                 "key": "ICRA_DAIRESI",
-                "label": "Ä°cra Dairesi",
+                "label": "İcra Dairesi",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "ALACAKLI_AD",
-                "label": "AlacaklÄ± AdÄ±",
+                "label": "Alacaklı Adı",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "ALACAKLI_ADRES",
-                "label": "AlacaklÄ± Adresi",
+                "label": "Alacaklı Adresi",
                 "type": "textarea",
                 "required": true
             },
             {
                 "key": "BORCLU_AD",
-                "label": "BorÃ§lu AdÄ±",
+                "label": "Borçlu Adı",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "BORCLU_ADRES",
-                "label": "BorÃ§lu Adresi",
+                "label": "Borçlu Adresi",
                 "type": "textarea",
                 "required": true
             },
             {
                 "key": "SENET_TURU",
-                "label": "Senet TÃ¼rÃ¼",
+                "label": "Senet Türü",
                 "type": "text",
-                "placeholder": "Bono / Ã‡ek / PoliÃ§e"
+                "placeholder": "Bono / Çek / Poliçe"
             },
             {
                 "key": "SENET_TARIHI",
@@ -2778,7 +2824,7 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
             },
             {
                 "key": "SENET_TUTARI",
-                "label": "Senet TutarÄ± (TL)",
+                "label": "Senet Tutarı (TL)",
                 "type": "number",
                 "required": true
             },
@@ -2789,33 +2835,33 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
                 "required": true
             }
         ],
-        "content": "## {{ICRA_DAIRESI}}'NE\n\n## KAMBÄ°YO SENETLERÄ°NE MAHSUS HACÄ°Z YOLUYLA TAKÄ°P TALEBÄ°\n\n**ALACAKLI:** {{ALACAKLI_AD}}\nAdres: {{ALACAKLI_ADRES}}\n\n**BORÃ‡LU:** {{BORCLU_AD}}\nAdres: {{BORCLU_ADRES}}\n\n---\n\n**TAKÄ°BE KONU KAMBÄ°YO SENEDÄ°:**\n\n| Bilgi | DeÄŸer |\n|-------|-------|\n| Senet TÃ¼rÃ¼ | {{SENET_TURU}} |\n| DÃ¼zenleme Tarihi | {{SENET_TARIHI}} |\n| Vade Tarihi | {{VADE_TARIHI}} |\n| Senet TutarÄ± | {{SENET_TUTARI}} TL |\n\n---\n\n## TALEP\n\nEkte sunulan kambiyo senedine dayalÄ± olarak, Ä°Ä°K m.167 ve devamÄ± maddeleri uyarÄ±nca borÃ§lu aleyhine **kambiyo senetlerine mahsus haciz yoluyla takip** baÅŸlatÄ±lmasÄ±nÄ± talep ederim.\n\n**EKLER:**\n1. Kambiyo senedi aslÄ±\n2. Protesto belgesi (varsa)\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
+        "content": "## {{ICRA_DAIRESI}}'NE\n\n## KAMBİYO SENETLERİNE MAHSUS HACİZ YOLUYLA TAKİP TALEBİ\n\n**ALACAKLI:** {{ALACAKLI_AD}}\nAdres: {{ALACAKLI_ADRES}}\n\n**BORÇLU:** {{BORCLU_AD}}\nAdres: {{BORCLU_ADRES}}\n\n---\n\n**TAKİBE KONU KAMBİYO SENEDİ:**\n\n| Bilgi | Değer |\n|-------|-------|\n| Senet Türü | {{SENET_TURU}} |\n| Düzenleme Tarihi | {{SENET_TARIHI}} |\n| Vade Tarihi | {{VADE_TARIHI}} |\n| Senet Tutarı | {{SENET_TUTARI}} TL |\n\n---\n\n## TALEP\n\nEkte sunulan kambiyo senedine dayalı olarak, İİK m.167 ve devamı maddeleri uyarınca borçlu aleyhine **kambiyo senetlerine mahsus haciz yoluyla takip** başlatılmasını talep ederim.\n\n**EKLER:**\n1. Kambiyo senedi aslı\n2. Protesto belgesi (varsa)\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
         "isPremium": false,
         "usageCount": 412
     },
     {
         "id": "9",
-        "category": "Ä°cra",
-        "subcategory": "Ä°cra Ä°tiraz",
-        "title": "Borca Ä°tiraz DilekÃ§esi",
-        "description": "Ä°cra takibine karÅŸÄ± borca itiraz",
+        "category": "İcra",
+        "subcategory": "İcra İtiraz",
+        "title": "Borca İtiraz Dilekçesi",
+        "description": "İcra takibine karşı borca itiraz",
         "icon": "ShieldX",
         "variables": [
             {
                 "key": "ICRA_DAIRESI",
-                "label": "Ä°cra Dairesi",
+                "label": "İcra Dairesi",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "DOSYA_NO",
-                "label": "Ä°cra Dosya No",
+                "label": "İcra Dosya No",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "BORCLU_AD",
-                "label": "BorÃ§lu (Ä°tiraz Eden)",
+                "label": "Borçlu (İtiraz Eden)",
                 "type": "text",
                 "required": true
             },
@@ -2833,44 +2879,44 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
             },
             {
                 "key": "ALACAKLI_AD",
-                "label": "AlacaklÄ±",
+                "label": "Alacaklı",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "ITIRAZ_NEDENI",
-                "label": "Ä°tiraz Nedeni",
+                "label": "İtiraz Nedeni",
                 "type": "textarea",
                 "required": true
             }
         ],
-        "content": "## {{ICRA_DAIRESI}}'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**Ä°TÄ°RAZ EDEN (BORÃ‡LU):** {{BORCLU_AD}}\nTC Kimlik No: {{BORCLU_TC}}\nAdres: {{BORCLU_ADRES}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**KONU:** Ã–deme emrine itirazÄ±mdÄ±r.\n\n---\n\n## AÃ‡IKLAMALAR\n\n1. MÃ¼dÃ¼rlÃ¼ÄŸÃ¼nÃ¼zÃ¼n yukarÄ±da numarasÄ± yazÄ±lÄ± dosyasÄ±ndan tarafÄ±ma Ã¶deme emri tebliÄŸ edilmiÅŸtir.\n\n2. **Ä°TÄ°RAZ NEDENÄ°M:**\n{{ITIRAZ_NEDENI}}\n\n3. Bu nedenlerle sÃ¶z konusu takibe sÃ¼resinde itiraz ediyorum.\n\n---\n\n## HUKUKÄ° DAYANAK\n\n- 2004 sayÄ±lÄ± Ä°cra ve Ä°flas Kanunu m.62 (Ä°tiraz)\n- 2004 sayÄ±lÄ± Ä°cra ve Ä°flas Kanunu m.66 (Ä°tirazÄ±n hÃ¼kÃ¼mleri)\n\n---\n\n## SONUÃ‡ VE Ä°STEM\n\n**BORCA Ä°TÄ°RAZ EDÄ°YORUM.**\n\nTakibin durdurulmasÄ±nÄ± saygÄ±larÄ±mla arz ve talep ederim.\n\n{{TARIH}}\n{{BORCLU_AD}}\n",
+        "content": "## {{ICRA_DAIRESI}}'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**İTİRAZ EDEN (BORÇLU):** {{BORCLU_AD}}\nTC Kimlik No: {{BORCLU_TC}}\nAdres: {{BORCLU_ADRES}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**KONU:** Ödeme emrine itirazımdır.\n\n---\n\n## AÇIKLAMALAR\n\n1. Müdürlüğünüzün yukarıda numarası yazılı dosyasından tarafıma ödeme emri tebliğ edilmiştir.\n\n2. **İTİRAZ NEDENİM:**\n{{ITIRAZ_NEDENI}}\n\n3. Bu nedenlerle söz konusu takibe süresinde itiraz ediyorum.\n\n---\n\n## HUKUKİ DAYANAK\n\n- 2004 sayılı İcra ve İflas Kanunu m.62 (İtiraz)\n- 2004 sayılı İcra ve İflas Kanunu m.66 (İtirazın hükümleri)\n\n---\n\n## SONUÇ VE İSTEM\n\n**BORCA İTİRAZ EDİYORUM.**\n\nTakibin durdurulmasını saygılarımla arz ve talep ederim.\n\n{{TARIH}}\n{{BORCLU_AD}}\n",
         "isPremium": false,
         "usageCount": 678
     },
     {
         "id": "10",
-        "category": "Ä°cra",
-        "subcategory": "Ä°cra Ä°tiraz",
-        "title": "Ä°mzaya Ä°tiraz DilekÃ§esi",
+        "category": "İcra",
+        "subcategory": "İcra İtiraz",
+        "title": "İmzaya İtiraz Dilekçesi",
         "description": "Kambiyo senedindeki imzaya itiraz",
         "icon": "PenOff",
         "variables": [
             {
                 "key": "ICRA_MAHKEMESI",
-                "label": "Ä°cra Mahkemesi",
+                "label": "İcra Mahkemesi",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "DOSYA_NO",
-                "label": "Ä°cra Dosya No",
+                "label": "İcra Dosya No",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "DAVACI_AD",
-                "label": "DavacÄ± (BorÃ§lu)",
+                "label": "Davacı (Borçlu)",
                 "type": "text",
                 "required": true
             },
@@ -2882,7 +2928,7 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
             },
             {
                 "key": "DAVALI_AD",
-                "label": "DavalÄ± (AlacaklÄ±)",
+                "label": "Davalı (Alacaklı)",
                 "type": "text",
                 "required": true
             },
@@ -2893,21 +2939,21 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
                 "required": true
             }
         ],
-        "content": "## {{ICRA_MAHKEMESI}} BAÅKANLIÄINA\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**DAVACI (BORÃ‡LU):** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\n\n**DAVALI (ALACAKLI):** {{DAVALI_AD}}\n\n**KONU:** Kambiyo senedindeki imzaya itiraz hakkÄ±ndadÄ±r.\n\n---\n\n## AÃ‡IKLAMALAR\n\n1. DavalÄ± tarafÄ±ndan aleyhime baÅŸlatÄ±lan icra takibinde dayanak gÃ¶sterilen senedin bilgileri aÅŸaÄŸÄ±daki gibidir:\n{{SENET_BILGI}}\n\n2. **SÃ¶z konusu senetteki imza tarafÄ±ma ait deÄŸildir.**\n\n3. Senedin altÄ±ndaki imza ile benim gerÃ§ek imzam arasÄ±nda aÃ§Ä±k fark bulunmakta olup, bu husus bilirkiÅŸi incelemesiyle de ortaya konulacaktÄ±r.\n\n---\n\n## HUKUKÄ° SEBEPLER\n\n- 2004 sayÄ±lÄ± Ä°cra ve Ä°flas Kanunu m.170 (Ä°mzaya itiraz)\n- 6100 sayÄ±lÄ± HMK m.211 (Ä°mza incelemesi)\n\n---\n\n## DELÄ°LLER\n\n1. Ä°cra dosyasÄ±\n2. Senet aslÄ±\n3. Ä°mza Ã¶rnekleri\n4. BilirkiÅŸi incelemesi\n5. NÃ¼fus kayÄ±t Ã¶rneÄŸi\n\n---\n\n## SONUÃ‡ VE Ä°STEM\n\n1. **Senetteki imzanÄ±n tarafÄ±ma ait olmadÄ±ÄŸÄ±nÄ±n tespitine,**\n2. Ä°cra takibinin iptaline,\n3. %20 oranÄ±nda kÃ¶tÃ¼niyet tazminatÄ±na hÃ¼kmedilmesine,\n4. YargÄ±lama giderlerinin davalÄ±ya yÃ¼kletilmesine,\n\nkarar verilmesini saygÄ±larÄ±mla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
+        "content": "## {{ICRA_MAHKEMESI}} BAŞKANLIĞINA\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**DAVACI (BORÇLU):** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\n\n**DAVALI (ALACAKLI):** {{DAVALI_AD}}\n\n**KONU:** Kambiyo senedindeki imzaya itiraz hakkındadır.\n\n---\n\n## AÇIKLAMALAR\n\n1. Davalı tarafından aleyhime başlatılan icra takibinde dayanak gösterilen senedin bilgileri aşağıdaki gibidir:\n{{SENET_BILGI}}\n\n2. **Söz konusu senetteki imza tarafıma ait değildir.**\n\n3. Senedin altındaki imza ile benim gerçek imzam arasında açık fark bulunmakta olup, bu husus bilirkişi incelemesiyle de ortaya konulacaktır.\n\n---\n\n## HUKUKİ SEBEPLER\n\n- 2004 sayılı İcra ve İflas Kanunu m.170 (İmzaya itiraz)\n- 6100 sayılı HMK m.211 (İmza incelemesi)\n\n---\n\n## DELİLLER\n\n1. İcra dosyası\n2. Senet aslı\n3. İmza örnekleri\n4. Bilirkişi incelemesi\n5. Nüfus kayıt örneği\n\n---\n\n## SONUÇ VE İSTEM\n\n1. **Senetteki imzanın tarafıma ait olmadığının tespitine,**\n2. İcra takibinin iptaline,\n3. %20 oranında kötüniyet tazminatına hükmedilmesine,\n4. Yargılama giderlerinin davalıya yükletilmesine,\n\nkarar verilmesini saygılarımla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
         "isPremium": false,
         "usageCount": 234
     },
     {
         "id": "11",
-        "category": "Ä°cra",
+        "category": "İcra",
         "subcategory": "Haciz",
-        "title": "Haciz KaldÄ±rma Talebi",
-        "description": "Haczedilen mal Ã¼zerindeki haczin kaldÄ±rÄ±lmasÄ± talebi",
+        "title": "Haciz Kaldırma Talebi",
+        "description": "Haczedilen mal üzerindeki haczin kaldırılması talebi",
         "icon": "Unlock",
         "variables": [
             {
                 "key": "ICRA_DAIRESI",
-                "label": "Ä°cra Dairesi",
+                "label": "İcra Dairesi",
                 "type": "text",
                 "required": true
             },
@@ -2925,44 +2971,44 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
             },
             {
                 "key": "HACIZLI_MAL",
-                "label": "Haczedilen Mal/EÅŸya",
+                "label": "Haczedilen Mal/Eşya",
                 "type": "textarea",
                 "required": true
             },
             {
                 "key": "KALDIRMA_NEDENI",
-                "label": "Haczin KaldÄ±rÄ±lma Nedeni",
+                "label": "Haczin Kaldırılma Nedeni",
                 "type": "textarea",
                 "required": true
             }
         ],
-        "content": "## {{ICRA_DAIRESI}} MÃœDÃœRLÃœÄÃœ'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**TALEP EDEN:** {{TALEP_EDEN}}\n\n**KONU:** Haciz kaldÄ±rma talebimdir.\n\n---\n\n## AÃ‡IKLAMALAR\n\n1. MÃ¼dÃ¼rlÃ¼ÄŸÃ¼nÃ¼zÃ¼n yukarÄ±da numarasÄ± yazÄ±lÄ± dosyasÄ±nda aÅŸaÄŸÄ±da belirtilen mal/eÅŸya Ã¼zerine haciz konulmuÅŸtur:\n\n**HACZEDÄ°LEN MAL/EÅYA:**\n{{HACIZLI_MAL}}\n\n2. **HACZÄ°N KALDIRILMASI GEREKÃ‡ESÄ°:**\n{{KALDIRMA_NEDENI}}\n\n---\n\n## HUKUKÄ° DAYANAK\n\n- 2004 sayÄ±lÄ± Ä°cra ve Ä°flas Kanunu m.82 (Haczedilemezlik)\n- 2004 sayÄ±lÄ± Ä°cra ve Ä°flas Kanunu m.85 (TaÅŸÄ±nÄ±r haczi)\n\n---\n\n## SONUÃ‡ VE Ä°STEM\n\nYukarÄ±da aÃ§Ä±klanan nedenlerle, sÃ¶z konusu mal/eÅŸya Ã¼zerindeki haczin kaldÄ±rÄ±lmasÄ±nÄ± saygÄ±larÄ±mla talep ederim.\n\n{{TARIH}}\n{{TALEP_EDEN}}\n",
+        "content": "## {{ICRA_DAIRESI}} MÜDÜRLÜĞÜ'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**TALEP EDEN:** {{TALEP_EDEN}}\n\n**KONU:** Haciz kaldırma talebimdir.\n\n---\n\n## AÇIKLAMALAR\n\n1. Müdürlüğünüzün yukarıda numarası yazılı dosyasında aşağıda belirtilen mal/eşya üzerine haciz konulmuştur:\n\n**HACZEDİLEN MAL/EŞYA:**\n{{HACIZLI_MAL}}\n\n2. **HACZİN KALDIRILMASI GEREKÇESİ:**\n{{KALDIRMA_NEDENI}}\n\n---\n\n## HUKUKİ DAYANAK\n\n- 2004 sayılı İcra ve İflas Kanunu m.82 (Haczedilemezlik)\n- 2004 sayılı İcra ve İflas Kanunu m.85 (Taşınır haczi)\n\n---\n\n## SONUÇ VE İSTEM\n\nYukarıda açıklanan nedenlerle, söz konusu mal/eşya üzerindeki haczin kaldırılmasını saygılarımla talep ederim.\n\n{{TARIH}}\n{{TALEP_EDEN}}\n",
         "isPremium": false,
         "usageCount": 189
     },
     {
         "id": "12",
-        "category": "Ä°cra",
+        "category": "İcra",
         "subcategory": "Haciz",
-        "title": "Ä°stihkak DavasÄ± DilekÃ§esi",
-        "description": "Haczedilen malÄ±n Ã¼Ã§Ã¼ncÃ¼ kiÅŸiye ait olduÄŸunun tespiti",
+        "title": "İstihkak Davası Dilekçesi",
+        "description": "Haczedilen malın üçüncü kişiye ait olduğunun tespiti",
         "icon": "FileWarning",
         "variables": [
             {
                 "key": "ICRA_MAHKEMESI",
-                "label": "Ä°cra Mahkemesi",
+                "label": "İcra Mahkemesi",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "DOSYA_NO",
-                "label": "Ä°cra Dosya No",
+                "label": "İcra Dosya No",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "DAVACI_AD",
-                "label": "DavacÄ± (3. KiÅŸi)",
+                "label": "Davacı (3. Kişi)",
                 "type": "text",
                 "required": true
             },
@@ -2974,7 +3020,7 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
             },
             {
                 "key": "DAVALI_AD",
-                "label": "DavalÄ± (AlacaklÄ±)",
+                "label": "Davalı (Alacaklı)",
                 "type": "text",
                 "required": true
             },
@@ -2986,32 +3032,32 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
             },
             {
                 "key": "MULKIYET_DELILI",
-                "label": "MÃ¼lkiyet Delilleri",
+                "label": "Mülkiyet Delilleri",
                 "type": "textarea",
                 "required": true
             }
         ],
-        "content": "## {{ICRA_MAHKEMESI}} BAÅKANLIÄINA\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**DAVACI (3. KÄ°ÅÄ°):** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\n\n**DAVALI (ALACAKLI):** {{DAVALI_AD}}\n\n**KONU:** Ä°stihkak davasÄ± hakkÄ±ndadÄ±r.\n\n---\n\n## AÃ‡IKLAMALAR\n\n1. DavalÄ± tarafÄ±ndan yÃ¼rÃ¼tÃ¼len icra takibinde, borÃ§lunun evinde/iÅŸyerinde yapÄ±lan haciz iÅŸlemi sÄ±rasÄ±nda **bana ait olan** aÅŸaÄŸÄ±daki mal haczedilmiÅŸtir:\n\n**HACZEDÄ°LEN MAL:**\n{{HACIZLI_MAL}}\n\n2. **Bu mal bana aittir ve borÃ§lu ile hiÃ§bir ilgisi yoktur.**\n\n3. MÃ¼lkiyetimi ispatlayan deliller:\n{{MULKIYET_DELILI}}\n\n---\n\n## HUKUKÄ° SEBEPLER\n\n- 2004 sayÄ±lÄ± Ä°cra ve Ä°flas Kanunu m.96-99 (Ä°stihkak davasÄ±)\n\n---\n\n## DELÄ°LLER\n\n1. Fatura ve satÄ±ÅŸ belgeleri\n2. Banka kayÄ±tlarÄ±\n3. TanÄ±k beyanlarÄ±\n4. BilirkiÅŸi incelemesi\n5. DiÄŸer yasal deliller\n\n---\n\n## SONUÃ‡ VE Ä°STEM\n\n1. **Haczedilen malÄ±n tarafÄ±ma ait olduÄŸunun tespitine,**\n2. SÃ¶z konusu mal Ã¼zerindeki haczin kaldÄ±rÄ±lmasÄ±na,\n3. YargÄ±lama giderlerinin davalÄ±ya yÃ¼kletilmesine,\n\nkarar verilmesini saygÄ±larÄ±mla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
+        "content": "## {{ICRA_MAHKEMESI}} BAŞKANLIĞINA\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**DAVACI (3. KİŞİ):** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\n\n**DAVALI (ALACAKLI):** {{DAVALI_AD}}\n\n**KONU:** İstihkak davası hakkındadır.\n\n---\n\n## AÇIKLAMALAR\n\n1. Davalı tarafından yürütülen icra takibinde, borçlunun evinde/işyerinde yapılan haciz işlemi sırasında **bana ait olan** aşağıdaki mal haczedilmiştir:\n\n**HACZEDİLEN MAL:**\n{{HACIZLI_MAL}}\n\n2. **Bu mal bana aittir ve borçlu ile hiçbir ilgisi yoktur.**\n\n3. Mülkiyetimi ispatlayan deliller:\n{{MULKIYET_DELILI}}\n\n---\n\n## HUKUKİ SEBEPLER\n\n- 2004 sayılı İcra ve İflas Kanunu m.96-99 (İstihkak davası)\n\n---\n\n## DELİLLER\n\n1. Fatura ve satış belgeleri\n2. Banka kayıtları\n3. Tanık beyanları\n4. Bilirkişi incelemesi\n5. Diğer yasal deliller\n\n---\n\n## SONUÇ VE İSTEM\n\n1. **Haczedilen malın tarafıma ait olduğunun tespitine,**\n2. Söz konusu mal üzerindeki haczin kaldırılmasına,\n3. Yargılama giderlerinin davalıya yükletilmesine,\n\nkarar verilmesini saygılarımla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
         "isPremium": false,
         "usageCount": 156
     },
     {
         "id": "13",
-        "category": "Ä°ÅŸ Hukuku",
-        "subcategory": "Ä°ÅŸe Ä°ade",
-        "title": "Ä°ÅŸe Ä°ade DavasÄ± DilekÃ§esi",
-        "description": "HaksÄ±z fesih nedeniyle iÅŸe iade talebi",
+        "category": "İş Hukuku",
+        "subcategory": "İşe İade",
+        "title": "İşe İade Davası Dilekçesi",
+        "description": "Haksız fesih nedeniyle işe iade talebi",
         "icon": "UserCheck",
         "variables": [
             {
                 "key": "MAHKEME",
-                "label": "Ä°ÅŸ Mahkemesi",
+                "label": "İş Mahkemesi",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "DAVACI_AD",
-                "label": "DavacÄ± (Ä°ÅŸÃ§i)",
+                "label": "Davacı (İşçi)",
                 "type": "text",
                 "required": true
             },
@@ -3029,19 +3075,19 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
             },
             {
                 "key": "DAVALI_AD",
-                "label": "DavalÄ± (Ä°ÅŸveren)",
+                "label": "Davalı (İşveren)",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "DAVALI_ADRES",
-                "label": "Ä°ÅŸveren Adresi",
+                "label": "İşveren Adresi",
                 "type": "textarea",
                 "required": true
             },
             {
                 "key": "ISE_GIRIS_TARIHI",
-                "label": "Ä°ÅŸe GiriÅŸ Tarihi",
+                "label": "İşe Giriş Tarihi",
                 "type": "date",
                 "required": true
             },
@@ -3053,37 +3099,37 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
             },
             {
                 "key": "GOREV",
-                "label": "GÃ¶revi/Pozisyonu",
+                "label": "Görevi/Pozisyonu",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "FESIH_GEREKCESI",
-                "label": "Ä°ÅŸverenin Fesih GerekÃ§esi",
+                "label": "İşverenin Fesih Gerekçesi",
                 "type": "textarea"
             }
         ],
-        "content": "## {{MAHKEME}} BAÅKANLIÄINA\n\n**DAVACI:** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\nAdres: {{DAVACI_ADRES}}\n\n**DAVALI:** {{DAVALI_AD}}\nAdres: {{DAVALI_ADRES}}\n\n**KONU:** Feshin geÃ§ersizliÄŸi ve iÅŸe iade talebimizdir.\n\n---\n\n## AÃ‡IKLAMALAR\n\n1. MÃ¼vekkilim {{ISE_GIRIS_TARIHI}} tarihinden {{FESIH_TARIHI}} tarihine kadar davalÄ± iÅŸyerinde **{{GOREV}}** olarak Ã§alÄ±ÅŸmÄ±ÅŸtÄ±r.\n\n2. Ä°ÅŸ sÃ¶zleÅŸmesi {{FESIH_TARIHI}} tarihinde iÅŸveren tarafÄ±ndan **haksÄ±z ve geÃ§ersiz ÅŸekilde** feshedilmiÅŸtir.\n\n3. Ä°ÅŸverenin ileri sÃ¼rdÃ¼ÄŸÃ¼ fesih gerekÃ§esi:\n{{FESIH_GEREKCESI}}\n\n4. Bu gerekÃ§e gerÃ§eÄŸi yansÄ±tmamakta olup, fesih haksÄ±z ve geÃ§ersizdir.\n\n---\n\n## HUKUKÄ° SEBEPLER\n\n- 4857 sayÄ±lÄ± Ä°ÅŸ Kanunu m.18 (Feshin geÃ§erli sebebe dayandÄ±rÄ±lmasÄ±)\n- 4857 sayÄ±lÄ± Ä°ÅŸ Kanunu m.20 (Fesih bildirimine itiraz)\n- 4857 sayÄ±lÄ± Ä°ÅŸ Kanunu m.21 (GeÃ§ersiz sebeple feshin sonuÃ§larÄ±)\n\n---\n\n## DELÄ°LLER\n\n1. Ä°ÅŸ sÃ¶zleÅŸmesi\n2. Bordro ve SGK kayÄ±tlarÄ±\n3. Fesih bildirimi\n4. TanÄ±k beyanlarÄ±\n5. Ä°ÅŸyeri dosyasÄ±\n\n---\n\n## SONUÃ‡ VE Ä°STEM\n\n1. **Feshin geÃ§ersizliÄŸine ve iÅŸe iadeye,**\n2. Ä°ÅŸe baÅŸlatmama halinde 4-8 aylÄ±k brÃ¼t Ã¼cret tutarÄ±nda tazminata,\n3. BoÅŸta geÃ§en sÃ¼re Ã¼cretinin (4 aya kadar) Ã¶denmesine,\n4. YargÄ±lama giderlerinin davalÄ±ya yÃ¼kletilmesine,\n\nkarar verilmesini saygÄ±larÄ±mla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
+        "content": "## {{MAHKEME}} BAŞKANLIĞINA\n\n**DAVACI:** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\nAdres: {{DAVACI_ADRES}}\n\n**DAVALI:** {{DAVALI_AD}}\nAdres: {{DAVALI_ADRES}}\n\n**KONU:** Feshin geçersizliği ve işe iade talebimizdir.\n\n---\n\n## AÇIKLAMALAR\n\n1. Müvekkilim {{ISE_GIRIS_TARIHI}} tarihinden {{FESIH_TARIHI}} tarihine kadar davalı işyerinde **{{GOREV}}** olarak çalışmıştır.\n\n2. İş sözleşmesi {{FESIH_TARIHI}} tarihinde işveren tarafından **haksız ve geçersiz şekilde** feshedilmiştir.\n\n3. İşverenin ileri sürdüğü fesih gerekçesi:\n{{FESIH_GEREKCESI}}\n\n4. Bu gerekçe gerçeği yansıtmamakta olup, fesih haksız ve geçersizdir.\n\n---\n\n## HUKUKİ SEBEPLER\n\n- 4857 sayılı İş Kanunu m.18 (Feshin geçerli sebebe dayandırılması)\n- 4857 sayılı İş Kanunu m.20 (Fesih bildirimine itiraz)\n- 4857 sayılı İş Kanunu m.21 (Geçersiz sebeple feshin sonuçları)\n\n---\n\n## DELİLLER\n\n1. İş sözleşmesi\n2. Bordro ve SGK kayıtları\n3. Fesih bildirimi\n4. Tanık beyanları\n5. İşyeri dosyası\n\n---\n\n## SONUÇ VE İSTEM\n\n1. **Feshin geçersizliğine ve işe iadeye,**\n2. İşe başlatmama halinde 4-8 aylık brüt ücret tutarında tazminata,\n3. Boşta geçen süre ücretinin (4 aya kadar) ödenmesine,\n4. Yargılama giderlerinin davalıya yükletilmesine,\n\nkarar verilmesini saygılarımla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
         "isPremium": false,
         "usageCount": 445
     },
     {
         "id": "14",
-        "category": "Ä°ÅŸ Hukuku",
+        "category": "İş Hukuku",
         "subcategory": "Tazminat",
-        "title": "KÄ±dem ve Ä°hbar TazminatÄ± DavasÄ±",
-        "description": "Ä°ÅŸ akdi feshi sonrasÄ± tazminat talebi",
+        "title": "Kıdem ve İhbar Tazminatı Davası",
+        "description": "İş akdi feshi sonrası tazminat talebi",
         "icon": "Banknote",
         "variables": [
             {
                 "key": "MAHKEME",
-                "label": "Ä°ÅŸ Mahkemesi",
+                "label": "İş Mahkemesi",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "DAVACI_AD",
-                "label": "DavacÄ± (Ä°ÅŸÃ§i)",
+                "label": "Davacı (İşçi)",
                 "type": "text",
                 "required": true
             },
@@ -3095,60 +3141,60 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
             },
             {
                 "key": "DAVALI_AD",
-                "label": "DavalÄ± (Ä°ÅŸveren)",
+                "label": "Davalı (İşveren)",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "ISE_GIRIS",
-                "label": "Ä°ÅŸe GiriÅŸ Tarihi",
+                "label": "İşe Giriş Tarihi",
                 "type": "date",
                 "required": true
             },
             {
                 "key": "CIKIS_TARIHI",
-                "label": "Ä°ÅŸten Ã‡Ä±kÄ±ÅŸ Tarihi",
+                "label": "İşten Çıkış Tarihi",
                 "type": "date",
                 "required": true
             },
             {
                 "key": "SON_UCRET",
-                "label": "GiydirilmiÅŸ BrÃ¼t Ãœcret (TL)",
+                "label": "Giydirilmiş Brüt Ücret (TL)",
                 "type": "number",
                 "required": true
             },
             {
                 "key": "KIDEM_TAZMINATI",
-                "label": "KÄ±dem TazminatÄ± Talebi (TL)",
+                "label": "Kıdem Tazminatı Talebi (TL)",
                 "type": "number"
             },
             {
                 "key": "IHBAR_TAZMINATI",
-                "label": "Ä°hbar TazminatÄ± Talebi (TL)",
+                "label": "İhbar Tazminatı Talebi (TL)",
                 "type": "number"
             }
         ],
-        "content": "## {{MAHKEME}} BAÅKANLIÄINA\n\n**DAVACI:** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\n\n**DAVALI:** {{DAVALI_AD}}\n\n**KONU:** KÄ±dem ve ihbar tazminatÄ± talebimizdir.\n\n**DAVA DEÄERÄ°:** {{KIDEM_TAZMINATI}} TL + {{IHBAR_TAZMINATI}} TL\n\n---\n\n## AÃ‡IKLAMALAR\n\n1. MÃ¼vekkilim {{ISE_GIRIS}} - {{CIKIS_TARIHI}} tarihleri arasÄ±nda davalÄ± iÅŸyerinde Ã§alÄ±ÅŸmÄ±ÅŸtÄ±r.\n\n2. **Son aylÄ±k giydirilmiÅŸ brÃ¼t Ã¼creti:** {{SON_UCRET}} TL\n\n3. Ä°ÅŸ akdi iÅŸveren tarafÄ±ndan haksÄ±z olarak feshedilmiÅŸ, ancak tazminatlarÄ± Ã¶denmemiÅŸtir.\n\n---\n\n## TALEP EDÄ°LEN ALACAKLAR\n\n| Alacak Kalemi | Tutar |\n|---------------|-------|\n| KÄ±dem TazminatÄ± | {{KIDEM_TAZMINATI}} TL |\n| Ä°hbar TazminatÄ± | {{IHBAR_TAZMINATI}} TL |\n| **TOPLAM** | Hesaplanacak |\n\n---\n\n## HUKUKÄ° SEBEPLER\n\n- 1475 sayÄ±lÄ± Ä°ÅŸ Kanunu m.14 (KÄ±dem tazminatÄ±)\n- 4857 sayÄ±lÄ± Ä°ÅŸ Kanunu m.17 (SÃ¼reli fesih / Ä°hbar)\n\n---\n\n## SONUÃ‡ VE Ä°STEM\n\n1. **{{KIDEM_TAZMINATI}} TL kÄ±dem tazminatÄ±nÄ±n** fesih tarihinden itibaren en yÃ¼ksek mevduat faiziyle birlikte,\n2. **{{IHBAR_TAZMINATI}} TL ihbar tazminatÄ±nÄ±n** yasal faiziyle birlikte davalÄ±dan tahsiline,\n3. YargÄ±lama giderlerinin davalÄ±ya yÃ¼kletilmesine,\n\nkarar verilmesini saygÄ±larÄ±mla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
+        "content": "## {{MAHKEME}} BAŞKANLIĞINA\n\n**DAVACI:** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\n\n**DAVALI:** {{DAVALI_AD}}\n\n**KONU:** Kıdem ve ihbar tazminatı talebimizdir.\n\n**DAVA DEĞERİ:** {{KIDEM_TAZMINATI}} TL + {{IHBAR_TAZMINATI}} TL\n\n---\n\n## AÇIKLAMALAR\n\n1. Müvekkilim {{ISE_GIRIS}} - {{CIKIS_TARIHI}} tarihleri arasında davalı işyerinde çalışmıştır.\n\n2. **Son aylık giydirilmiş brüt ücreti:** {{SON_UCRET}} TL\n\n3. İş akdi işveren tarafından haksız olarak feshedilmiş, ancak tazminatları ödenmemiştir.\n\n---\n\n## TALEP EDİLEN ALACAKLAR\n\n| Alacak Kalemi | Tutar |\n|---------------|-------|\n| Kıdem Tazminatı | {{KIDEM_TAZMINATI}} TL |\n| İhbar Tazminatı | {{IHBAR_TAZMINATI}} TL |\n| **TOPLAM** | Hesaplanacak |\n\n---\n\n## HUKUKİ SEBEPLER\n\n- 1475 sayılı İş Kanunu m.14 (Kıdem tazminatı)\n- 4857 sayılı İş Kanunu m.17 (Süreli fesih / İhbar)\n\n---\n\n## SONUÇ VE İSTEM\n\n1. **{{KIDEM_TAZMINATI}} TL kıdem tazminatının** fesih tarihinden itibaren en yüksek mevduat faiziyle birlikte,\n2. **{{IHBAR_TAZMINATI}} TL ihbar tazminatının** yasal faiziyle birlikte davalıdan tahsiline,\n3. Yargılama giderlerinin davalıya yükletilmesine,\n\nkarar verilmesini saygılarımla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
         "isPremium": false,
         "usageCount": 567
     },
     {
         "id": "15",
         "category": "Hukuk",
-        "subcategory": "TÃ¼ketici Hukuku",
-        "title": "TÃ¼ketici Hakem Heyeti BaÅŸvurusu",
-        "description": "AyÄ±plÄ± mal/hizmet iÃ§in tÃ¼ketici hakem heyetine baÅŸvuru",
+        "subcategory": "Tüketici Hukuku",
+        "title": "Tüketici Hakem Heyeti Başvurusu",
+        "description": "Ayıplı mal/hizmet için tüketici hakem heyetine başvuru",
         "icon": "ShoppingCart",
         "variables": [
             {
                 "key": "HAKEM_HEYETI",
-                "label": "TÃ¼ketici Hakem Heyeti",
+                "label": "Tüketici Hakem Heyeti",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "BASVURAN_AD",
-                "label": "BaÅŸvuran AdÄ±",
+                "label": "Başvuran Adı",
                 "type": "text",
                 "required": true
             },
@@ -3171,61 +3217,61 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
             },
             {
                 "key": "SATICI_AD",
-                "label": "SatÄ±cÄ±/Firma AdÄ±",
+                "label": "Satıcı/Firma Adı",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "SATICI_ADRES",
-                "label": "SatÄ±cÄ± Adresi",
+                "label": "Satıcı Adresi",
                 "type": "textarea"
             },
             {
                 "key": "URUN_ADI",
-                "label": "ÃœrÃ¼n/Hizmet AdÄ±",
+                "label": "Ürün/Hizmet Adı",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "SATIN_ALMA_TARIHI",
-                "label": "SatÄ±n Alma Tarihi",
+                "label": "Satın Alma Tarihi",
                 "type": "date",
                 "required": true
             },
             {
                 "key": "URUN_BEDELI",
-                "label": "ÃœrÃ¼n Bedeli (TL)",
+                "label": "Ürün Bedeli (TL)",
                 "type": "number",
                 "required": true
             },
             {
                 "key": "SIKAYET_KONUSU",
-                "label": "Åikayet Konusu",
+                "label": "Şikayet Konusu",
                 "type": "textarea",
                 "required": true
             }
         ],
-        "content": "## {{HAKEM_HEYETI}}'NE\n\n## TÃœKETÄ°CÄ° ÅÄ°KAYET BAÅVURUSU\n\n**BAÅVURAN (TÃœKETÄ°CÄ°):**\nAd Soyad: {{BASVURAN_AD}}\nTC Kimlik No: {{BASVURAN_TC}}\nAdres: {{BASVURAN_ADRES}}\nTelefon: {{BASVURAN_TEL}}\n\n**ÅÄ°KAYET EDÄ°LEN (SATICI):**\nFirma AdÄ±: {{SATICI_AD}}\nAdres: {{SATICI_ADRES}}\n\n---\n\n**ÅÄ°KAYETE KONU ÃœRÃœN/HÄ°ZMET:**\n\n| Bilgi | DeÄŸer |\n|-------|-------|\n| ÃœrÃ¼n/Hizmet | {{URUN_ADI}} |\n| SatÄ±n Alma Tarihi | {{SATIN_ALMA_TARIHI}} |\n| Bedel | {{URUN_BEDELI}} TL |\n\n---\n\n## ÅÄ°KAYET KONUSU\n\n{{SIKAYET_KONUSU}}\n\n---\n\n## TALEP\n\n6502 sayÄ±lÄ± TÃ¼keticinin KorunmasÄ± HakkÄ±nda Kanun uyarÄ±nca;\n\n1. AyÄ±plÄ± Ã¼rÃ¼nÃ¼n/hizmetin bedelinin iadesi,\n2. Alternatif olarak Ã¼rÃ¼nÃ¼n deÄŸiÅŸtirilmesi veya Ã¼cretsiz onarÄ±mÄ±,\n\nhususlarÄ±nda karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.\n\n**EKLER:**\n1. Fatura/fiÅŸ sureti\n2. ÃœrÃ¼n fotoÄŸraflarÄ±\n3. YazÄ±ÅŸma Ã¶rnekleri\n\n{{TARIH}}\n{{BASVURAN_AD}}\n",
+        "content": "## {{HAKEM_HEYETI}}'NE\n\n## TÜKETİCİ ŞİKAYET BAŞVURUSU\n\n**BAŞVURAN (TÜKETİCİ):**\nAd Soyad: {{BASVURAN_AD}}\nTC Kimlik No: {{BASVURAN_TC}}\nAdres: {{BASVURAN_ADRES}}\nTelefon: {{BASVURAN_TEL}}\n\n**ŞİKAYET EDİLEN (SATICI):**\nFirma Adı: {{SATICI_AD}}\nAdres: {{SATICI_ADRES}}\n\n---\n\n**ŞİKAYETE KONU ÜRÜN/HİZMET:**\n\n| Bilgi | Değer |\n|-------|-------|\n| Ürün/Hizmet | {{URUN_ADI}} |\n| Satın Alma Tarihi | {{SATIN_ALMA_TARIHI}} |\n| Bedel | {{URUN_BEDELI}} TL |\n\n---\n\n## ŞİKAYET KONUSU\n\n{{SIKAYET_KONUSU}}\n\n---\n\n## TALEP\n\n6502 sayılı Tüketicinin Korunması Hakkında Kanun uyarınca;\n\n1. Ayıplı ürünün/hizmetin bedelinin iadesi,\n2. Alternatif olarak ürünün değiştirilmesi veya ücretsiz onarımı,\n\nhususlarında karar verilmesini saygılarımla arz ve talep ederim.\n\n**EKLER:**\n1. Fatura/fiş sureti\n2. Ürün fotoğrafları\n3. Yazışma örnekleri\n\n{{TARIH}}\n{{BASVURAN_AD}}\n",
         "isPremium": false,
         "usageCount": 892
     },
     {
         "id": "16",
         "category": "Hukuk",
-        "subcategory": "TÃ¼ketici Hukuku",
-        "title": "TÃ¼ketici Mahkemesi Dava DilekÃ§esi",
-        "description": "TÃ¼ketici uyuÅŸmazlÄ±klarÄ± iÃ§in dava dilekÃ§esi",
+        "subcategory": "Tüketici Hukuku",
+        "title": "Tüketici Mahkemesi Dava Dilekçesi",
+        "description": "Tüketici uyuşmazlıkları için dava dilekçesi",
         "icon": "Scale",
         "variables": [
             {
                 "key": "MAHKEME",
-                "label": "TÃ¼ketici Mahkemesi",
+                "label": "Tüketici Mahkemesi",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "DAVACI_AD",
-                "label": "DavacÄ± AdÄ±",
+                "label": "Davacı Adı",
                 "type": "text",
                 "required": true
             },
@@ -3237,34 +3283,34 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
             },
             {
                 "key": "DAVACI_ADRES",
-                "label": "DavacÄ± Adresi",
+                "label": "Davacı Adresi",
                 "type": "textarea"
             },
             {
                 "key": "DAVALI_AD",
-                "label": "DavalÄ± Firma",
+                "label": "Davalı Firma",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "DAVALI_ADRES",
-                "label": "DavalÄ± Adresi",
+                "label": "Davalı Adresi",
                 "type": "textarea"
             },
             {
                 "key": "DAVA_DEGERI",
-                "label": "Dava DeÄŸeri (TL)",
+                "label": "Dava Değeri (TL)",
                 "type": "number",
                 "required": true
             },
             {
                 "key": "OLAY_ACIKLAMASI",
-                "label": "OlayÄ±n AÃ§Ä±klamasÄ±",
+                "label": "Olayın Açıklaması",
                 "type": "textarea",
                 "required": true
             }
         ],
-        "content": "## {{MAHKEME}} BAÅKANLIÄINA\n\n**DAVACI:** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\nAdres: {{DAVACI_ADRES}}\n\n**DAVALI:** {{DAVALI_AD}}\nAdres: {{DAVALI_ADRES}}\n\n**KONU:** TÃ¼ketici iÅŸleminden kaynaklanan tazminat talebimizdir.\n\n**DAVA DEÄERÄ°:** {{DAVA_DEGERI}} TL\n\n---\n\n## AÃ‡IKLAMALAR\n\n{{OLAY_ACIKLAMASI}}\n\n---\n\n## HUKUKÄ° SEBEPLER\n\n- 6502 sayÄ±lÄ± TÃ¼keticinin KorunmasÄ± HakkÄ±nda Kanun\n- 6098 sayÄ±lÄ± TÃ¼rk BorÃ§lar Kanunu\n\n---\n\n## DELÄ°LLER\n\n1. Fatura ve satÄ±ÅŸ belgeleri\n2. SÃ¶zleÅŸme Ã¶rnekleri\n3. YazÄ±ÅŸmalar\n4. TanÄ±k beyanlarÄ±\n5. BilirkiÅŸi incelemesi\n\n---\n\n## SONUÃ‡ VE Ä°STEM\n\n1. {{DAVA_DEGERI}} TL'nin yasal faiziyle birlikte davalÄ±dan tahsiline,\n2. YargÄ±lama giderlerinin davalÄ±ya yÃ¼kletilmesine,\n\nkarar verilmesini saygÄ±larÄ±mla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
+        "content": "## {{MAHKEME}} BAŞKANLIĞINA\n\n**DAVACI:** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\nAdres: {{DAVACI_ADRES}}\n\n**DAVALI:** {{DAVALI_AD}}\nAdres: {{DAVALI_ADRES}}\n\n**KONU:** Tüketici işleminden kaynaklanan tazminat talebimizdir.\n\n**DAVA DEĞERİ:** {{DAVA_DEGERI}} TL\n\n---\n\n## AÇIKLAMALAR\n\n{{OLAY_ACIKLAMASI}}\n\n---\n\n## HUKUKİ SEBEPLER\n\n- 6502 sayılı Tüketicinin Korunması Hakkında Kanun\n- 6098 sayılı Türk Borçlar Kanunu\n\n---\n\n## DELİLLER\n\n1. Fatura ve satış belgeleri\n2. Sözleşme örnekleri\n3. Yazışmalar\n4. Tanık beyanları\n5. Bilirkişi incelemesi\n\n---\n\n## SONUÇ VE İSTEM\n\n1. {{DAVA_DEGERI}} TL'nin yasal faiziyle birlikte davalıdan tahsiline,\n2. Yargılama giderlerinin davalıya yükletilmesine,\n\nkarar verilmesini saygılarımla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
         "isPremium": false,
         "usageCount": 334
     },
@@ -3272,8 +3318,8 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
         "id": "17",
         "category": "Hukuk",
         "subcategory": "Ticaret Hukuku",
-        "title": "Alacak DavasÄ± DilekÃ§esi (Ticari)",
-        "description": "Ticari alacak tahsili iÃ§in dava dilekÃ§esi",
+        "title": "Alacak Davası Dilekçesi (Ticari)",
+        "description": "Ticari alacak tahsili için dava dilekçesi",
         "icon": "Briefcase",
         "variables": [
             {
@@ -3284,7 +3330,7 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
             },
             {
                 "key": "DAVACI_AD",
-                "label": "DavacÄ± Åirket/KiÅŸi",
+                "label": "Davacı Şirket/Kişi",
                 "type": "text",
                 "required": true
             },
@@ -3301,24 +3347,24 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
             },
             {
                 "key": "DAVALI_AD",
-                "label": "DavalÄ± Åirket/KiÅŸi",
+                "label": "Davalı Şirket/Kişi",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "DAVALI_ADRES",
-                "label": "DavalÄ± Adresi",
+                "label": "Davalı Adresi",
                 "type": "textarea"
             },
             {
                 "key": "ALACAK_TUTARI",
-                "label": "Alacak TutarÄ± (TL)",
+                "label": "Alacak Tutarı (TL)",
                 "type": "number",
                 "required": true
             },
             {
                 "key": "ALACAK_KAYNAK",
-                "label": "AlacaÄŸÄ±n KaynaÄŸÄ±",
+                "label": "Alacağın Kaynağı",
                 "type": "textarea",
                 "required": true
             },
@@ -3328,7 +3374,7 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
                 "type": "date"
             }
         ],
-        "content": "## {{MAHKEME}} BAÅKANLIÄINA\n\n**DAVACI:** {{DAVACI_AD}}\nVergi/TC No: {{DAVACI_VKN}}\nAdres: {{DAVACI_ADRES}}\n\n**DAVALI:** {{DAVALI_AD}}\nAdres: {{DAVALI_ADRES}}\n\n**KONU:** Alacak davasÄ± hakkÄ±ndadÄ±r.\n\n**DAVA DEÄERÄ°:** {{ALACAK_TUTARI}} TL\n\n---\n\n## AÃ‡IKLAMALAR\n\n1. MÃ¼vekkilim ile davalÄ± arasÄ±nda ticari iliÅŸki bulunmaktadÄ±r.\n\n2. **AlacaÄŸÄ±n KaynaÄŸÄ±:**\n{{ALACAK_KAYNAK}}\n\n3. Vade tarihi: {{VADE_TARIHI}}\n\n4. TÃ¼m ihtarlara raÄŸmen davalÄ± borcunu Ã¶dememiÅŸtir.\n\n---\n\n## HUKUKÄ° SEBEPLER\n\n- 6102 sayÄ±lÄ± TÃ¼rk Ticaret Kanunu\n- 6098 sayÄ±lÄ± TÃ¼rk BorÃ§lar Kanunu\n\n---\n\n## DELÄ°LLER\n\n1. Faturalar\n2. SÃ¶zleÅŸmeler\n3. Ä°rsaliyeler\n4. Banka kayÄ±tlarÄ±\n5. Ä°htarname\n6. Ticari defterler\n\n---\n\n## SONUÃ‡ VE Ä°STEM\n\n1. {{ALACAK_TUTARI}} TL alacaÄŸÄ±n vade tarihinden itibaren avans faiziyle birlikte davalÄ±dan tahsiline,\n2. YargÄ±lama giderlerinin davalÄ±ya yÃ¼kletilmesine,\n\nkarar verilmesini saygÄ±larÄ±mla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
+        "content": "## {{MAHKEME}} BAŞKANLIĞINA\n\n**DAVACI:** {{DAVACI_AD}}\nVergi/TC No: {{DAVACI_VKN}}\nAdres: {{DAVACI_ADRES}}\n\n**DAVALI:** {{DAVALI_AD}}\nAdres: {{DAVALI_ADRES}}\n\n**KONU:** Alacak davası hakkındadır.\n\n**DAVA DEĞERİ:** {{ALACAK_TUTARI}} TL\n\n---\n\n## AÇIKLAMALAR\n\n1. Müvekkilim ile davalı arasında ticari ilişki bulunmaktadır.\n\n2. **Alacağın Kaynağı:**\n{{ALACAK_KAYNAK}}\n\n3. Vade tarihi: {{VADE_TARIHI}}\n\n4. Tüm ihtarlara rağmen davalı borcunu ödememiştir.\n\n---\n\n## HUKUKİ SEBEPLER\n\n- 6102 sayılı Türk Ticaret Kanunu\n- 6098 sayılı Türk Borçlar Kanunu\n\n---\n\n## DELİLLER\n\n1. Faturalar\n2. Sözleşmeler\n3. İrsaliyeler\n4. Banka kayıtları\n5. İhtarname\n6. Ticari defterler\n\n---\n\n## SONUÇ VE İSTEM\n\n1. {{ALACAK_TUTARI}} TL alacağın vade tarihinden itibaren avans faiziyle birlikte davalıdan tahsiline,\n2. Yargılama giderlerinin davalıya yükletilmesine,\n\nkarar verilmesini saygılarımla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
         "isPremium": false,
         "usageCount": 445
     },
@@ -3336,59 +3382,59 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
         "id": "18",
         "category": "Hukuk",
         "subcategory": "Ticaret Hukuku",
-        "title": "Ä°htarname (Ã–deme)",
-        "description": "Ticari borÃ§ iÃ§in Ã¶deme ihtarnamesi",
+        "title": "İhtarname (Ödeme)",
+        "description": "Ticari borç için ödeme ihtarnamesi",
         "icon": "Mail",
         "variables": [
             {
                 "key": "NOTER",
                 "label": "Noter",
                 "type": "text",
-                "placeholder": "Ä°stanbul 5. NoterliÄŸi"
+                "placeholder": "İstanbul 5. Noterliği"
             },
             {
                 "key": "GONDEREN_AD",
-                "label": "GÃ¶nderen (AlacaklÄ±)",
+                "label": "Gönderen (Alacaklı)",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "GONDEREN_ADRES",
-                "label": "AlacaklÄ± Adresi",
+                "label": "Alacaklı Adresi",
                 "type": "textarea"
             },
             {
                 "key": "MUHATAP_AD",
-                "label": "Muhatap (BorÃ§lu)",
+                "label": "Muhatap (Borçlu)",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "MUHATAP_ADRES",
-                "label": "BorÃ§lu Adresi",
+                "label": "Borçlu Adresi",
                 "type": "textarea",
                 "required": true
             },
             {
                 "key": "BORC_TUTARI",
-                "label": "BorÃ§ TutarÄ± (TL)",
+                "label": "Borç Tutarı (TL)",
                 "type": "number",
                 "required": true
             },
             {
                 "key": "BORC_KONUSU",
-                "label": "BorÃ§ Konusu",
+                "label": "Borç Konusu",
                 "type": "textarea",
                 "required": true
             },
             {
                 "key": "ODEME_SURESI",
-                "label": "Ã–deme SÃ¼resi (GÃ¼n)",
+                "label": "Ödeme Süresi (Gün)",
                 "type": "number",
                 "placeholder": "7"
             }
         ],
-        "content": "## Ä°HTARNAME\n\n**KeÅŸideci (Ä°htar Eden):** {{GONDEREN_AD}}\nAdres: {{GONDEREN_ADRES}}\n\n**Muhatap (Ä°htar Edilen):** {{MUHATAP_AD}}\nAdres: {{MUHATAP_ADRES}}\n\n---\n\n## Ä°HTARIN KONUSU\n\nAÅŸaÄŸÄ±da belirtilen borcunuzun Ã¶denmesi hakkÄ±ndadÄ±r.\n\n---\n\n**SayÄ±n {{MUHATAP_AD}},**\n\n**1.** TarafÄ±nÄ±za aÅŸaÄŸÄ±da detaylarÄ± verilen alacaÄŸÄ±mÄ±z bulunmaktadÄ±r:\n\n**BorÃ§ Konusu:** {{BORC_KONUSU}}\n\n**BorÃ§ TutarÄ±:** {{BORC_TUTARI}} TL\n\n**2.** SÃ¶z konusu borcunuzu defalarca hatÄ±rlatmamÄ±za raÄŸmen hÃ¢lÃ¢ Ã¶demediniz.\n\n**3.** Ä°ÅŸbu ihtarnamenin tarafÄ±nÄ±za tebliÄŸinden itibaren **{{ODEME_SURESI}} gÃ¼n** iÃ§inde yukarÄ±da belirtilen borcunuzu Ã¶demenizi,\n\n**4.** Aksi takdirde aleyhinize yasal yollara (icra takibi ve/veya dava) baÅŸvurulacaÄŸÄ±nÄ±, bu durumda doÄŸacak tÃ¼m masraf, faiz ve avukatlÄ±k Ã¼cretlerinin tarafÄ±nÄ±zdan tahsil edileceÄŸini,\n\n**Ä°HTAR EDERÄ°M.**\n\n{{TARIH}}\n{{GONDEREN_AD}}\n\n---\n\n*Bu ihtarname noter kanalÄ±yla tebliÄŸ edilmek Ã¼zere hazÄ±rlanmÄ±ÅŸtÄ±r.*\n",
+        "content": "## İHTARNAME\n\n**Keşideci (İhtar Eden):** {{GONDEREN_AD}}\nAdres: {{GONDEREN_ADRES}}\n\n**Muhatap (İhtar Edilen):** {{MUHATAP_AD}}\nAdres: {{MUHATAP_ADRES}}\n\n---\n\n## İHTARIN KONUSU\n\nAşağıda belirtilen borcunuzun ödenmesi hakkındadır.\n\n---\n\n**Sayın {{MUHATAP_AD}},**\n\n**1.** Tarafınıza aşağıda detayları verilen alacağımız bulunmaktadır:\n\n**Borç Konusu:** {{BORC_KONUSU}}\n\n**Borç Tutarı:** {{BORC_TUTARI}} TL\n\n**2.** Söz konusu borcunuzu defalarca hatırlatmamıza rağmen hâlâ ödemediniz.\n\n**3.** İşbu ihtarnamenin tarafınıza tebliğinden itibaren **{{ODEME_SURESI}} gün** içinde yukarıda belirtilen borcunuzu ödemenizi,\n\n**4.** Aksi takdirde aleyhinize yasal yollara (icra takibi ve/veya dava) başvurulacağını, bu durumda doğacak tüm masraf, faiz ve avukatlık ücretlerinin tarafınızdan tahsil edileceğini,\n\n**İHTAR EDERİM.**\n\n{{TARIH}}\n{{GONDEREN_AD}}\n\n---\n\n*Bu ihtarname noter kanalıyla tebliğ edilmek üzere hazırlanmıştır.*\n",
         "isPremium": false,
         "usageCount": 723
     },
@@ -3396,8 +3442,8 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
         "id": "19",
         "category": "Hukuk",
         "subcategory": "Miras Hukuku",
-        "title": "MirasÃ§Ä±lÄ±k Belgesi (Veraset Ä°lamÄ±) Talebi",
-        "description": "Sulh hukuk mahkemesinden veraset ilamÄ± talebi",
+        "title": "Mirasçılık Belgesi (Veraset İlamı) Talebi",
+        "description": "Sulh hukuk mahkemesinden veraset ilamı talebi",
         "icon": "Users",
         "variables": [
             {
@@ -3408,7 +3454,7 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
             },
             {
                 "key": "DAVACI_AD",
-                "label": "DavacÄ± (MirasÃ§Ä±)",
+                "label": "Davacı (Mirasçı)",
                 "type": "text",
                 "required": true
             },
@@ -3425,7 +3471,7 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
             },
             {
                 "key": "MURIS_AD",
-                "label": "Murisin (Ã–lenin) AdÄ±",
+                "label": "Murisin (Ölenin) Adı",
                 "type": "text",
                 "required": true
             },
@@ -3436,22 +3482,22 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
             },
             {
                 "key": "OLUM_TARIHI",
-                "label": "Ã–lÃ¼m Tarihi",
+                "label": "Ölüm Tarihi",
                 "type": "date",
                 "required": true
             },
             {
                 "key": "OLUM_YERI",
-                "label": "Ã–lÃ¼m Yeri",
+                "label": "Ölüm Yeri",
                 "type": "text"
             },
             {
                 "key": "MIRASCILAR",
-                "label": "DiÄŸer MirasÃ§Ä±lar",
+                "label": "Diğer Mirasçılar",
                 "type": "textarea"
             }
         ],
-        "content": "## {{MAHKEME}} BAÅKANLIÄINA\n\n**DAVACI:** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\nAdres: {{DAVACI_ADRES}}\n\n**KONU:** MirasÃ§Ä±lÄ±k belgesi (veraset ilamÄ±) verilmesi talebimdir.\n\n---\n\n## AÃ‡IKLAMALAR\n\n1. Muris **{{MURIS_AD}}** (TC: {{MURIS_TC}}) {{OLUM_TARIHI}} tarihinde {{OLUM_YERI}}'de vefat etmiÅŸtir.\n\n2. Ben mÃ¼teveffanÄ±n mirasÃ§Ä±sÄ±yÄ±m.\n\n3. DiÄŸer mirasÃ§Ä±lar:\n{{MIRASCILAR}}\n\n4. MÃ¼teveffanÄ±n terekesi Ã¼zerinde iÅŸlem yapabilmek iÃ§in mirasÃ§Ä±lÄ±k belgesi alÄ±nmasÄ± gerekmektedir.\n\n---\n\n## HUKUKÄ° SEBEPLER\n\n- 4721 sayÄ±lÄ± TÃ¼rk Medeni Kanunu m.598 (MirasÃ§Ä±lÄ±k belgesi)\n\n---\n\n## DELÄ°LLER\n\n1. Veraset ve intikal vergisi beyannamesi\n2. NÃ¼fus kayÄ±t Ã¶rneÄŸi (muris ve mirasÃ§Ä±lar)\n3. Ã–lÃ¼m belgesi\n4. VukuatlÄ± nÃ¼fus kayÄ±t Ã¶rneÄŸi\n\n---\n\n## SONUÃ‡ VE Ä°STEM\n\nMÃ¼teveffa {{MURIS_AD}}'in mirasÃ§Ä±larÄ±nÄ± ve miras paylarÄ±nÄ± gÃ¶steren **MÄ°RASÃ‡ILIK BELGESÄ°** verilmesini saygÄ±larÄ±mla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
+        "content": "## {{MAHKEME}} BAŞKANLIĞINA\n\n**DAVACI:** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\nAdres: {{DAVACI_ADRES}}\n\n**KONU:** Mirasçılık belgesi (veraset ilamı) verilmesi talebimdir.\n\n---\n\n## AÇIKLAMALAR\n\n1. Muris **{{MURIS_AD}}** (TC: {{MURIS_TC}}) {{OLUM_TARIHI}} tarihinde {{OLUM_YERI}}'de vefat etmiştir.\n\n2. Ben müteveffanın mirasçısıyım.\n\n3. Diğer mirasçılar:\n{{MIRASCILAR}}\n\n4. Müteveffanın terekesi üzerinde işlem yapabilmek için mirasçılık belgesi alınması gerekmektedir.\n\n---\n\n## HUKUKİ SEBEPLER\n\n- 4721 sayılı Türk Medeni Kanunu m.598 (Mirasçılık belgesi)\n\n---\n\n## DELİLLER\n\n1. Veraset ve intikal vergisi beyannamesi\n2. Nüfus kayıt örneği (muris ve mirasçılar)\n3. Ölüm belgesi\n4. Vukuatlı nüfus kayıt örneği\n\n---\n\n## SONUÇ VE İSTEM\n\nMüteveffa {{MURIS_AD}}'in mirasçılarını ve miras paylarını gösteren **MİRASÇILIK BELGESİ** verilmesini saygılarımla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
         "isPremium": false,
         "usageCount": 567
     },
@@ -3459,8 +3505,8 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
         "id": "20",
         "category": "Hukuk",
         "subcategory": "Miras Hukuku",
-        "title": "Mirastan Feragat SÃ¶zleÅŸmesi",
-        "description": "Noterde dÃ¼zenlenecek mirastan feragat belgesi",
+        "title": "Mirastan Feragat Sözleşmesi",
+        "description": "Noterde düzenlenecek mirastan feragat belgesi",
         "icon": "FileX",
         "variables": [
             {
@@ -3482,169 +3528,169 @@ karar verilmesini saygÄ±larÄ±mla arz ve talep ederim.
             },
             {
                 "key": "MURIS_AD",
-                "label": "Muris (Miras BÄ±rakan)",
+                "label": "Muris (Miras Bırakan)",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "BEDEL",
-                "label": "KarÅŸÄ±lÄ±k Bedel (varsa)",
+                "label": "Karşılık Bedel (varsa)",
                 "type": "text"
             }
         ],
-        "content": "## MÄ°RASTAN FERAGAT SÃ–ZLEÅMESÄ°\n\n**FERAGAT EDEN:**\nAd Soyad: {{FERAGAT_EDEN}}\nTC Kimlik No: {{FERAGAT_EDEN_TC}}\n\n**MURÄ°S:**\nAd Soyad: {{MURIS_AD}}\n\n---\n\n## BEYAN\n\nBen {{FERAGAT_EDEN}}, {{MURIS_AD}}'Ä±n ileride gerÃ§ekleÅŸecek Ã¶lÃ¼mÃ¼ halinde terekesinden payÄ±ma dÃ¼ÅŸecek tÃ¼m miras haklarÄ±ndan, TMK m.528 uyarÄ±nca, aÅŸaÄŸÄ±daki ÅŸartlarla **FERAGAT ETTÄ°ÄÄ°MÄ°** beyan ederim.\n\n**KarÅŸÄ±lÄ±k:** {{BEDEL}}\n\n**Feragatin KapsamÄ±:** Tam feragat (hem kendim hem altsoyum adÄ±na)\n\nBu sÃ¶zleÅŸme, murisin saÄŸlÄ±ÄŸÄ±nda, resmi ÅŸekilde yapÄ±lmÄ±ÅŸ olup, tarafÄ±mca Ã¶zgÃ¼r iradeyle imzalanmÄ±ÅŸtÄ±r.\n\n---\n\n## HUKUKÄ° DAYANAK\n\n- 4721 sayÄ±lÄ± TÃ¼rk Medeni Kanunu m.528 (Mirastan feragat sÃ¶zleÅŸmesi)\n\n---\n\n{{TARIH}}\n\n**Feragat Eden:**\n{{FERAGAT_EDEN}}\n\n**Muris:**\n{{MURIS_AD}}\n\n---\n\n*Bu sÃ¶zleÅŸme noter huzurunda dÃ¼zenleme ÅŸeklinde yapÄ±lmalÄ±dÄ±r.*\n",
+        "content": "## MİRASTAN FERAGAT SÖZLEŞMESİ\n\n**FERAGAT EDEN:**\nAd Soyad: {{FERAGAT_EDEN}}\nTC Kimlik No: {{FERAGAT_EDEN_TC}}\n\n**MURİS:**\nAd Soyad: {{MURIS_AD}}\n\n---\n\n## BEYAN\n\nBen {{FERAGAT_EDEN}}, {{MURIS_AD}}'ın ileride gerçekleşecek ölümü halinde terekesinden payıma düşecek tüm miras haklarından, TMK m.528 uyarınca, aşağıdaki şartlarla **FERAGAT ETTİĞİMİ** beyan ederim.\n\n**Karşılık:** {{BEDEL}}\n\n**Feragatin Kapsamı:** Tam feragat (hem kendim hem altsoyum adına)\n\nBu sözleşme, murisin sağlığında, resmi şekilde yapılmış olup, tarafımca özgür iradeyle imzalanmıştır.\n\n---\n\n## HUKUKİ DAYANAK\n\n- 4721 sayılı Türk Medeni Kanunu m.528 (Mirastan feragat sözleşmesi)\n\n---\n\n{{TARIH}}\n\n**Feragat Eden:**\n{{FERAGAT_EDEN}}\n\n**Muris:**\n{{MURIS_AD}}\n\n---\n\n*Bu sözleşme noter huzurunda düzenleme şeklinde yapılmalıdır.*\n",
         "isPremium": true,
         "usageCount": 123
     },
     {
         "id": "21",
-        "category": "Ä°cra",
+        "category": "İcra",
         "subcategory": "Tahsilat",
         "title": "Haricen Tahsil Bildirimi",
-        "description": "Ä°cra dosyasÄ± dÄ±ÅŸÄ±nda yapÄ±lan tahsilatÄ±n bildirilmesi",
+        "description": "İcra dosyası dışında yapılan tahsilatın bildirilmesi",
         "icon": "HandCoins",
         "variables": [
-            { "key": "ICRA_DAIRESI", "label": "Ä°cra Dairesi", "type": "text", "required": true },
+            { "key": "ICRA_DAIRESI", "label": "İcra Dairesi", "type": "text", "required": true },
             { "key": "DOSYA_NO", "label": "Dosya No", "type": "text", "required": true },
-            { "key": "ALACAKLI_AD", "label": "AlacaklÄ±", "type": "text", "required": true },
-            { "key": "BORCLU_AD", "label": "BorÃ§lu", "type": "text", "required": true },
+            { "key": "ALACAKLI_AD", "label": "Alacaklı", "type": "text", "required": true },
+            { "key": "BORCLU_AD", "label": "Borçlu", "type": "text", "required": true },
             { "key": "TAHSIL_TUTARI", "label": "Tahsil Edilen Tutar (TL)", "type": "number", "required": true },
             { "key": "TAHSIL_TARIHI", "label": "Tahsil Tarihi", "type": "date", "required": true },
             { "key": "KALAN_ALACAK", "label": "Kalan Alacak (varsa)", "type": "number" }
         ],
-        "content": "## {{ICRA_DAIRESI}} MÃœDÃœRLÃœÄÃœ'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORÃ‡LU:** {{BORCLU_AD}}\n\n**KONU:** Haricen tahsil bildirimi\n\n---\n\n## AÃ‡IKLAMA\n\nMÃ¼dÃ¼rlÃ¼ÄŸÃ¼nÃ¼zÃ¼n yukarÄ±da numarasÄ± yazÄ±lÄ± dosyasÄ±nda takip edilen alacaÄŸÄ±mÄ±n bir kÄ±smÄ±/tamamÄ± borÃ§lu tarafÄ±ndan **haricen (icra dairesi dÄ±ÅŸÄ±nda)** tarafÄ±ma Ã¶denmiÅŸtir.\n\n**TAHSÄ°LAT BÄ°LGÄ°LERÄ°:**\n\n| Bilgi | DeÄŸer |\n|-------|-------|\n| Tahsil Edilen Tutar | {{TAHSIL_TUTARI}} TL |\n| Tahsil Tarihi | {{TAHSIL_TARIHI}} |\n| Kalan Alacak | {{KALAN_ALACAK}} TL |\n\n---\n\n## TALEP\n\nYukarÄ±da belirtilen haricen tahsilatÄ±n dosyaya iÅŸlenmesini ve dosyanÄ±n buna gÃ¶re gÃ¼ncellenmesini talep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
+        "content": "## {{ICRA_DAIRESI}} MÜDÜRLÜĞÜ'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORÇLU:** {{BORCLU_AD}}\n\n**KONU:** Haricen tahsil bildirimi\n\n---\n\n## AÇIKLAMA\n\nMüdürlüğünüzün yukarıda numarası yazılı dosyasında takip edilen alacağımın bir kısmı/tamamı borçlu tarafından **haricen (icra dairesi dışında)** tarafıma ödenmiştir.\n\n**TAHSİLAT BİLGİLERİ:**\n\n| Bilgi | Değer |\n|-------|-------|\n| Tahsil Edilen Tutar | {{TAHSIL_TUTARI}} TL |\n| Tahsil Tarihi | {{TAHSIL_TARIHI}} |\n| Kalan Alacak | {{KALAN_ALACAK}} TL |\n\n---\n\n## TALEP\n\nYukarıda belirtilen haricen tahsilatın dosyaya işlenmesini ve dosyanın buna göre güncellenmesini talep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
         "isPremium": false,
         "usageCount": 1245
     },
     {
         "id": "22",
-        "category": "Ä°cra",
-        "subcategory": "Dosya Ä°ÅŸlemleri",
-        "title": "Dosya Kapama (Takipten VazgeÃ§me) Talebi",
-        "description": "AlacaklÄ±nÄ±n takipten vazgeÃ§erek dosyayÄ± kapatma talebi",
+        "category": "İcra",
+        "subcategory": "Dosya İşlemleri",
+        "title": "Dosya Kapama (Takipten Vazgeçme) Talebi",
+        "description": "Alacaklının takipten vazgeçerek dosyayı kapatma talebi",
         "icon": "FolderX",
         "variables": [
-            { "key": "ICRA_DAIRESI", "label": "Ä°cra Dairesi", "type": "text", "required": true },
+            { "key": "ICRA_DAIRESI", "label": "İcra Dairesi", "type": "text", "required": true },
             { "key": "DOSYA_NO", "label": "Dosya No", "type": "text", "required": true },
-            { "key": "ALACAKLI_AD", "label": "AlacaklÄ±", "type": "text", "required": true },
-            { "key": "BORCLU_AD", "label": "BorÃ§lu", "type": "text", "required": true },
-            { "key": "VAZGECME_NEDENI", "label": "VazgeÃ§me Nedeni", "type": "textarea" }
+            { "key": "ALACAKLI_AD", "label": "Alacaklı", "type": "text", "required": true },
+            { "key": "BORCLU_AD", "label": "Borçlu", "type": "text", "required": true },
+            { "key": "VAZGECME_NEDENI", "label": "Vazgeçme Nedeni", "type": "textarea" }
         ],
-        "content": "## {{ICRA_DAIRESI}} MÃœDÃœRLÃœÄÃœ'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORÃ‡LU:** {{BORCLU_AD}}\n\n**KONU:** Takipten vazgeÃ§me ve dosyanÄ±n kapatÄ±lmasÄ± talebi\n\n---\n\n## AÃ‡IKLAMA\n\nMÃ¼dÃ¼rlÃ¼ÄŸÃ¼nÃ¼zÃ¼n yukarÄ±da numarasÄ± yazÄ±lÄ± dosyasÄ±nda yÃ¼rÃ¼tÃ¼len icra takibinden **VAZGEÃ‡Ä°YORUM.**\n\n**VazgeÃ§me Nedeni:** {{VAZGECME_NEDENI}}\n\n---\n\n## TALEP\n\nÄ°Ä°K m.129 uyarÄ±nca takipten vazgeÃ§tiÄŸimi beyan eder, takibin durdurularak dosyanÄ±n kapatÄ±lmasÄ±nÄ± talep ederim.\n\n**Not:** Dosyadaki tÃ¼m hacizlerin kaldÄ±rÄ±lmasÄ±nÄ± da talep ediyorum.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
+        "content": "## {{ICRA_DAIRESI}} MÜDÜRLÜĞÜ'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORÇLU:** {{BORCLU_AD}}\n\n**KONU:** Takipten vazgeçme ve dosyanın kapatılması talebi\n\n---\n\n## AÇIKLAMA\n\nMüdürlüğünüzün yukarıda numarası yazılı dosyasında yürütülen icra takibinden **VAZGEÇİYORUM.**\n\n**Vazgeçme Nedeni:** {{VAZGECME_NEDENI}}\n\n---\n\n## TALEP\n\nİİK m.129 uyarınca takipten vazgeçtiğimi beyan eder, takibin durdurularak dosyanın kapatılmasını talep ederim.\n\n**Not:** Dosyadaki tüm hacizlerin kaldırılmasını da talep ediyorum.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
         "isPremium": false,
         "usageCount": 876
     },
     {
         "id": "23",
-        "category": "Ä°cra",
+        "category": "İcra",
         "subcategory": "Haciz",
-        "title": "MaaÅŸ Haczi (MaaÅŸ Kesintisi) Talebi",
-        "description": "BorÃ§lunun maaÅŸÄ±na haciz konulmasÄ± talebi",
+        "title": "Maaş Haczi (Maaş Kesintisi) Talebi",
+        "description": "Borçlunun maaşına haciz konulması talebi",
         "icon": "Wallet",
         "variables": [
-            { "key": "ICRA_DAIRESI", "label": "Ä°cra Dairesi", "type": "text", "required": true },
+            { "key": "ICRA_DAIRESI", "label": "İcra Dairesi", "type": "text", "required": true },
             { "key": "DOSYA_NO", "label": "Dosya No", "type": "text", "required": true },
-            { "key": "ALACAKLI_AD", "label": "AlacaklÄ±", "type": "text", "required": true },
-            { "key": "BORCLU_AD", "label": "BorÃ§lu", "type": "text", "required": true },
-            { "key": "BORCLU_TC", "label": "BorÃ§lu TC No", "type": "text", "required": true },
-            { "key": "ISVEREN_AD", "label": "Ä°ÅŸveren/Kurum AdÄ±", "type": "text", "required": true },
-            { "key": "ISVEREN_ADRES", "label": "Ä°ÅŸveren Adresi", "type": "textarea", "required": true }
+            { "key": "ALACAKLI_AD", "label": "Alacaklı", "type": "text", "required": true },
+            { "key": "BORCLU_AD", "label": "Borçlu", "type": "text", "required": true },
+            { "key": "BORCLU_TC", "label": "Borçlu TC No", "type": "text", "required": true },
+            { "key": "ISVEREN_AD", "label": "İşveren/Kurum Adı", "type": "text", "required": true },
+            { "key": "ISVEREN_ADRES", "label": "İşveren Adresi", "type": "textarea", "required": true }
         ],
-        "content": "## {{ICRA_DAIRESI}} MÃœDÃœRLÃœÄÃœ'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORÃ‡LU:** {{BORCLU_AD}} (TC: {{BORCLU_TC}})\n\n**KONU:** MaaÅŸ haczi (maaÅŸ kesintisi) talebi\n\n---\n\n## AÃ‡IKLAMA\n\nBorÃ§lunun aÅŸaÄŸÄ±da belirtilen iÅŸyerinde Ã§alÄ±ÅŸtÄ±ÄŸÄ± tespit edilmiÅŸtir:\n\n**Ä°ÅVEREN BÄ°LGÄ°LERÄ°:**\n- **Kurum/Åirket:** {{ISVEREN_AD}}\n- **Adres:** {{ISVEREN_ADRES}}\n\n---\n\n## TALEP\n\nÄ°Ä°K m.83 ve m.355 uyarÄ±nca;\n\n1. BorÃ§lunun maaÅŸ ve Ã¼cretinin **1/4'Ã¼nÃ¼n** haciz kesintisi yapÄ±larak dosyaya gÃ¶nderilmesi iÃ§in ilgili iÅŸverene **maaÅŸ haczi mÃ¼zekkeresi** yazÄ±lmasÄ±nÄ±,\n\n2. Kesinti yapÄ±lÄ±ncaya kadar iÅŸverene sorumluluk bildiriminde bulunulmasÄ±nÄ±,\n\ntalep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
+        "content": "## {{ICRA_DAIRESI}} MÜDÜRLÜĞÜ'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORÇLU:** {{BORCLU_AD}} (TC: {{BORCLU_TC}})\n\n**KONU:** Maaş haczi (maaş kesintisi) talebi\n\n---\n\n## AÇIKLAMA\n\nBorçlunun aşağıda belirtilen işyerinde çalıştığı tespit edilmiştir:\n\n**İŞVEREN BİLGİLERİ:**\n- **Kurum/Şirket:** {{ISVEREN_AD}}\n- **Adres:** {{ISVEREN_ADRES}}\n\n---\n\n## TALEP\n\nİİK m.83 ve m.355 uyarınca;\n\n1. Borçlunun maaş ve ücretinin **1/4'ünün** haciz kesintisi yapılarak dosyaya gönderilmesi için ilgili işverene **maaş haczi müzekkeresi** yazılmasını,\n\n2. Kesinti yapılıncaya kadar işverene sorumluluk bildiriminde bulunulmasını,\n\ntalep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
         "isPremium": false,
         "usageCount": 1567
     },
     {
         "id": "24",
-        "category": "Ä°cra",
+        "category": "İcra",
         "subcategory": "Haciz",
-        "title": "TaÅŸÄ±nmaz (Gayrimenkul) Haczi Talebi",
-        "description": "BorÃ§lunun taÅŸÄ±nmazÄ±na haciz ÅŸerhi konulmasÄ± talebi",
+        "title": "Taşınmaz (Gayrimenkul) Haczi Talebi",
+        "description": "Borçlunun taşınmazına haciz şerhi konulması talebi",
         "icon": "Home",
         "variables": [
-            { "key": "ICRA_DAIRESI", "label": "Ä°cra Dairesi", "type": "text", "required": true },
+            { "key": "ICRA_DAIRESI", "label": "İcra Dairesi", "type": "text", "required": true },
             { "key": "DOSYA_NO", "label": "Dosya No", "type": "text", "required": true },
-            { "key": "ALACAKLI_AD", "label": "AlacaklÄ±", "type": "text", "required": true },
-            { "key": "BORCLU_AD", "label": "BorÃ§lu", "type": "text", "required": true },
-            { "key": "TASINMAZ_BILGI", "label": "TaÅŸÄ±nmaz Bilgileri (Ä°l/Ä°lÃ§e/Ada/Parsel)", "type": "textarea", "required": true },
-            { "key": "TAPU_MUDURLUGU", "label": "Tapu MÃ¼dÃ¼rlÃ¼ÄŸÃ¼", "type": "text", "required": true }
+            { "key": "ALACAKLI_AD", "label": "Alacaklı", "type": "text", "required": true },
+            { "key": "BORCLU_AD", "label": "Borçlu", "type": "text", "required": true },
+            { "key": "TASINMAZ_BILGI", "label": "Taşınmaz Bilgileri (İl/İlçe/Ada/Parsel)", "type": "textarea", "required": true },
+            { "key": "TAPU_MUDURLUGU", "label": "Tapu Müdürlüğü", "type": "text", "required": true }
         ],
-        "content": "## {{ICRA_DAIRESI}} MÃœDÃœRLÃœÄÃœ'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORÃ‡LU:** {{BORCLU_AD}}\n\n**KONU:** TaÅŸÄ±nmaz haczi talebi\n\n---\n\n## AÃ‡IKLAMA\n\nBorÃ§lunun aÅŸaÄŸÄ±da belirtilen taÅŸÄ±nmaz/taÅŸÄ±nmazlar Ã¼zerinde mÃ¼lkiyeti bulunmaktadÄ±r:\n\n**TAÅINMAZ BÄ°LGÄ°LERÄ°:**\n{{TASINMAZ_BILGI}}\n\n**Ä°LGÄ°LÄ° TAPU MÃœDÃœRLÃœÄÃœ:** {{TAPU_MUDURLUGU}}\n\n---\n\n## TALEP\n\nÄ°Ä°K m.79 ve m.91 uyarÄ±nca;\n\n1. YukarÄ±da belirtilen taÅŸÄ±nmaz/taÅŸÄ±nmazlar Ã¼zerine **HACÄ°Z ÅERHÄ°** konulmasÄ± iÃ§in ilgili Tapu MÃ¼dÃ¼rlÃ¼ÄŸÃ¼'ne mÃ¼zekkere yazÄ±lmasÄ±nÄ±,\n\n2. Haciz ÅŸerhinin tapu kaydÄ±na iÅŸlenmesini,\n\ntalep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
+        "content": "## {{ICRA_DAIRESI}} MÜDÜRLÜĞÜ'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORÇLU:** {{BORCLU_AD}}\n\n**KONU:** Taşınmaz haczi talebi\n\n---\n\n## AÇIKLAMA\n\nBorçlunun aşağıda belirtilen taşınmaz/taşınmazlar üzerinde mülkiyeti bulunmaktadır:\n\n**TAŞINMAZ BİLGİLERİ:**\n{{TASINMAZ_BILGI}}\n\n**İLGİLİ TAPU MÜDÜRLÜĞÜ:** {{TAPU_MUDURLUGU}}\n\n---\n\n## TALEP\n\nİİK m.79 ve m.91 uyarınca;\n\n1. Yukarıda belirtilen taşınmaz/taşınmazlar üzerine **HACİZ ŞERHİ** konulması için ilgili Tapu Müdürlüğü'ne müzekkere yazılmasını,\n\n2. Haciz şerhinin tapu kaydına işlenmesini,\n\ntalep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
         "isPremium": false,
         "usageCount": 934
     },
     {
         "id": "25",
-        "category": "Ä°cra",
+        "category": "İcra",
         "subcategory": "Haciz",
-        "title": "Haciz Fekki (Haciz KaldÄ±rma) Talebi - AlacaklÄ±",
-        "description": "AlacaklÄ±nÄ±n haczi kaldÄ±rma talebi",
+        "title": "Haciz Fekki (Haciz Kaldırma) Talebi - Alacaklı",
+        "description": "Alacaklının haczi kaldırma talebi",
         "icon": "KeyRound",
         "variables": [
-            { "key": "ICRA_DAIRESI", "label": "Ä°cra Dairesi", "type": "text", "required": true },
+            { "key": "ICRA_DAIRESI", "label": "İcra Dairesi", "type": "text", "required": true },
             { "key": "DOSYA_NO", "label": "Dosya No", "type": "text", "required": true },
-            { "key": "ALACAKLI_AD", "label": "AlacaklÄ±", "type": "text", "required": true },
-            { "key": "BORCLU_AD", "label": "BorÃ§lu", "type": "text", "required": true },
-            { "key": "HACIZLI_MAL", "label": "Haczin KaldÄ±rÄ±lacaÄŸÄ± Mal/KayÄ±t", "type": "textarea", "required": true },
+            { "key": "ALACAKLI_AD", "label": "Alacaklı", "type": "text", "required": true },
+            { "key": "BORCLU_AD", "label": "Borçlu", "type": "text", "required": true },
+            { "key": "HACIZLI_MAL", "label": "Haczin Kaldırılacağı Mal/Kayıt", "type": "textarea", "required": true },
             { "key": "FEKK_NEDENI", "label": "Haciz Fekki Nedeni", "type": "textarea" }
         ],
-        "content": "## {{ICRA_DAIRESI}} MÃœDÃœRLÃœÄÃœ'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORÃ‡LU:** {{BORCLU_AD}}\n\n**KONU:** Haciz fekki (haciz kaldÄ±rma) talebi\n\n---\n\n## AÃ‡IKLAMA\n\nMÃ¼dÃ¼rlÃ¼ÄŸÃ¼nÃ¼zÃ¼n yukarÄ±da numarasÄ± yazÄ±lÄ± dosyasÄ±nda borÃ§luya ait aÅŸaÄŸÄ±daki mal/kayÄ±t Ã¼zerine haciz konulmuÅŸtur:\n\n**HACÄ°ZLÄ° MAL/KAYIT:**\n{{HACIZLI_MAL}}\n\n**HACÄ°Z FEKKÄ° NEDENÄ°:**\n{{FEKK_NEDENI}}\n\n---\n\n## TALEP\n\nYukarÄ±da belirtilen mal/kayÄ±t Ã¼zerindeki haczin **FEKKÄ°NÄ° (KALDIRILMASINI)** ve ilgili kurumlara haciz fekki mÃ¼zekkeresi yazÄ±lmasÄ±nÄ± talep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
+        "content": "## {{ICRA_DAIRESI}} MÜDÜRLÜĞÜ'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORÇLU:** {{BORCLU_AD}}\n\n**KONU:** Haciz fekki (haciz kaldırma) talebi\n\n---\n\n## AÇIKLAMA\n\nMüdürlüğünüzün yukarıda numarası yazılı dosyasında borçluya ait aşağıdaki mal/kayıt üzerine haciz konulmuştur:\n\n**HACİZLİ MAL/KAYIT:**\n{{HACIZLI_MAL}}\n\n**HACİZ FEKKİ NEDENİ:**\n{{FEKK_NEDENI}}\n\n---\n\n## TALEP\n\nYukarıda belirtilen mal/kayıt üzerindeki haczin **FEKKİNİ (KALDIRILMASINI)** ve ilgili kurumlara haciz fekki müzekkeresi yazılmasını talep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
         "isPremium": false,
         "usageCount": 1123
     },
     {
         "id": "26",
-        "category": "Ä°cra",
-        "subcategory": "Mal BeyanÄ±",
-        "title": "Mal BeyanÄ± Talepli Ã–deme Emri Talebi",
-        "description": "BorÃ§ludan mal beyanÄ± istenmesi talebi",
+        "category": "İcra",
+        "subcategory": "Mal Beyanı",
+        "title": "Mal Beyanı Talepli Ödeme Emri Talebi",
+        "description": "Borçludan mal beyanı istenmesi talebi",
         "icon": "ClipboardList",
         "variables": [
-            { "key": "ICRA_DAIRESI", "label": "Ä°cra Dairesi", "type": "text", "required": true },
+            { "key": "ICRA_DAIRESI", "label": "İcra Dairesi", "type": "text", "required": true },
             { "key": "DOSYA_NO", "label": "Dosya No", "type": "text", "required": true },
-            { "key": "ALACAKLI_AD", "label": "AlacaklÄ±", "type": "text", "required": true },
-            { "key": "BORCLU_AD", "label": "BorÃ§lu", "type": "text", "required": true },
-            { "key": "BORCLU_ADRES", "label": "BorÃ§lu Adresi", "type": "textarea", "required": true }
+            { "key": "ALACAKLI_AD", "label": "Alacaklı", "type": "text", "required": true },
+            { "key": "BORCLU_AD", "label": "Borçlu", "type": "text", "required": true },
+            { "key": "BORCLU_ADRES", "label": "Borçlu Adresi", "type": "textarea", "required": true }
         ],
-        "content": "## {{ICRA_DAIRESI}} MÃœDÃœRLÃœÄÃœ'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORÃ‡LU:** {{BORCLU_AD}}\nAdres: {{BORCLU_ADRES}}\n\n**KONU:** Mal beyanÄ± talebinde bulunulmasÄ±\n\n---\n\n## AÃ‡IKLAMA\n\nMÃ¼dÃ¼rlÃ¼ÄŸÃ¼nÃ¼zÃ¼n yukarÄ±da numarasÄ± yazÄ±lÄ± dosyasÄ±nda borÃ§luya gÃ¶nderilen Ã¶deme emri tebliÄŸ edilmiÅŸ, ancak borÃ§lu Ã¶deme yapmamÄ±ÅŸ ve itirazda da bulunmamÄ±ÅŸtÄ±r.\n\n---\n\n## TALEP\n\nÄ°Ä°K m.74 uyarÄ±nca;\n\n1. BorÃ§luya **MAL BEYANI** iÃ§in davetiye Ã§Ä±karÄ±lmasÄ±nÄ±,\n\n2. BorÃ§lunun mal beyanÄ±nda bulunmamasÄ± veya gerÃ§eÄŸe aykÄ±rÄ± beyanda bulunmasÄ± halinde Ä°Ä°K m.337 kapsamÄ±nda ÅŸikayet hakkÄ±mÄ±n saklÄ± tutulmasÄ±nÄ±,\n\ntalep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
+        "content": "## {{ICRA_DAIRESI}} MÜDÜRLÜĞÜ'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORÇLU:** {{BORCLU_AD}}\nAdres: {{BORCLU_ADRES}}\n\n**KONU:** Mal beyanı talebinde bulunulması\n\n---\n\n## AÇIKLAMA\n\nMüdürlüğünüzün yukarıda numarası yazılı dosyasında borçluya gönderilen ödeme emri tebliğ edilmiş, ancak borçlu ödeme yapmamış ve itirazda da bulunmamıştır.\n\n---\n\n## TALEP\n\nİİK m.74 uyarınca;\n\n1. Borçluya **MAL BEYANI** için davetiye çıkarılmasını,\n\n2. Borçlunun mal beyanında bulunmaması veya gerçeğe aykırı beyanda bulunması halinde İİK m.337 kapsamında şikayet hakkımın saklı tutulmasını,\n\ntalep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
         "isPremium": false,
         "usageCount": 789
     },
     {
         "id": "27",
-        "category": "Ä°cra",
-        "subcategory": "AraÃ§",
-        "title": "AraÃ§ Haczi Talebi",
-        "description": "BorÃ§lunun aracÄ±na haciz konulmasÄ± talebi",
+        "category": "İcra",
+        "subcategory": "Araç",
+        "title": "Araç Haczi Talebi",
+        "description": "Borçlunun aracına haciz konulması talebi",
         "icon": "Car",
         "variables": [
-            { "key": "ICRA_DAIRESI", "label": "Ä°cra Dairesi", "type": "text", "required": true },
+            { "key": "ICRA_DAIRESI", "label": "İcra Dairesi", "type": "text", "required": true },
             { "key": "DOSYA_NO", "label": "Dosya No", "type": "text", "required": true },
-            { "key": "ALACAKLI_AD", "label": "AlacaklÄ±", "type": "text", "required": true },
-            { "key": "BORCLU_AD", "label": "BorÃ§lu", "type": "text", "required": true },
-            { "key": "BORCLU_TC", "label": "BorÃ§lu TC No", "type": "text", "required": true },
-            { "key": "ARAC_PLAKA", "label": "AraÃ§ PlakasÄ± (biliniyorsa)", "type": "text" }
+            { "key": "ALACAKLI_AD", "label": "Alacaklı", "type": "text", "required": true },
+            { "key": "BORCLU_AD", "label": "Borçlu", "type": "text", "required": true },
+            { "key": "BORCLU_TC", "label": "Borçlu TC No", "type": "text", "required": true },
+            { "key": "ARAC_PLAKA", "label": "Araç Plakası (biliniyorsa)", "type": "text" }
         ],
-        "content": "## {{ICRA_DAIRESI}} MÃœDÃœRLÃœÄÃœ'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORÃ‡LU:** {{BORCLU_AD}} (TC: {{BORCLU_TC}})\n\n**KONU:** AraÃ§ haczi talebi\n\n---\n\n## TALEP\n\nBorÃ§lunun adÄ±na kayÄ±tlÄ± araÃ§/araÃ§lar Ã¼zerine haciz konulmasÄ± iÃ§in;\n\n1. **Emniyet Genel MÃ¼dÃ¼rlÃ¼ÄŸÃ¼ Trafik BaÅŸkanlÄ±ÄŸÄ±'na** (EGM) haciz mÃ¼zekkeresi yazÄ±lmasÄ±nÄ±,\n\n2. BorÃ§lu adÄ±na kayÄ±tlÄ± tÃ¼m araÃ§larÄ±n tespit edilmesini ve haciz ÅŸerhi konulmasÄ±nÄ±,\n\n3. Yakalama ÅŸerhi konulmasÄ±nÄ±,\n\ntalep ederim.\n\n**Bilinen AraÃ§ PlakasÄ± (varsa):** {{ARAC_PLAKA}}\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
+        "content": "## {{ICRA_DAIRESI}} MÜDÜRLÜĞÜ'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORÇLU:** {{BORCLU_AD}} (TC: {{BORCLU_TC}})\n\n**KONU:** Araç haczi talebi\n\n---\n\n## TALEP\n\nBorçlunun adına kayıtlı araç/araçlar üzerine haciz konulması için;\n\n1. **Emniyet Genel Müdürlüğü Trafik Başkanlığı'na** (EGM) haciz müzekkeresi yazılmasını,\n\n2. Borçlu adına kayıtlı tüm araçların tespit edilmesini ve haciz şerhi konulmasını,\n\n3. Yakalama şerhi konulmasını,\n\ntalep ederim.\n\n**Bilinen Araç Plakası (varsa):** {{ARAC_PLAKA}}\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
         "isPremium": false,
         "usageCount": 1456
     },
     {
         "id": "28",
-        "category": "Ä°cra",
+        "category": "İcra",
         "subcategory": "Banka",
-        "title": "Banka HesabÄ± Haczi Talebi",
-        "description": "BorÃ§lunun banka hesaplarÄ±na haciz konulmasÄ±",
+        "title": "Banka Hesabı Haczi Talebi",
+        "description": "Borçlunun banka hesaplarına haciz konulması",
         "icon": "Landmark",
         "variables": [
-            { "key": "ICRA_DAIRESI", "label": "Ä°cra Dairesi", "type": "text", "required": true },
+            { "key": "ICRA_DAIRESI", "label": "İcra Dairesi", "type": "text", "required": true },
             { "key": "DOSYA_NO", "label": "Dosya No", "type": "text", "required": true },
-            { "key": "ALACAKLI_AD", "label": "AlacaklÄ±", "type": "text", "required": true },
-            { "key": "BORCLU_AD", "label": "BorÃ§lu", "type": "text", "required": true },
-            { "key": "BORCLU_TC", "label": "BorÃ§lu TC/VKN", "type": "text", "required": true },
-            { "key": "BANKA_ADI", "label": "Banka AdÄ± (biliniyorsa)", "type": "text" }
+            { "key": "ALACAKLI_AD", "label": "Alacaklı", "type": "text", "required": true },
+            { "key": "BORCLU_AD", "label": "Borçlu", "type": "text", "required": true },
+            { "key": "BORCLU_TC", "label": "Borçlu TC/VKN", "type": "text", "required": true },
+            { "key": "BANKA_ADI", "label": "Banka Adı (biliniyorsa)", "type": "text" }
         ],
-        "content": "## {{ICRA_DAIRESI}} MÃœDÃœRLÃœÄÃœ'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORÃ‡LU:** {{BORCLU_AD}} (TC/VKN: {{BORCLU_TC}})\n\n**KONU:** Banka hesaplarÄ±na haciz talebi\n\n---\n\n## TALEP\n\nBorÃ§lunun banka hesaplarÄ±na haciz konulmasÄ± iÃ§in;\n\n1. **TÃ¼m bankalara** (UYAP Ã¼zerinden toplu) haciz mÃ¼zekkeresi gÃ¶nderilmesini,\n\n2. BorÃ§lunun tÃ¼m banka hesaplarÄ±ndaki mevduatÄ±n haczedilmesini,\n\n3. Haczedilen tutarlarÄ±n dosyaya aktarÄ±lmasÄ±nÄ±,\n\ntalep ederim.\n\n**Bilinen Banka (varsa):** {{BANKA_ADI}}\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
+        "content": "## {{ICRA_DAIRESI}} MÜDÜRLÜĞÜ'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORÇLU:** {{BORCLU_AD}} (TC/VKN: {{BORCLU_TC}})\n\n**KONU:** Banka hesaplarına haciz talebi\n\n---\n\n## TALEP\n\nBorçlunun banka hesaplarına haciz konulması için;\n\n1. **Tüm bankalara** (UYAP üzerinden toplu) haciz müzekkeresi gönderilmesini,\n\n2. Borçlunun tüm banka hesaplarındaki mevduatın haczedilmesini,\n\n3. Haczedilen tutarların dosyaya aktarılmasını,\n\ntalep ederim.\n\n**Bilinen Banka (varsa):** {{BANKA_ADI}}\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
         "isPremium": false,
         "usageCount": 2134
     }
@@ -3660,7 +3706,7 @@ const CP1252_REVERSE_BYTE_MAP = new Map([
     [0x0153, 0x9C], [0x017E, 0x9E], [0x0178, 0x9F],
 ]);
 
-const MOJIBAKE_DETECTION = /[ÃÄÅÂ]/;
+const MOJIBAKE_DETECTION = /[ÃÄÅ]/;
 
 const decodePotentialMojibake = (value) => {
     if (typeof value !== 'string' || !MOJIBAKE_DETECTION.test(value)) return value;

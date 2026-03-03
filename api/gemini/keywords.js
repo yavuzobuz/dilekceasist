@@ -150,6 +150,7 @@ Anahtar kelimeleri su JSON formatinda dondur:
 
         res.json({
             text: JSON.stringify({ keywords: finalKeywords }),
+            keywords: finalKeywords,
         });
     } catch (error) {
         console.error('Keywords Error:', error);

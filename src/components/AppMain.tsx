@@ -39,9 +39,30 @@ const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
+const CHAT_INLINE_SUPPORTED_MIME_TYPES = new Set([
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+  'image/gif',
+]);
+
+const normalizeChatMimeType = (value: string): string => String(value || '')
+  .split(';')[0]
+  .trim()
+  .toLowerCase();
+
+const isChatMimeTypeSupported = (mimeType: string): boolean => {
+  const normalized = normalizeChatMimeType(mimeType);
+  if (!normalized) return false;
+  return CHAT_INLINE_SUPPORTED_MIME_TYPES.has(normalized) || normalized.startsWith('text/');
+};
+
 const resolveChatMimeType = (file: File): string => {
   const directType = typeof file.type === 'string' ? file.type.trim() : '';
-  if (directType) return directType;
+  if (directType) return normalizeChatMimeType(directType);
 
   const lowerName = String(file.name || '').toLowerCase();
   if (lowerName.endsWith('.pdf')) return 'application/pdf';
@@ -55,6 +76,30 @@ const resolveChatMimeType = (file: File): string => {
   if (lowerName.endsWith('.tif') || lowerName.endsWith('.tiff')) return 'image/tiff';
 
   return 'application/octet-stream';
+};
+
+let toastIdCounter = 0;
+const createToastId = (): string => {
+  toastIdCounter += 1;
+  const randomPart = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2, 10);
+  return `${Date.now()}-${toastIdCounter}-${randomPart}`;
+};
+
+const sanitizeChatFilesForApi = (
+  files?: { name: string; mimeType: string; data: string }[]
+): { name: string; mimeType: string; data: string }[] | undefined => {
+  if (!Array.isArray(files) || files.length === 0) return undefined;
+  const sanitized = files
+    .map(file => ({
+      name: String(file?.name || '').trim(),
+      mimeType: normalizeChatMimeType(file?.mimeType || ''),
+      data: typeof file?.data === 'string' ? file.data.trim() : '',
+    }))
+    .filter(file => Boolean(file.name) && Boolean(file.data) && isChatMimeTypeSupported(file.mimeType));
+
+  return sanitized.length > 0 ? sanitized : undefined;
 };
 
 const parseFunctionCallArgs = (rawArgs: unknown): Record<string, any> => {
@@ -159,7 +204,7 @@ export const AppMain: React.FC = () => {
   // Toast notifications
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
   const addToast = useCallback((message: string, type: ToastType) => {
-    const id = Date.now().toString();
+    const id = createToastId();
     setToasts(prev => [...prev, { id, message, type }]);
   }, []);
 
@@ -201,7 +246,7 @@ export const AppMain: React.FC = () => {
         if (metadata.chatHistory) setChatMessages(metadata.chatHistory);
       }
 
-      addToast('Dilekçe yüklendi! ğŸ“‚', 'success');
+      addToast('Dilekçe yüklendi.', 'success');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [petitionFromState?.id]); // Only re-run if petition ID changes
@@ -475,7 +520,7 @@ export const AppMain: React.FC = () => {
     try {
       const result = await performWebSearch(searchKeywords);
       setWebSearchResult(result);
-      addToast('Web araması tamamlandı! ğŸ”', 'success');
+      addToast('Web araması tamamlandı.', 'success');
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata oluştu.';
       setError(`Web araması sırasında bir hata oluştu: ${errorMessage}`);
@@ -495,7 +540,7 @@ export const AppMain: React.FC = () => {
       setGeneratedPetition(prev => prev + text);
     }
     setIsLegalSearchOpen(false);
-    addToast('İçtihat eklendi! âš–ï¸ Dilekçe oluştururken kullanılacak.', 'success');
+    addToast('İçtihat eklendi. Dilekçe oluştururken kullanılacak.', 'success');
   }, [generatedPetition, mergeLegalResults]);
 
   // Handler to remove a legal search result
@@ -595,20 +640,39 @@ export const AppMain: React.FC = () => {
 
   const handleSendChatMessage = useCallback(async (message: string, files?: File[]) => {
     // Convert files to base64 if provided
+    const chatSourceFiles = Array.isArray(files) ? files : [];
     let chatFiles: { name: string; mimeType: string; data: string }[] = [];
-    if (files && files.length > 0) {
-      chatFiles = await Promise.all(
-        files.map(async (file) => ({
-          name: file.name,
-          mimeType: resolveChatMimeType(file),
-          data: await fileToBase64(file),
-        }))
+    const skippedChatFileNames: string[] = [];
+    if (chatSourceFiles.length > 0) {
+      const preparedFiles = await Promise.all(
+        chatSourceFiles.map(async (file) => {
+          const resolvedMimeType = normalizeChatMimeType(resolveChatMimeType(file));
+          if (!isChatMimeTypeSupported(resolvedMimeType)) {
+            skippedChatFileNames.push(file.name || 'isimsiz dosya');
+            return null;
+          }
+
+          return {
+            name: file.name,
+            mimeType: resolvedMimeType,
+            data: await fileToBase64(file),
+          };
+        })
       );
+
+      chatFiles = preparedFiles.filter((file): file is { name: string; mimeType: string; data: string } => Boolean(file));
+    }
+
+    if (skippedChatFileNames.length > 0) {
+      const previewNames = skippedChatFileNames.slice(0, 3).join(', ');
+      const remainingCount = skippedChatFileNames.length - 3;
+      const remainingSuffix = remainingCount > 0 ? ` +${remainingCount} dosya` : '';
+      addToast(`Bazı dosyalar sohbet ekine eklenemedi: ${previewNames}${remainingSuffix}.`, 'warning');
     }
 
     const userMessage: ChatMessage = {
       role: 'user',
-      text: message || (chatFiles.length > 0 ? `ğŸ“ ${chatFiles.length} dosya yüklendi${message ? ': ' + message : ''}` : ''),
+      text: message || (chatSourceFiles.length > 0 ? `${chatSourceFiles.length} dosya yüklendi${message ? ': ' + message : ''}` : ''),
       files: chatFiles.length > 0 ? chatFiles : undefined
     };
     const newMessages: ChatMessage[] = [...chatMessages, userMessage];
@@ -617,8 +681,13 @@ export const AppMain: React.FC = () => {
     setError(null);
 
     try {
+      const chatHistoryForApi = newMessages.map(msg => ({
+        ...msg,
+        files: sanitizeChatFilesForApi(msg.files),
+      }));
+
       const responseStream = streamChatResponse(
-        newMessages,
+        chatHistoryForApi,
         analysisData?.summary || '',
         {
           keywords: searchKeywords.join(', '),
@@ -633,7 +702,7 @@ export const AppMain: React.FC = () => {
           docContent: docContent,
           specifics: specificsWithMissingInfo,
         },
-        chatFiles // Pass files to the API
+        sanitizeChatFilesForApi(chatFiles)
       );
       const modelMessage: ChatMessage = { role: 'model', text: '' };
       setChatMessages(prev => [...prev, modelMessage]);
@@ -661,7 +730,7 @@ export const AppMain: React.FC = () => {
           }));
           if (newResults.length > 0) {
             mergeLegalResults(newResults);
-            addToast(`${newResults.length} adet emsal karar bulundu! ğŸ“š`, 'success');
+            addToast(`${newResults.length} adet emsal karar bulundu.`, 'success');
           }
         }
 
@@ -823,7 +892,7 @@ export const AppMain: React.FC = () => {
       });
       setGeneratedPetition(result);
       setPetitionVersion(v => v + 1);
-      addToast('Dilekçe gözden geçirildi ve iyileştirildi! ğŸ”', 'success');
+      addToast('Dilekçe gözden geçirildi ve iyileştirildi.', 'success');
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata oluştu.';
       setError(`Dilekçe gözden geçirilirken bir hata oluştu: ${errorMessage}`);
@@ -853,7 +922,7 @@ export const AppMain: React.FC = () => {
     setError(null);
     setIsFullPageEditorMode(false); // Exit full-page mode
 
-    addToast('Yeni dilekçe için hazırsınız! ğŸ‰', 'info');
+    addToast('Yeni dilekçe için hazırsınız.', 'info');
   }, [addToast]);
 
   // Show login prompt if user is not logged in (except when loading from profile)
@@ -864,7 +933,7 @@ export const AppMain: React.FC = () => {
         <Header onShowLanding={() => navigate('/')} />
         <div className="flex-grow flex items-center justify-center p-8">
           <div className="max-w-md w-full bg-[#111113] rounded-lg border border-white/10 p-8 text-center">
-            <div className="text-6xl mb-6">ğŸ”’</div>
+            <div className="text-6xl mb-6">🔒</div>
             <h2 className="text-2xl font-bold text-white mb-4">Giriş Gerekli</h2>
             <p className="text-gray-300 mb-6">
               Dilekçe oluşturmak için önce giriş yapmanız gerekiyor.
@@ -887,7 +956,7 @@ export const AppMain: React.FC = () => {
               onClick={() => navigate('/pool')}
               className="mt-4 text-gray-400 hover:text-white transition-colors text-sm"
             >
-              Veya Dilekçe Havuzuna göz at â†’
+              Veya Dilekçe Havuzuna göz at →
             </button>
           </div>
         </div>

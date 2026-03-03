@@ -10,6 +10,8 @@
     "dev:all": "concurrently \"npm run server\" \"npm run dev\"",
     "build": "vite build",
     "preview": "vite preview",
+    "encoding:normalize": "node scripts/encoding-normalize.mjs",
+    "encoding:check": "node scripts/encoding-check.mjs",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage"
