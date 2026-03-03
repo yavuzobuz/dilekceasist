@@ -45,19 +45,38 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
               </div>
 
               {/* Navigation Links - Desktop */}
-              <nav className="hidden xl:flex items-center gap-1 min-w-0 overflow-x-auto">
+              <nav className="hidden xl:flex items-center gap-1 min-w-0">
                 {user && (
-                  <button
-                    onClick={() => handleNavigate('/alt-app')}
-                    className="group relative shrink-0 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-xs 2xl:text-sm font-medium rounded-lg overflow-hidden"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-red-600/0 via-red-600/20 to-red-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                    <span className="relative flex items-center gap-2">
-                      <PenTool className="w-4 h-4 text-red-500 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300" />
-                      <span className="group-hover:translate-x-0.5 transition-transform duration-300">Dilekçe Oluştur</span>
-                    </span>
-                  </button>
+                  <div className="group relative shrink-0">
+                    <button
+                      className="relative flex items-center gap-2 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-sm 2xl:text-base font-semibold rounded-lg overflow-hidden"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-red-600/0 via-red-600/20 to-red-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                      <span className="relative flex items-center gap-2">
+                        <PenTool className="w-4 h-4 text-red-500 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300" />
+                        <span className="group-hover:translate-x-0.5 transition-transform duration-300">Oluştur</span>
+                      </span>
+                    </button>
+
+                    <div className="invisible absolute left-0 top-full z-30 mt-1 w-max min-w-[250px] rounded-lg border border-gray-700/70 bg-gray-900/95 p-1 opacity-0 translate-y-1 shadow-lg shadow-black/40 backdrop-blur-sm transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
+                      <button
+                        onClick={() => handleNavigate('/alt-app')}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-xs 2xl:text-sm text-gray-300 hover:text-white hover:bg-gray-800/95 rounded-md transition-colors"
+                      >
+                        <PenTool className="w-4 h-4 text-red-500" />
+                        <span>Dilekçe Oluştur</span>
+                      </button>
+                      <button
+                        onClick={() => handleNavigate('/sozlesmeler-ihtarnameler')}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-xs 2xl:text-sm text-gray-300 hover:text-white hover:bg-gray-800/95 rounded-md transition-colors"
+                      >
+                        <Scroll className="w-4 h-4 text-red-500" />
+                        <span>Sözleşmeler & İhtarnameler</span>
+                      </button>
+                    </div>
+                  </div>
                 )}
+
                 <button
                   onClick={() => handleNavigate('/petition-pool')}
                   className="group relative shrink-0 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-xs 2xl:text-sm font-medium rounded-lg overflow-hidden"
@@ -68,6 +87,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
                     <span className="group-hover:translate-x-0.5 transition-transform duration-300">Dilekçe Havuzu</span>
                   </span>
                 </button>
+
                 <button
                   onClick={() => handleNavigate('/sablonlar?category=templates')}
                   className="group relative shrink-0 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-xs 2xl:text-sm font-medium rounded-lg overflow-hidden"
@@ -78,16 +98,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
                     <span className="group-hover:translate-x-0.5 transition-transform duration-300">Şablonlar</span>
                   </span>
                 </button>
-                <button
-                  onClick={() => handleNavigate('/sozlesmeler-ihtarnameler')}
-                  className="group relative shrink-0 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-xs 2xl:text-sm font-medium rounded-lg overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-red-600/0 via-red-600/20 to-red-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                  <span className="relative flex items-center gap-2">
-                    <Scroll className="w-4 h-4 text-red-500 group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
-                    <span className="group-hover:translate-x-0.5 transition-transform duration-300">Sözleşmeler & İhtarnameler</span>
-                  </span>
-                </button>
+
                 <button
                   onClick={() => handleNavigate('/about')}
                   className="group relative shrink-0 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-xs 2xl:text-sm font-medium rounded-lg overflow-hidden"
@@ -98,6 +109,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
                     <span className="group-hover:translate-x-0.5 transition-transform duration-300">Hakkında</span>
                   </span>
                 </button>
+
                 <button
                   onClick={() => handleNavigate('/fiyatlandirma')}
                   className="group relative shrink-0 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-xs 2xl:text-sm font-medium rounded-lg overflow-hidden"
@@ -108,6 +120,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
                     <span className="group-hover:translate-x-0.5 transition-transform duration-300">Fiyatlandırma</span>
                   </span>
                 </button>
+
                 <button
                   onClick={() => handleNavigate('/faq')}
                   className="group relative shrink-0 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-xs 2xl:text-sm font-medium rounded-lg overflow-hidden"
@@ -146,6 +159,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
                       </span>
                     </button>
                   )}
+
                   <button
                     onClick={() => handleNavigate('/login')}
                     className="group relative px-4 py-2 bg-gray-800/50 hover:bg-gray-700/50 border border-gray-600 hover:border-red-500 rounded-lg text-sm font-medium text-white transition-all duration-300 transform hover:scale-105 active:scale-95 overflow-hidden"
@@ -156,6 +170,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
                       Giriş
                     </span>
                   </button>
+
                   <button
                     onClick={() => handleNavigate('/register')}
                     className="group relative px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-lg text-sm font-medium text-white transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg shadow-red-900/50 hover:shadow-red-800/60 overflow-hidden"
@@ -180,6 +195,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
                   <User className="w-5 h-5 text-red-500" />
                 </button>
               )}
+
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="p-2 bg-gray-800/50 border border-gray-600 rounded-lg text-white hover:bg-gray-700/50 transition-colors"
@@ -195,14 +211,24 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
           <div className="xl:hidden bg-gray-900/95 backdrop-blur-lg border-t border-gray-800 max-h-[calc(100vh-4rem)] overflow-y-auto">
             <nav className="container mx-auto px-4 py-4 space-y-2">
               {user && (
-                <button
-                  onClick={() => handleNavigate('/alt-app')}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
-                >
-                  <PenTool className="w-5 h-5 text-red-500" />
-                  Dilekçe Oluştur
-                </button>
+                <>
+                  <button
+                    onClick={() => handleNavigate('/alt-app')}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
+                  >
+                    <PenTool className="w-5 h-5 text-red-500" />
+                    Dilekçe Oluştur
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('/sozlesmeler-ihtarnameler')}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
+                  >
+                    <Scroll className="w-5 h-5 text-red-500" />
+                    Sözleşmeler & İhtarnameler
+                  </button>
+                </>
               )}
+
               <button
                 onClick={() => handleNavigate('/petition-pool')}
                 className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
@@ -210,6 +236,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
                 <Library className="w-5 h-5 text-red-500" />
                 Dilekçe Havuzu
               </button>
+
               <button
                 onClick={() => handleNavigate('/sablonlar?category=templates')}
                 className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
@@ -217,13 +244,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
                 <Library className="w-5 h-5 text-red-500" />
                 Şablonlar
               </button>
-              <button
-                onClick={() => handleNavigate('/sozlesmeler-ihtarnameler')}
-                className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
-              >
-                <Scroll className="w-5 h-5 text-red-500" />
-                Sözleşmeler & İhtarnameler
-              </button>
+
               <button
                 onClick={() => handleNavigate('/about')}
                 className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
@@ -231,6 +252,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
                 <BookOpen className="w-5 h-5 text-red-500" />
                 Hakkında
               </button>
+
               <button
                 onClick={() => handleNavigate('/fiyatlandirma')}
                 className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
@@ -238,6 +260,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
                 <CreditCard className="w-5 h-5 text-red-500" />
                 Fiyatlandırma
               </button>
+
               <button
                 onClick={() => handleNavigate('/faq')}
                 className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
@@ -267,6 +290,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
                     <Key className="w-5 h-5 text-red-500" />
                     Giriş Yap
                   </button>
+
                   <button
                     onClick={() => handleNavigate('/register')}
                     className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg font-medium"

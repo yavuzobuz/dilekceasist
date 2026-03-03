@@ -29,7 +29,7 @@ const ai = new GoogleGenAI({ apiKey: API_KEY });
 const SERVER_API_KEY = process.env.SERVER_API_KEY;
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'kibrit74@gmail.com')
     .split(',')
     .map(email => email.trim().toLowerCase())
     .filter(Boolean);
@@ -132,7 +132,7 @@ const createServiceRoleClient = () => {
 const isAdminUser = (user) => {
     const email = (user?.email || '').toLowerCase();
     const role = String(user?.app_metadata?.role || '').toLowerCase();
-    const hasAdminClaim = user?.app_metadata?.is_admin === true;
+    const hasAdminClaim = user?.app_metadata?.is_admin === true || user?.user_metadata?.is_admin === true;
 
     return hasAdminClaim || role === 'admin' || role === 'super_admin' || ADMIN_EMAILS.includes(email);
 };
