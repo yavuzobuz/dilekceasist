@@ -4,11 +4,11 @@
            xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
            xsi:type="TaskPaneApp">
   <Id>8c6fd93d-cc8e-4e84-8cb5-d9a362bd5f52</Id>
-  <Version>1.0.0.0</Version>
+  <Version>1.0.0.2</Version>
   <ProviderName>DilekceAsist</ProviderName>
   <DefaultLocale>tr-TR</DefaultLocale>
-  <DisplayName DefaultValue="DilekceAsist AI Editor" />
-  <Description DefaultValue="Word secili metnini AI ile duzeltir, guclendirir veya yeniden yazar." />
+  <DisplayName DefaultValue="DilekceAsist AI Chatbot" />
+  <Description DefaultValue="Word secili metni uzerinden karar arama, metin duzeltme, beyin firtinasi ve web aramasi yapar." />
   <IconUrl DefaultValue="https://dilekceasist.vercel.app/favicon.ico" />
   <HighResolutionIconUrl DefaultValue="https://dilekceasist.vercel.app/favicon.ico" />
   <SupportUrl DefaultValue="https://dilekceasist.vercel.app" />
@@ -29,7 +29,7 @@
   </Requirements>
 
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://dilekceasist.vercel.app/office/word/taskpane.html" />
+    <SourceLocation DefaultValue="https://dilekceasist.vercel.app/office/word/taskpane.html?v=20260303-2" />
   </DefaultSettings>
 
   <Permissions>ReadWriteDocument</Permissions>
