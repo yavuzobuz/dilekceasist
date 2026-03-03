@@ -3553,6 +3553,30 @@ app.get('/api/user-plan-summary', async (req, res) => {
     }
 });
 
+// Authenticated user subscription cancellation
+app.post('/api/user-plan-cancel', async (req, res) => {
+    try {
+        const user = await getAuthenticatedUserFromRequest(req);
+        const serviceClient = createServiceRoleClient();
+        await getOrCreateUserPlan(serviceClient, user.id);
+
+        const { error: updateError } = await serviceClient
+            .from('user_usage_plans')
+            .update({ status: 'inactive' })
+            .eq('user_id', user.id);
+
+        if (updateError) {
+            throw updateError;
+        }
+
+        const summary = await buildPlanUsageSummary(serviceClient, user.id);
+        res.json({ success: true, summary });
+    } catch (error) {
+        console.error('User plan cancel error:', error);
+        res.status(error.status || 500).json({ error: error.message || 'Abonelik iptal edilemedi' });
+    }
+});
+
 // Admin Users API - Get users with email from Supabase Auth
 app.get('/api/admin-users', requireAdminAuth, async (req, res) => {
     try {

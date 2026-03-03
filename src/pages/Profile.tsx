@@ -42,7 +42,7 @@ const getPlanLabel = (planCode?: string | null): string => {
 };
 
 const Profile: React.FC = () => {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, updateProfile } = useAuth();
   const [petitions, setPetitions] = useState<Petition[]>([]);
   const [loading, setLoading] = useState(true);
   const [planSummary, setPlanSummary] = useState<UserPlanSummary | null>(null);
@@ -59,12 +59,21 @@ const Profile: React.FC = () => {
   const [corporateHeader, setCorporateHeader] = useState<string>(profile?.corporate_header || '');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isSavingBranding, setIsSavingBranding] = useState(false);
+  const [displayName, setDisplayName] = useState<string>(profile?.full_name || '');
+  const [isSavingDisplayName, setIsSavingDisplayName] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [isCancellingSubscription, setIsCancellingSubscription] = useState(false);
 
   // Sync office branding state when profile loads
   useEffect(() => {
     if (profile) {
       setOfficeLogoUrl(profile.office_logo_url || null);
       setCorporateHeader(profile.corporate_header || '');
+      setDisplayName(profile.full_name || '');
+    } else {
+      setDisplayName('');
     }
   }, [profile]);
 
@@ -108,12 +117,16 @@ const Profile: React.FC = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) return;
 
-      const response = await fetch('/api/admin-users?action=plan-summary', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
-      });
+      const authHeaders = {
+        Authorization: `Bearer ${session.access_token}`
+      };
 
+      // Prefer dedicated endpoint; fallback keeps compatibility with environments
+      // where plan summary is exposed via /api/admin-users?action=plan-summary.
+      let response = await fetch('/api/user-plan-summary', { headers: authHeaders });
+      if (!response.ok) {
+        response = await fetch('/api/admin-users?action=plan-summary', { headers: authHeaders });
+      }
       if (!response.ok) {
         throw new Error('Plan bilgisi alinamadi');
       }
@@ -122,6 +135,7 @@ const Profile: React.FC = () => {
       setPlanSummary(data.summary || null);
     } catch (error) {
       console.error('Error loading plan summary:', error);
+      setPlanSummary(null);
     } finally {
       setLoadingPlanSummary(false);
     }
@@ -249,6 +263,105 @@ const Profile: React.FC = () => {
     toast.success('Dilekçe başarıyla paylaşıldı! 🎉');
     setShareModalOpen(false);
     setSelectedPetition(null);
+  };
+
+  const handleUpdateDisplayName = async () => {
+    if (!user) return;
+
+    const normalizedName = displayName.trim();
+    if (!normalizedName) {
+      toast.error('Ad Soyad alani bos olamaz');
+      return;
+    }
+
+    setIsSavingDisplayName(true);
+    try {
+      const { error: authUpdateError } = await supabase.auth.updateUser({
+        data: { full_name: normalizedName }
+      });
+      if (authUpdateError) throw authUpdateError;
+
+      await updateProfile({ full_name: normalizedName });
+    } catch (error: any) {
+      console.error('Error updating display name:', error);
+      toast.error(error?.message || 'Ad Soyad guncellenemedi');
+    } finally {
+      setIsSavingDisplayName(false);
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!newPassword || !confirmNewPassword) {
+      toast.error('Sifre alanlarini doldurun');
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error('Sifre en az 6 karakter olmali');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      toast.error('Sifreler eslesmiyor');
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+
+      setNewPassword('');
+      setConfirmNewPassword('');
+      toast.success('Sifre guncellendi');
+    } catch (error: any) {
+      console.error('Error updating password:', error);
+      toast.error(error?.message || 'Sifre guncellenemedi');
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!user) return;
+
+    const confirmed = window.confirm('Aboneliginizi iptal etmek istediginizden emin misiniz? Bu islem plani pasife alir.');
+    if (!confirmed) return;
+
+    setIsCancellingSubscription(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Oturum bulunamadi');
+      }
+
+      const authHeaders = {
+        Authorization: `Bearer ${session.access_token}`
+      };
+
+      let response = await fetch('/api/user-plan-cancel', {
+        method: 'POST',
+        headers: authHeaders
+      });
+
+      if (!response.ok) {
+        response = await fetch('/api/admin-users?action=cancel-plan', {
+          method: 'POST',
+          headers: authHeaders
+        });
+      }
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Abonelik iptal edilemedi');
+      }
+
+      setPlanSummary(payload.summary || null);
+      toast.success('Abonelik pasife alindi');
+    } catch (error: any) {
+      console.error('Error cancelling subscription:', error);
+      toast.error(error?.message || 'Abonelik iptal edilemedi');
+    } finally {
+      setIsCancellingSubscription(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -468,9 +581,11 @@ const Profile: React.FC = () => {
                     <p className="text-white font-semibold">
                       {loadingPlanSummary
                         ? 'Yukleniyor...'
-                        : planSummary?.remaining_today === null
-                          ? 'Sinirsiz'
-                          : `${planSummary?.remaining_today ?? 0} / ${planSummary?.daily_limit ?? 0}`}
+                        : !planSummary
+                          ? '-'
+                          : (planSummary.remaining_today == null || planSummary.daily_limit == null)
+                            ? 'Sinirsiz'
+                            : `${planSummary.remaining_today} / ${planSummary.daily_limit}`}
                     </p>
                   </div>
                   {planSummary?.trial_ends_at && (
@@ -487,7 +602,10 @@ const Profile: React.FC = () => {
                   >
                     Plan Yukselt
                   </button>
-                  <button className="px-3 sm:px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors flex items-center text-sm sm:text-base">
+                  <button
+                    onClick={() => setActiveTab('settings')}
+                    className="px-3 sm:px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors flex items-center text-sm sm:text-base"
+                  >
                     <Edit3 className="w-4 h-4 mr-1 sm:mr-2" />
                     <span className="hidden xs:inline">Profili Duzenle</span>
                     <span className="xs:hidden">Duzenle</span>
@@ -1306,6 +1424,53 @@ const Profile: React.FC = () => {
                     <span className="text-white">{user?.created_at ? formatDate(user.created_at) : '-'}</span>
                   </div>
                 </div>
+
+                <div className="mt-6 pt-6 border-t border-gray-600 space-y-5">
+                  <div>
+                    <label className="block text-gray-300 text-sm font-medium mb-2">Ad Soyad</label>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="text"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        placeholder="Ad Soyad"
+                        className="flex-1 px-4 py-2.5 bg-gray-600 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors"
+                      />
+                      <button
+                        onClick={handleUpdateDisplayName}
+                        disabled={isSavingDisplayName}
+                        className="px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white font-medium rounded-lg transition-colors"
+                      >
+                        {isSavingDisplayName ? 'Kaydediliyor...' : 'Ismi Guncelle'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-gray-300 text-sm font-medium">Yeni Sifre</label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="En az 6 karakter"
+                      className="w-full px-4 py-2.5 bg-gray-600 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                    <input
+                      type="password"
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      placeholder="Yeni sifre tekrar"
+                      className="w-full px-4 py-2.5 bg-gray-600 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                    <button
+                      onClick={handleUpdatePassword}
+                      disabled={isUpdatingPassword}
+                      className="w-full sm:w-auto px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white font-medium rounded-lg transition-colors"
+                    >
+                      {isUpdatingPassword ? 'Guncelleniyor...' : 'Sifreyi Guncelle'}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Office Branding */}
@@ -1376,7 +1541,7 @@ const Profile: React.FC = () => {
                         />
                         <label
                           htmlFor="logo-upload"
-                          className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer transition-colors"
+                          className="inline-flex items-center px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg cursor-pointer transition-colors"
                         >
                           {isUploadingLogo ? (
                             <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
@@ -1400,7 +1565,7 @@ const Profile: React.FC = () => {
                                 setOfficeLogoUrl(null);
                               }
                             }}
-                            className="ml-2 inline-flex items-center px-3 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg transition-colors"
+                            className="ml-2 inline-flex items-center px-3 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors"
                           >
                             <X className="w-4 h-4 mr-1" />
                             Sil
@@ -1448,7 +1613,7 @@ const Profile: React.FC = () => {
                       }
                     }}
                     disabled={isSavingBranding}
-                    className="w-full flex items-center justify-center px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white font-medium rounded-lg transition-colors"
+                    className="inline-flex items-center justify-center px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white font-medium rounded-lg transition-colors"
                   >
                     {isSavingBranding ? (
                       <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
@@ -1458,6 +1623,25 @@ const Profile: React.FC = () => {
                     Kurumsal Bilgileri Kaydet
                   </button>
                 </div>
+              </div>
+
+              {/* Subscription */}
+              <div className="bg-gray-700/50 rounded-xl p-6 border border-red-500/40">
+                <h3 className="text-lg font-semibold text-white mb-2">Abonelik Iptali</h3>
+                <p className="text-sm text-gray-400 mb-4">
+                  Mevcut plan: <span className="text-gray-200">{getPlanLabel(planSummary?.plan_code)}</span>{' '}
+                  ({planSummary?.status === 'active' ? 'Aktif' : 'Pasif'})
+                </p>
+                <button
+                  onClick={handleCancelSubscription}
+                  disabled={isCancellingSubscription || !planSummary || planSummary.status !== 'active'}
+                  className="px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white font-medium rounded-lg transition-colors"
+                >
+                  {isCancellingSubscription ? 'Iptal ediliyor...' : 'Aboneligi Iptal Et'}
+                </button>
+                {planSummary?.status !== 'active' && (
+                  <p className="text-xs text-gray-500 mt-2">Planiniz zaten pasif durumda.</p>
+                )}
               </div>
 
               {/* Actions */}

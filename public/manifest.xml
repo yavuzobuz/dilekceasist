@@ -1,16 +1,16 @@
-﻿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
            xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
            xsi:type="TaskPaneApp">
-  <Id>8c6fd93d-cc8e-4e84-8cb5-d9a362bd5f52</Id>
+  <Id>f0251c56-9705-4bea-8062-7d76a3fe6266</Id>
   <Version>1.0.0.1</Version>
   <ProviderName>DilekceAsist</ProviderName>
   <DefaultLocale>tr-TR</DefaultLocale>
   <DisplayName DefaultValue="DilekceAsist AI Editor" />
   <Description DefaultValue="Word secili metnini AI ile duzeltir, guclendirir veya yeniden yazar." />
-  <IconUrl DefaultValue="https://dilekceasist.vercel.app/favicon.ico" />
-  <HighResolutionIconUrl DefaultValue="https://dilekceasist.vercel.app/favicon.ico" />
+  <IconUrl DefaultValue="https://dilekceasist.vercel.app/favicon.png" />
+  <HighResolutionIconUrl DefaultValue="https://dilekceasist.vercel.app/favicon.png" />
   <SupportUrl DefaultValue="https://dilekceasist.vercel.app" />
   <AppDomains>
     <AppDomain>https://dilekceasist.vercel.app</AppDomain>
