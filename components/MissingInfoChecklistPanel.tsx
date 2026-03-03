@@ -13,15 +13,15 @@ interface MissingInfoChecklistPanelProps {
 
 const PRIORITY_META: Record<MissingInfoQuestion['priority'], { label: string; className: string }> = {
   bloklayici: {
-    label: 'Bloklayici',
+    label: 'Bloklayıcı',
     className: 'bg-red-500/15 text-red-300 border-red-500/30',
   },
   onemli: {
-    label: 'Onemli',
+    label: 'Önemli',
     className: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
   },
   oneri: {
-    label: 'Oneri',
+    label: 'Öneri',
     className: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
   },
 };
@@ -41,7 +41,7 @@ export const MissingInfoChecklistPanel: React.FC<MissingInfoChecklistPanelProps>
         <div>
           <p className="text-sm font-semibold text-white">Eksikleri Tara</p>
           <p className="text-xs text-gray-400">
-            Uretimden once kritik bosluklari bulur, en fazla 3 soru sorar.
+            Üretimden önce kritik boşlukları bulur, en fazla 3 soru sorar.
           </p>
         </div>
         <button
@@ -55,7 +55,7 @@ export const MissingInfoChecklistPanel: React.FC<MissingInfoChecklistPanelProps>
 
       {hasScanned && questions.length === 0 && (
         <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
-          Bu turda kritik eksik bulunmadi.
+          Bu turda kritik eksik bulunmadı.
         </div>
       )}
 
@@ -76,7 +76,7 @@ export const MissingInfoChecklistPanel: React.FC<MissingInfoChecklistPanelProps>
                   rows={2}
                   value={answers[question.id] || ''}
                   onChange={(event) => onAnswerChange(question.id, event.target.value)}
-                  placeholder={question.placeholder || 'Kisa ve net cevap yazin.'}
+                  placeholder={question.placeholder || 'Kısa ve net cevap yazın.'}
                   className="w-full rounded-lg border border-white/10 bg-[#111113] px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 resize-y"
                 />
               </div>
@@ -85,13 +85,13 @@ export const MissingInfoChecklistPanel: React.FC<MissingInfoChecklistPanelProps>
 
           {blockingUnansweredCount > 0 && (
             <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-              {blockingUnansweredCount} bloklayici soru bos. Uretim butonu, bunlar yanitlanmadan acilmaz.
+              {blockingUnansweredCount} bloklayıcı soru boş. Üretim butonu, bunlar yanıtlanmadan açılmaz.
             </div>
           )}
 
           {blockingUnansweredCount === 0 && totalUnansweredCount > 0 && (
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
-              Bloklayici sorular tamamlandi. Istersen kalan sorulari da doldurabilirsin.
+              Bloklayıcı sorular tamamlandı. İstersen kalan soruları da doldurabilirsin.
             </div>
           )}
         </div>

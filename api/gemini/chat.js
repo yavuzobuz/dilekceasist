@@ -87,7 +87,7 @@ const getLastUserMessageText = (chatHistory = []) => {
 
 const isLikelyDocumentRequest = (text = '') => {
     if (!text) return false;
-    const hasDocumentWord = /(dilekce|dilekçe|belge|taslak|template|ihtarname|itiraz|temyiz|feragat|talep)/i.test(text);
+    const hasDocumentWord = /(dilekce|dilekçe|belge|taslak|template|ihtarname|itiraz|temyiz|feragat|talep|sozlesme|sözleşme)/i.test(text);
     const hasCreationWord = /(olustur|oluştur|hazirla|hazırla|yaz|uret|üret)/i.test(text);
     return hasDocumentWord && hasCreationWord;
 };
@@ -126,6 +126,10 @@ const DOCUMENT_REQUIREMENTS_HELP_TEXT = [
     `${ANALYSIS_SUMMARY_HELP_TEXT}`,
     'Belge oluşturma için şu 3 adım zorunludur: 1) Belgeleri yükleyip analiz et, 2) Web araştırması yap, 3) Emsal karar araması yap.',
 ].join(' ');
+
+const DIRECT_DOCUMENT_WITHOUT_ANALYSIS_TEXT = 'Analiz edilecek belge olmadan dilekçe/belge/sözleşme oluşturamam. Önce belge yükleyip analiz etmelisin.';
+
+const DOCUMENT_UPLOADED_BUT_ANALYSIS_MISSING_TEXT = 'Belge yuklenmis gorunuyor ancak analiz ozeti henuz olusmamis. Once \"Belgeleri Analiz Et\" adimini tamamla.';
 
 const parseFunctionArgs = (rawArgs) => {
     if (!rawArgs) return {};
@@ -256,6 +260,15 @@ export default async function handler(req, res) {
         const isDocumentRequest = isLikelyDocumentRequest(lastUserMessage);
         const isSimpleQuestion = isSimpleGuidanceQuestion(lastUserMessage);
         const requiresEvidenceForAnswer = !isSimpleQuestion || isDocumentRequest || (Array.isArray(files) && files.length > 0);
+        const hasAnalysisSummary = normalizeText(analysisSummary || '').length > 0;
+        const hasUploadedDocument = (Array.isArray(files) && files.length > 0) || normalizeText(safeContext.docContent || '').length > 0;
+
+        if (isDocumentRequest && !hasAnalysisSummary) {
+            return res.status(422).json({
+                error: hasUploadedDocument ? DOCUMENT_UPLOADED_BUT_ANALYSIS_MISSING_TEXT : DIRECT_DOCUMENT_WITHOUT_ANALYSIS_TEXT,
+                code: 'MISSING_ANALYSIS_SUMMARY_FOR_DOCUMENT_CHAT',
+            });
+        }
 
         let effectiveSearchSummary = normalizeText(safeContext.searchSummary || '');
         let effectiveLegalSummary = normalizeText(safeContext.legalSummary || '');

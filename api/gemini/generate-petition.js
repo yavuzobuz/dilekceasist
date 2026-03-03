@@ -4,26 +4,26 @@ import { consumeGenerationCredit } from '../_lib/generationQuota.js';
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const MODEL_NAME = 'gemini-3-pro-preview';
 
-// Helper functions
 function formatCaseDetailsForPrompt(caseDetails) {
-    if (!caseDetails) return "Dava künyesi sağlanmadı.";
+    if (!caseDetails) return 'Dava kunyesi saglanmadi.';
     return `Mahkeme: ${caseDetails.court || '-'}, Dosya No: ${caseDetails.fileNumber || '-'}, Karar No: ${caseDetails.decisionNumber || '-'}, Karar Tarihi: ${caseDetails.decisionDate || '-'}`;
 }
 
 function formatLawyerInfoForPrompt(lawyerInfo) {
-    if (!lawyerInfo) return "Vekil bilgisi sağlanmadı.";
+    if (!lawyerInfo) return 'Vekil bilgisi saglanmadi.';
     return `${lawyerInfo.title || 'Av.'} ${lawyerInfo.name || '-'}, ${lawyerInfo.bar || '-'} Barosu, Sicil: ${lawyerInfo.barNumber || '-'}`;
 }
 
 function formatPartiesForPrompt(parties) {
-    if (!parties || Object.keys(parties).length === 0) return "Taraf bilgisi sağlanmadı.";
+    if (!parties || Object.keys(parties).length === 0) return 'Taraf bilgisi saglanmadi.';
     return Object.entries(parties).map(([role, name]) => `${role}: ${name}`).join(', ');
 }
 
 function formatChatHistoryForPrompt(chatHistory) {
-    if (!chatHistory || chatHistory.length === 0) return "Sohbet geçmişi yok.";
-    return chatHistory.map(m => `${m.role === 'user' ? 'Kullanıcı' : 'Asistan'}: ${m.text}`).join('\n');
+    if (!chatHistory || chatHistory.length === 0) return 'Sohbet gecmisi yok.';
+    return chatHistory.map((m) => `${m.role === 'user' ? 'Kullanici' : 'Asistan'}: ${m.text}`).join('\n');
 }
+
 function normalizeText(value) {
     return typeof value === 'string' ? value.trim() : '';
 }
@@ -42,14 +42,16 @@ function hasLegalEvidence(params) {
 }
 
 const ANALYSIS_SUMMARY_HELP_TEXT = [
-    'Analiz özeti, yüklediğiniz belgelerden çıkarılan olay özetidir.',
-    'Örnek belgeler: tapu kayıtları, veraset ilamı, sözleşmeler, tutanaklar ve mahkeme evrakları.',
+    'Analiz ozeti, yuklediginiz belgelerden cikarilan olay ozetidir.',
+    'Ornek belgeler: tapu kayitlari, veraset ilami, sozlesmeler, tutanaklar ve mahkeme evraklari.',
 ].join(' ');
 
 const DOCUMENT_REQUIREMENTS_HELP_TEXT = [
     `${ANALYSIS_SUMMARY_HELP_TEXT}`,
-    'Belge oluşturma için şu 3 adım zorunludur: 1) Belgeleri yükleyip analiz et, 2) Web araştırması yap, 3) Emsal karar araması yap.',
+    'Belge olusturma icin su 3 adim zorunludur: 1) Belgeleri yukleyip analiz et, 2) Web arastirmasi yap, 3) Emsal karar aramasi yap.',
 ].join(' ');
+
+const DOCUMENT_UPLOADED_BUT_ANALYSIS_MISSING_TEXT = 'Belge yuklenmis gorunuyor ancak analiz ozeti henuz olusmamis. Once "Belgeleri Analiz Et" adimini tamamla.';
 
 export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -60,6 +62,33 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     try {
+        const params = req.body || {};
+        const analysisSummary = normalizeText(params.analysisSummary);
+        const hasUploadedDocument = normalizeText(params.docContent || '').length > 0;
+
+        if (!analysisSummary) {
+            return res.status(422).json({
+                error: hasUploadedDocument
+                    ? DOCUMENT_UPLOADED_BUT_ANALYSIS_MISSING_TEXT
+                    : `Belge olusturma engellendi. ${DOCUMENT_REQUIREMENTS_HELP_TEXT}`,
+                code: 'MISSING_ANALYSIS_SUMMARY',
+            });
+        }
+
+        if (!hasWebEvidence(params)) {
+            return res.status(422).json({
+                error: `Web arastirmasi eksik. ${DOCUMENT_REQUIREMENTS_HELP_TEXT}`,
+                code: 'MISSING_WEB_EVIDENCE',
+            });
+        }
+
+        if (!hasLegalEvidence(params)) {
+            return res.status(422).json({
+                error: `Emsal karar aramasi eksik. ${DOCUMENT_REQUIREMENTS_HELP_TEXT}`,
+                code: 'MISSING_LEGAL_EVIDENCE',
+            });
+        }
+
         const credit = await consumeGenerationCredit(req, 'generate_petition');
         if (!credit.allowed) {
             return res.status(credit.status || 429).json(credit.payload || {
@@ -68,69 +97,37 @@ export default async function handler(req, res) {
             });
         }
 
-        const params = req.body || {};
-        const analysisSummary = normalizeText(params.analysisSummary);
+        const systemInstruction = `Sen, Turk hukuk sisteminde 20+ yil deneyime sahip, ust duzey bir hukuk danismani ve dilekce yazim uzmansin.
 
-        if (!analysisSummary) {
-            return res.status(422).json({
-                error: `Belge oluşturma engellendi. ${DOCUMENT_REQUIREMENTS_HELP_TEXT}`,
-                code: 'MISSING_ANALYSIS_SUMMARY'
-            });
-        }
+## SENIN GOREVIN
+Saglanan ham verileri, profesyonel ve ikna edici bir hukuki anlatia donusturmek.
 
-        if (!hasWebEvidence(params)) {
-            return res.status(422).json({
-                error: `Web araştırması eksik. ${DOCUMENT_REQUIREMENTS_HELP_TEXT}`,
-                code: 'MISSING_WEB_EVIDENCE'
-            });
-        }
-
-        if (!hasLegalEvidence(params)) {
-            return res.status(422).json({
-                error: `Emsal karar araması eksik. ${DOCUMENT_REQUIREMENTS_HELP_TEXT}`,
-                code: 'MISSING_LEGAL_EVIDENCE'
-            });
-        }
-
-        const systemInstruction = `Sen, Türk hukuk sisteminde 20+ yıl deneyime sahip, üst düzey bir hukuk danışmanı ve dilekçe yazım uzmanısın.
-
-## SENİN GÖREVİN
-Sağlanan ham verileri, profesyonel ve ikna edici bir hukuki anlatıya dönüştürmek.
-
-## KRİTİK YAZIM KURALLARI
-
-### AÇIKLAMALAR BÖLÜMÜ
-Numaralı maddeler halinde, profesyonel hukuki anlatı.
-
-### EMSAL KARARLARIN KULLANIMI
-Yargıtay kararlarını ilgili argümanla birlikte AÇIKLAMALAR bölümünde entegre et.
-
-### DİL VE ÜSLUP
-- "Müvekkil" kelimesini tutarlı kullan
-- Resmi hitap: "Sayın Mahkemeniz", "arz ve talep ederim"
-- Hukuki terimler kullan`;
+## KRITIK YAZIM KURALLARI
+- Aciklamalar bolumunu numarali maddelerle kur.
+- Emsal karar atiflarini ilgili argumanla birlikte metne entegre et.
+- Resmi hitap kullan: "Sayin Mahkemeniz", "arz ve talep ederim".`;
 
         const promptText = `
 ## DILEKCE OLUSTURMA TALIMATI
 
-### GİRDİ VERİLERİ
-**Dilekçe Türü:** ${params.petitionType}
-**Kullanıcının Rolü:** ${params.userRole}
-**Dava Künyesi:** ${formatCaseDetailsForPrompt(params.caseDetails)}
+### GIRDILER
+**Dilekce Turu:** ${params.petitionType}
+**Kullanicinin Rolu:** ${params.userRole}
+**Dava Kunyesi:** ${formatCaseDetailsForPrompt(params.caseDetails)}
 **Vekil Bilgileri:** ${formatLawyerInfoForPrompt(params.lawyerInfo)}
 **Taraflar:** ${formatPartiesForPrompt(params.parties)}
-**Olay Özeti:** ${params.analysisSummary || "Sağlanmadı."}
-**Hukuki Araştırma:** ${params.webSearchResult || "Sağlanmadı."}
-**Emsal Kararlar:** ${params.legalSearchResult || "Sağlanmadı."}
-**Ek Notlar:** ${params.docContent || "Sağlanmadı."}
-**Özel Talimatlar:** ${params.specifics || "Sağlanmadı."}
-**Sohbet Geçmişi:** ${formatChatHistoryForPrompt(params.chatHistory)}
+**Olay Ozeti:** ${params.analysisSummary || 'Saglanmadi.'}
+**Hukuki Arastirma:** ${params.webSearchResult || 'Saglanmadi.'}
+**Emsal Kararlar:** ${params.legalSearchResult || 'Saglanmadi.'}
+**Ek Notlar:** ${params.docContent || 'Saglanmadi.'}
+**Ozel Talimatlar:** ${params.specifics || 'Saglanmadi.'}
+**Sohbet Gecmisi:** ${formatChatHistoryForPrompt(params.chatHistory)}
 
-## BEKLENEN ÇIKTI
-1. Profesyonel, ikna edici hukuki anlatı
-2. AÇIKLAMALAR, HUKUKİ SEBEPLER, DELİLLER, SONUÇ VE İSTEM bölümleri
-3. Emsal kararları ilgili argümanla entegre et
-4. Markdown formatı kullan
+## BEKLENEN CIKTI
+1. Profesyonel, ikna edici hukuki anlati
+2. ACIKLAMALAR, HUKUKI SEBEPLER, DELILLER, SONUC VE ISTEM bolumleri
+3. Emsal kararlari ilgili argumana bagla
+4. Markdown formatinda yaz
 `;
 
         const response = await ai.models.generateContent({
@@ -140,11 +137,8 @@ Yargıtay kararlarını ilgili argümanla birlikte AÇIKLAMALAR bölümünde ent
         });
 
         res.json({ text: response.text, usage: credit.usage || null });
-
     } catch (error) {
         console.error('Generate Petition Error:', error);
         res.status(500).json({ error: error.message });
     }
 }
-
-

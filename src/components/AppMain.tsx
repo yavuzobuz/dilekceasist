@@ -512,6 +512,10 @@ export const AppMain: React.FC = () => {
       setError('Dilekçe oluşturmadan önce en azından belge analizi adımını tamamlamalısınız.');
       return;
     }
+    if (missingInfoBlockingUnansweredCount > 0) {
+      setError(`Eksikleri Tara alaninda ${missingInfoBlockingUnansweredCount} bloklayici soru bos. Lutfen once yanitlayin.`);
+      return;
+    }
     setIsLoadingPetition(true);
     setError(null);
     setGeneratedPetition('');
@@ -532,7 +536,7 @@ export const AppMain: React.FC = () => {
         webSearchResult: webSearchResult?.summary || '',
         legalSearchResult: legalResultsText, // Add legal search results
         docContent,
-        specifics,
+        specifics: specificsWithMissingInfo,
         chatHistory: chatMessages,
         parties,
         lawyerInfo: analysisData.lawyerInfo,
@@ -546,7 +550,7 @@ export const AppMain: React.FC = () => {
 
       // Save to Supabase if user is logged in
       if (user) {
-        await savePetitionToSupabase(result);
+        await savePetitionToSupabase(result, specificsWithMissingInfo);
       }
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata oluştu.';
@@ -554,9 +558,9 @@ export const AppMain: React.FC = () => {
     } finally {
       setIsLoadingPetition(false);
     }
-  }, [userRole, petitionType, caseDetails, analysisData, webSearchResult, legalSearchResults, docContent, specifics, chatMessages, parties, user]);
+  }, [userRole, petitionType, caseDetails, analysisData, webSearchResult, legalSearchResults, docContent, specificsWithMissingInfo, chatMessages, parties, user, missingInfoBlockingUnansweredCount]);
 
-  const savePetitionToSupabase = async (content: string) => {
+  const savePetitionToSupabase = async (content: string, specificsOverride?: string) => {
     if (!user) return;
 
     try {
@@ -573,7 +577,7 @@ export const AppMain: React.FC = () => {
             parties,
             searchKeywords,
             docContent,
-            specifics,
+            specifics: specificsOverride ?? specifics,
             userRole,
             analysisData,
             webSearchResult,
@@ -829,6 +833,9 @@ export const AppMain: React.FC = () => {
     setDocContent('');
     setSpecifics('');
     setParties({});
+    setMissingInfoQuestions([]);
+    setMissingInfoAnswers({});
+    setHasScannedMissingInfo(false);
     setChatMessages([]);
     setAnalysisData(null);
     setSearchKeywords([]);
@@ -1017,6 +1024,13 @@ export const AppMain: React.FC = () => {
             setDocContent={setDocContent}
             specifics={specifics}
             setSpecifics={setSpecifics}
+            missingInfoQuestions={missingInfoQuestions}
+            missingInfoAnswers={missingInfoAnswers}
+            hasScannedMissingInfo={hasScannedMissingInfo}
+            onRunMissingInfoScan={handleRunMissingInfoScan}
+            onMissingInfoAnswerChange={handleMissingInfoAnswerChange}
+            missingInfoBlockingUnansweredCount={missingInfoBlockingUnansweredCount}
+            missingInfoTotalUnansweredCount={missingInfoTotalUnansweredCount}
             parties={parties}
             setParties={setParties}
 

@@ -19,6 +19,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { getLegalDocument } from '../utils/legalSearch';
 import { File, FileCode2, FileImage, FileText } from 'lucide-react';
+import { MissingInfoChecklistPanel } from '../../components/MissingInfoChecklistPanel';
+import {
+    buildMissingInfoQuestions,
+    getMissingInfoAnswerCounts,
+    mergeSpecificsWithChecklist,
+} from '../../components/missingInfoChecklist';
+import type { MissingInfoQuestion } from '../../components/missingInfoChecklist';
 
 // Helper function to convert a File object to a base64 string
 const fileToBase64 = (file: File): Promise<string> => {
@@ -278,7 +285,7 @@ const extractKeywordCandidates = (rawValue: string): string[] => {
 
 const isLikelyPetitionRequest = (rawMessage: string): boolean => {
     if (!rawMessage) return false;
-    return /(dilekce|dilekçe|belge|taslak|template|ihtarname|itiraz|temyiz|feragat|talep)/i.test(rawMessage)
+    return /(dilekce|dilekçe|belge|taslak|template|ihtarname|itiraz|temyiz|feragat|talep|sozlesme|sözleşme)/i.test(rawMessage)
         && /(olustur|olutur|hazirla|hazırla|yaz)/i.test(rawMessage);
 };
 
@@ -336,6 +343,16 @@ const DOCUMENT_REQUIREMENTS_HELP_TEXT = [
     "2) Web'de araştırma yap.",
     '3) Emsal karar araması yap.',
 ].join('\n');
+
+const DIRECT_DOCUMENT_WITHOUT_ANALYSIS_TEXT = [
+    'Analiz edilecek belge olmadan dilekçe/belge/sözleşme oluşturamam.',
+    'Önce belge yükleyip analiz etmelisin.',
+].join(' ');
+
+const DOCUMENT_UPLOADED_BUT_ANALYSIS_MISSING_TEXT = [
+    'Belge yuklenmis gorunuyor ancak analiz ozeti henuz olusmamis.',
+    'Dilekce/belge olusturmadan once "Belgeleri Analiz Et" adimini tamamla.',
+].join(' ');
 
 const buildLegalResultsPrompt = (results: AlternativeLegalSearchResult[]): string => {
     if (results.length === 0) return '';
@@ -652,6 +669,9 @@ export default function AlternativeApp() {
     const [docContent, setDocContent] = useState('');
     const [specifics, setSpecifics] = useState('');
     const [parties, setParties] = useState<{ [key: string]: string }>({});
+    const [missingInfoQuestions, setMissingInfoQuestions] = useState<MissingInfoQuestion[]>([]);
+    const [missingInfoAnswers, setMissingInfoAnswers] = useState<Record<string, string>>({});
+    const [hasScannedMissingInfo, setHasScannedMissingInfo] = useState(false);
 
     const activeUploadLimit = enabledUploadBatches * FILE_BATCH_SIZE;
     const canUnlockNextUploadBatch = enabledUploadBatches < MAX_UPLOAD_BATCHES;
@@ -718,6 +738,11 @@ export default function AlternativeApp() {
     const [chatProgressText, setChatProgressText] = useState('');
 
     const [error, setError] = useState<string | null>(null);
+    const {
+        totalUnanswered: missingInfoTotalUnansweredCount,
+        blockingUnanswered: missingInfoBlockingUnansweredCount,
+    } = getMissingInfoAnswerCounts(missingInfoQuestions, missingInfoAnswers);
+    const specificsWithMissingInfo = mergeSpecificsWithChecklist(specifics, missingInfoQuestions, missingInfoAnswers);
     const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
     const addToast = useCallback((message: string, type: ToastType) => {
         const id = Date.now().toString();
@@ -1078,6 +1103,9 @@ export default function AlternativeApp() {
         setWebSearchResult(null);
         setLegalSearchResults([]);
         setGeneratedPetition('');
+        setMissingInfoQuestions([]);
+        setMissingInfoAnswers({});
+        setHasScannedMissingInfo(false);
         setEditableTemplateContent(null);
         setTemplateVariableItems([]);
         setTemplateVariableValues({});
@@ -1395,6 +1423,41 @@ export default function AlternativeApp() {
         });
     }, []);
 
+    const handleRunMissingInfoScan = useCallback(() => {
+        const nextQuestions = buildMissingInfoQuestions({
+            petitionType,
+            caseDetails,
+            parties,
+            analysisSummary: analysisData?.summary || '',
+            docContent,
+            specifics,
+        });
+
+        setMissingInfoQuestions(nextQuestions);
+        setMissingInfoAnswers(prev => nextQuestions.reduce<Record<string, string>>((acc, question) => {
+            const preservedAnswer = String(prev[question.id] || '').trim();
+            if (preservedAnswer) {
+                acc[question.id] = preservedAnswer;
+            }
+            return acc;
+        }, {}));
+        setHasScannedMissingInfo(true);
+
+        if (nextQuestions.length === 0) {
+            addToast('Eksik bilgi bulunmadi. Dilersen dogrudan uretime gecebilirsin.', 'success');
+            return;
+        }
+
+        addToast(`${nextQuestions.length} soru uretildi. Bloklayici olanlari once cevaplayin.`, 'info');
+    }, [petitionType, caseDetails, parties, analysisData, docContent, specifics, addToast]);
+
+    const handleMissingInfoAnswerChange = useCallback((questionId: string, value: string) => {
+        setMissingInfoAnswers(prev => ({
+            ...prev,
+            [questionId]: value,
+        }));
+    }, []);
+
     const savePetitionToSupabase = useCallback(async (
         content: string,
         titleOverride?: string,
@@ -1553,6 +1616,16 @@ export default function AlternativeApp() {
         const requiresStrictEvidenceForDocument = userRequestedPetition;
 
         try {
+            if (requiresStrictEvidenceForDocument && !analysisData?.summary?.trim()) {
+                const hasUploadedDocument = files.length > 0 || chatFiles.length > 0;
+                const blockedText = hasUploadedDocument
+                    ? DOCUMENT_UPLOADED_BUT_ANALYSIS_MISSING_TEXT
+                    : DIRECT_DOCUMENT_WITHOUT_ANALYSIS_TEXT;
+                setChatMessages(prev => [...prev, { role: 'model', text: blockedText }]);
+                setError(blockedText);
+                return;
+            }
+
             if ((requiresEvidenceForChat || requiresStrictEvidenceForDocument) && normalizedMessage) {
                 const messageKeywords = extractKeywordCandidates(normalizedMessage).slice(0, 8);
                 if (messageKeywords.length > 0) {
@@ -1891,6 +1964,7 @@ export default function AlternativeApp() {
         legalSearchResults,
         docContent,
         specifics,
+        files,
         mergeLegalResults,
         runLegalSearch,
         addToast,
@@ -1915,6 +1989,10 @@ export default function AlternativeApp() {
             setError(`Emsal karar araması eksik.\n\n${DOCUMENT_REQUIREMENTS_HELP_TEXT}`);
             return;
         }
+        if (missingInfoBlockingUnansweredCount > 0) {
+            setError(`Eksikleri Tara alaninda ${missingInfoBlockingUnansweredCount} bloklayici soru bos. Lutfen once yanitlayin.`);
+            return;
+        }
         setIsLoadingPetition(true);
         setError(null);
         try {
@@ -1925,7 +2003,7 @@ export default function AlternativeApp() {
                 analysisSummary: analysisData.summary,
                 webSearchResult: webSearchResult?.summary || '',
                 legalSearchResult: legalResultsText,
-                docContent, specifics, chatHistory: chatMessages, parties,
+                docContent, specifics: specificsWithMissingInfo, chatHistory: chatMessages, parties,
                 webSourceCount: webSearchResult?.sources?.length || 0,
                 legalResultCount: legalSearchResults.length,
                 lawyerInfo: analysisData.lawyerInfo, contactInfo: analysisData.contactInfo,
@@ -1940,7 +2018,7 @@ export default function AlternativeApp() {
             addToast('Dilekçe başarıyla oluşturuldu! ', 'success');
 
             if (user) {
-                await savePetitionToSupabase(result);
+                await savePetitionToSupabase(result, undefined, { specifics: specificsWithMissingInfo });
             }
         } catch (e: any) {
             setError(`Dilekçe üretim hatası: ${e.message}`);
@@ -2660,6 +2738,15 @@ export default function AlternativeApp() {
                                                 placeholder="Örn: Manevi tazminat talebinin altını özellikle çiz..."
                                                 className="w-full bg-[#1A1A1D] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-all min-h-[120px] resize-y"
                                             />
+                                            <MissingInfoChecklistPanel
+                                                questions={missingInfoQuestions}
+                                                answers={missingInfoAnswers}
+                                                hasScanned={hasScannedMissingInfo}
+                                                onRunScan={handleRunMissingInfoScan}
+                                                onAnswerChange={handleMissingInfoAnswerChange}
+                                                blockingUnansweredCount={missingInfoBlockingUnansweredCount}
+                                                totalUnansweredCount={missingInfoTotalUnansweredCount}
+                                            />
                                         </div>
                                     </div>
 
@@ -2768,7 +2855,7 @@ export default function AlternativeApp() {
                                         </button>
                                         <button
                                             onClick={handleGeneratePetition}
-                                            disabled={isLoadingPetition}
+                                            disabled={isLoadingPetition || missingInfoBlockingUnansweredCount > 0}
                                             className="px-8 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:opacity-50 text-white rounded-xl font-medium transition-all shadow-lg shadow-red-900/50 flex items-center gap-2"
                                         >
                                             {isLoadingPetition ? <LoadingSpinner className="w-5 h-5 text-white" /> : <SparklesIcon className="w-5 h-5" />}
