@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useMemo, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Scale, Mail, Lock, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
 
@@ -10,7 +10,16 @@ const Login: React.FC = () => {
   const [showEmailNotConfirmed, setShowEmailNotConfirmed] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const { signIn, resendConfirmationEmail } = useAuth();
-  const navigate = useNavigate();
+  const location = useLocation();
+
+  const redirectTarget = useMemo(() => {
+    const params = new URLSearchParams(location.search || '');
+    const rawRedirect = (params.get('redirect') || '').trim();
+    if (rawRedirect.startsWith('/')) {
+      return rawRedirect;
+    }
+    return '/alt-app';
+  }, [location.search]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,7 +28,7 @@ const Login: React.FC = () => {
 
     try {
       await signIn(email, password);
-      navigate('/alt-app');
+      window.location.assign(redirectTarget);
     } catch (error: any) {
       // Email doğrulama hatası kontrolü
       if (error.message?.includes('Email not confirmed')) {

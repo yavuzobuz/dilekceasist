@@ -4,7 +4,7 @@
            xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
            xsi:type="TaskPaneApp">
   <Id>8c6fd93d-cc8e-4e84-8cb5-d9a362bd5f52</Id>
-  <Version>1.0.0.4</Version>
+  <Version>1.0.0.6</Version>
   <ProviderName>DilekceAsist</ProviderName>
   <DefaultLocale>tr-TR</DefaultLocale>
   <DisplayName DefaultValue="DilekceAsist AI Chatbot" />
@@ -29,7 +29,7 @@
   </Requirements>
 
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://dilekceasist.vercel.app/office/word/taskpane.html?v=20260303-4" />
+    <SourceLocation DefaultValue="https://dilekceasist.vercel.app/office/word/taskpane.html?v=20260303-6" />
   </DefaultSettings>
 
   <Permissions>ReadWriteDocument</Permissions>

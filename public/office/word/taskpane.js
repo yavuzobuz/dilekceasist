@@ -12,7 +12,8 @@ const el = {
     readSelectionBtn: document.getElementById('readSelectionBtn'),
     replaceSelectionBtn: document.getElementById('replaceSelectionBtn'),
     sendChatBtn: document.getElementById('sendChatBtn'),
-    refreshQuotaBtn: document.getElementById('refreshQuotaBtn'),
+    loginBtn: document.getElementById('loginBtn'),
+    upgradePlanBtn: document.getElementById('upgradePlanBtn'),
     actionButtons: Array.from(document.querySelectorAll('[data-action]')),
 };
 
@@ -27,6 +28,7 @@ const MAX_HISTORY_MESSAGES = 8;
 const MAX_DOCUMENT_CONTEXT_CHARS = 12000;
 let chatHistory = [];
 let isBusy = false;
+let lastPlanUsage = null;
 
 const setStatus = (message, type = 'info') => {
     el.status.textContent = message || '';
@@ -54,8 +56,11 @@ const setBusy = (busy) => {
     if (el.authToken) {
         el.authToken.disabled = busy;
     }
-    if (el.refreshQuotaBtn) {
-        el.refreshQuotaBtn.disabled = busy;
+    if (el.loginBtn) {
+        el.loginBtn.disabled = busy;
+    }
+    if (el.upgradePlanBtn) {
+        el.upgradePlanBtn.disabled = busy;
     }
     el.actionButtons.forEach((btn) => { btn.disabled = busy; });
 };
@@ -64,6 +69,35 @@ const resolveApiBaseUrl = () => {
     const raw = (el.apiBaseUrl.value || '').trim();
     if (!raw) return window.location.origin;
     return raw.replace(/\/+$/, '');
+};
+
+const hasLoginPromptedFlag = () => {
+    try {
+        const params = new URLSearchParams(window.location.search || '');
+        return params.get('loginPrompted') === '1';
+    } catch {
+        return false;
+    }
+};
+
+const buildTaskpaneReturnPath = () => {
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('loginPrompted', '1');
+    return `${currentUrl.pathname}${currentUrl.search}`;
+};
+
+const buildLoginUrl = () => {
+    const apiBase = resolveApiBaseUrl();
+    const redirectPath = buildTaskpaneReturnPath();
+    const query = new URLSearchParams({
+        redirect: redirectPath,
+        source: 'word-addin',
+    });
+    return `${apiBase}/login?${query.toString()}`;
+};
+
+const redirectToLogin = () => {
+    window.location.href = buildLoginUrl();
 };
 
 const safeJsonParse = (value) => {
@@ -169,6 +203,17 @@ const formatQuotaText = (usage) => {
     return text;
 };
 
+const isUsageBlocked = (usage) => {
+    if (!usage || usage.dailyLimit == null) return false;
+
+    const dailyLimit = Number(usage.dailyLimit);
+    const remainingToday = usage.remainingToday == null
+        ? Math.max(0, dailyLimit - Number(usage.usedToday || 0))
+        : Number(usage.remainingToday);
+
+    return Number.isFinite(remainingToday) && remainingToday <= 0;
+};
+
 const applyUsageToUi = (usage, type = 'success') => {
     if (!usage) return;
     setQuotaInfo(formatQuotaText(usage), type);
@@ -177,10 +222,11 @@ const applyUsageToUi = (usage, type = 'success') => {
 const refreshPlanSummary = async ({ silent = false } = {}) => {
     const authToken = resolveAuthToken();
     if (!authToken) {
+        lastPlanUsage = null;
         if (!silent) {
-            setQuotaInfo('Kota: token yok. Giris yapin veya Bearer token girin.');
+            setQuotaInfo('Kota: giris gerekli. Giris yaptiktan sonra limit otomatik guncellenir.');
         }
-        return;
+        return null;
     }
 
     const apiBase = resolveApiBaseUrl();
@@ -212,14 +258,18 @@ const refreshPlanSummary = async ({ silent = false } = {}) => {
             throw new Error('Plan ozeti bos geldi.');
         }
 
+        lastPlanUsage = usage;
         applyUsageToUi(usage, 'success');
+        return usage;
     } catch (error) {
+        lastPlanUsage = null;
         if (!silent) {
             setQuotaInfo(
                 `Kota bilgisi alinamadi: ${error instanceof Error ? error.message : 'bilinmeyen hata'}`,
                 'error'
             );
         }
+        return null;
     }
 };
 
@@ -310,15 +360,20 @@ const callChatApi = async ({ history, selectionText, documentText, onTextChunk, 
     if (!response.ok) {
         const rawError = await response.text();
         let message = `Chat API failed (HTTP ${response.status})`;
+        let errorCode = null;
         if (rawError) {
             const parsed = safeJsonParse(rawError);
             if (parsed?.error) {
                 message = parsed.error;
+                errorCode = parsed.code || null;
             } else {
                 message = rawError;
             }
         }
-        throw new Error(message);
+        const error = new Error(message);
+        error.status = response.status;
+        error.code = errorCode;
+        throw error;
     }
 
     if (!response.body) {
@@ -411,6 +466,25 @@ const sendChat = async (promptOverride) => {
     let documentText = '';
     const shouldIncludeDocumentContext = Boolean(el.includeDocumentContext?.checked);
 
+    const authToken = resolveAuthToken();
+    if (!authToken) {
+        setStatus('Giris gerekli. Giris sayfasina yonlendiriliyorsunuz...', 'error');
+        setQuotaInfo('Kota: giris olmadan kontrol edilemez.');
+        redirectToLogin();
+        return;
+    }
+
+    const usageBeforeSend = await refreshPlanSummary({ silent: true });
+    if (!usageBeforeSend) {
+        setStatus('Limit bilgisi alinamadi. Lutfen tekrar deneyin.', 'error');
+        return;
+    }
+    if (isUsageBlocked(usageBeforeSend)) {
+        applyUsageToUi(usageBeforeSend, 'error');
+        setStatus('Gunluk belge uretim limitiniz dolu. Islem durduruldu.', 'error');
+        return;
+    }
+
     setBusy(true);
 
     try {
@@ -493,7 +567,25 @@ const sendChat = async (promptOverride) => {
 
         refreshPlanSummary({ silent: true }).catch(() => {});
     } catch (error) {
-        setStatus(error instanceof Error ? error.message : 'Chatbot islemi basarisiz.', 'error');
+        const status = typeof error?.status === 'number' ? error.status : null;
+        const code = typeof error?.code === 'string' ? error.code : '';
+        const message = error instanceof Error ? error.message : 'Chatbot islemi basarisiz.';
+
+        if (status === 401 || code === 'AUTH_REQUIRED' || code === 'INVALID_SESSION') {
+            setStatus('Oturum gecersiz. Giris sayfasina yonlendiriliyorsunuz...', 'error');
+            redirectToLogin();
+            return;
+        }
+
+        if (status === 429 || code === 'TRIAL_DAILY_LIMIT_REACHED' || code === 'PLAN_DAILY_LIMIT_REACHED' || code === 'TRIAL_EXPIRED') {
+            setStatus(message || 'Gunluk limit dolu. Islem durduruldu.', 'error');
+            if (lastPlanUsage) {
+                applyUsageToUi(lastPlanUsage, 'error');
+            }
+            return;
+        }
+
+        setStatus(message, 'error');
     } finally {
         setBusy(false);
     }
@@ -527,13 +619,25 @@ const handleReplaceSelection = async () => {
     }
 };
 
+const handleUpgradePlan = () => {
+    const pricingUrl = `${resolveApiBaseUrl()}/fiyatlandirma`;
+    window.open(pricingUrl, '_blank', 'noopener,noreferrer');
+};
+
+const handleLogin = () => {
+    redirectToLogin();
+};
+
 const initialize = () => {
     el.apiBaseUrl.value = window.location.origin;
     el.readSelectionBtn.addEventListener('click', handleReadSelection);
     el.replaceSelectionBtn.addEventListener('click', handleReplaceSelection);
     el.sendChatBtn.addEventListener('click', () => sendChat());
-    if (el.refreshQuotaBtn) {
-        el.refreshQuotaBtn.addEventListener('click', () => refreshPlanSummary());
+    if (el.loginBtn) {
+        el.loginBtn.addEventListener('click', handleLogin);
+    }
+    if (el.upgradePlanBtn) {
+        el.upgradePlanBtn.addEventListener('click', handleUpgradePlan);
     }
     if (el.authToken) {
         el.authToken.addEventListener('change', () => {
@@ -544,6 +648,20 @@ const initialize = () => {
         btn.addEventListener('click', () => handleQuickAction(btn.dataset.action || ''));
     });
     setStatus('Hazir. Word secimini alin, hizli aksiyon secin ve chatbot ile devam edin.');
+
+    if (!resolveAuthToken()) {
+        setQuotaInfo('Kota: giris gerekli.');
+        if (!hasLoginPromptedFlag()) {
+            setStatus('Giris yapmaniz gerekiyor. Giris sayfasina yonlendiriliyorsunuz...', 'error');
+            setTimeout(() => {
+                redirectToLogin();
+            }, 120);
+            return;
+        }
+        setStatus('Giris yaparak devam edin. Giris butonunu kullanabilirsiniz.', 'error');
+        return;
+    }
+
     setQuotaInfo('Kota bilgisi yukleniyor...');
     refreshPlanSummary().catch(() => {});
 };
