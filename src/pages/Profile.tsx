@@ -337,13 +337,14 @@ const Profile: React.FC = () => {
         Authorization: `Bearer ${session.access_token}`
       };
 
-      let response = await fetch('/api/user-plan-cancel', {
+      let response = await fetch('/api/admin-users?action=cancel-plan', {
         method: 'POST',
         headers: authHeaders
       });
 
       if (!response.ok) {
-        response = await fetch('/api/admin-users?action=cancel-plan', {
+        // Local dev compatibility when running the Express server directly.
+        response = await fetch('/api/user-plan-cancel', {
           method: 'POST',
           headers: authHeaders
         });

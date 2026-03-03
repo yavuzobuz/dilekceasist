@@ -384,16 +384,33 @@ const handlePatch = async (req, res, supabaseAdmin) => {
     res.status(200).json({ success: true, summary });
 };
 
+const handleCancelPlan = async (req, res, supabaseAdmin) => {
+    const authenticatedUser = await getAuthenticatedUser(req);
+    await getOrCreateUserPlan(supabaseAdmin, authenticatedUser.id);
+
+    const { error: updateError } = await supabaseAdmin
+        .from('user_usage_plans')
+        .update({ status: 'inactive' })
+        .eq('user_id', authenticatedUser.id);
+
+    if (updateError) {
+        throw updateError;
+    }
+
+    const summary = await buildPlanUsageSummary(supabaseAdmin, authenticatedUser.id);
+    res.status(200).json({ success: true, summary });
+};
+
 export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
 
-    if (req.method !== 'GET' && req.method !== 'PATCH') {
+    if (req.method !== 'GET' && req.method !== 'PATCH' && req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
@@ -404,6 +421,10 @@ export default async function handler(req, res) {
             const supabaseAdmin = createServiceRoleClient();
             const summary = await buildPlanUsageSummary(supabaseAdmin, authenticatedUser.id);
             return res.status(200).json({ summary });
+        }
+        if (req.method === 'POST' && action === 'cancel-plan') {
+            const supabaseAdmin = createServiceRoleClient();
+            return await handleCancelPlan(req, res, supabaseAdmin);
         }
 
         await requireAdminAuth(req);
