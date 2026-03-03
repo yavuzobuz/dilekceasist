@@ -45,6 +45,11 @@ const setQuotaInfo = (message, type = 'info') => {
     if (type === 'success') el.quotaInfo.classList.add('success');
 };
 
+const setAuthUiState = (isAuthenticated) => {
+    if (!el.loginBtn) return;
+    el.loginBtn.style.display = isAuthenticated ? 'none' : '';
+};
+
 const setBusy = (busy) => {
     isBusy = busy;
     el.readSelectionBtn.disabled = busy;
@@ -221,6 +226,7 @@ const applyUsageToUi = (usage, type = 'success') => {
 
 const refreshPlanSummary = async ({ silent = false } = {}) => {
     const authToken = resolveAuthToken();
+    setAuthUiState(Boolean(authToken));
     if (!authToken) {
         lastPlanUsage = null;
         if (!silent) {
@@ -468,6 +474,7 @@ const sendChat = async (promptOverride) => {
 
     const authToken = resolveAuthToken();
     if (!authToken) {
+        setAuthUiState(false);
         setStatus('Giris gerekli. Giris sayfasina yonlendiriliyorsunuz...', 'error');
         setQuotaInfo('Kota: giris olmadan kontrol edilemez.');
         redirectToLogin();
@@ -573,6 +580,7 @@ const sendChat = async (promptOverride) => {
 
         if (status === 401 || code === 'AUTH_REQUIRED' || code === 'INVALID_SESSION') {
             setStatus('Oturum gecersiz. Giris sayfasina yonlendiriliyorsunuz...', 'error');
+            setAuthUiState(false);
             redirectToLogin();
             return;
         }
@@ -630,6 +638,7 @@ const handleLogin = () => {
 
 const initialize = () => {
     el.apiBaseUrl.value = window.location.origin;
+    setAuthUiState(Boolean(resolveAuthToken()));
     el.readSelectionBtn.addEventListener('click', handleReadSelection);
     el.replaceSelectionBtn.addEventListener('click', handleReplaceSelection);
     el.sendChatBtn.addEventListener('click', () => sendChat());
