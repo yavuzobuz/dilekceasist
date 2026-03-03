@@ -18,6 +18,7 @@ import { Petition, supabase } from '../../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { getLegalDocument } from '../utils/legalSearch';
+import { File, FileCode2, FileImage, FileText } from 'lucide-react';
 
 // Helper function to convert a File object to a base64 string
 const fileToBase64 = (file: File): Promise<string> => {
@@ -1990,22 +1991,41 @@ export default function AlternativeApp() {
                                             <h4 className="text-sm font-medium text-gray-400 mb-3 px-2">Yüklenen Dosyalar</h4>
                                             <ul className="space-y-2">
                                                 {files.map((file, idx) => {
-                                                    const isPdf = file.name.toLowerCase().endsWith('.pdf');
-                                                    const isImg = file.type.startsWith('image/');
-                                                    const isUdf = file.name.toLowerCase().endsWith('.udf');
+                                                    const lowerName = file.name.toLowerCase();
+                                                    const isPdf = lowerName.endsWith('.pdf');
+                                                    const isImg = file.type.startsWith('image/') || /\.(png|jpe?g|webp|tiff?)$/i.test(lowerName);
+                                                    const isUdf = lowerName.endsWith('.udf');
+                                                    const isWord = lowerName.endsWith('.doc') || lowerName.endsWith('.docx');
+
+                                                    const iconContainerClass = isPdf
+                                                        ? 'bg-red-500/10 text-red-300 border border-red-500/20'
+                                                        : isImg
+                                                            ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
+                                                            : isUdf
+                                                                ? 'bg-amber-500/10 text-amber-300 border border-amber-500/20'
+                                                                : isWord
+                                                                    ? 'bg-blue-500/10 text-blue-300 border border-blue-500/20'
+                                                                    : 'bg-gray-700/40 text-gray-300 border border-white/10';
 
                                                     return (
                                                         <li key={idx} className="flex items-center justify-between p-3 bg-[#1A1A1D] rounded-lg border border-white/5 hover:border-white/10 transition-colors">
                                                             <div className="flex items-center gap-3 overflow-hidden">
-                                                                <div className="shrink-0 w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center">
-                                                                    {isPdf ? <span className="text-xl"></span> :
-                                                                        isImg ? <span className="text-xl"></span> :
-                                                                            isUdf ? <span className="text-xl"></span> :
-                                                                                <span className="text-xl"></span>}
+                                                                <div className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${iconContainerClass}`}>
+                                                                    {isPdf ? (
+                                                                        <FileText className="w-5 h-5" />
+                                                                    ) : isImg ? (
+                                                                        <FileImage className="w-5 h-5" />
+                                                                    ) : isUdf ? (
+                                                                        <FileCode2 className="w-5 h-5" />
+                                                                    ) : isWord ? (
+                                                                        <FileText className="w-5 h-5" />
+                                                                    ) : (
+                                                                        <File className="w-5 h-5" />
+                                                                    )}
                                                                 </div>
                                                                 <div className="min-w-0">
                                                                     <p className="text-sm font-medium text-gray-200 truncate">{file.name}</p>
-                                                                    <p className="text-xs text-gray-500 uppercase">{file.name.split('.').pop()}</p>
+                                                                    <p className="text-xs text-gray-500 uppercase">{lowerName.split('.').pop()}</p>
                                                                 </div>
                                                             </div>
                                                             <button
