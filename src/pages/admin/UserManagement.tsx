@@ -424,15 +424,15 @@ export const UserManagement: React.FC = () => {
 
             {/* User Detail Modal */}
             {selectedUser && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-gray-900 rounded-2xl w-full max-w-lg border border-gray-700">
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-start sm:items-center justify-center p-4 overflow-y-auto">
+                    <div className="bg-gray-900 rounded-2xl w-full max-w-[38.4rem] max-h-[calc(100vh-2rem)] border border-gray-700 flex flex-col overflow-hidden my-auto">
                         <div className="flex items-center justify-between p-6 border-b border-gray-700">
                             <h2 className="text-xl font-bold text-white">Kullanıcı Detayı</h2>
                             <button onClick={() => setSelectedUser(null)} className="p-2 hover:bg-gray-700 rounded-lg text-gray-400">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
-                        <div className="p-6">
+                        <div className="p-6 overflow-y-auto">
                             {/* User Info */}
                             <div className="flex items-center gap-4 mb-6">
                                 <div className="w-16 h-16 bg-gradient-to-br from-red-600 to-red-400 rounded-full flex items-center justify-center">
