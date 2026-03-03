@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, CreditCard, Download, HelpCircle } from 'lucide-react';
+import { BookOpen, Calculator, CreditCard, Download, HelpCircle, Puzzle } from 'lucide-react';
 import { DocumentPlusIcon, KeyIcon, LinkIcon, SparklesIcon } from './Icon';
 import { Footer } from './Footer';
 import { Header } from './Header';
@@ -39,6 +39,18 @@ const features: FeatureItem[] = [
     icon: <KeyIcon className="h-8 w-8" />,
     title: 'AI Chat ile Belge Üretimi',
     description: 'Sohbetten belge oluşturun, yeniden yazın ve güçlendirin.',
+    color: 'from-gray-700 to-gray-600',
+  },
+  {
+    icon: <Calculator className="h-8 w-8" />,
+    title: 'Hesaplama Araçları',
+    description: 'Faiz, harç, vekalet ücreti ve süre hesaplarını aynı panelde yönetin.',
+    color: 'from-red-500 to-red-400',
+  },
+  {
+    icon: <Puzzle className="h-8 w-8" />,
+    title: 'Word Eklentisi + Chatbot',
+    description: 'Word içinden chatbot, karar arama, beyin fırtınası ve web aramasını aktif kullanın.',
     color: 'from-gray-700 to-gray-600',
   },
   {
@@ -141,7 +153,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                 onClick={() => navigate('/word-eklentisi')}
                 className="px-8 py-4 bg-gray-800/50 hover:bg-gray-700/50 border-2 border-gray-700 hover:border-red-500 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 flex items-center gap-2"
               >
-                <Download className="w-5 h-5" /> Word Eklentisi
+                <Download className="w-5 h-5" /> Word Eklentisini Kur
               </button>
               <button
                 onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
@@ -150,6 +162,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                 Özellikleri Keşfet
               </button>
             </div>
+
+            <p className="text-sm md:text-base text-gray-400 max-w-3xl mx-auto">
+              Word eklentisi butonu kurulum sayfasını açar. Bu sayfadan `.bat` kurulum aracını veya
+              `manifest.xml` dosyasını indirip Word içine chatbot entegrasyonunu başlatabilirsiniz.
+            </p>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 pt-8 max-w-4xl mx-auto">
               {stats.map((stat) => (
