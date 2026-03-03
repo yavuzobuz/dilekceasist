@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>DilekceAsist Word Panel</title>
-    <link rel="stylesheet" href="./taskpane.css?v=20260303-3" />
+    <link rel="stylesheet" href="./taskpane.css?v=20260303-4" />
     <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 </head>
 <body>
@@ -72,10 +72,18 @@
                 <span>Opsiyonel x-api-key</span>
                 <input id="apiKey" type="password" placeholder="SERVER_API_KEY varsa girin" />
             </label>
+            <label class="field">
+                <span>Opsiyonel Bearer Token</span>
+                <input id="authToken" type="password" placeholder="Supabase access token (otomatik bulunamazsa)" />
+            </label>
+            <div class="actions">
+                <button id="refreshQuotaBtn" class="btn btn-secondary" type="button">Kotayi Yenile</button>
+            </div>
         </details>
 
         <p id="status" class="status" role="status" aria-live="polite">Office yukleniyor...</p>
+        <p id="quotaInfo" class="status" role="status" aria-live="polite">Kota: giris yapildiginda guncellenir.</p>
     </main>
-    <script type="module" src="./taskpane.js?v=20260303-3"></script>
+    <script type="module" src="./taskpane.js?v=20260303-4"></script>
 </body>
 </html>

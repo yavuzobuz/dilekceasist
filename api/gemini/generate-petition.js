@@ -1,4 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
+import { consumeGenerationCredit } from '../_lib/generationQuota.js';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const MODEL_NAME = 'gemini-3-pro-preview';
@@ -27,12 +28,20 @@ function formatChatHistoryForPrompt(chatHistory) {
 export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
 
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     try {
+        const credit = await consumeGenerationCredit(req, 'generate_petition');
+        if (!credit.allowed) {
+            return res.status(credit.status || 429).json(credit.payload || {
+                error: 'Belge uretim kotasi kontrolu basarisiz.',
+                code: 'CREDIT_CHECK_FAILED',
+            });
+        }
+
         const params = req.body;
 
         const systemInstruction = `Sen, Türk hukuk sisteminde 20+ yıl deneyime sahip, üst düzey bir hukuk danışmanı ve dilekçe yazım uzmanısın.
@@ -82,7 +91,7 @@ Yargıtay kararlarını ilgili argümanla birlikte AÇIKLAMALAR bölümünde ent
             config: { systemInstruction },
         });
 
-        res.json({ text: response.text });
+        res.json({ text: response.text, usage: credit.usage || null });
 
     } catch (error) {
         console.error('Generate Petition Error:', error);

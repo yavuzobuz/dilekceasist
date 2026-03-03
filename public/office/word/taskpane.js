@@ -3,13 +3,16 @@ const el = {
     promptText: document.getElementById('promptText'),
     resultText: document.getElementById('resultText'),
     status: document.getElementById('status'),
+    quotaInfo: document.getElementById('quotaInfo'),
     apiBaseUrl: document.getElementById('apiBaseUrl'),
     apiKey: document.getElementById('apiKey'),
+    authToken: document.getElementById('authToken'),
     autoReplace: document.getElementById('autoReplace'),
     includeDocumentContext: document.getElementById('includeDocumentContext'),
     readSelectionBtn: document.getElementById('readSelectionBtn'),
     replaceSelectionBtn: document.getElementById('replaceSelectionBtn'),
     sendChatBtn: document.getElementById('sendChatBtn'),
+    refreshQuotaBtn: document.getElementById('refreshQuotaBtn'),
     actionButtons: Array.from(document.querySelectorAll('[data-action]')),
 };
 
@@ -32,6 +35,14 @@ const setStatus = (message, type = 'info') => {
     if (type === 'success') el.status.classList.add('success');
 };
 
+const setQuotaInfo = (message, type = 'info') => {
+    if (!el.quotaInfo) return;
+    el.quotaInfo.textContent = message || '';
+    el.quotaInfo.classList.remove('error', 'success');
+    if (type === 'error') el.quotaInfo.classList.add('error');
+    if (type === 'success') el.quotaInfo.classList.add('success');
+};
+
 const setBusy = (busy) => {
     isBusy = busy;
     el.readSelectionBtn.disabled = busy;
@@ -40,6 +51,12 @@ const setBusy = (busy) => {
     if (el.includeDocumentContext) {
         el.includeDocumentContext.disabled = busy;
     }
+    if (el.authToken) {
+        el.authToken.disabled = busy;
+    }
+    if (el.refreshQuotaBtn) {
+        el.refreshQuotaBtn.disabled = busy;
+    }
     el.actionButtons.forEach((btn) => { btn.disabled = busy; });
 };
 
@@ -47,6 +64,163 @@ const resolveApiBaseUrl = () => {
     const raw = (el.apiBaseUrl.value || '').trim();
     if (!raw) return window.location.origin;
     return raw.replace(/\/+$/, '');
+};
+
+const safeJsonParse = (value) => {
+    try {
+        return JSON.parse(value);
+    } catch {
+        return null;
+    }
+};
+
+const extractSupabaseTokenCandidate = (payload) => {
+    if (!payload) return '';
+    if (typeof payload?.access_token === 'string' && payload.access_token.trim()) {
+        return payload.access_token.trim();
+    }
+    if (typeof payload?.currentSession?.access_token === 'string' && payload.currentSession.access_token.trim()) {
+        return payload.currentSession.access_token.trim();
+    }
+    return '';
+};
+
+const findTokenFromLocalStorage = () => {
+    try {
+        const keys = Object.keys(window.localStorage || {});
+        for (const key of keys) {
+            if (!key.includes('auth-token')) continue;
+            const raw = window.localStorage.getItem(key);
+            if (!raw) continue;
+            const parsed = safeJsonParse(raw);
+            if (!parsed) continue;
+
+            if (Array.isArray(parsed)) {
+                for (const entry of parsed) {
+                    const token = extractSupabaseTokenCandidate(entry);
+                    if (token) return token;
+                }
+                continue;
+            }
+
+            const token = extractSupabaseTokenCandidate(parsed);
+            if (token) return token;
+        }
+    } catch (error) {
+        console.warn('Auth token localStorage icinden okunamadi:', error);
+    }
+    return '';
+};
+
+const resolveAuthToken = () => {
+    const manualToken = (el.authToken?.value || '').trim();
+    if (manualToken) return manualToken;
+    return findTokenFromLocalStorage();
+};
+
+const buildAuthHeaders = () => {
+    const headers = { 'Content-Type': 'application/json' };
+    const apiKey = (el.apiKey.value || '').trim();
+    if (apiKey) headers['x-api-key'] = apiKey;
+
+    const authToken = resolveAuthToken();
+    if (authToken) {
+        headers.Authorization = `Bearer ${authToken}`;
+    }
+
+    return headers;
+};
+
+const normalizeUsage = (rawUsage) => {
+    if (!rawUsage || typeof rawUsage !== 'object') return null;
+    const normalized = {
+        dailyLimit: rawUsage.dailyLimit ?? rawUsage.daily_limit ?? null,
+        usedToday: rawUsage.usedToday ?? rawUsage.used_today ?? null,
+        remainingToday: rawUsage.remainingToday ?? rawUsage.remaining_today ?? null,
+        trialEndsAt: rawUsage.trialEndsAt ?? rawUsage.trial_ends_at ?? null,
+    };
+    return normalized;
+};
+
+const formatDate = (isoDate) => {
+    if (!isoDate) return null;
+    const date = new Date(isoDate);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toLocaleDateString('tr-TR');
+};
+
+const formatQuotaText = (usage) => {
+    if (!usage) return 'Kota bilgisi alinamadi.';
+    if (usage.dailyLimit == null) return 'Kota: Sinirsiz paket.';
+
+    const dailyLimit = Number(usage.dailyLimit);
+    const usedToday = usage.usedToday == null
+        ? Math.max(0, dailyLimit - Number(usage.remainingToday || 0))
+        : Number(usage.usedToday);
+    const remainingToday = usage.remainingToday == null
+        ? Math.max(0, dailyLimit - usedToday)
+        : Number(usage.remainingToday);
+
+    let text = `Kota: ${remainingToday} / ${dailyLimit} (kalan/gunluk)`;
+    const trialEndText = formatDate(usage.trialEndsAt);
+    if (trialEndText) {
+        text += ` | Trial bitis: ${trialEndText}`;
+    }
+    return text;
+};
+
+const applyUsageToUi = (usage, type = 'success') => {
+    if (!usage) return;
+    setQuotaInfo(formatQuotaText(usage), type);
+};
+
+const refreshPlanSummary = async ({ silent = false } = {}) => {
+    const authToken = resolveAuthToken();
+    if (!authToken) {
+        if (!silent) {
+            setQuotaInfo('Kota: token yok. Giris yapin veya Bearer token girin.');
+        }
+        return;
+    }
+
+    const apiBase = resolveApiBaseUrl();
+    const headers = buildAuthHeaders();
+
+    try {
+        const response = await fetch(`${apiBase}/api/admin-users?action=plan-summary`, {
+            method: 'GET',
+            headers,
+        });
+
+        if (!response.ok) {
+            const rawError = await response.text();
+            let message = `HTTP ${response.status}`;
+            if (rawError) {
+                const parsed = safeJsonParse(rawError);
+                if (parsed?.error) {
+                    message = parsed.error;
+                } else {
+                    message = rawError;
+                }
+            }
+            throw new Error(message);
+        }
+
+        const payload = await response.json().catch(() => ({}));
+        const usage = normalizeUsage(payload?.summary);
+        if (!usage) {
+            throw new Error('Plan ozeti bos geldi.');
+        }
+
+        applyUsageToUi(usage, 'success');
+    } catch (error) {
+        if (!silent) {
+            setQuotaInfo(
+                `Kota bilgisi alinamadi: ${error instanceof Error ? error.message : 'bilinmeyen hata'}`,
+                'error'
+            );
+        }
+    }
 };
 
 const limitHistory = (history) => history.slice(-MAX_HISTORY_MESSAGES);
@@ -107,11 +281,9 @@ const extractTextFromChunk = (chunk) => {
     return text;
 };
 
-const callChatApi = async ({ history, selectionText, documentText, onTextChunk }) => {
+const callChatApi = async ({ history, selectionText, documentText, onTextChunk, onUsage, onQuotaBlocked }) => {
     const apiBase = resolveApiBaseUrl();
-    const apiKey = (el.apiKey.value || '').trim();
-    const headers = { 'Content-Type': 'application/json' };
-    if (apiKey) headers['x-api-key'] = apiKey;
+    const headers = buildAuthHeaders();
 
     const contextDoc = [
         selectionText ? `Secili Metin:\n${selectionText}` : '',
@@ -139,10 +311,10 @@ const callChatApi = async ({ history, selectionText, documentText, onTextChunk }
         const rawError = await response.text();
         let message = `Chat API failed (HTTP ${response.status})`;
         if (rawError) {
-            try {
-                const parsed = JSON.parse(rawError);
-                if (parsed?.error) message = parsed.error;
-            } catch {
+            const parsed = safeJsonParse(rawError);
+            if (parsed?.error) {
+                message = parsed.error;
+            } else {
                 message = rawError;
             }
         }
@@ -157,6 +329,9 @@ const callChatApi = async ({ history, selectionText, documentText, onTextChunk }
     const decoder = new TextDecoder();
     let buffer = '';
     let fullText = '';
+    let quotaBlocked = false;
+    let quotaMessage = '';
+    let usageFromStream = null;
 
     while (true) {
         const { done, value } = await reader.read();
@@ -171,6 +346,20 @@ const callChatApi = async ({ history, selectionText, documentText, onTextChunk }
 
             try {
                 const chunk = JSON.parse(line);
+                const usage = normalizeUsage(chunk?.usage);
+                if (usage) {
+                    usageFromStream = usage;
+                    if (typeof onUsage === 'function') onUsage(usage);
+                }
+
+                if (chunk?.quotaBlocked) {
+                    quotaBlocked = true;
+                    quotaMessage = typeof chunk?.errorMessage === 'string'
+                        ? chunk.errorMessage.trim()
+                        : (typeof chunk?.text === 'string' ? chunk.text.trim() : 'Belge uretim kotaniz doldu.');
+                    if (typeof onQuotaBlocked === 'function') onQuotaBlocked(chunk, quotaMessage);
+                }
+
                 const textChunk = extractTextFromChunk(chunk);
                 if (textChunk) {
                     fullText += textChunk;
@@ -182,7 +371,12 @@ const callChatApi = async ({ history, selectionText, documentText, onTextChunk }
         }
     }
 
-    return fullText.trim();
+    return {
+        text: fullText.trim(),
+        quotaBlocked,
+        quotaMessage,
+        usage: usageFromStream,
+    };
 };
 
 const handleReadSelection = async () => {
@@ -253,22 +447,42 @@ const sendChat = async (promptOverride) => {
         setStatus('Chatbot yaniti uretiyor...');
         el.resultText.value = '';
 
-        const responseText = await callChatApi({
+        const response = await callChatApi({
             history: requestHistory,
             selectionText,
             documentText,
             onTextChunk: (textChunk) => {
                 el.resultText.value += textChunk;
             },
+            onUsage: (usage) => {
+                applyUsageToUi(usage, 'success');
+            },
+            onQuotaBlocked: (_chunk, message) => {
+                if (message) {
+                    setStatus(message, 'error');
+                }
+            },
         });
 
-        const finalText = (responseText || el.resultText.value || '').trim();
-        if (!finalText) {
+        const finalText = (response.text || el.resultText.value || '').trim();
+        if (!finalText && !response.quotaBlocked) {
             throw new Error('Chatbot bos yanit dondurdu.');
         }
 
-        el.resultText.value = finalText;
-        chatHistory = limitHistory([...requestHistory, { role: 'model', text: finalText }]);
+        if (finalText) {
+            el.resultText.value = finalText;
+            chatHistory = limitHistory([...requestHistory, { role: 'model', text: finalText }]);
+        }
+
+        if (response.usage) {
+            applyUsageToUi(response.usage, 'success');
+        }
+
+        if (response.quotaBlocked) {
+            setStatus(response.quotaMessage || 'Belge uretim kotaniz dolu.', 'error');
+            refreshPlanSummary({ silent: true }).catch(() => {});
+            return;
+        }
 
         if (el.autoReplace.checked) {
             await replaceSelection(finalText);
@@ -276,6 +490,8 @@ const sendChat = async (promptOverride) => {
         } else {
             setStatus('Chatbot sonucu hazirlandi. Isterseniz "Secime Uygula" ile yazabilirsiniz.', 'success');
         }
+
+        refreshPlanSummary({ silent: true }).catch(() => {});
     } catch (error) {
         setStatus(error instanceof Error ? error.message : 'Chatbot islemi basarisiz.', 'error');
     } finally {
@@ -316,10 +532,20 @@ const initialize = () => {
     el.readSelectionBtn.addEventListener('click', handleReadSelection);
     el.replaceSelectionBtn.addEventListener('click', handleReplaceSelection);
     el.sendChatBtn.addEventListener('click', () => sendChat());
+    if (el.refreshQuotaBtn) {
+        el.refreshQuotaBtn.addEventListener('click', () => refreshPlanSummary());
+    }
+    if (el.authToken) {
+        el.authToken.addEventListener('change', () => {
+            refreshPlanSummary({ silent: true }).catch(() => {});
+        });
+    }
     el.actionButtons.forEach((btn) => {
         btn.addEventListener('click', () => handleQuickAction(btn.dataset.action || ''));
     });
     setStatus('Hazir. Word secimini alin, hizli aksiyon secin ve chatbot ile devam edin.');
+    setQuotaInfo('Kota bilgisi yukleniyor...');
+    refreshPlanSummary().catch(() => {});
 };
 
 Office.onReady((info) => {

@@ -1,4 +1,5 @@
 import { GoogleGenAI, Type } from '@google/genai';
+import { consumeGenerationCredit, TRIAL_DAILY_GENERATION_LIMIT } from '../_lib/generationQuota.js';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 const MODEL_NAME = process.env.GEMINI_MODEL_NAME || process.env.VITE_GEMINI_MODEL_NAME || 'gemini-2.5-flash';
@@ -55,7 +56,7 @@ async function searchEmsalFallback(ai, keyword) {
 export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
 
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -161,6 +162,8 @@ Turkce yanit ver.`;
         res.setHeader('Transfer-Encoding', 'chunked');
 
         const pendingSearchCalls = [];
+        let hasConsumedDocumentCredit = false;
+        let streamBlockedByQuota = false;
 
         for await (const chunk of responseStream) {
             const candidate = chunk.candidates?.[0];
@@ -169,9 +172,62 @@ Turkce yanit ver.`;
                     if (part.functionCall?.name === 'search_yargitay') {
                         pendingSearchCalls.push(part.functionCall);
                     }
+
+                    if (part.functionCall?.name === 'generate_document' && !hasConsumedDocumentCredit) {
+                        const credit = await consumeGenerationCredit(req, 'chat_document_generation');
+                        if (!credit.allowed) {
+                            streamBlockedByQuota = true;
+                            const quotaMessage = credit.payload?.error || 'Belge uretim kotaniz doldu.';
+                            const shouldExposeUsage = (
+                                credit.payload?.dailyLimit !== undefined
+                                || credit.payload?.usedToday !== undefined
+                                || credit.payload?.remainingToday !== undefined
+                                || credit.payload?.trialEndsAt !== undefined
+                            );
+
+                            const quotaChunk = {
+                                text: `\n\n⚠️ ${quotaMessage}\n`,
+                                error: true,
+                                status: credit.status || 429,
+                                code: credit.payload?.code || 'TRIAL_DAILY_LIMIT_REACHED',
+                                quotaBlocked: true,
+                            };
+
+                            if (shouldExposeUsage) {
+                                quotaChunk.usage = {
+                                    dailyLimit: credit.payload?.dailyLimit ?? TRIAL_DAILY_GENERATION_LIMIT,
+                                    usedToday: credit.payload?.usedToday ?? TRIAL_DAILY_GENERATION_LIMIT,
+                                    remainingToday: credit.payload?.remainingToday ?? 0,
+                                    trialEndsAt: credit.payload?.trialEndsAt || null,
+                                };
+                            }
+
+                            res.write(JSON.stringify(quotaChunk) + '\n');
+                            break;
+                        }
+
+                        hasConsumedDocumentCredit = true;
+
+                        if (credit.usage) {
+                            res.write(JSON.stringify({
+                                usageUpdated: true,
+                                usage: credit.usage
+                            }) + '\n');
+                        }
+                    }
                 }
             }
+
+            if (streamBlockedByQuota) {
+                break;
+            }
+
             res.write(JSON.stringify(chunk) + '\n');
+        }
+
+        if (streamBlockedByQuota) {
+            res.end();
+            return;
         }
 
         if (pendingSearchCalls.length > 0) {
