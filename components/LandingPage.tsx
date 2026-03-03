@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, CreditCard, HelpCircle } from 'lucide-react';
+import { BookOpen, CreditCard, Download, HelpCircle } from 'lucide-react';
 import { DocumentPlusIcon, KeyIcon, LinkIcon, SparklesIcon } from './Icon';
 import { Footer } from './Footer';
 import { Header } from './Header';
@@ -136,6 +136,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
               >
                 <CreditCard className="w-5 h-5" />
                 Fiyatlandırma
+              </button>
+              <button
+                onClick={() => navigate('/word-eklentisi')}
+                className="px-8 py-4 bg-gray-800/50 hover:bg-gray-700/50 border-2 border-gray-700 hover:border-red-500 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 flex items-center gap-2"
+              >
+                <Download className="w-5 h-5" /> Word Eklentisi
               </button>
               <button
                 onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}

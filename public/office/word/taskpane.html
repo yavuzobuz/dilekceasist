@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>DilekceAsist Word Panel</title>
-    <link rel="stylesheet" href="./taskpane.css?v=20260303-2" />
+    <link rel="stylesheet" href="./taskpane.css?v=20260303-3" />
     <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 </head>
 <body>
@@ -45,6 +45,10 @@
                 <input type="checkbox" id="autoReplace" />
                 <span>Sonucu otomatik secime uygula</span>
             </label>
+            <label class="checkbox">
+                <input type="checkbox" id="includeDocumentContext" checked />
+                <span>Belgenin tamamini baglam olarak gonder</span>
+            </label>
         </section>
 
         <section class="card">
@@ -72,6 +76,6 @@
 
         <p id="status" class="status" role="status" aria-live="polite">Office yukleniyor...</p>
     </main>
-    <script type="module" src="./taskpane.js?v=20260303-2"></script>
+    <script type="module" src="./taskpane.js?v=20260303-3"></script>
 </body>
 </html>

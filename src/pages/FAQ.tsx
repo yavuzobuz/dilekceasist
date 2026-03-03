@@ -14,131 +14,136 @@ export default function FAQ() {
       questions: [
         {
           question: 'DilekAI nedir?',
-          answer: 'DilekAI, yapay zeka destekli bir dilekçe oluşturma platformudur. Gemini tabanlı AI teknolojisi ile dakikalar içinde profesyonel hukuki dilekçeler hazırlamanızı sağlar. Dava dilekçesi, cevap dilekçesi, itiraz, şikayet gibi 20\'den fazla dilekçe türünü destekliyoruz.'
+          answer: 'DilekAI; dilekçe, sözleşme ve ihtarname üretimini hızlandıran yapay zeka destekli bir hukuk üretim platformudur. Belge analizi, AI sohbet, emsal karar arama ve çoklu çıktı alma akışlarını tek panelde sunar.',
         },
         {
           question: 'Platform tamamen ücretsiz mi?',
-          answer: 'Evet, temel özelliklerimiz tamamen ücretsizdir. Kayıt olduktan sonra dilekçe oluşturabilir, kaydedebilir ve indirebilirsiniz. Gelecekte premium özellikler eklenebilir ancak şu an için tüm özellikler ücretsizdir.'
+          answer: 'Platformda 14 günlük ücretsiz deneme (trial) bulunur. Trial süresince günlük 10 belge üretim limiti uygulanır. Daha yüksek kullanım için Pro veya Team planlarına geçilebilir.',
         },
         {
-          question: 'Avukat olmayan birisi kullanabilir mi?',
-          answer: 'Kesinlikle! Platform hem avukatlar hem de bireysel kullanıcılar için tasarlanmıştır. Kullanıcı dostu arayüzümüz sayesinde hukuk bilginiz olmasa bile kolayca dilekçe oluşturabilirsiniz. Ancak önemli davalarda mutlaka bir avukata danışmanızı öneririz.'
+          question: 'Kimler kullanabilir?',
+          answer: 'Avukatlar, hukuk büroları, stajyerler ve bireysel kullanıcılar kullanabilir. Özellikle standart hukuki belge üretimini hızlandırmak isteyen ekipler için uygundur.',
         },
         {
           question: 'Verilerim güvende mi?',
-          answer: 'Evet, verileriniz tamamen güvendedir. Tüm veriler şifreli olarak saklanır ve sadece sizin erişebileceğiniz şekilde korunur. Supabase güvenli altyapısını kullanıyoruz. Verilerinizi asla üçüncü şahıslarla paylaşmıyoruz.'
-        }
-      ]
+          answer: 'Kullanıcı verileri yetkilendirme katmanlarıyla korunur. Hesap, belge ve kullanım verileri erişim kontrollü olarak saklanır. Kritik süreçlerde kişisel veri paylaşmadan çalışmanız önerilir.',
+        },
+      ],
     },
     {
-      category: 'Dilekçe Oluşturma',
+      category: 'Özellikler',
       questions: [
         {
-          question: 'Hangi türde dilekçeler oluşturabilirim?',
-          answer: 'Dava dilekçesi, cevap dilekçesi, itiraz dilekçesi, şikayet dilekçesi, icra takip dilekçesi, idari dava dilekçesi ve daha fazlası olmak üzere 20+ dilekçe türü desteklenmektedir. Her türlü hukuki ihtiyacınız için uygun şablonlar mevcuttur.'
+          question: 'Hangi belge türlerini üretebilirim?',
+          answer: 'Dava dilekçeleri, cevap/itiraz metinleri, sözleşmeler, ihtarnameler ve benzeri hukuki metinleri üretebilir, düzenleyebilir ve yeniden yazabilirsiniz.',
         },
         {
-          question: 'AI dilekçeyi nasıl oluşturuyor?',
-          answer: 'GPT-4 tabanlı yapay zeka modelimiz, sizin verdiğiniz bilgileri (taraflar, dava künyesi, olay özeti) analiz ederek hukuki format ve terminolojiye uygun profesyonel bir dilekçe hazırlar. Binlerce hukuki doküman ile eğitilmiş AI, doğru yapıyı ve ifadeleri kullanır.'
+          question: 'Hangi dosya türlerini yükleyebilirim?',
+          answer: 'PDF, UDF, Word belgeleri ve görsel formatları yüklenebilir. Uygulama bu içerikleri analiz ederek özet, bağlam ve belge üretim akışında kullanır.',
         },
         {
-          question: 'Oluşturulan dilekçeyi düzenleyebilir miyim?',
-          answer: 'Evet, oluşturulan dilekçeyi istediğiniz gibi düzenleyebilirsiniz. Word formatında indirip üzerinde değişiklik yapabilir veya platform üzerinde AI\'ya değişiklik talimatları verebilirsiniz. "Bu paragrafı değiştir" gibi komutlarla dilekçenizi özelleştirebilirsiniz.'
+          question: 'Emsal karar arama var mı?',
+          answer: 'Evet. Uygulama içinde emsal karar araştırma akışı bulunur. Uygun durumlarda Yargıtay/Danıştay odağında karar arama, özetleme ve metne bağlama desteği verilir.',
         },
         {
-          question: 'Belge yükleyebilir miyim?',
-          answer: 'Evet! PDF, Word veya resim formatında belgelerinizi yükleyebilirsiniz. AI, yüklediğiniz belgeleri otomatik olarak analiz eder ve önemli bilgileri (tarihler, tutarlar, taraflar vb.) çıkararak dilekçenize entegre eder. Bu özellik özellikle sözleşme, fatura gibi belgeler için çok kullanışlıdır.'
+          question: 'Web araması ve beyin fırtınası desteği var mı?',
+          answer: 'Evet. AI sohbet içinde web araması, metin düzeltme, beyin fırtınası ve karar odaklı araştırma akışları kullanılabilir.',
         },
         {
-          question: 'İçtihat eklenebilir mi?',
-          answer: 'Evet, platform içtihat arama özelliğine sahiptir. Dava konunuza uygun Yargıtay ve mahkeme kararlarını arayabilir ve dilekçenize ekleyebilirsiniz. Bu, dilekçenizin hukuki dayanağını güçlendirir.'
-        }
-      ]
+          question: 'Word eklentisi var mı?',
+          answer: 'Evet. Word eklentisi ile belge içinden doğrudan chatbot kullanılabilir. Kurulum için “Word Eklentisi” sayfasından manifest veya otomatik kurulum aracı (.bat) indirilebilir.',
+        },
+      ],
+    },
+    {
+      category: 'Fiyatlandırma ve Limitler',
+      questions: [
+        {
+          question: 'Trial planın güncel kapsamı nedir?',
+          answer: 'Trial süresi 14 gündür. Günlük 10 belge üretim limiti vardır. Dilekçe, sözleşme, ihtarname ve chat içinden başlatılan belge üretimleri bu limite dahildir.',
+        },
+        {
+          question: 'Pro plan ücreti nedir?',
+          answer: 'Güncel liste fiyatı Pro plan için aylık kullanıcı başına 1490 TL’dir. Yüksek üretim limiti ve öncelikli işlem avantajı sağlar.',
+        },
+        {
+          question: 'Team plan ücreti nedir?',
+          answer: 'Güncel Team başlangıç fiyatı aylık 3990 TL’dir. Ekip kullanımı, kurumsal onboarding ve gelişmiş limit/SLA seçenekleri için tasarlanmıştır.',
+        },
+        {
+          question: 'Günlük limit dolunca ne olur?',
+          answer: 'Günlük limit dolduğunda yeni belge üretimi durur; bir sonraki gün limit yenilenir. Üretim ihtiyacı arttığında plan yükseltme önerilir.',
+        },
+      ],
     },
     {
       category: 'Hesap ve Kullanım',
       questions: [
         {
-          question: 'Nasıl kayıt olabilirim?',
-          answer: 'Ana sayfada "Kayıt Ol" butonuna tıklayın. E-posta adresinizi ve güvenli bir şifre belirleyin. E-posta doğrulamasını yaptıktan sonra hemen kullanmaya başlayabilirsiniz.'
+          question: 'Nasıl kayıt olurum?',
+          answer: 'Kayıt ol sayfasından e-posta ve şifre ile hesap açabilirsiniz. Plan seçimi trial/pro/team olarak kayıt akışında yönlendirilebilir.',
         },
         {
-          question: 'Dilekçelerim ne kadar süre saklanır?',
-          answer: 'Oluşturduğunuz tüm dilekçeler hesabınızda süresiz olarak saklanır. İstediğiniz zaman erişebilir, düzenleyebilir veya silebilirsiniz. Hesabınızı silmeniz durumunda tüm dilekçeleriniz de kalıcı olarak silinir.'
+          question: 'Şifremi unuttum, ne yapmalıyım?',
+          answer: 'Giriş sayfasındaki “Şifremi Unuttum” akışını kullanarak e-posta üzerinden şifre sıfırlama bağlantısı alabilirsiniz.',
         },
         {
-          question: 'Kaç tane dilekçe oluşturabilirim?',
-          answer: 'Şu an için dilekçe sayısına bir sınır yoktur. İstediğiniz kadar dilekçe oluşturabilir ve hesabınızda saklayabilirsiniz.'
+          question: 'Mobil cihazlarda çalışır mı?',
+          answer: 'Evet. Web arayüzü mobil ve masaüstü için uyumludur. Yoğun metin düzenleme için masaüstü deneyimi önerilir.',
         },
         {
-          question: 'Mobil cihazlardan kullanabilir miyim?',
-          answer: 'Evet! Platform responsive tasarıma sahiptir ve tüm cihazlarda (telefon, tablet, bilgisayar) sorunsuz çalışır. Tarayıcınızdan erişerek mobil cihazınızdan da dilekçe oluşturabilirsiniz.'
-        }
-      ]
+          question: 'Belgelerime sonradan erişebilir miyim?',
+          answer: 'Hesabınızla oluşturduğunuz içeriklere profil ve ilgili sayfalardan tekrar erişebilir, güncelleyebilir veya indirebilirsiniz.',
+        },
+      ],
     },
     {
       category: 'İndirme ve Paylaşım',
       questions: [
         {
-          question: 'Dilekçeyi hangi formatlarda indirebilirim?',
-          answer: 'Dilekçelerinizi Word (.docx) veya PDF formatında indirebilirsiniz. Word formatı düzenleme yapmanıza, PDF formatı ise doğrudan yazdırıp kullanmanıza olanak sağlar.'
+          question: 'Hangi çıktı formatları destekleniyor?',
+          answer: 'Akışa göre UDF, DOCX, PDF ve TXT çıktıları alınabilir. Kullanım senaryosuna göre uygun format seçebilirsiniz.',
         },
         {
           question: 'Dilekçe Havuzu nedir?',
-          answer: 'Dilekçe Havuzu, kullanıcıların oluşturdukları dilekçeleri toplulukla paylaşabilecekleri bir platformdur. Binlerce örnek dilekçeye göz atabilir, beğendiğinizi hesabınıza kopyalayıp kendi ihtiyaçlarınıza göre düzenleyebilirsiniz.'
+          answer: 'Dilekçe Havuzu; topluluk tarafından paylaşılan örnek metinlere erişebildiğiniz, inceleyip kendi ihtiyacınıza göre uyarlayabildiğiniz alandır.',
         },
         {
-          question: 'Dilekçemi nasıl paylaşabilirim?',
-          answer: 'Profil sayfanızdan herhangi bir dilekçenin yanındaki "Paylaş" butonuna tıklayın. Açıklama ve etiketler ekleyerek dilekçenizi Dilekçe Havuzu\'nda yayınlayabilirsiniz. Kişisel bilgilerinizi çıkardığınızdan emin olun.'
+          question: 'Dilekçe paylaşımını geri alabilir miyim?',
+          answer: 'Evet. Kendi paylaşımlarınızı yönetebilir ve gerektiğinde yayından kaldırabilirsiniz.',
         },
-        {
-          question: 'Paylaştığım dilekçeyi geri çekebilir miyim?',
-          answer: 'Evet, istediğiniz zaman paylaştığınız dilekçeyi Dilekçe Havuzu\'ndan kaldırabilirsiniz. Dilekçe Havuzu sayfasında kendi dilekçelerinizi yönetebilirsiniz.'
-        }
-      ]
+      ],
     },
     {
-      category: 'Teknik Sorular',
+      category: 'Word Eklentisi',
       questions: [
         {
-          question: 'Hangi tarayıcıları destekliyorsunuz?',
-          answer: 'Google Chrome, Mozilla Firefox, Safari, Microsoft Edge gibi modern tarayıcıların tümünü destekliyoruz. En iyi deneyim için tarayıcınızı güncel tutmanızı öneririz.'
+          question: 'Word eklentisini nasıl kurarım? (Word 2021 ve sonrası)',
+          answer: 'Word > Geliştirici > Word Eklentileri > Eklentilerimi Yönet > Dosyadan Yükle adımlarını izleyip manifest.xml dosyasını seçebilirsiniz.',
         },
         {
-          question: 'İnternet bağlantısı olmadan kullanabilir miyim?',
-          answer: 'Hayır, platform çevrimiçi çalışmaktadır ve aktif bir internet bağlantısı gerektirir. AI işlemleri ve veri senkronizasyonu internet üzerinden gerçekleşir.'
+          question: 'Otomatik kurulum aracı (.bat) ne yapar?',
+          answer: 'Windows için hazırlanan kurulum aracı Word’ü kapatır, Office önbelleğini temizler, güncel manifesti indirir ve sideload işlemini tetikler.',
         },
         {
-          question: 'Bir hata ile karşılaştım, ne yapmalıyım?',
-          answer: 'Bir hata ile karşılaşırsanız, önce sayfayı yenilemeyi deneyin. Sorun devam ederse info@dilekai.com adresinden bizimle iletişime geçin. Hata mesajının ekran görüntüsünü ve detaylarını paylaşırsanız daha hızlı yardımcı olabiliriz.'
+          question: 'Eklentide eski sürüm görünüyorsa ne yapmalıyım?',
+          answer: 'Eklentiyi kaldırıp yeniden yükleyin, Word’ü tamamen kapatıp açın ve tek bir manifest kullanın. Gerekirse Office önbelleğini temizleyin.',
         },
-        {
-          question: 'Şifremi unuttum, ne yapmalıyım?',
-          answer: 'Giriş sayfasında "Şifremi Unuttum" linkine tıklayın. E-posta adresinizi girin, size şifre sıfırlama bağlantısı gönderilecektir. Bağlantıya tıklayarak yeni bir şifre belirleyebilirsiniz.'
-        }
-      ]
+      ],
     },
     {
       category: 'Hukuki Uyarılar',
       questions: [
         {
-          question: 'Oluşturulan dilekçeler mahkemede geçerli mi?',
-          answer: 'Evet, oluşturulan dilekçeler hukuki format ve terminolojiye uygundur. Ancak her dava kendine özgüdür ve detaylar önemlidir. Önemli davalarda mutlaka bir avukata danışmanızı ve dilekçenizi kontrol ettirmenizi şiddetle tavsiye ederiz.'
+          question: 'Üretilen metinler doğrudan hukuki danışmanlık yerine geçer mi?',
+          answer: 'Hayır. Platform bir üretim ve hızlandırma aracıdır. Nihai hukuki sorumluluk kullanıcıdadır; kritik dosyalarda yetkili hukuk profesyoneli kontrolü önerilir.',
         },
         {
-          question: 'Platform avukatlık hizmeti mi sunuyor?',
-          answer: 'Hayır, DilekAI bir yazılım platformudur ve avukatlık hizmeti sunmamaktadır. Platform, dilekçe hazırlama sürecini kolaylaştırmak için bir araçtır. Hukuki danışmanlık için mutlaka yetkili bir avukata başvurunuz.'
+          question: 'Platform avukatlık hizmeti sunuyor mu?',
+          answer: 'Hayır. Platform doğrudan avukatlık hizmeti sunmaz; hukuki metin hazırlama süreçlerinde yardımcı yazılım olarak konumlanır.',
         },
-        {
-          question: 'Kişisel verilerimin gizliliği nasıl korunuyor?',
-          answer: 'KVKK (Kişisel Verilerin Korunması Kanunu) kapsamında tüm verileriniz güvenli şekilde saklanır. Verileriniz şifrelenir ve sadece sizin erişebileceğiniz şekilde korunur. Gizlilik Politikamızı inceleyerek detaylı bilgi alabilirsiniz.'
-        },
-        {
-          question: 'Platform sorumluluk üstleniyor mu?',
-          answer: 'Platform, bir yardımcı araç olarak sunulmaktadır. Oluşturulan dilekçelerin kullanımından doğacak sonuçlardan kullanıcı sorumludur. Dilekçenizi mutlaka bir hukuk profesyoneline kontrol ettirmenizi öneririz. Kullanım Şartlarımızı okuyunuz.'
-        }
-      ]
-    }
+      ],
+    },
   ];
 
   const toggleFAQ = (index: number) => {
@@ -150,22 +155,16 @@ export default function FAQ() {
       <Header onShowLanding={() => navigate('/')} />
 
       <main className="flex-grow">
-        {/* Hero Section */}
         <section className="py-20 px-4">
           <div className="max-w-4xl mx-auto text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-red-600 rounded-full mb-6">
               <HelpCircle className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-3xl sm:text-5xl font-bold text-white mb-6">
-              Sıkça Sorulan Sorular
-            </h1>
-            <p className="text-xl text-gray-300">
-              DilekAI hakkında merak ettikleriniz ve yanıtları
-            </p>
+            <h1 className="text-3xl sm:text-5xl font-bold text-white mb-6">Sıkça Sorulan Sorular</h1>
+            <p className="text-xl text-gray-300">Güncel özellikler, planlar ve kurulum akışları hakkında kısa yanıtlar</p>
           </div>
         </section>
 
-        {/* FAQ Sections */}
         <section className="pb-20 px-4">
           <div className="max-w-4xl mx-auto space-y-12">
             {faqs.map((category, categoryIndex) => (
@@ -212,14 +211,11 @@ export default function FAQ() {
           </div>
         </section>
 
-        {/* Contact CTA */}
         <section className="py-16 px-4 bg-gray-800/50">
           <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Sorunuz mu var?
-            </h2>
+            <h2 className="text-3xl font-bold text-white mb-4">Sorunuz mu var?</h2>
             <p className="text-gray-300 mb-8">
-              Burada yanıtını bulamadığınız sorularınız için bizimle iletişime geçebilirsiniz.
+              Burada yanıtını bulamadığınız konular için bizimle iletişime geçebilirsiniz.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a
@@ -229,10 +225,10 @@ export default function FAQ() {
                 E-posta Gönder
               </a>
               <button
-                onClick={() => navigate('/about')}
+                onClick={() => navigate('/word-eklentisi')}
                 className="px-8 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-all"
               >
-                Hakkında Sayfası
+                Word Eklentisi Sayfası
               </button>
             </div>
           </div>

@@ -85,9 +85,17 @@ const Login: React.FC = () => {
 
             {/* Password Input */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
-                Şifre
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-300">
+                  Sifre
+                </label>
+                <Link
+                  to="/sifremi-unuttum"
+                  className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                >
+                  Sifremi Unuttum
+                </Link>
+              </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-gray-500" />

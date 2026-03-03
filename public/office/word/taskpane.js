@@ -6,6 +6,7 @@ const el = {
     apiBaseUrl: document.getElementById('apiBaseUrl'),
     apiKey: document.getElementById('apiKey'),
     autoReplace: document.getElementById('autoReplace'),
+    includeDocumentContext: document.getElementById('includeDocumentContext'),
     readSelectionBtn: document.getElementById('readSelectionBtn'),
     replaceSelectionBtn: document.getElementById('replaceSelectionBtn'),
     sendChatBtn: document.getElementById('sendChatBtn'),
@@ -20,6 +21,7 @@ const QUICK_PROMPTS = {
 };
 
 const MAX_HISTORY_MESSAGES = 8;
+const MAX_DOCUMENT_CONTEXT_CHARS = 12000;
 let chatHistory = [];
 let isBusy = false;
 
@@ -35,6 +37,9 @@ const setBusy = (busy) => {
     el.readSelectionBtn.disabled = busy;
     el.replaceSelectionBtn.disabled = busy;
     el.sendChatBtn.disabled = busy;
+    if (el.includeDocumentContext) {
+        el.includeDocumentContext.disabled = busy;
+    }
     el.actionButtons.forEach((btn) => { btn.disabled = busy; });
 };
 
@@ -53,15 +58,34 @@ const readSelection = async () => Word.run(async (context) => {
     return selection.text || '';
 });
 
+const readDocumentText = async () => Word.run(async (context) => {
+    const body = context.document.body;
+    body.load('text');
+    await context.sync();
+    return body.text || '';
+});
+
 const replaceSelection = async (text) => Word.run(async (context) => {
     const selection = context.document.getSelection();
     selection.insertText(text, Word.InsertLocation.replace);
     await context.sync();
 });
 
-const buildUserMessage = ({ prompt, selectionText }) => {
-    if (!selectionText) return prompt;
-    return `${prompt}\n\nWord secimi:\n"""${selectionText}"""`;
+const truncateContext = (text, maxChars) => {
+    const normalized = String(text || '').trim();
+    if (!normalized) return '';
+    if (normalized.length <= maxChars) return normalized;
+    return `${normalized.slice(0, maxChars)}\n\n...[BELGE BAGLAMI KISALTILDI]`;
+};
+
+const buildUserMessage = ({ prompt, selectionText, hasDocumentContext }) => {
+    if (!selectionText) {
+        return hasDocumentContext
+            ? `${prompt}\n\nNot: Belgenin tamami baglam olarak eklendi.`
+            : prompt;
+    }
+    const base = `${prompt}\n\nWord secimi:\n"""${selectionText}"""`;
+    return hasDocumentContext ? `${base}\n\nNot: Belgenin tamami baglam olarak eklendi.` : base;
 };
 
 const extractTextFromChunk = (chunk) => {
@@ -83,23 +107,30 @@ const extractTextFromChunk = (chunk) => {
     return text;
 };
 
-const callChatApi = async ({ history, selectionText, onTextChunk }) => {
+const callChatApi = async ({ history, selectionText, documentText, onTextChunk }) => {
     const apiBase = resolveApiBaseUrl();
     const apiKey = (el.apiKey.value || '').trim();
     const headers = { 'Content-Type': 'application/json' };
     if (apiKey) headers['x-api-key'] = apiKey;
+
+    const contextDoc = [
+        selectionText ? `Secili Metin:\n${selectionText}` : '',
+        documentText ? `Belge Metni:\n${documentText}` : '',
+    ].filter(Boolean).join('\n\n---\n\n');
 
     const response = await fetch(`${apiBase}/api/gemini/chat`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
             chatHistory: history,
-            analysisSummary: selectionText || '',
+            analysisSummary: (selectionText || documentText || '').slice(0, 1500),
             context: {
                 keywords: '',
                 searchSummary: '',
-                docContent: selectionText || '',
-                specifics: '',
+                docContent: contextDoc,
+                specifics: documentText
+                    ? `Word belge baglami aktif. Uzunluk: ${documentText.length} karakter.`
+                    : 'Yalnizca secili metin baglami aktif.',
             },
         }),
     });
@@ -182,18 +213,50 @@ const sendChat = async (promptOverride) => {
         return;
     }
 
-    const selectionText = (el.sourceText.value || '').trim();
-    const userMessage = buildUserMessage({ prompt, selectionText });
-    const requestHistory = limitHistory([...chatHistory, { role: 'user', text: userMessage }]);
+    let selectionText = (el.sourceText.value || '').trim();
+    let documentText = '';
+    const shouldIncludeDocumentContext = Boolean(el.includeDocumentContext?.checked);
 
     setBusy(true);
+
     try {
+        setStatus('Word baglami okunuyor...');
+
+        if (!selectionText) {
+            selectionText = (await readSelection()).trim();
+            if (selectionText) {
+                el.sourceText.value = selectionText;
+            }
+        }
+
+        if (shouldIncludeDocumentContext) {
+            try {
+                const fullDocumentText = await readDocumentText();
+                documentText = truncateContext(fullDocumentText, MAX_DOCUMENT_CONTEXT_CHARS);
+            } catch (error) {
+                console.error('Word belge metni okunamadi:', error);
+            }
+        }
+
+        if (!selectionText && !documentText) {
+            setStatus('Lutfen Word icinde secim yapin veya belge metni oldugundan emin olun.', 'error');
+            return;
+        }
+
+        const userMessage = buildUserMessage({
+            prompt,
+            selectionText,
+            hasDocumentContext: Boolean(documentText),
+        });
+        const requestHistory = limitHistory([...chatHistory, { role: 'user', text: userMessage }]);
+
         setStatus('Chatbot yaniti uretiyor...');
         el.resultText.value = '';
 
         const responseText = await callChatApi({
             history: requestHistory,
             selectionText,
+            documentText,
             onTextChunk: (textChunk) => {
                 el.resultText.value += textChunk;
             },

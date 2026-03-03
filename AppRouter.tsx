@@ -5,10 +5,13 @@ import { AppMain } from './src/components/AppMain';
 import AlternativeApp from './src/pages/AlternativeApp';
 import Login from './src/pages/Login';
 import Register from './src/pages/Register';
+import ForgotPassword from './src/pages/ForgotPassword';
+import ResetPassword from './src/pages/ResetPassword';
 import Profile from './src/pages/Profile';
 import PetitionPool from './src/pages/PetitionPool';
 import About from './src/pages/About';
 import FAQ from './src/pages/FAQ';
+import WordAddin from './src/pages/WordAddin';
 import Pricing from './src/pages/Pricing';
 import Privacy from './src/pages/Privacy';
 import Terms from './src/pages/Terms';
@@ -56,6 +59,10 @@ export default function App() {
       <Route path="/" element={<LandingPage onGetStarted={handleGetStarted} />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/sifremi-unuttum" element={<ForgotPassword />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/sifre-sifirla" element={<ResetPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route
         path="/app"
         element={
@@ -78,6 +85,8 @@ export default function App() {
       <Route path="/pool" element={<PetitionPool />} /> {/* Legacy route */}
       <Route path="/about" element={<About />} />
       <Route path="/faq" element={<FAQ />} />
+      <Route path="/word-eklentisi" element={<WordAddin />} />
+      <Route path="/word-addin" element={<WordAddin />} />
       <Route path="/fiyatlandirma" element={<Pricing />} />
       <Route path="/pricing" element={<Pricing />} />
       <Route

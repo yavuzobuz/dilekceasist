@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, MapPin, Phone } from 'lucide-react';
 
@@ -6,7 +6,7 @@ export const Footer: React.FC = () => {
   return (
     <footer className="bg-gray-900 border-t border-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-2 mb-4">
               <img src="/logo.png" alt="DilekAI Logo" className="w-8 h-8" />
@@ -25,9 +25,19 @@ export const Footer: React.FC = () => {
               <li><Link to="/" className="text-gray-400 hover:text-red-500 transition-colors">Ana Sayfa</Link></li>
               <li><Link to="/about" className="text-gray-400 hover:text-red-500 transition-colors">Hakkında</Link></li>
               <li><Link to="/faq" className="text-gray-400 hover:text-red-500 transition-colors">SSS</Link></li>
+              <li><Link to="/word-eklentisi" className="text-gray-400 hover:text-red-500 transition-colors">Word Eklentisi</Link></li>
               <li><Link to="/fiyatlandirma" className="text-gray-400 hover:text-red-500 transition-colors">Fiyatlandırma</Link></li>
               <li><Link to="/petition-pool" className="text-gray-400 hover:text-red-500 transition-colors">Dilekçe Havuzu</Link></li>
               <li><Link to="/app" className="text-gray-400 hover:text-red-500 transition-colors">Dilekçe Oluştur</Link></li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="text-white font-semibold mb-4">Yasal</h3>
+            <ul className="space-y-2">
+              <li><Link to="/gizlilik" className="text-gray-400 hover:text-red-500 transition-colors">Gizlilik Politikası</Link></li>
+              <li><Link to="/kullanim-kosullari" className="text-gray-400 hover:text-red-500 transition-colors">Kullanım Koşulları</Link></li>
+              <li><Link to="/cerez-politikasi" className="text-gray-400 hover:text-red-500 transition-colors">Çerez Politikası</Link></li>
             </ul>
           </div>
 
@@ -54,7 +64,7 @@ export const Footer: React.FC = () => {
           <p className="text-gray-400 text-sm">© 2026 DilekAI. Tüm hakları saklıdır.</p>
           <div className="flex space-x-6 mt-4 md:mt-0">
             <Link to="/gizlilik" className="text-gray-400 hover:text-red-500 text-sm transition-colors">Gizlilik Politikası</Link>
-            <Link to="/kullanim-kosullari" className="text-gray-400 hover:text-red-500 text-sm transition-colors">Kullanım Şartları</Link>
+            <Link to="/kullanim-kosullari" className="text-gray-400 hover:text-red-500 text-sm transition-colors">Kullanım Koşulları</Link>
             <Link to="/cerez-politikasi" className="text-gray-400 hover:text-red-500 text-sm transition-colors">Çerez Politikası</Link>
           </div>
         </div>
@@ -62,4 +72,3 @@ export const Footer: React.FC = () => {
     </footer>
   );
 };
-
