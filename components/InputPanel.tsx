@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+﻿import React, { useRef, useState, useEffect } from 'react';
 import {
   PetitionType,
   PetitionCategory,
@@ -234,13 +234,13 @@ export const InputPanel: React.FC<InputPanelProps> = ({
       }
       return;
     }
-    const allowedExtensions = ['.pdf', '.udf', '.jpg', '.jpeg', '.png', '.webp', '.tif', '.tiff', '.doc', '.docx'];
+    const allowedExtensions = ['.pdf', '.udf', '.jpg', '.jpeg', '.png', '.webp', '.tif', '.tiff', '.doc', '.docx', '.txt'];
     const allowedFiles = newFiles.filter(f =>
       allowedExtensions.some(ext => f.name.toLowerCase().endsWith(ext))
     );
 
     if (allowedFiles.length !== newFiles.length) {
-      alert("Lütfen sadece PDF, UDF, Word (.doc, .docx) veya resim formatında (.jpg, .png, .webp, .tif) dosyalar yükleyin.");
+      alert('Lutfen sadece PDF, UDF, Word (.doc, .docx), TXT veya resim (.jpg, .png, .webp, .tif) dosyalari yukleyin.');
     }
     if (allowedFiles.length > availableSlots) {
       alert(`Bu adimda en fazla ${availableSlots} dosya ekleyebilirsiniz.`);
@@ -379,20 +379,20 @@ export const InputPanel: React.FC<InputPanelProps> = ({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">Belgeleri Yükleyin (PDF, UDF, Word, Resim)</label>
+          <label className="block text-sm font-medium text-gray-300 mb-2">Belgeleri Yukleyin (PDF, UDF, Word, TXT, Resim)</label>
           <div onClick={() => { if (canSelectMoreFiles) fileInputRef.current?.click(); }} onDragOver={(e) => handleDragEvents(e, true)} onDragLeave={(e) => handleDragEvents(e, false)} onDrop={handleDrop} className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md transition-all duration-300 transform hover:scale-[1.01] ${canSelectMoreFiles ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'} ${isDragging ? 'border-blue-500 bg-[#1A1A1D]/80 scale-[1.02] shadow-lg shadow-blue-500/20' : 'border-white/10 hover:border-blue-500 hover:bg-[#1A1A1D]/30'}`}>
             <div className="space-y-1 text-center">
               <DocumentPlusIcon className="mx-auto h-12 w-12 text-gray-400" />
               <div className="flex text-sm text-gray-400">
                 <p className="pl-1">Dosya secmek icin tiklayin veya surukleyip birakin</p>
               </div>
-              <p className="text-xs text-gray-500">PDF, UDF, Word, JPG, PNG, WEBP, TIF (15 dosya x 3 parca, toplam 45)</p>
+              <p className="text-xs text-gray-500">PDF, UDF, Word, TXT, JPG, PNG, WEBP, TIF (15 dosya x 3 parca, toplam 45)</p>
               {!canSelectMoreFiles && canUnlockNextUploadBatch && (
                 <p className="text-xs text-amber-400">Bu parcayi doldurdunuz. Yeni 15 dosya icin "Ekleme Yap" butonuna basin.</p>
               )}
             </div>
           </div>
-          <input ref={fileInputRef} type="file" multiple disabled={!canSelectMoreFiles} accept=".pdf,.udf,.jpg,.jpeg,.png,.webp,.tif,.tiff,.doc,.docx" onChange={onFileInputChange} className="hidden" />
+          <input ref={fileInputRef} type="file" multiple disabled={!canSelectMoreFiles} accept=".pdf,.udf,.jpg,.jpeg,.png,.webp,.tif,.tiff,.doc,.docx,.txt" onChange={onFileInputChange} className="hidden" />
           {files.length >= activeUploadLimit && canUnlockNextUploadBatch && (
             <div className="mt-3 flex justify-center">
               <button
@@ -611,4 +611,5 @@ export const InputPanel: React.FC<InputPanelProps> = ({
     </div>
   );
 };
+
 

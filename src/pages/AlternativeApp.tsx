@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+﻿import React, { useState, useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -215,31 +215,61 @@ const mergeWebSearchResults = (
     };
 };
 
+const normalizeKeywordText = (value: string): string => String(value || '')
+    .toLocaleLowerCase('tr-TR')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\u0131/g, 'i')
+    .replace(/[^a-z0-9\s./-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
 const KEYWORD_STOPWORDS = new Set([
-    've', 'veya', 'ile', 'olan', 'olduğu', 'oldugu', 'iddia', 'edilen',
-    'üzerine', 'uzerine', 'kapsamında', 'kapsaminda', 'gibi', 'için', 'icin',
-    'üzere', 'uzere', 'bu', 'şu', 'su', 'o', 'bir', 'de', 'da', 'mi', 'mı', 'mu', 'mü'
+    've', 'veya', 'ile', 'olan', 'oldugu', 'iddia', 'edilen', 'uzerine', 'kapsaminda',
+    'gibi', 'icin', 'uzere', 'bu', 'su', 'o', 'bir', 'de', 'da', 'mi', 'mu'
 ]);
+
+const KEYWORD_DRAFTING_TERMS = new Set([
+    'dilekce', 'savunma', 'belge', 'sozlesme', 'taslak', 'yaz', 'yazalim', 'hazirla', 'olustur', 'uret',
+    'detayli', 'olmasi', 'olmali', 'koruyacak', 'haklarini', 'muvekkil', 'muvekkilin', 'vekil', 'vekili',
+    'bana', 'lutfen', 'yardim', 'hazir', 'yapalim'
+]);
+
+const FACT_SIGNAL_REGEX = /\b(tck|cmk|hmk|tmk|anayasa|madde|maddesi|esas|karar|uyusturucu|hirsizlik|dolandiricilik|tehdit|yaralama|oldurme|gozalti|tutuk|delil|kamera|tanik|rapor|bilirkisi|ele gecir|kullanim siniri|ticaret|satici|isveren|kidem|ihbar|fesih|veraset|tapu)\b|\d{1,2}[./-]\d{1,2}[./-]\d{2,4}|\b\d{4,}\b/i;
+
+const hasFactSignal = (rawValue: string): boolean => {
+    const normalized = normalizeKeywordText(rawValue);
+    if (!normalized) return false;
+    return FACT_SIGNAL_REGEX.test(normalized);
+};
 
 const extractKeywordCandidates = (rawValue: string): string[] => {
     const text = String(rawValue || '').trim();
     if (!text) return [];
 
+    const normalizedText = normalizeKeywordText(text);
     const candidates: string[] = [];
     const seen = new Set<string>();
 
     const addCandidate = (value: string) => {
-        const normalized = String(value || '').replace(/[“”"']/g, ' ').replace(/\s+/g, ' ').trim();
-        if (!normalized || normalized.length < 3) return;
+        const cleaned = String(value || '').replace(/[“”"']/g, ' ').replace(/\s+/g, ' ').trim();
+        if (!cleaned || cleaned.length < 3) return;
 
-        const words = normalized.split(/\s+/).filter(Boolean);
-        const nonStopCount = words.filter(word => !KEYWORD_STOPWORDS.has(word.toLocaleLowerCase('tr-TR'))).length;
-        if (nonStopCount === 0) return;
+        const normalizedKey = normalizeKeywordText(cleaned);
+        if (!normalizedKey || normalizedKey.length < 3) return;
 
-        const key = normalized.toLocaleLowerCase('tr-TR');
-        if (seen.has(key)) return;
-        seen.add(key);
-        candidates.push(normalized);
+        const words = normalizedKey.split(/\s+/).filter(Boolean);
+        const nonStopWords = words.filter(word => !KEYWORD_STOPWORDS.has(word));
+        if (nonStopWords.length === 0) return;
+
+        if (!hasFactSignal(normalizedKey) && nonStopWords.length < 2) return;
+
+        const hasDraftingTerm = nonStopWords.some(word => KEYWORD_DRAFTING_TERMS.has(word));
+        if (hasDraftingTerm && !hasFactSignal(normalizedKey)) return;
+
+        if (seen.has(normalizedKey)) return;
+        seen.add(normalizedKey);
+        candidates.push(cleaned);
     };
 
     const tckMatches = text.match(/TCK\s*\d+(?:\s*\/\s*\d+)?(?:\s*[-–]\s*\d+)?/gi) || [];
@@ -247,33 +277,39 @@ const extractKeywordCandidates = (rawValue: string): string[] => {
         addCandidate(match);
     }
 
-    if (/uyuşturucu|uyusturucu/i.test(text) && /ticaret|satıc|satic/i.test(text)) {
-        addCandidate('uyuşturucu ticareti');
-        addCandidate('uyuşturucu satıcılığı iddiası');
+    if (/uyusturucu/.test(normalizedText) && /(ticaret|satic)/.test(normalizedText)) {
+        addCandidate('uyusturucu ticareti');
+        addCandidate('uyusturucu saticiligi iddiasi');
     }
 
-    if (/evine gelen\s*\d+\s*kişi|evine gelen.*kişi/i.test(text)) {
-        addCandidate('evine gelen kişilerde farklı uyuşturucu ele geçirilmesi');
+    if (/evine gelen\s*\d+\s*kisi|evine gelen.*kisi/.test(normalizedText)) {
+        addCandidate('evine gelen kisilerde farkli uyusturucu ele gecirilmesi');
     }
 
-    if (/kullanım sınırını aşan|kullanim sinirini asan|kullanım sınırı|kullanim siniri/i.test(text)) {
-        addCandidate('kullanım sınırını aşan miktarda madde');
+    if (/kullanim sinirini asan|kullanim siniri/.test(normalizedText)) {
+        addCandidate('kullanim sinirini asan miktarda madde');
     }
 
-    const fullNameMatches = text.match(/[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+/g) || [];
+    const fullNameMatches = text.match(/\b[A-Z\u00C7\u011E\u0130\u00D6\u015E\u00DC][A-Za-z\u00C7\u011E\u0130\u00D6\u015E\u00DC\u00E7\u011F\u0131\u00F6\u015F\u00FC]+\s+[A-Z\u00C7\u011E\u0130\u00D6\u015E\u00DC][A-Za-z\u00C7\u011E\u0130\u00D6\u015E\u00DC\u00E7\u011F\u0131\u00F6\u015F\u00FC]+\b/g) || [];
     for (const match of fullNameMatches) {
         addCandidate(match);
     }
 
     const phraseChunks = text.split(/[,\n;]+/g);
     for (const chunk of phraseChunks) {
+        const normalizedChunk = normalizeKeywordText(chunk);
+        const chunkWordCount = normalizedChunk ? normalizedChunk.split(/\s+/).filter(Boolean).length : 0;
+        if (!hasFactSignal(chunk) && chunkWordCount > 8) continue;
         addCandidate(chunk);
     }
 
-    const tokenFallback = text
+    const tokenFallback = normalizedText
         .split(/[\s,;:.!?()\/\\-]+/g)
         .map(token => token.trim())
-        .filter(token => token.length >= 4 && !KEYWORD_STOPWORDS.has(token.toLocaleLowerCase('tr-TR')));
+        .filter(token => token.length >= 4
+            && !KEYWORD_STOPWORDS.has(token)
+            && !KEYWORD_DRAFTING_TERMS.has(token)
+            && hasFactSignal(token));
 
     for (const token of tokenFallback) {
         addCandidate(token);
@@ -283,6 +319,72 @@ const extractKeywordCandidates = (rawValue: string): string[] => {
     return candidates.slice(0, 12);
 };
 
+const isExplicitKeywordAddRequest = (rawMessage: string): boolean => {
+    const normalized = normalizeKeywordText(rawMessage);
+    if (!normalized) return false;
+
+    const hasKeywordIntent = /(anahtar\s*kelime|arama\s*terimi|keyword)/i.test(normalized);
+    const hasAddAction = /(ekle|ekleyin|ekleyelim|ekler misin|eklensin|ilave et|kaydet|guncelle)/i.test(normalized);
+
+    return hasKeywordIntent && hasAddAction;
+};
+
+const extractExplicitKeywordsFromMessage = (rawMessage: string): string[] => {
+    const message = String(rawMessage || '').trim();
+    if (!message || !isExplicitKeywordAddRequest(message)) return [];
+
+    const candidates: string[] = [];
+    const doubleQuoted = Array.from(message.matchAll(/"([^"]{2,120})"/g)).map((m) => (m[1] || '').trim());
+    const singleQuoted = Array.from(message.matchAll(/'([^']{2,120})'/g)).map((m) => (m[1] || '').trim());
+
+    if (doubleQuoted.length > 0) candidates.push(...doubleQuoted);
+    if (singleQuoted.length > 0) candidates.push(...singleQuoted);
+
+    const colonIndex = message.indexOf(':');
+    if (colonIndex >= 0 && colonIndex < message.length - 1) {
+        const afterColon = message.slice(colonIndex + 1).trim();
+        if (afterColon) candidates.push(afterColon);
+    }
+
+    const beforeKeywordPattern = /(.*?)\s*(?:anahtar\s*kelime|arama\s*terimi|keyword)(?:\s*olarak|\s*diye)?\s*(?:ekle|ekleyin|ekleyelim|ekler misin|eklensin|ilave et|kaydet|guncelle)/i;
+    const beforeKeywordMatch = message.match(beforeKeywordPattern);
+    if (beforeKeywordMatch?.[1]?.trim()) {
+        candidates.push(beforeKeywordMatch[1].trim());
+    }
+
+    const afterKeywordPattern = /(?:anahtar\s*kelime|arama\s*terimi|keyword)(?:\s*olarak|\s*diye)?\s*(.*?)(?:\s*(?:ekle|ekleyin|ekleyelim|ekler misin|eklensin|ilave et|kaydet|guncelle)|$)/i;
+    const afterKeywordMatch = message.match(afterKeywordPattern);
+    if (afterKeywordMatch?.[1]?.trim()) {
+        candidates.push(afterKeywordMatch[1].trim());
+    }
+
+    const normalizedForStrip = normalizeKeywordText(message)
+        .replace(/(anahtar\s*kelime(leri)?|arama\s*terimi(leri)?|keywords?)/gi, ' ')
+        .replace(/\b(olarak|diye|bunu|sunu|sunlari|lutfen|ekle|ekleyin|ekleyelim|ekler misin|eklensin|ilave et|kaydet|guncelle)\b/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    if (normalizedForStrip) candidates.push(normalizedForStrip);
+
+    const normalizedSeen = new Set<string>();
+    const result: string[] = [];
+
+    for (const candidate of candidates) {
+        const parts = candidate.split(/[,;\n]+/g).map(part => part.trim()).filter(Boolean);
+        for (const part of parts) {
+            const extracted = extractKeywordCandidates(part);
+            const fallback = extracted.length > 0 ? extracted : [part];
+            for (const keyword of fallback) {
+                const normalizedKeyword = normalizeKeywordText(keyword);
+                if (!normalizedKeyword || normalizedKeyword.length < 2 || normalizedSeen.has(normalizedKeyword)) continue;
+                normalizedSeen.add(normalizedKeyword);
+                result.push(keyword.trim());
+                if (result.length >= 10) return result;
+            }
+        }
+    }
+
+    return result;
+};
 const isLikelyPetitionRequest = (rawMessage: string): boolean => {
     if (!rawMessage) return false;
     return /(dilekce|dilekçe|belge|taslak|template|ihtarname|itiraz|temyiz|feragat|talep|sozlesme|sözleşme)/i.test(rawMessage)
@@ -317,6 +419,24 @@ const hasLegalEvidenceForChat = (results: AlternativeLegalSearchResult[]): boole
         const summary = typeof result.ozet === 'string' ? result.ozet.trim() : '';
         return title.length > 0 && summary.length > 0;
     });
+};
+
+const resolveChatMimeType = (file: File): string => {
+    const directType = typeof file.type === 'string' ? file.type.trim() : '';
+    if (directType) return directType;
+
+    const lowerName = String(file.name || '').toLowerCase();
+    if (lowerName.endsWith('.pdf')) return 'application/pdf';
+    if (lowerName.endsWith('.udf')) return 'application/zip';
+    if (lowerName.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    if (lowerName.endsWith('.doc')) return 'application/msword';
+    if (lowerName.endsWith('.txt')) return 'text/plain';
+    if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) return 'image/jpeg';
+    if (lowerName.endsWith('.png')) return 'image/png';
+    if (lowerName.endsWith('.webp')) return 'image/webp';
+    if (lowerName.endsWith('.tif') || lowerName.endsWith('.tiff')) return 'image/tiff';
+
+    return 'application/octet-stream';
 };
 
 const hasLegalEvidenceForGeneration = (results: AlternativeLegalSearchResult[]): boolean => {
@@ -955,13 +1075,13 @@ export default function AlternativeApp() {
         }
 
         const selectedFiles = Array.from(rawFiles);
-        const allowedExtensions = ['.pdf', '.udf', '.jpg', '.jpeg', '.png', '.webp', '.tif', '.tiff', '.doc', '.docx'];
+        const allowedExtensions = ['.pdf', '.udf', '.jpg', '.jpeg', '.png', '.webp', '.tif', '.tiff', '.doc', '.docx', '.txt'];
         const validFiles = selectedFiles.filter(file =>
             allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
         );
 
         if (validFiles.length !== selectedFiles.length) {
-            addToast('Sadece PDF, UDF, Word veya resim dosyalari desteklenir.', 'info');
+            addToast('Sadece PDF, UDF, Word, TXT veya resim dosyalari desteklenir.', 'info');
         }
 
         if (validFiles.length > availableSlots) {
@@ -1090,8 +1210,8 @@ export default function AlternativeApp() {
     }, [editableTemplateContent, templateVariableItems, templateVariableValues, addToast]);
 
     const handleAnalyze = async () => {
-        if (files.length === 0) {
-            setError('Lütfen önce analiz edilecek PDF, UDF veya resim dosyalarını yükleyin.');
+        if (files.length === 0 && !docContent.trim()) {
+            setError('Lutfen once analiz edilecek belge veya metin ekleyin.');
             return;
         }
         setIsAnalyzing(true);
@@ -1115,6 +1235,9 @@ export default function AlternativeApp() {
             const allUploadedFiles: UploadedFile[] = [];
             let udfContent = '';
             let wordContent = '';
+            let plainTextContent = docContent.trim()
+                ? `\n\n--- Manuel Metin ---\n${docContent.trim()}`
+                : '';
             const zip = new JSZip();
 
             for (const file of files) {
@@ -1128,7 +1251,7 @@ export default function AlternativeApp() {
                         const firstPage = ifds[0];
 
                         if (!firstPage) {
-                            throw new Error('TIFF içinde sayfa bulunamadı.');
+                            throw new Error('TIFF icinde sayfa bulunamadi.');
                         }
 
                         UTIF.decodeImage(arrayBuffer, firstPage);
@@ -1139,7 +1262,7 @@ export default function AlternativeApp() {
                         const ctx = canvas.getContext('2d');
 
                         if (!ctx) {
-                            throw new Error('Canvas context oluşturulamadı.');
+                            throw new Error('Canvas context olusturulamadi.');
                         }
 
                         const imageData = ctx.createImageData(firstPage.width, firstPage.height);
@@ -1177,7 +1300,7 @@ export default function AlternativeApp() {
                         if (xmlFile) {
                             xmlContent = await xmlFile.async('string');
                         } else {
-                            xmlContent = 'UDF arşivinde .xml uzantılı içerik dosyası bulunamadı.';
+                            xmlContent = 'UDF arsivinde .xml uzantili icerik dosyasi bulunamadi.';
                         }
                         udfContent += `\n\n--- UDF Belgesi: ${file.name} ---\n${xmlContent}`;
                     } catch (e) {
@@ -1192,10 +1315,19 @@ export default function AlternativeApp() {
                         console.error(`Error processing Word file ${file.name}:`, wordError);
                         wordContent += `\n\n--- Word Belgesi: ${file.name} (HATA) ---\nBu Word belgesi islenemedi.`;
                     }
+                } else if (extension === 'txt') {
+                    try {
+                        const textContent = await file.text();
+                        plainTextContent += `\n\n--- Metin Belgesi: ${file.name} ---\n${textContent}`;
+                    } catch (textError) {
+                        console.error(`Error processing text file ${file.name}:`, textError);
+                        plainTextContent += `\n\n--- Metin Belgesi: ${file.name} (HATA) ---\nBu metin dosyasi islenemedi.`;
+                    }
                 }
             }
 
-            const result = await analyzeDocuments(allUploadedFiles, udfContent.trim(), wordContent.trim());
+            const combinedWordText = [wordContent.trim(), plainTextContent.trim()].filter(Boolean).join('\n\n');
+            const result = await analyzeDocuments(allUploadedFiles, udfContent.trim(), combinedWordText);
             setAnalysisData(result);
             if (result.caseDetails) {
                 setCaseDetails(prev => ({ ...prev, ...result.caseDetails }));
@@ -1229,23 +1361,71 @@ export default function AlternativeApp() {
                 });
             }
             setManualPartyName('');
-            addToast('Belgeler baaryla analiz edildi!', 'success');
+
+            const keywordSeed = [
+                result.summary || '',
+                udfContent,
+                combinedWordText,
+                files.map(file => file.name).join(' '),
+            ]
+                .filter(Boolean)
+                .join('\n');
+
+            try {
+                const autoKeywords = await generateSearchKeywords(keywordSeed || result.summary || '', userRole);
+                if (autoKeywords.length > 0) {
+                    setSearchKeywords(autoKeywords);
+                    addToast(`${autoKeywords.length} anahtar kelime otomatik olusturuldu.`, 'success');
+                } else {
+                    const fallbackKeywords = extractKeywordCandidates(keywordSeed || result.summary || '').slice(0, 8);
+                    if (fallbackKeywords.length > 0) {
+                        setSearchKeywords(fallbackKeywords);
+                        addToast(`${fallbackKeywords.length} anahtar kelime otomatik eklendi (yedek).`, 'info');
+                    } else {
+                        addToast('Analiz tamamlandi ancak anahtar kelime uretilemedi. "Arama Terimleri Oner" butonunu kullanin.', 'info');
+                    }
+                }
+            } catch (keywordError) {
+                console.error('Auto keyword generation failed after analyze:', keywordError);
+                const fallbackKeywords = extractKeywordCandidates(keywordSeed || result.summary || '').slice(0, 8);
+                if (fallbackKeywords.length > 0) {
+                    setSearchKeywords(fallbackKeywords);
+                    addToast(`${fallbackKeywords.length} anahtar kelime yedek olarak eklendi.`, 'info');
+                }
+            }
+            addToast('Belgeler basariyla analiz edildi!', 'success');
             setCurrentStep(3);
         } catch (e: any) {
-            setError(`Analiz hatas: ${e.message}`);
+            setError(`Analiz hatasi: ${e.message}`);
         } finally {
             setIsAnalyzing(false);
         }
     };
 
     const handleGenerateKeywords = async () => {
-        if (!analysisData?.summary) return;
+        const keywordSeed = [
+            analysisData?.summary || '',
+            docContent || '',
+            files.map(file => file.name).join(' '),
+        ]
+            .filter(Boolean)
+            .join('\n')
+            .trim();
+        if (!keywordSeed) return;
+
         setIsGeneratingKeywords(true);
         setError(null);
         try {
-            const keywords = await generateSearchKeywords(analysisData.summary, userRole);
-            setSearchKeywords(keywords);
-            await runLegalSearch(keywords);
+            const keywords = await generateSearchKeywords(keywordSeed, userRole);
+            const finalKeywords = keywords.length > 0
+                ? keywords
+                : extractKeywordCandidates(keywordSeed).slice(0, 8);
+            if (finalKeywords.length === 0) {
+                setError('Anahtar kelime uretilemedi. Belge icerigini kontrol edip tekrar deneyin.');
+                return;
+            }
+            setSearchKeywords(finalKeywords);
+            await runLegalSearch(finalKeywords);
             addToast('Anahtar kelimeler oluturuldu!', 'success');
         } catch (e: any) {
             setError(`Hata: ${e.message}`);
@@ -1588,7 +1768,7 @@ export default function AlternativeApp() {
             chatFiles = await Promise.all(
                 files.map(async (file) => ({
                     name: file.name,
-                    mimeType: file.type || 'application/octet-stream',
+                    mimeType: resolveChatMimeType(file),
                     data: await fileToBase64(file),
                 }))
             );
@@ -1610,14 +1790,121 @@ export default function AlternativeApp() {
         let mergedLegalResults = [...legalSearchResults];
         let mergedDocContent = docContent;
         let assistantText = '';
+        let addedKeywordsCount = 0;
+        let transientEvidenceKeywords: string[] = [];
+        let activeAnalysisData: AnalysisData | null = analysisData;
+        let activeAnalysisSummary = analysisData?.summary?.trim() || '';
+        const explicitKeywordAddRequest = isExplicitKeywordAddRequest(normalizedMessage);
         const userRequestedPetition = isLikelyPetitionRequest(normalizedMessage);
         const isSimpleQuestion = isSimpleGuidanceQuestion(normalizedMessage);
+        const isEmsalSearchRequest = /(emsal|ictihat|içtihat|yargitay|danistay|karar ara|karar aramasi|karar arar misin)/i.test(normalizedMessage);
         const requiresEvidenceForChat = !isSimpleQuestion;
+        const requiresWebEvidenceForChat = requiresEvidenceForChat && !isEmsalSearchRequest;
+        const requiresLegalEvidenceForChat = requiresEvidenceForChat;
         const requiresStrictEvidenceForDocument = userRequestedPetition;
 
         try {
-            if (requiresStrictEvidenceForDocument && !analysisData?.summary?.trim()) {
-                const hasUploadedDocument = files.length > 0 || chatFiles.length > 0;
+            const chatSourceFiles = Array.isArray(files) ? files : [];
+            const hasUploadedDocumentContext = chatSourceFiles.length > 0 || chatFiles.length > 0 || Boolean(mergedDocContent?.trim());
+
+            if (hasUploadedDocumentContext && !activeAnalysisSummary && chatSourceFiles.length > 0) {
+                setChatProgressText('Yuklenen belgeler analiz ediliyor...');
+                try {
+                    const analysisUploadedFiles: UploadedFile[] = [];
+                    let udfContent = '';
+                    let wordContent = '';
+                    const zip = new JSZip();
+
+                    for (const srcFile of chatSourceFiles) {
+                        const extension = srcFile.name.split('.').pop()?.toLowerCase();
+                        if (extension === 'pdf') {
+                            analysisUploadedFiles.push({ mimeType: 'application/pdf', data: await fileToBase64(srcFile) });
+                        } else if (extension === 'tif' || extension === 'tiff') {
+                            try {
+                                const arrayBuffer = await srcFile.arrayBuffer();
+                                const ifds = UTIF.decode(arrayBuffer);
+                                const firstPage = ifds[0];
+                                if (!firstPage) continue;
+                                UTIF.decodeImage(arrayBuffer, firstPage);
+                                const rgba = UTIF.toRGBA8(firstPage);
+                                const canvas = document.createElement('canvas');
+                                canvas.width = firstPage.width;
+                                canvas.height = firstPage.height;
+                                const ctx = canvas.getContext('2d');
+                                if (!ctx) continue;
+                                const imageData = ctx.createImageData(firstPage.width, firstPage.height);
+                                imageData.data.set(rgba);
+                                ctx.putImageData(imageData, 0, 0);
+                                const base64Data = canvas.toDataURL('image/png').split(',')[1];
+                                analysisUploadedFiles.push({ mimeType: 'image/png', data: base64Data });
+                            } catch (tiffError) {
+                                console.error(`Error processing TIFF file ${srcFile.name}:`, tiffError);
+                            }
+                        } else if (srcFile.type.startsWith('image/')) {
+                            analysisUploadedFiles.push({ mimeType: srcFile.type, data: await fileToBase64(srcFile) });
+                        } else if (extension === 'udf') {
+                            try {
+                                const loadedZip = await zip.loadAsync(srcFile);
+                                let xmlContent = '';
+                                let xmlFile = null;
+                                for (const fileName in loadedZip.files) {
+                                    if (Object.prototype.hasOwnProperty.call(loadedZip.files, fileName)) {
+                                        const fileObject = loadedZip.files[fileName];
+                                        if (!fileObject.dir && fileObject.name.toLowerCase().endsWith('.xml')) {
+                                            xmlFile = fileObject;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (xmlFile) {
+                                    xmlContent = await xmlFile.async('string');
+                                }
+                                if (xmlContent) {
+                                    udfContent += `\n\n--- UDF Belgesi: ${srcFile.name} ---\n${xmlContent}`;
+                                }
+                            } catch (zipError) {
+                                console.error(`Error processing UDF file ${srcFile.name}:`, zipError);
+                            }
+                        } else if (extension === 'doc' || extension === 'docx') {
+                            try {
+                                const arrayBuffer = await srcFile.arrayBuffer();
+                                const extracted = await mammoth.extractRawText({ arrayBuffer });
+                                wordContent += `\n\n--- Word Belgesi: ${srcFile.name} ---\n${extracted.value}`;
+                            } catch (wordError) {
+                                console.error(`Error processing Word file ${srcFile.name}:`, wordError);
+                            }
+                        } else if (extension === 'txt') {
+                            try {
+                                const textContent = await srcFile.text();
+                                wordContent += `\n\n--- Metin Belgesi: ${srcFile.name} ---\n${textContent}`;
+                            } catch (txtError) {
+                                console.error(`Error processing text file ${srcFile.name}:`, txtError);
+                            }
+                        }
+                    }
+
+                    if (analysisUploadedFiles.length > 0 || udfContent.trim() || wordContent.trim()) {
+                        const chatAnalysis = await analyzeDocuments(analysisUploadedFiles, udfContent.trim(), wordContent.trim());
+                        activeAnalysisData = chatAnalysis;
+                        activeAnalysisSummary = chatAnalysis?.summary?.trim() || '';
+                        setAnalysisData(chatAnalysis);
+                        if (chatAnalysis.caseDetails) {
+                            setCaseDetails(prev => ({ ...prev, ...chatAnalysis.caseDetails }));
+                        }
+
+                        const extractedContextText = [udfContent.trim(), wordContent.trim()].filter(Boolean).join('\n\n').trim();
+                        if (extractedContextText) {
+                            mergedDocContent = [mergedDocContent, extractedContextText].filter(Boolean).join('\n\n').trim();
+                            setDocContent(mergedDocContent);
+                        }
+                    }
+                } catch (chatAnalyzeError) {
+                    console.error('Pre-chat document analysis failed:', chatAnalyzeError);
+                }
+            }
+
+            if (requiresStrictEvidenceForDocument && !activeAnalysisSummary) {
+                const hasUploadedDocument = (files?.length || 0) > 0 || chatFiles.length > 0;
                 const blockedText = hasUploadedDocument
                     ? DOCUMENT_UPLOADED_BUT_ANALYSIS_MISSING_TEXT
                     : DIRECT_DOCUMENT_WITHOUT_ANALYSIS_TEXT;
@@ -1626,19 +1913,59 @@ export default function AlternativeApp() {
                 return;
             }
 
-            if ((requiresEvidenceForChat || requiresStrictEvidenceForDocument) && normalizedMessage) {
-                const messageKeywords = extractKeywordCandidates(normalizedMessage).slice(0, 8);
-                if (messageKeywords.length > 0) {
-                    mergedKeywords = Array.from(new Set([...mergedKeywords, ...messageKeywords]));
-                    setSearchKeywords(mergedKeywords);
+            if (requiresStrictEvidenceForDocument && hasUploadedDocumentContext && !activeAnalysisSummary) {
+                setChatMessages(prev => [...prev, { role: 'model', text: DOCUMENT_UPLOADED_BUT_ANALYSIS_MISSING_TEXT }]);
+                setError(DOCUMENT_UPLOADED_BUT_ANALYSIS_MISSING_TEXT);
+                return;
+            }
+
+            if (explicitKeywordAddRequest && normalizedMessage) {
+                const explicitKeywords = extractExplicitKeywordsFromMessage(normalizedMessage).slice(0, 8);
+                if (explicitKeywords.length > 0) {
+                    const nextKeywords = Array.from(new Set([...mergedKeywords, ...explicitKeywords]));
+                    addedKeywordsCount += nextKeywords.length - mergedKeywords.length;
+                    mergedKeywords = nextKeywords;
+                    setSearchKeywords(nextKeywords);
                 }
             }
 
+            if ((requiresEvidenceForChat || requiresStrictEvidenceForDocument) && mergedKeywords.length === 0 && activeAnalysisSummary) {
+                try {
+                    const autoKeywords = await generateSearchKeywords(activeAnalysisSummary, userRole);
+                    if (autoKeywords.length > 0) {
+                        mergedKeywords = autoKeywords.slice(0, 8);
+                        setSearchKeywords(mergedKeywords);
+                    }
+                } catch (keywordError) {
+                    console.error('Keyword generation before verification failed:', keywordError);
+                }
+
+                if (mergedKeywords.length === 0) {
+                    const fallbackFromSummary = extractKeywordCandidates(activeAnalysisSummary).slice(0, 8);
+                    if (fallbackFromSummary.length > 0) {
+                        mergedKeywords = fallbackFromSummary;
+                        setSearchKeywords(mergedKeywords);
+                    }
+                }
+            }
+
+            if ((requiresEvidenceForChat || requiresStrictEvidenceForDocument) && mergedKeywords.length === 0) {
+                const evidenceSeed = [
+                    activeAnalysisSummary || '',
+                    mergedDocContent || '',
+                    chatFiles.map(file => file.name).join(' '),
+                    normalizedMessage || '',
+                ].filter(Boolean).join('\n');
+                transientEvidenceKeywords = extractKeywordCandidates(evidenceSeed).slice(0, 8);
+            }
+
+            const evidenceKeywords = mergedKeywords.length > 0 ? mergedKeywords : transientEvidenceKeywords;
+
             if (requiresEvidenceForChat || requiresStrictEvidenceForDocument) {
-                if (!hasWebEvidence(mergedWebSearchResult) && mergedKeywords.length > 0) {
+                if ((requiresWebEvidenceForChat || requiresStrictEvidenceForDocument) && !hasWebEvidence(mergedWebSearchResult) && evidenceKeywords.length > 0) {
                     setChatProgressText('Web arastirmasiyla cevap dogrulaniyor...');
                     try {
-                        const autoWebSearchResult = await performWebSearch(mergedKeywords);
+                        const autoWebSearchResult = await performWebSearch(evidenceKeywords);
                         mergedWebSearchResult = mergeWebSearchResults(mergedWebSearchResult, autoWebSearchResult);
                         if (mergedWebSearchResult) {
                             setWebSearchResult(mergedWebSearchResult);
@@ -1648,40 +1975,54 @@ export default function AlternativeApp() {
                     }
                 }
 
-                if (!hasLegalEvidenceForChat(mergedLegalResults) && mergedKeywords.length > 0) {
+                if ((requiresLegalEvidenceForChat || requiresStrictEvidenceForDocument) && !hasLegalEvidenceForChat(mergedLegalResults) && evidenceKeywords.length > 0) {
                     setChatProgressText('Emsal kararlarla cevap dogrulaniyor...');
-                    const searchedResults = await runLegalSearch(mergedKeywords, { silent: true, suppressError: true });
+                    const searchedResults = await runLegalSearch(evidenceKeywords, { silent: true, suppressError: true });
                     if (searchedResults.length > 0) {
                         mergedLegalResults = mergeUniqueLegalResults(mergedLegalResults, searchedResults);
                     }
                 }
             }
 
-            if (requiresEvidenceForChat && (!hasWebEvidence(mergedWebSearchResult) || !hasLegalEvidenceForChat(mergedLegalResults))) {
-                const blockedText = 'Bu soruya güvenli cevap verebilmem için web ve emsal karar doğrulaması tamamlanmalı. Lütfen tekrar deneyin veya soruyu daha kısa/sade sorun.';
+            const missingWebEvidenceForChat = (requiresWebEvidenceForChat || requiresStrictEvidenceForDocument) && !hasWebEvidence(mergedWebSearchResult);
+            const missingLegalEvidenceForChat = (requiresLegalEvidenceForChat || requiresStrictEvidenceForDocument) && !hasLegalEvidenceForChat(mergedLegalResults);
+
+            if (requiresEvidenceForChat && (missingWebEvidenceForChat || missingLegalEvidenceForChat)) {
+                const blockedText = evidenceKeywords.length === 0
+                    ? (hasUploadedDocumentContext
+                        ? 'Belge analizi tamamlanmadan web ve emsal karar aramasina gecilemez. Once belgeyi analiz et, sonra anahtar kelime olusturulsun, ardindan web ve emsal karar aramasi calissin.'
+                        : 'Sorgudan dogrulama icin arama terimi cikarilamadi. Soruyu biraz daha somut yazin veya anahtar kelime olarak arama terimi ekleyin.')
+                    : 'Bu soruya guvenli cevap verebilmem icin web ve emsal karar dogrulamasi tamamlanmali. Lutfen tekrar deneyin veya soruyu daha kisa/sade sorun.';
                 setChatMessages(prev => [...prev, { role: 'model', text: blockedText }]);
                 setError(blockedText);
                 return;
             }
 
-            if (requiresStrictEvidenceForDocument && (!analysisData?.summary?.trim() || !hasWebEvidence(mergedWebSearchResult) || !hasLegalEvidenceForGeneration(mergedLegalResults))) {
+            if (requiresStrictEvidenceForDocument && (!activeAnalysisSummary || !hasWebEvidence(mergedWebSearchResult) || !hasLegalEvidenceForGeneration(mergedLegalResults))) {
                 const blockedText = `Belge oluşturma engellendi.\n\n${DOCUMENT_REQUIREMENTS_HELP_TEXT}`;
                 setChatMessages(prev => [...prev, { role: 'model', text: blockedText }]);
                 setError(blockedText);
                 return;
             }
 
+            if (requiresStrictEvidenceForDocument && missingInfoBlockingUnansweredCount > 0) {
+                const blockedChecklistText = `Belge olusturma engellendi.\n\nEksikleri Tara alaninda ${missingInfoBlockingUnansweredCount} bloklayici soru bos. Lutfen once yanitlayin.`;
+                setChatMessages(prev => [...prev, { role: 'model', text: blockedChecklistText }]);
+                setError(blockedChecklistText);
+                return;
+            }
+
             const responseStream = streamChatResponse(
                 newMessages,
-                analysisData?.summary || '',
+                activeAnalysisSummary || '',
                 {
-                    keywords: mergedKeywords.join(', '),
+                    keywords: evidenceKeywords.join(', '),
                     searchSummary: mergedWebSearchResult?.summary || '',
                     legalSummary: buildLegalResultsPrompt(mergedLegalResults),
                     webSourceCount: mergedWebSearchResult?.sources?.length || 0,
                     legalResultCount: mergedLegalResults.length,
                     docContent: mergedDocContent,
-                    specifics,
+                    specifics: specificsWithMissingInfo,
                 },
                 chatFiles
             );
@@ -1689,7 +2030,6 @@ export default function AlternativeApp() {
             setChatMessages(prev => [...prev, modelMessage]);
 
             let functionCallDetected = false;
-            let addedKeywordsCount = 0;
             let generatedDocument = false;
             let pendingGeneratedPayload: { title: string; content: string } | null = null;
 
@@ -1761,6 +2101,10 @@ export default function AlternativeApp() {
                 for (const fc of functionCalls) {
                     if (fc.name === 'update_search_keywords') {
                         functionCallDetected = true;
+                        const allowModelKeywordUpdates = explicitKeywordAddRequest || (hasUploadedDocumentContext && mergedKeywords.length === 0);
+                        if (!allowModelKeywordUpdates) {
+                            continue;
+                        }
                         setChatProgressText('Anahtar kelimeler bağlama ekleniyor...');
 
                         const args = parseFunctionCallArgs(fc.args);
@@ -1792,7 +2136,8 @@ export default function AlternativeApp() {
                             : [];
                         const mergedFromCall = Array.from(new Set([...queryKeywords, ...explicitKeywords]));
 
-                        if (mergedFromCall.length > 0) {
+                        const allowModelKeywordUpdates = explicitKeywordAddRequest || (hasUploadedDocumentContext && mergedKeywords.length === 0);
+                        if (allowModelKeywordUpdates && mergedFromCall.length > 0) {
                             mergedKeywords = Array.from(new Set([...mergedKeywords, ...mergedFromCall]));
                             setSearchKeywords(mergedKeywords);
                         }
@@ -1801,15 +2146,19 @@ export default function AlternativeApp() {
                     if (fc.name === 'generate_document') {
                         setChatProgressText('Dilekçe oluşturuluyor...');
                         const canGenerateDocument = Boolean(
-                            analysisData?.summary?.trim()
+                            activeAnalysisSummary
                             && hasWebEvidence(mergedWebSearchResult)
                             && hasLegalEvidenceForGeneration(mergedLegalResults)
+                            && missingInfoBlockingUnansweredCount === 0
                         );
 
                         if (!canGenerateDocument) {
-                            const blockedGenerationText = `\n\nBelge oluşturma engellendi.\n\n${DOCUMENT_REQUIREMENTS_HELP_TEXT}`;
+                            const missingInfoText = missingInfoBlockingUnansweredCount > 0
+                                ? `\n\nEksikleri Tara alaninda ${missingInfoBlockingUnansweredCount} bloklayici soru bos. Lutfen once yanitlayin.`
+                                : '';
+                            const blockedGenerationText = `\n\nBelge oluşturma engellendi.\n\n${DOCUMENT_REQUIREMENTS_HELP_TEXT}${missingInfoText}`;
                             assistantText += blockedGenerationText;
-                            setError(`Belge oluşturma için zorunlu kanıtlar eksik.\n\n${DOCUMENT_REQUIREMENTS_HELP_TEXT}`);
+                            setError(`Belge oluşturma için zorunlu bilgiler eksik.\n\n${DOCUMENT_REQUIREMENTS_HELP_TEXT}${missingInfoText}`);
                             setChatMessages(prev => prev.map((msg, index) =>
                                 index === prev.length - 1
                                     ? { ...msg, text: msg.text + blockedGenerationText }
@@ -1883,13 +2232,17 @@ export default function AlternativeApp() {
                 setChatProgressText('Dileke oluturma adm tamamlanyor...');
                 let fallbackPetition = '';
                 const canGeneratePetition = Boolean(
-                    analysisData?.summary?.trim()
+                    activeAnalysisSummary
                     && hasWebEvidence(mergedWebSearchResult)
                     && hasLegalEvidenceForGeneration(mergedLegalResults)
+                    && missingInfoBlockingUnansweredCount === 0
                 );
 
                 if (!canGeneratePetition) {
-                    const blockedText = `Belge oluşturma engellendi.\n\n${DOCUMENT_REQUIREMENTS_HELP_TEXT}`;
+                    const missingInfoText = missingInfoBlockingUnansweredCount > 0
+                        ? `\n\nEksikleri Tara alaninda ${missingInfoBlockingUnansweredCount} bloklayici soru bos. Lutfen once yanitlayin.`
+                        : '';
+                    const blockedText = `Belge oluşturma engellendi.\n\n${DOCUMENT_REQUIREMENTS_HELP_TEXT}${missingInfoText}`;
                     setError(blockedText);
                     setChatMessages(prev => prev.map((msg, index) =>
                         index === prev.length - 1
@@ -1902,17 +2255,17 @@ export default function AlternativeApp() {
                             userRole,
                             petitionType,
                             caseDetails,
-                            analysisSummary: analysisData.summary,
+                            analysisSummary: activeAnalysisSummary,
                             webSearchResult: mergedWebSearchResult?.summary || '',
                             legalSearchResult: buildLegalResultsPrompt(mergedLegalResults),
                             docContent: mergedDocContent,
-                            specifics,
+                            specifics: specificsWithMissingInfo,
                             chatHistory: [...newMessages, { role: 'model', text: assistantText }],
                             parties,
                             webSourceCount: mergedWebSearchResult?.sources?.length || 0,
                             legalResultCount: mergedLegalResults.length,
-                            lawyerInfo: analysisData.lawyerInfo,
-                            contactInfo: analysisData.contactInfo,
+                            lawyerInfo: activeAnalysisData?.lawyerInfo,
+                            contactInfo: activeAnalysisData?.contactInfo,
                         });
                     } catch (fallbackError) {
                         console.error('Fallback petition generation failed:', fallbackError);
@@ -1930,7 +2283,7 @@ export default function AlternativeApp() {
                             chatHistory: [...newMessages, { role: 'model', text: assistantText }],
                             searchKeywords: mergedKeywords,
                             docContent: mergedDocContent,
-                            specifics,
+                            specifics: specificsWithMissingInfo,
                             webSearchResult: mergedWebSearchResult,
                             legalSearchResults: mergedLegalResults,
                         });
@@ -1943,7 +2296,7 @@ export default function AlternativeApp() {
                     chatHistory: [...newMessages, { role: 'model', text: assistantText }],
                     searchKeywords: mergedKeywords,
                     docContent: mergedDocContent,
-                    specifics,
+                    specifics: specificsWithMissingInfo,
                     webSearchResult: mergedWebSearchResult,
                     legalSearchResults: mergedLegalResults,
                 });
@@ -1963,7 +2316,7 @@ export default function AlternativeApp() {
         webSearchResult,
         legalSearchResults,
         docContent,
-        specifics,
+        specificsWithMissingInfo,
         files,
         mergeLegalResults,
         runLegalSearch,
@@ -1974,6 +2327,7 @@ export default function AlternativeApp() {
         petitionType,
         caseDetails,
         parties,
+        missingInfoBlockingUnansweredCount,
     ]);
 
     const handleGeneratePetition = async () => {
@@ -2257,7 +2611,7 @@ export default function AlternativeApp() {
                                             </svg>
                                         </div>
                                         <span className="text-lg font-medium text-white mb-2">Dosyaları Sürükleyin veya Seçin</span>
-                                        <span className="text-sm text-gray-500">PDF, PNG, JPG, UDF, Word (15 dosya x 3 parca, toplam 45)</span>
+                                        <span className="text-sm text-gray-500">PDF, TXT, PNG, JPG, UDF, Word (15 dosya x 3 parca, toplam 45)</span>
                                         {!canSelectMoreFiles && canUnlockNextUploadBatch && (
                                             <span className="text-xs text-amber-400 mt-2">Bu parcayi doldurdunuz. Yeni 15 dosya icin asagidaki "Ekleme Yap" butonuna basin.</span>
                                         )}
@@ -2363,7 +2717,7 @@ export default function AlternativeApp() {
                                         </button>
                                         <button
                                             onClick={handleAnalyze}
-                                            disabled={isAnalyzing || (files.length === 0 && !docContent)}
+                                            disabled={isAnalyzing || (files.length === 0 && !docContent.trim())}
                                             className="px-8 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:opacity-50 text-white rounded-xl font-medium transition-all shadow-lg shadow-red-900/50 flex items-center gap-2"
                                         >
                                             {isAnalyzing ? <LoadingSpinner className="w-5 h-5 text-white" /> : 'Analiz Et'}
@@ -3144,4 +3498,7 @@ export default function AlternativeApp() {
         </div >
     );
 }
+
+
+
 

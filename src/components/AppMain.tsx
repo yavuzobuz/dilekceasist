@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { useState, useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
@@ -37,6 +37,24 @@ const fileToBase64 = (file: File): Promise<string> => {
     };
     reader.onerror = error => reject(error);
   });
+};
+
+const resolveChatMimeType = (file: File): string => {
+  const directType = typeof file.type === 'string' ? file.type.trim() : '';
+  if (directType) return directType;
+
+  const lowerName = String(file.name || '').toLowerCase();
+  if (lowerName.endsWith('.pdf')) return 'application/pdf';
+  if (lowerName.endsWith('.udf')) return 'application/zip';
+  if (lowerName.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  if (lowerName.endsWith('.doc')) return 'application/msword';
+  if (lowerName.endsWith('.txt')) return 'text/plain';
+  if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) return 'image/jpeg';
+  if (lowerName.endsWith('.png')) return 'image/png';
+  if (lowerName.endsWith('.webp')) return 'image/webp';
+  if (lowerName.endsWith('.tif') || lowerName.endsWith('.tiff')) return 'image/tiff';
+
+  return 'application/octet-stream';
 };
 
 const parseFunctionCallArgs = (rawArgs: unknown): Record<string, any> => {
@@ -183,7 +201,7 @@ export const AppMain: React.FC = () => {
         if (metadata.chatHistory) setChatMessages(metadata.chatHistory);
       }
 
-      addToast('Dilekçe yüklendi! 📂', 'success');
+      addToast('Dilekçe yüklendi! ğŸ“‚', 'success');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [petitionFromState?.id]); // Only re-run if petition ID changes
@@ -201,14 +219,14 @@ export const AppMain: React.FC = () => {
   }, [editorReturnRoute, generatedPetition, navigate]);
 
   const handleAnalyze = useCallback(async () => {
-    if (files.length === 0) {
-      setError('Lütfen önce analiz edilecek PDF, UDF veya resim dosyalarını yükleyin.');
+    if (files.length === 0 && !docContent.trim()) {
+      setError('Lutfen once analiz edilecek belge veya metin ekleyin.');
       return;
     }
     setIsAnalyzing(true);
     setError(null);
     setAnalysisData(null);
-    setParties({}); // Reset party selection on new analysis
+    setParties({});
     setSearchKeywords([]);
     setWebSearchResult(null);
     setGeneratedPetition('');
@@ -220,6 +238,9 @@ export const AppMain: React.FC = () => {
       const allUploadedFiles: UploadedFile[] = [];
       let udfContent = '';
       let wordContent = '';
+      let plainTextContent = docContent.trim()
+        ? `\n\n--- Manuel Metin ---\n${docContent.trim()}`
+        : '';
       const zip = new JSZip();
 
       for (const file of files) {
@@ -231,49 +252,35 @@ export const AppMain: React.FC = () => {
           });
         } else if (extension === 'tif' || extension === 'tiff') {
           try {
-            console.log(`Processing TIFF file: ${file.name}, size: ${file.size} bytes`);
             const arrayBuffer = await file.arrayBuffer();
-            console.log(`ArrayBuffer loaded, length: ${arrayBuffer.byteLength}`);
-
-            // UTIF2 kullanarak TIFF dosyasını decode et
             const ifds = UTIF.decode(arrayBuffer);
-            console.log(`TIFF decoded, ${ifds.length} image(s) found`);
-
-            // İlk sayfayı al (çoğu TIFF tek sayfalıdır)
             const firstPage = ifds[0];
             UTIF.decodeImage(arrayBuffer, firstPage);
 
             const rgba = UTIF.toRGBA8(firstPage);
-            console.log(`TIFF dimensions: ${firstPage.width}x${firstPage.height}`);
-
-            // Canvas oluştur ve RGBA verisini çiz
             const canvas = document.createElement('canvas');
             canvas.width = firstPage.width;
             canvas.height = firstPage.height;
             const ctx = canvas.getContext('2d');
 
             if (!ctx) {
-              throw new Error('Canvas context oluşturulamadı');
+              throw new Error('Canvas context olusturulamadi');
             }
 
             const imageData = ctx.createImageData(firstPage.width, firstPage.height);
             imageData.data.set(rgba);
             ctx.putImageData(imageData, 0, 0);
 
-            console.log(`Canvas created: ${canvas.width}x${canvas.height}`);
-
             const dataUrl = canvas.toDataURL('image/png');
             const base64Data = dataUrl.split(',')[1];
 
             allUploadedFiles.push({
-              mimeType: 'image/png', // Convert TIFF to PNG
+              mimeType: 'image/png',
               data: base64Data,
             });
-            console.log(`✅ TIFF processed successfully: ${file.name}`);
           } catch (tiffError) {
-            console.error(`❌ Error processing TIFF file ${file.name}:`, tiffError);
-            setError(`TIFF dosyası işlenirken hata: ${file.name}. Lütfen dosyanın geçerli bir TIFF formatında olduğundan emin olun.`);
-            // Continue with other files instead of breaking
+            console.error(`Error processing TIFF file ${file.name}:`, tiffError);
+            setError(`TIFF dosyasi islenirken hata: ${file.name}`);
           }
         } else if (file.type.startsWith('image/')) {
           allUploadedFiles.push({
@@ -298,14 +305,13 @@ export const AppMain: React.FC = () => {
             if (xmlFile) {
               xmlContent = await xmlFile.async('string');
             } else {
-              // Fallback if no XML file is found
-              xmlContent = 'UDF arşivi içinde .xml uzantılı içerik dosyası bulunamadı.';
+              xmlContent = 'UDF arsivi icinde .xml uzantili icerik dosyasi bulunamadi.';
             }
 
             udfContent += `\n\n--- UDF Belgesi: ${file.name} ---\n${xmlContent}`;
           } catch (zipError) {
             console.error(`Error processing UDF file ${file.name}:`, zipError);
-            udfContent += `\n\n--- UDF Belgesi: ${file.name} (HATA) ---\nBu dosya geçerli bir UDF (ZIP) arşivi olarak işlenemedi.`;
+            udfContent += `\n\n--- UDF Belgesi: ${file.name} (HATA) ---\nBu dosya gecerli bir UDF (ZIP) arsivi olarak islenemedi.`;
           }
         } else if (extension === 'doc' || extension === 'docx') {
           try {
@@ -314,25 +320,34 @@ export const AppMain: React.FC = () => {
             wordContent += `\n\n--- Word Belgesi: ${file.name} ---\n${result.value}`;
           } catch (wordError) {
             console.error(`Error processing Word file ${file.name}:`, wordError);
-            wordContent += `\n\n--- Word Belgesi: ${file.name} (HATA) ---\nBu Word belgesi işlenemedi.`;
+            wordContent += `\n\n--- Word Belgesi: ${file.name} (HATA) ---\nBu Word belgesi islenemedi.`;
+          }
+        } else if (extension === 'txt') {
+          try {
+            const textContent = await file.text();
+            plainTextContent += `\n\n--- Metin Belgesi: ${file.name} ---\n${textContent}`;
+          } catch (textError) {
+            console.error(`Error processing text file ${file.name}:`, textError);
+            plainTextContent += `\n\n--- Metin Belgesi: ${file.name} (HATA) ---\nBu metin dosyasi islenemedi.`;
           }
         }
       }
 
-      const result = await analyzeDocuments(allUploadedFiles, udfContent.trim(), wordContent.trim());
+      const combinedWordText = [wordContent.trim(), plainTextContent.trim()].filter(Boolean).join('\n\n');
+      const result = await analyzeDocuments(allUploadedFiles, udfContent.trim(), combinedWordText);
       setAnalysisData(result);
       if (result.caseDetails) {
         setCaseDetails(prevDetails => ({ ...prevDetails, ...result.caseDetails }));
       }
-      addToast('Belgeler başarıyla analiz edildi! ✓', 'success');
+      addToast('Belgeler basariyla analiz edildi!', 'success');
 
     } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata oluştu.';
-      setError(`Belge analizi sırasında bir hata oluştu: ${errorMessage}`);
+      const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata olustu.';
+      setError(`Belge analizi sirasinda bir hata olustu: ${errorMessage}`);
     } finally {
       setIsAnalyzing(false);
     }
-  }, [files]);
+  }, [files, docContent, addToast]);
 
   const handleRunMissingInfoScan = useCallback(() => {
     const nextQuestions = buildMissingInfoQuestions({
@@ -393,77 +408,59 @@ export const AppMain: React.FC = () => {
   }, []);
 
   const handleGenerateKeywords = useCallback(async () => {
-    if (!analysisData?.summary) {
-      setError('Lütfen önce belgeleri analiz edin.');
+    const keywordSeed = [
+      analysisData?.summary || '',
+      docContent || '',
+      files.map(file => file.name).join(' '),
+    ]
+      .filter(Boolean)
+      .join('\n')
+      .trim();
+
+    if (!keywordSeed) {
+      setError('Lutfen once belge/metin icerigi ekleyip analiz edin.');
       return;
     }
+
     setIsGeneratingKeywords(true);
     setError(null);
     setSearchKeywords([]);
     setWebSearchResult(null);
 
     try {
-      const keywords = await generateSearchKeywords(analysisData.summary, userRole);
+      const keywords = await generateSearchKeywords(keywordSeed, userRole);
+      if (keywords.length === 0) {
+        setError('Anahtar kelime uretilemedi. Analiz icerigini kontrol edip tekrar deneyin.');
+        return;
+      }
+
       setSearchKeywords(keywords);
-      addToast('Anahtar kelimeler oluşturuldu! 🔑', 'success');
+      addToast('Anahtar kelimeler olusturuldu!', 'success');
 
-      // Automatically search for legal decisions using the generated keywords
-      if (keywords.length > 0) {
-        addToast('İçtihat araması başlatılıyor... 📚', 'info');
-        try {
-          const searchQuery = keywords.slice(0, 5).join(' '); // Use first 5 keywords
-          const newResults = await searchLegalDecisions({
-            source: 'yargitay',
-            keyword: searchQuery,
-          });
+      addToast('Ictihat aramasi baslatiliyor...', 'info');
+      try {
+        const searchQuery = keywords.slice(0, 5).join(' ');
+        const newResults = await searchLegalDecisions({
+          source: 'yargitay',
+          keyword: searchQuery,
+        });
 
-          if (newResults.length > 0) {
-            mergeLegalResults(newResults);
-            addToast(`${newResults.length} adet emsal karar bulundu!`, 'success');
-          } else {
-            addToast('Bu konuda emsal karar bulunamadi.', 'info');
-          }
-          return;
-
-          const response = await fetch('/api/legal?action=search-decisions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              source: 'yargitay',
-              keyword: searchQuery,
-            }),
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            if (data.results && data.results.length > 0) {
-              const newResults = data.results.map((result: any) => ({
-                title: result.title || 'Yargıtay Kararı',
-                esasNo: result.esasNo,
-                kararNo: result.kararNo,
-                tarih: result.tarih,
-                daire: result.daire,
-                ozet: result.ozet,
-                relevanceScore: result.relevanceScore,
-              }));
-              mergeLegalResults(newResults);
-              addToast(`${newResults.length} adet emsal karar bulundu! 📚`, 'success');
-            } else {
-              addToast('Bu konuda emsal karar bulunamadı.', 'info');
-            }
-          }
-        } catch (searchError) {
-          console.error('Auto legal search error:', searchError);
-          // Don't show error toast, just log - manual search is still available
+        if (newResults.length > 0) {
+          mergeLegalResults(newResults);
+          addToast(`${newResults.length} adet emsal karar bulundu!`, 'success');
+        } else {
+          addToast('Bu konuda emsal karar bulunamadi.', 'info');
         }
+      } catch (searchError) {
+        console.error('Auto legal search error:', searchError);
       }
     } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata oluştu.';
-      setError(`Anahtar kelime oluşturulurken bir hata oluştu: ${errorMessage}`);
+      const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata olustu.';
+      setError(`Anahtar kelime olusturulurken bir hata olustu: ${errorMessage}`);
     } finally {
       setIsGeneratingKeywords(false);
     }
-  }, [analysisData, userRole, addToast, mergeLegalResults]);
+  }, [analysisData, userRole, addToast, mergeLegalResults, docContent, files]);
 
   const handleSearch = useCallback(async () => {
     if (searchKeywords.length === 0) {
@@ -478,7 +475,7 @@ export const AppMain: React.FC = () => {
     try {
       const result = await performWebSearch(searchKeywords);
       setWebSearchResult(result);
-      addToast('Web araması tamamlandı! 🔍', 'success');
+      addToast('Web araması tamamlandı! ğŸ”', 'success');
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata oluştu.';
       setError(`Web araması sırasında bir hata oluştu: ${errorMessage}`);
@@ -498,7 +495,7 @@ export const AppMain: React.FC = () => {
       setGeneratedPetition(prev => prev + text);
     }
     setIsLegalSearchOpen(false);
-    addToast('İçtihat eklendi! ⚖️ Dilekçe oluştururken kullanılacak.', 'success');
+    addToast('İçtihat eklendi! âš–ï¸ Dilekçe oluştururken kullanılacak.', 'success');
   }, [generatedPetition, mergeLegalResults]);
 
   // Handler to remove a legal search result
@@ -546,7 +543,7 @@ export const AppMain: React.FC = () => {
       setPetitionVersion(v => v + 1); // Increment version to force re-mount of editor
       setEditorReturnRoute('/app');
       setIsFullPageEditorMode(true); // Switch to full-page editor mode
-      addToast('Dilekçe başarıyla oluşturuldu! ✨', 'success');
+      addToast('Dilekçe başarıyla oluşturuldu! âœ¨', 'success');
 
       // Save to Supabase if user is logged in
       if (user) {
@@ -603,7 +600,7 @@ export const AppMain: React.FC = () => {
       chatFiles = await Promise.all(
         files.map(async (file) => ({
           name: file.name,
-          mimeType: file.type,
+          mimeType: resolveChatMimeType(file),
           data: await fileToBase64(file),
         }))
       );
@@ -611,7 +608,7 @@ export const AppMain: React.FC = () => {
 
     const userMessage: ChatMessage = {
       role: 'user',
-      text: message || (chatFiles.length > 0 ? `📎 ${chatFiles.length} dosya yüklendi${message ? ': ' + message : ''}` : ''),
+      text: message || (chatFiles.length > 0 ? `ğŸ“ ${chatFiles.length} dosya yüklendi${message ? ': ' + message : ''}` : ''),
       files: chatFiles.length > 0 ? chatFiles : undefined
     };
     const newMessages: ChatMessage[] = [...chatMessages, userMessage];
@@ -634,7 +631,7 @@ export const AppMain: React.FC = () => {
           webSourceCount: webSearchResult?.sources?.length || 0,
           legalResultCount: legalSearchResults.length,
           docContent: docContent,
-          specifics: specifics,
+          specifics: specificsWithMissingInfo,
         },
         chatFiles // Pass files to the API
       );
@@ -664,7 +661,7 @@ export const AppMain: React.FC = () => {
           }));
           if (newResults.length > 0) {
             mergeLegalResults(newResults);
-            addToast(`${newResults.length} adet emsal karar bulundu! 📚`, 'success');
+            addToast(`${newResults.length} adet emsal karar bulundu! ğŸ“š`, 'success');
           }
         }
 
@@ -727,6 +724,17 @@ export const AppMain: React.FC = () => {
 
             // Handle document generation from chat
             if (fc.name === 'generate_document') {
+              if (missingInfoBlockingUnansweredCount > 0) {
+                const blockedText = `Belge olusturma engellendi. Eksikleri Tara alaninda ${missingInfoBlockingUnansweredCount} bloklayici soru bos. Lutfen once yanitlayin.`;
+                setError(blockedText);
+                setChatMessages(prev => prev.map((msg, index) =>
+                  index === prev.length - 1
+                    ? { ...msg, text: `${msg.text}\n\n${blockedText}`.trim() }
+                    : msg
+                ));
+                continue;
+              }
+
               const payload = extractGeneratedDocumentPayload(fc.args);
               if (!payload || generatedDocument) {
                 continue;
@@ -740,7 +748,7 @@ export const AppMain: React.FC = () => {
 
               // Persist chat-generated petition for profile history
               if (user) {
-                await savePetitionToSupabase(payload.content);
+                await savePetitionToSupabase(payload.content, specificsWithMissingInfo);
               }
 
               // Show success message in chat
@@ -760,7 +768,7 @@ export const AppMain: React.FC = () => {
       if (functionCallDetected && addedKeywordsCount > 0 && !generatedDocument) {
         setChatMessages(prev => prev.map((msg, index) =>
           index === prev.length - 1 && msg.text.trim() === ''
-            ? { ...msg, text: `✅ ${addedKeywordsCount} adet anahtar kelime eklendi. Anahtar kelimeleri "Belge Analizi ve Anahtar Kelimeler" bölümünden görebilirsiniz.` }
+            ? { ...msg, text: `âœ… ${addedKeywordsCount} adet anahtar kelime eklendi. Anahtar kelimeleri "Belge Analizi ve Anahtar Kelimeler" bölümünden görebilirsiniz.` }
             : msg
         ));
       }
@@ -771,7 +779,7 @@ export const AppMain: React.FC = () => {
     } finally {
       setIsLoadingChat(false);
     }
-  }, [chatMessages, analysisData, searchKeywords, webSearchResult, docContent, specifics, mergeLegalResults, addToast, user, savePetitionToSupabase]);
+  }, [chatMessages, analysisData, searchKeywords, webSearchResult, legalSearchResults, docContent, specificsWithMissingInfo, mergeLegalResults, addToast, user, savePetitionToSupabase, missingInfoBlockingUnansweredCount]);
 
   const handleRewriteText = useCallback(async (text: string): Promise<string> => {
     setError(null);
@@ -815,7 +823,7 @@ export const AppMain: React.FC = () => {
       });
       setGeneratedPetition(result);
       setPetitionVersion(v => v + 1);
-      addToast('Dilekçe gözden geçirildi ve iyileştirildi! 🔍', 'success');
+      addToast('Dilekçe gözden geçirildi ve iyileştirildi! ğŸ”', 'success');
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata oluştu.';
       setError(`Dilekçe gözden geçirilirken bir hata oluştu: ${errorMessage}`);
@@ -845,7 +853,7 @@ export const AppMain: React.FC = () => {
     setError(null);
     setIsFullPageEditorMode(false); // Exit full-page mode
 
-    addToast('Yeni dilekçe için hazırsınız! 🎉', 'info');
+    addToast('Yeni dilekçe için hazırsınız! ğŸ‰', 'info');
   }, [addToast]);
 
   // Show login prompt if user is not logged in (except when loading from profile)
@@ -856,7 +864,7 @@ export const AppMain: React.FC = () => {
         <Header onShowLanding={() => navigate('/')} />
         <div className="flex-grow flex items-center justify-center p-8">
           <div className="max-w-md w-full bg-[#111113] rounded-lg border border-white/10 p-8 text-center">
-            <div className="text-6xl mb-6">🔒</div>
+            <div className="text-6xl mb-6">ğŸ”’</div>
             <h2 className="text-2xl font-bold text-white mb-4">Giriş Gerekli</h2>
             <p className="text-gray-300 mb-6">
               Dilekçe oluşturmak için önce giriş yapmanız gerekiyor.
@@ -879,7 +887,7 @@ export const AppMain: React.FC = () => {
               onClick={() => navigate('/pool')}
               className="mt-4 text-gray-400 hover:text-white transition-colors text-sm"
             >
-              Veya Dilekçe Havuzuna göz at →
+              Veya Dilekçe Havuzuna göz at â†’
             </button>
           </div>
         </div>
@@ -1091,3 +1099,5 @@ export const AppMain: React.FC = () => {
     </div>
   );
 };
+
+
