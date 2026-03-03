@@ -10,8 +10,8 @@
 <body>
     <main class="container">
         <header>
-            <h1>AI Metin Editoru</h1>
-            <p>Word icindeki secili metni AI ile duzelt, guclendir veya yeniden yaz.</p>
+            <h1>AI Hukuk Chatbotu</h1>
+            <p>Word icindeki secili metin uzerinden karar arama, metin duzeltme, beyin firtinasi ve web aramasi yapin.</p>
         </header>
 
         <section class="card">
@@ -24,21 +24,31 @@
         </section>
 
         <section class="card">
-            <h2>2) AI Islemi</h2>
-            <div class="mode-grid">
-                <button class="btn btn-primary" data-mode="fix" type="button">Metni Duzelt</button>
-                <button class="btn btn-primary" data-mode="strengthen" type="button">Metni Guclendir</button>
-                <button class="btn btn-primary" data-mode="rewrite" type="button">Metni Yeniden Yaz</button>
+            <h2>2) Chatbot</h2>
+            <div class="quick-grid">
+                <button class="btn btn-primary" data-action="decision-search" type="button">Karar Arama</button>
+                <button class="btn btn-primary" data-action="text-fix" type="button">Metin Duzeltme</button>
+                <button class="btn btn-primary" data-action="brainstorm" type="button">Beyin Firtinasi</button>
+                <button class="btn btn-primary" data-action="web-search" type="button">Web Aramasi</button>
+            </div>
+
+            <label class="field">
+                <span>Mesajiniz</span>
+                <textarea id="promptText" rows="5" placeholder="Ornek: Bu metni resmi ve ikna edici dille duzelt."></textarea>
+            </label>
+
+            <div class="actions">
+                <button id="sendChatBtn" class="btn btn-primary" type="button">Chatbot'a Gonder</button>
             </div>
 
             <label class="checkbox">
-                <input type="checkbox" id="autoReplace" checked />
+                <input type="checkbox" id="autoReplace" />
                 <span>Sonucu otomatik secime uygula</span>
             </label>
         </section>
 
         <section class="card">
-            <h2>3) Sonuc</h2>
+            <h2>3) Chatbot Sonucu</h2>
             <label class="field">
                 <span>AI cikti metni</span>
                 <textarea id="resultText" rows="10" placeholder="AI sonucu burada gorunur."></textarea>

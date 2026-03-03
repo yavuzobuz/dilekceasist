@@ -42,7 +42,8 @@ Setup summary:
 1. Manifest currently points to `https://dilekceasist.vercel.app`. If you use another domain, update `public/office/word/manifest.xml`.
 2. Ensure taskpane URL is reachable: `/office/word/taskpane.html`.
 3. In Word, open `My Add-ins` and upload the manifest file.
-4. Select text in Word and use:
-   - `Metni Duzelt`
-   - `Metni Guclendir`
-   - `Metni Yeniden Yaz`
+4. Select text in Word and use chatbot with quick actions:
+   - `Karar Arama`
+   - `Metin Duzeltme`
+   - `Beyin Firtinasi`
+   - `Web Aramasi`

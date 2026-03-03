@@ -79,9 +79,9 @@ textarea {
     min-height: 120px;
 }
 
-.mode-grid {
+.quick-grid {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
 }
 
@@ -137,4 +137,10 @@ textarea {
 
 .status.success {
     color: #166534;
+}
+
+@media (max-width: 360px) {
+    .quick-grid {
+        grid-template-columns: 1fr;
+    }
 }
