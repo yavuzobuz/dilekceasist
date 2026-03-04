@@ -1,63 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { applyCors, getSafeErrorMessage } from '../_lib/cors.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-
-const normalizeOrigin = (origin = '') => String(origin || '').trim().replace(/\/+$/, '').toLowerCase();
-
-const parseOriginList = (...values) => values
-    .filter(Boolean)
-    .flatMap(value => String(value).split(','))
-    .map(normalizeOrigin)
-    .filter(Boolean);
-
-const isLocalDevOrigin = (origin) => {
-    try {
-        const parsed = new URL(origin);
-        const host = (parsed.hostname || '').toLowerCase();
-        return host === 'localhost' || host === '127.0.0.1' || host === '::1';
-    } catch {
-        return false;
-    }
-};
-
-const allowedOriginSet = new Set(parseOriginList(
-    process.env.APP_BASE_URL,
-    process.env.FRONTEND_URL,
-    process.env.CORS_ORIGINS,
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://localhost:4173',
-    'http://127.0.0.1:4173'
-));
-
-const applyCors = (req, res) => {
-    const requestOrigin = req.headers?.origin;
-    if (requestOrigin) {
-        const normalized = normalizeOrigin(requestOrigin);
-        const isAllowed = allowedOriginSet.has(normalized)
-            || (process.env.NODE_ENV !== 'production' && isLocalDevOrigin(requestOrigin));
-        if (!isAllowed) {
-            return false;
-        }
-
-        res.setHeader('Access-Control-Allow-Origin', requestOrigin);
-        res.setHeader('Vary', 'Origin');
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
-    }
-
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    return true;
-};
-
-const getSafeErrorMessage = (error, fallback) => {
-    if (process.env.NODE_ENV === 'production') return fallback;
-    return error?.message || fallback;
-};
 
 const createCheckoutIdempotencyKey = ({ userId, plan }) => {
     const bucket = Math.floor(Date.now() / (5 * 60 * 1000));
@@ -106,7 +52,10 @@ const getAuthenticatedUser = async (req) => {
 };
 
 export default async function handler(req, res) {
-    if (!applyCors(req, res)) {
+    if (!applyCors(req, res, {
+        methods: 'POST, OPTIONS',
+        headers: 'Content-Type, Authorization',
+    })) {
         return res.status(403).json({ error: 'CORS: Origin not allowed' });
     }
 

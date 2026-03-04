@@ -1,8 +1,20 @@
-const normalizeOrigin = (origin = '') => String(origin || '').trim().replace(/\/+$/, '').toLowerCase();
+const stripWrappingQuotes = (value = '') => String(value || '').replace(/^['"]+|['"]+$/g, '');
+
+const normalizeOrigin = (origin = '') => {
+    const raw = stripWrappingQuotes(String(origin || '').replace(/[\r\n\t]/g, '').trim());
+    if (!raw) return '';
+
+    try {
+        const parsed = new URL(raw);
+        return `${parsed.protocol}//${parsed.host}`.toLowerCase();
+    } catch {
+        return raw.replace(/\/+$/, '').toLowerCase();
+    }
+};
 
 const parseOriginList = (...values) => values
     .filter(Boolean)
-    .flatMap(value => String(value).split(','))
+    .flatMap(value => String(value).split(/[,\n]/))
     .map(normalizeOrigin)
     .filter(Boolean);
 
@@ -38,10 +50,22 @@ export const applyCors = (
     } = {}
 ) => {
     const requestOrigin = req?.headers?.origin;
+    const requestHost = String(req?.headers?.host || '').trim().toLowerCase();
+
+    const isSameHostOrigin = (() => {
+        if (!requestOrigin || !requestHost) return false;
+        try {
+            const parsed = new URL(requestOrigin);
+            return String(parsed.host || '').trim().toLowerCase() === requestHost;
+        } catch {
+            return false;
+        }
+    })();
 
     if (requestOrigin) {
         const normalized = normalizeOrigin(requestOrigin);
         const isAllowed = allowedOriginSet.has(normalized)
+            || isSameHostOrigin
             || (process.env.NODE_ENV !== 'production' && isLocalDevOrigin(requestOrigin));
 
         if (!isAllowed) {
