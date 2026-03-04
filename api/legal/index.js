@@ -1,7 +1,8 @@
 import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 const MODEL_NAME = 'gemini-2.5-pro';
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -91,11 +92,18 @@ const requireAuthenticatedUser = async (req) => {
     return user;
 };
 
-const getSafeErrorMessage = (error, fallback) => (
-    process.env.NODE_ENV === 'production'
-        ? fallback
-        : (error?.message || fallback)
-);
+const getSafeErrorMessage = (error, fallback) => {
+    if (process.env.NODE_ENV !== 'production') {
+        return error?.message || fallback;
+    }
+
+    const status = Number(error?.status || 500);
+    if (status >= 400 && status < 500) {
+        return error?.message || fallback;
+    }
+
+    return fallback;
+};
 
 const maybeExtractJson = (text = '') => {
     if (!text || typeof text !== 'string') return null;
@@ -345,10 +353,12 @@ export default async function handler(req, res) {
 
     try {
         const action = req.query.action || req.body?.action;
-        const isProtectedPostAction = req.method === 'POST'
-            && (action === 'search-decisions' || action === 'get-document');
+        const hasAuthorizationHeader = typeof req.headers?.authorization === 'string'
+            && req.headers.authorization.trim().length > 0;
 
-        if (isProtectedPostAction) {
+        // Auth is optional for legal search/get-document in Vercel serverless mode.
+        // If an auth header is provided, validate it; otherwise continue as guest.
+        if (hasAuthorizationHeader) {
             await requireAuthenticatedUser(req);
         }
 
