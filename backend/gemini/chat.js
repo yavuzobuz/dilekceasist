@@ -386,20 +386,56 @@ export default async function handler(req, res) {
         const evidenceQuery = keywordSeed || normalizeText(lastUserMessage) || 'turk hukuku';
 
         if (requiresEvidenceForAnswer) {
+            // First attempt: search with extracted keywords
             if (requiresWebEvidence && !hasWebEvidence(effectiveSearchSummary, effectiveWebSourceCount)) {
-                const webEvidence = await runWebVerificationSearch(ai, evidenceQuery, lastUserMessage);
-                if (webEvidence.summary) {
-                    effectiveSearchSummary = [effectiveSearchSummary, webEvidence.summary].filter(Boolean).join('\n\n').trim();
-                    effectiveWebSourceCount = Math.max(effectiveWebSourceCount, webEvidence.sourceCount);
+                try {
+                    const webEvidence = await runWebVerificationSearch(ai, evidenceQuery, lastUserMessage);
+                    if (webEvidence.summary) {
+                        effectiveSearchSummary = [effectiveSearchSummary, webEvidence.summary].filter(Boolean).join('\n\n').trim();
+                        effectiveWebSourceCount = Math.max(effectiveWebSourceCount, webEvidence.sourceCount);
+                    }
+                } catch (webErr) {
+                    console.error('Web evidence search error (attempt 1):', webErr);
+                }
+            }
+
+            // Retry web search with raw message if first attempt didn't produce results
+            if (requiresWebEvidence && !hasWebEvidence(effectiveSearchSummary, effectiveWebSourceCount) && lastUserMessage) {
+                try {
+                    const retryWebEvidence = await runWebVerificationSearch(ai, lastUserMessage, lastUserMessage);
+                    if (retryWebEvidence.summary) {
+                        effectiveSearchSummary = [effectiveSearchSummary, retryWebEvidence.summary].filter(Boolean).join('\n\n').trim();
+                        effectiveWebSourceCount = Math.max(effectiveWebSourceCount, retryWebEvidence.sourceCount);
+                    }
+                } catch (webRetryErr) {
+                    console.error('Web evidence search error (retry):', webRetryErr);
                 }
             }
 
             if (requiresLegalEvidence && !hasLegalEvidence(effectiveLegalSummary, effectiveLegalResultCount)) {
-                const legalEvidence = await searchEmsalFallback(ai, evidenceQuery);
-                if (Array.isArray(legalEvidence.results) && legalEvidence.results.length > 0) {
-                    const legalSummaryFromResults = formatLegalResultsForContext(legalEvidence.results);
-                    effectiveLegalSummary = [effectiveLegalSummary, legalSummaryFromResults].filter(Boolean).join('\n').trim();
-                    effectiveLegalResultCount = Math.max(effectiveLegalResultCount, legalEvidence.results.length);
+                try {
+                    const legalEvidence = await searchEmsalFallback(ai, evidenceQuery);
+                    if (Array.isArray(legalEvidence.results) && legalEvidence.results.length > 0) {
+                        const legalSummaryFromResults = formatLegalResultsForContext(legalEvidence.results);
+                        effectiveLegalSummary = [effectiveLegalSummary, legalSummaryFromResults].filter(Boolean).join('\n').trim();
+                        effectiveLegalResultCount = Math.max(effectiveLegalResultCount, legalEvidence.results.length);
+                    }
+                } catch (legalErr) {
+                    console.error('Legal evidence search error (attempt 1):', legalErr);
+                }
+            }
+
+            // Retry legal search with raw message if first attempt didn't produce results
+            if (requiresLegalEvidence && !hasLegalEvidence(effectiveLegalSummary, effectiveLegalResultCount) && lastUserMessage) {
+                try {
+                    const retryLegalEvidence = await searchEmsalFallback(ai, lastUserMessage);
+                    if (Array.isArray(retryLegalEvidence.results) && retryLegalEvidence.results.length > 0) {
+                        const legalSummaryFromResults = formatLegalResultsForContext(retryLegalEvidence.results);
+                        effectiveLegalSummary = [effectiveLegalSummary, legalSummaryFromResults].filter(Boolean).join('\n').trim();
+                        effectiveLegalResultCount = Math.max(effectiveLegalResultCount, retryLegalEvidence.results.length);
+                    }
+                } catch (legalRetryErr) {
+                    console.error('Legal evidence search error (retry):', legalRetryErr);
                 }
             }
         }
@@ -407,6 +443,7 @@ export default async function handler(req, res) {
         const hasVerifiedWebEvidence = hasWebEvidence(effectiveSearchSummary, effectiveWebSourceCount);
         const hasVerifiedLegalEvidence = hasLegalEvidence(effectiveLegalSummary, effectiveLegalResultCount);
 
+        // Only block document generation when evidence is missing - never block regular chat
         if (isDocumentRequest && (!hasVerifiedWebEvidence || !hasVerifiedLegalEvidence)) {
             return res.status(422).json({
                 error: `Belge oluşturma engellendi. ${DOCUMENT_REQUIREMENTS_HELP_TEXT}`,
@@ -414,15 +451,8 @@ export default async function handler(req, res) {
             });
         }
 
-        const missingWebEvidenceForChat = requiresWebEvidence && !hasVerifiedWebEvidence;
-        const missingLegalEvidenceForChat = requiresLegalEvidence && !hasVerifiedLegalEvidence;
-
-        if (requiresEvidenceForAnswer && !isDocumentRequest && (missingWebEvidenceForChat || missingLegalEvidenceForChat)) {
-            return res.status(422).json({
-                error: 'Bu soruya güvenli yanıt için web ve emsal karar doğrulaması tamamlanamadı. Lütfen tekrar deneyin.',
-                code: 'MISSING_REQUIRED_EVIDENCE_FOR_CHAT'
-            });
-        }
+        // For regular chat: note missing evidence but NEVER block
+        const evidenceLimitedForChat = requiresEvidenceForAnswer && !isDocumentRequest && (!hasVerifiedWebEvidence || !hasVerifiedLegalEvidence);
 
         const documentGenerationAllowed = hasVerifiedWebEvidence && hasVerifiedLegalEvidence;
 
@@ -437,6 +467,10 @@ export default async function handler(req, res) {
 ${Array.isArray(files) && files.length > 0 ? `- Yuklenen Belgeler: ${files.length} adet` : ''}
 `;
 
+        const evidenceCautionNote = evidenceLimitedForChat
+            ? `\n\n**DIKKAT:** Web veya emsal karar arastirmasi kisitli sonuc verdi. Yanit verirken:\n- Dogrulanmis bilgileri acikca belirt\n- Kesin olmayan bilgiler icin "dogrulanmasi onerilen" ifadesini kullan\n- Mumkunse search_yargitay fonksiyonunu cagirarak ek karar bulmaya calis\n- Kullaniciyi asla engelleme, elindeki bilgiyle en iyi cevabi ver`
+            : '';
+
         const systemInstruction = `Sen, Turk Hukuku uzmani bir hukuk asistanisin.
 
 **GOREVLERIN:**
@@ -447,8 +481,9 @@ ${Array.isArray(files) && files.length > 0 ? `- Yuklenen Belgeler: ${files.lengt
 5. Sadece dogrulanmis bulgulara dayan
 ${documentGenerationAllowed ? '6. generate_document fonksiyonunu sadece dogrulanmis kanit varken kullan' : '6. generate_document kullanma, kanit eksigini bildir'}
 7. search_yargitay fonksiyonu ile ictihat ara
+8. Kullanicinin sorusunu ASLA engelleme, her zaman elindeki bilgiyle yanit ver
 
-${contextPrompt}
+${contextPrompt}${evidenceCautionNote}
 
 Ek kural: Basit sorularda (or. hangi mahkeme, sure) kisa ve net cevap ver.`;
 

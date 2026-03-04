@@ -2020,11 +2020,23 @@ export default function AlternativeApp() {
                     normalizedMessage || '',
                 ].filter(Boolean).join('\n');
                 transientEvidenceKeywords = extractKeywordCandidates(evidenceSeed).slice(0, 8);
+
+                // Fallback: if keyword extraction produced nothing, use the raw message words as search terms
+                if (transientEvidenceKeywords.length === 0 && normalizedMessage) {
+                    const rawWords = normalizedMessage
+                        .split(/\s+/)
+                        .filter((w: string) => w.length >= 3)
+                        .filter((w: string) => !/^(bir|bu|su|ve|ile|de|da|olan|icin|gibi|ama|veya|ben|sen|biz|siz|ne|mi|mu|mi|dir|bana|beni|lutfen|lütfen)$/i.test(w));
+                    if (rawWords.length > 0) {
+                        transientEvidenceKeywords = rawWords.slice(0, 8);
+                    }
+                }
             }
 
             const evidenceKeywords = mergedKeywords.length > 0 ? mergedKeywords : transientEvidenceKeywords;
 
             if (requiresEvidenceForChat || requiresStrictEvidenceForDocument) {
+                // Attempt 1: search with extracted keywords
                 if ((requiresWebEvidenceForChat || requiresStrictEvidenceForDocument) && !hasWebEvidence(mergedWebSearchResult) && evidenceKeywords.length > 0) {
                     setChatProgressText('Web arastirmasiyla cevap dogrulaniyor...');
                     try {
@@ -2034,31 +2046,71 @@ export default function AlternativeApp() {
                             setWebSearchResult(mergedWebSearchResult);
                         }
                     } catch (searchError) {
-                        console.error('Pre-chat web verification failed:', searchError);
+                        console.error('Pre-chat web verification failed (attempt 1):', searchError);
                     }
                 }
 
+                // Retry web search with raw message if first attempt failed
+                if ((requiresWebEvidenceForChat || requiresStrictEvidenceForDocument) && !hasWebEvidence(mergedWebSearchResult) && normalizedMessage) {
+                    setChatProgressText('Web aramasi yeniden deneniyor...');
+                    try {
+                        const retryKeywords = normalizedMessage.split(/\s+/).filter((w: string) => w.length >= 3).slice(0, 6);
+                        if (retryKeywords.length > 0) {
+                            const retryWebResult = await performWebSearch(retryKeywords);
+                            mergedWebSearchResult = mergeWebSearchResults(mergedWebSearchResult, retryWebResult);
+                            if (mergedWebSearchResult) {
+                                setWebSearchResult(mergedWebSearchResult);
+                            }
+                        }
+                    } catch (retryError) {
+                        console.error('Pre-chat web verification failed (retry):', retryError);
+                    }
+                }
+
+                // Attempt 1: legal search with extracted keywords
                 if ((requiresLegalEvidenceForChat || requiresStrictEvidenceForDocument) && !hasLegalEvidenceForChat(mergedLegalResults) && evidenceKeywords.length > 0) {
                     setChatProgressText('Emsal kararlarla cevap dogrulaniyor...');
-                    const searchedResults = await runLegalSearch(evidenceKeywords, { silent: true, suppressError: true });
-                    if (searchedResults.length > 0) {
-                        mergedLegalResults = mergeUniqueLegalResults(mergedLegalResults, searchedResults);
+                    try {
+                        const searchedResults = await runLegalSearch(evidenceKeywords, { silent: true, suppressError: true });
+                        if (searchedResults.length > 0) {
+                            mergedLegalResults = mergeUniqueLegalResults(mergedLegalResults, searchedResults);
+                        }
+                    } catch (legalError) {
+                        console.error('Pre-chat legal search failed (attempt 1):', legalError);
+                    }
+                }
+
+                // Retry legal search with raw message if first attempt failed
+                if ((requiresLegalEvidenceForChat || requiresStrictEvidenceForDocument) && !hasLegalEvidenceForChat(mergedLegalResults) && normalizedMessage) {
+                    setChatProgressText('Emsal karar aramasi yeniden deneniyor...');
+                    try {
+                        const retryKeywords = normalizedMessage.split(/\s+/).filter((w: string) => w.length >= 3).slice(0, 6);
+                        if (retryKeywords.length > 0) {
+                            const retryResults = await runLegalSearch(retryKeywords, { silent: true, suppressError: true });
+                            if (retryResults.length > 0) {
+                                mergedLegalResults = mergeUniqueLegalResults(mergedLegalResults, retryResults);
+                            }
+                        }
+                    } catch (retryError) {
+                        console.error('Pre-chat legal search failed (retry):', retryError);
                     }
                 }
             }
 
-            const missingWebEvidenceForChat = (requiresWebEvidenceForChat || requiresStrictEvidenceForDocument) && !hasWebEvidence(mergedWebSearchResult);
-            const missingLegalEvidenceForChat = (requiresLegalEvidenceForChat || requiresStrictEvidenceForDocument) && !hasLegalEvidenceForChat(mergedLegalResults);
-
-            if (requiresEvidenceForChat && (missingWebEvidenceForChat || missingLegalEvidenceForChat)) {
-                const blockedText = evidenceKeywords.length === 0
-                    ? (hasUploadedDocumentContext
-                        ? 'Belge analizi tamamlanmadan web ve emsal karar aramasina gecilemez. Once belgeyi analiz et, sonra anahtar kelime olusturulsun, ardindan web ve emsal karar aramasi calissin.'
-                        : 'Sorgudan dogrulama icin arama terimi cikarilamadi. Soruyu biraz daha somut yazin veya anahtar kelime olarak arama terimi ekleyin.')
-                    : 'Bu soruya guvenli cevap verebilmem icin web ve emsal karar dogrulamasi tamamlanmali. Lutfen tekrar deneyin veya soruyu daha kisa/sade sorun.';
-                setChatMessages(prev => [...prev, { role: 'model', text: blockedText }]);
-                setError(blockedText);
-                return;
+            // Only block for document generation, NEVER for regular chat
+            if (requiresStrictEvidenceForDocument) {
+                const missingWebEvidence = !hasWebEvidence(mergedWebSearchResult);
+                const missingLegalEvidence = !hasLegalEvidenceForChat(mergedLegalResults);
+                if (missingWebEvidence || missingLegalEvidence) {
+                    const blockedText = evidenceKeywords.length === 0
+                        ? (hasUploadedDocumentContext
+                            ? 'Belge analizi tamamlanmadan web ve emsal karar aramasina gecilemez. Once belgeyi analiz et, sonra anahtar kelime olusturulsun, ardindan web ve emsal karar aramasi calissin.'
+                            : 'Sorgudan dogrulama icin arama terimi cikarilamadi. Soruyu biraz daha somut yazin veya anahtar kelime olarak arama terimi ekleyin.')
+                        : 'Belge olusturmak icin web ve emsal karar dogrulamasi gerekli. Lutfen once web ve emsal karar aramasini tamamlayin.';
+                    setChatMessages(prev => [...prev, { role: 'model', text: blockedText }]);
+                    setError(blockedText);
+                    return;
+                }
             }
 
             if (requiresStrictEvidenceForDocument && (!activeAnalysisSummary || !hasWebEvidence(mergedWebSearchResult) || !hasLegalEvidenceForGeneration(mergedLegalResults))) {
