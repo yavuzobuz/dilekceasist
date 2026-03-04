@@ -24,16 +24,22 @@ const normalizeKeywordText = (value = '') => String(value || '')
 
 const KEYWORD_STOPWORDS = new Set([
     've', 'veya', 'ile', 'olan', 'oldugu', 'iddia', 'edilen',
-    'uzerine', 'kapsaminda', 'gibi', 'icin', 'uzere', 'bu', 'su', 'o', 'bir', 'de', 'da'
+    'uzerine', 'kapsaminda', 'gibi', 'icin', 'uzere', 'bu', 'su', 'o', 'bir', 'de', 'da',
+    'mi', 'mu', 'ki', 'ise', 'hem', 'ne', 'ya', 'ben', 'sen', 'biz', 'siz', 'ama',
+    'fakat', 'ancak', 'eger', 'bile', 'dahi', 'kadar', 'sonra', 'once', 'yani',
+    'zaten', 'sadece', 'yalniz', 'hep', 'her', 'hic', 'diye', 'bana', 'beni',
+    'sana', 'seni', 'ona', 'onu', 'bize', 'size', 'olarak', 'gore', 'nasil',
+    'misin', 'lutfen', 'neden', 'onlar', 'benim', 'senin', 'onun',
 ]);
 
 const KEYWORD_DRAFTING_TERMS = new Set([
     'dilekce', 'savunma', 'belge', 'sozlesme', 'taslak', 'yaz', 'yazalim', 'hazirla', 'olustur', 'uret',
     'detayli', 'olmasi', 'olmali', 'koruyacak', 'haklarini', 'muvekkil', 'muvekkilin', 'vekil', 'vekili',
-    'bana', 'lutfen', 'yardim', 'hazir', 'yapalim'
+    'bana', 'lutfen', 'yardim', 'hazir', 'yapalim',
 ]);
 
-const FACT_SIGNAL_REGEX = /\b(tck|cmk|hmk|tmk|anayasa|madde|maddesi|esas|karar|uyusturucu|hirsizlik|dolandiricilik|tehdit|yaralama|oldurme|gozalti|tutuk|delil|kamera|tanik|rapor|bilirkisi|ele gecir|kullanim siniri|ticaret|satici|isveren|kidem|ihbar|fesih|veraset|tapu)\b|\d{1,2}[./-]\d{1,2}[./-]\d{2,4}|\b\d{4,}\b/i;
+// Expanded fact signal regex covering all Turkish law domains
+const FACT_SIGNAL_REGEX = /\b(tck|cmk|hmk|tmk|tbk|iik|ttk|sgk|iyuk|aihm|anayasa|madde|maddesi|esas|karar|yargitay|danistay|uyusturucu|hirsizlik|dolandiricilik|tehdit|yaralama|oldurme|gozalti|tutuk|delil|kamera|tanik|rapor|bilirkisi|ele gecir|kullanim siniri|ticaret|satici|isveren|kidem|ihbar|fesih|veraset|tapu|nafaka|velayet|bosanma|boşanma|miras|tenkis|haciz|icra|iflas|alacak|tazminat|kira|tahliye|imar|ruhsat|disiplin|kamulastirma|tuketici|ayipli|senet|cek|bono|sirket|ortaklik|beraat|mahkumiyet|temyiz|istinaf|itiraz|kanun|hukum|yargilama|dava|magdur|sanik|davaci|davali|bilirkisi|kesinlesme|infaz|hapis|adli para|erteleme|hagb|hukmun|denetim|suresi|suc|kusur|ispat|mudafi|musadere|gasp|yagma|zimmet|rusvet|irtikap|sahtecilik|hakaret|mala zarar|cinsel|taciz|mobbing|is kazasi|fazla mesai|ucret|brut|net|sigorta|prim|emekli|maluliyet|kadastro|ecrimisil|kat mulkiyeti|konkordato|kambiyo|ihtiyati|tedbir|tespit|tenfiz|tanima)\b|\d{1,2}[./-]\d{1,2}[./-]\d{2,4}|\b\d{4,}\b/i;
 
 const hasFactSignal = (rawValue = '') => {
     const normalized = normalizeKeywordText(rawValue);
@@ -50,7 +56,7 @@ const extractKeywordCandidates = (rawValue = '') => {
     const seen = new Set();
 
     const addCandidate = (value) => {
-        const cleaned = String(value || '').replace(/[“”"']/g, ' ').replace(/\s+/g, ' ').trim();
+        const cleaned = String(value || '').replace(/[“”\"']/g, ' ').replace(/\s+/g, ' ').trim();
         if (!cleaned || cleaned.length < 3) return;
 
         const normalizedKey = normalizeKeywordText(cleaned);
@@ -60,7 +66,16 @@ const extractKeywordCandidates = (rawValue = '') => {
         const nonStopWords = words.filter((word) => !KEYWORD_STOPWORDS.has(word));
         if (nonStopWords.length === 0) return;
 
-        if (!hasFactSignal(normalizedKey) && nonStopWords.length < 2) return;
+        // Allow single meaningful words if they have a fact signal (legal term)
+        // For multi-word phrases, accept even without fact signal as they are likely specific
+        if (nonStopWords.length < 2 && !hasFactSignal(normalizedKey)) {
+            // Relaxed: allow single words if they are at least 5 chars and not a drafting term
+            if (nonStopWords[0] && nonStopWords[0].length >= 5 && !KEYWORD_DRAFTING_TERMS.has(nonStopWords[0])) {
+                // Accept it - long single words are often meaningful legal terms
+            } else {
+                return;
+            }
+        }
 
         const hasDraftingTerm = nonStopWords.some((word) => KEYWORD_DRAFTING_TERMS.has(word));
         if (hasDraftingTerm && !hasFactSignal(normalizedKey)) return;
@@ -70,9 +85,11 @@ const extractKeywordCandidates = (rawValue = '') => {
         candidates.push(cleaned);
     };
 
-    const tckMatches = text.match(/TCK\s*\d+(?:\s*\/\s*\d+)?(?:\s*[-–]\s*\d+)?/gi) || [];
-    tckMatches.forEach(addCandidate);
+    // Legal code references (broader)
+    const codeRefs = text.match(/(?:TCK|CMK|HMK|TMK|TBK|İİK|IIK|TTK|BK|AİHM|AIHM|İYUK|IYUK|SGK)\s*(?:m\.?\s*)?\d+(?:\s*\/\s*\d+)?(?:\s*[-–]\s*\d+)?/gi) || [];
+    codeRefs.forEach(addCandidate);
 
+    // Domain-specific compound term detection
     if (/uyusturucu/.test(normalizedText) && /(ticaret|satic)/.test(normalizedText)) {
         addCandidate('uyusturucu ticareti');
         addCandidate('uyusturucu saticiligi iddiasi');
@@ -86,9 +103,25 @@ const extractKeywordCandidates = (rawValue = '') => {
         addCandidate('kullanim sinirini asan miktarda madde');
     }
 
+    // Compound legal terms
+    if (/haksiz/.test(normalizedText) && /fesih/.test(normalizedText)) addCandidate('haksiz fesih');
+    if (/kidem/.test(normalizedText) && /tazminat/.test(normalizedText)) addCandidate('kidem tazminati');
+    if (/ihbar/.test(normalizedText) && /tazminat/.test(normalizedText)) addCandidate('ihbar tazminati');
+    if (/ise/.test(normalizedText) && /iade/.test(normalizedText)) addCandidate('ise iade davasi');
+    if (/bosanma/.test(normalizedText)) addCandidate('bosanma davasi');
+    if (/velayet/.test(normalizedText)) addCandidate('velayet davasi');
+    if (/nafaka/.test(normalizedText)) addCandidate('nafaka');
+    if (/miras/.test(normalizedText)) addCandidate('miras hukuku');
+    if (/tapu/.test(normalizedText) && /(iptal|tescil)/.test(normalizedText)) addCandidate('tapu iptal ve tescil');
+    if (/haciz/.test(normalizedText)) addCandidate('icra haciz');
+    if (/tazminat/.test(normalizedText)) addCandidate('tazminat davasi');
+    if (/alacak/.test(normalizedText) && /dava/.test(normalizedText)) addCandidate('alacak davasi');
+
+    // Full name matches
     const fullNameMatches = text.match(/\b[A-Z\u00C7\u011E\u0130\u00D6\u015E\u00DC][A-Za-z\u00C7\u011E\u0130\u00D6\u015E\u00DC\u00E7\u011F\u0131\u00F6\u015F\u00FC]+\s+[A-Z\u00C7\u011E\u0130\u00D6\u015E\u00DC][A-Za-z\u00C7\u011E\u0130\u00D6\u015E\u00DC\u00E7\u011F\u0131\u00F6\u015F\u00FC]+\b/g) || [];
     fullNameMatches.forEach(addCandidate);
 
+    // Split by commas, newlines, semicolons - each chunk can be a keyword
     text.split(/[,\n;]+/g).forEach((chunk) => {
         const normalizedChunk = normalizeKeywordText(chunk);
         const chunkWordCount = normalizedChunk ? normalizedChunk.split(/\s+/).filter(Boolean).length : 0;
@@ -96,8 +129,9 @@ const extractKeywordCandidates = (rawValue = '') => {
         addCandidate(chunk);
     });
 
+    // Token-level fallback for individual meaningful words
     const tokenFallback = normalizedText
-        .split(/[\s,;:.!?()\/\\-]+/g)
+        .split(/[\s,;:.!?()\//\\-]+/g)
         .map((token) => token.trim())
         .filter((token) => token.length >= 4
             && !KEYWORD_STOPWORDS.has(token)
@@ -106,10 +140,10 @@ const extractKeywordCandidates = (rawValue = '') => {
 
     for (const token of tokenFallback) {
         addCandidate(token);
-        if (candidates.length >= 10) break;
+        if (candidates.length >= 12) break;
     }
 
-    return candidates.slice(0, 10);
+    return candidates.slice(0, 12);
 };
 
 const getLastUserMessageText = (chatHistory = []) => {

@@ -98,33 +98,103 @@ function dedupeKeywords(rawKeywords: unknown[]): string[] {
 function extractKeywordFallbackFromAnalysis(analysisText: string): string[] {
     const text = String(analysisText || '');
     if (!text.trim()) return [];
+    const lowerText = text.toLocaleLowerCase('tr-TR');
 
     const candidates: string[] = [];
     const add = (value: string) => {
-        const normalized = String(value || '').replace(/[“”"']/g, ' ').replace(/\s+/g, ' ').trim();
+        const normalized = String(value || '').replace(/[""\"']/g, ' ').replace(/\s+/g, ' ').trim();
         if (!normalized || normalized.length < 3) return;
         candidates.push(normalized);
     };
 
-    const tckMatches = text.match(/TCK\s*\d+(?:\s*\/\s*\d+)?(?:\s*[-–]\s*\d+)?/gi) || [];
-    tckMatches.forEach(add);
+    // Legal code references (broad)
+    const codeRefs = text.match(/(?:TCK|CMK|HMK|TMK|TBK|İİK|IIK|TTK|BK|AİHM|AIHM|İYUK|IYUK|SGK)\s*(?:m\.?\s*)?\d+(?:\s*\/\s*\d+)?(?:\s*[-–]\s*\d+)?/gi) || [];
+    codeRefs.forEach(add);
 
-    if (/uyuşturucu|uyusturucu/i.test(text) && /ticaret|satıc|satic/i.test(text)) {
-        add('uyuşturucu ticareti');
-        add('uyuşturucu satıcılığı iddiası');
+    // "madde" references
+    const maddeRefs = text.match(/\d+\.?\s*madde(?:si)?/gi) || [];
+    maddeRefs.forEach(add);
+
+    // Esas/Karar number references
+    const esasKarar = text.match(/(?:E(?:sas)?\.?\s*(?:No\.?\s*)?[:.]?\s*\d{4}\/\d+|K(?:arar)?\.?\s*(?:No\.?\s*)?[:.]?\s*\d{4}\/\d+)/gi) || [];
+    esasKarar.forEach(add);
+
+    // Ceza hukuku
+    if (/uyuşturucu|uyusturucu/i.test(text) && /ticaret|satıc|satic|satış|satis/i.test(text)) {
+        add('uyuşturucu ticareti'); add('uyuşturucu satıcılığı iddiası');
     }
-
-    if (/evine gelen\s*\d+\s*kişi|evine gelen.*kişi/i.test(text)) {
-        add('evine gelen kişilerde farklı uyuşturucu ele geçirilmesi');
-    }
-
     if (/kullanım sınırını aşan|kullanim sinirini asan|kullanım sınırı|kullanim siniri/i.test(text)) {
         add('kullanım sınırını aşan miktarda madde');
     }
+    if (/hırsızlık|hirsizlik/i.test(text)) add('hırsızlık suçu');
+    if (/dolandırıcılık|dolandiricilik/i.test(text)) add('dolandırıcılık suçu');
+    if (/tehdit|şantaj|santaj/i.test(text)) add('tehdit suçu');
+    if (/yaralama|müessir fiil/i.test(text)) add('kasten yaralama');
+    if (/öldürme|adam öldürme|cinayet/i.test(text)) add('kasten öldürme');
+    if (/cinsel|tecavüz|taciz/i.test(text)) add('cinsel suçlar');
+    if (/zimmet|rüşvet|irtikap/i.test(text)) add('zimmet suçu');
+    if (/sahtecilik|sahte belge/i.test(text)) add('resmi belgede sahtecilik');
+    if (/hakaret|onur|şeref/i.test(text)) add('hakaret suçu');
+    if (/yağma|gasp/i.test(text)) add('yağma suçu');
+    if (/tutuklama|tutuklan|tutuklu/i.test(text)) add('tutukluluk');
+    if (/beraat|berâat/i.test(text)) add('beraat kararı');
+    if (/mahkumiyet|mahkûmiyet/i.test(text)) add('ceza indirimi');
 
+    // İş hukuku
+    if (/kıdem tazminatı|kidem tazminati/i.test(text)) add('kıdem tazminatı');
+    if (/ihbar tazminatı|ihbar tazminati/i.test(text)) add('ihbar tazminatı');
+    if (/işe iade|ise iade/i.test(text)) add('işe iade davası');
+    if (/haksız fesih|haksiz fesih/i.test(text)) add('haksız fesih');
+    if (/fazla mesai|fazla çalışma|mesai ücreti/i.test(text)) add('fazla mesai ücreti');
+    if (/mobbing|iş yeri baskısı/i.test(text)) add('mobbing');
+    if (/iş kazası|is kazasi/i.test(text)) add('iş kazası tazminat');
+
+    // Aile hukuku
+    if (/boşanma|bosanma/i.test(text)) add('boşanma davası');
+    if (/nafaka/i.test(text)) add('nafaka');
+    if (/velayet/i.test(text)) add('velayet davası');
+    if (/mal paylaşımı|mal paylaşimi|mal rejimi/i.test(text)) add('mal paylaşımı davası');
+
+    // Miras hukuku
+    if (/miras|veraset|tereke/i.test(text)) add('miras hukuku');
+    if (/vasiyetname|vasiyet/i.test(text)) add('vasiyetname');
+    if (/tenkis/i.test(text)) add('tenkis davası');
+
+    // Borçlar hukuku
+    if (/alacak/i.test(text) && /dava|borç|borc/i.test(text)) add('alacak davası');
+    if (/tazminat/i.test(text) && /zarar|talep|dava/i.test(text)) add('tazminat davası');
+    if (/kira|kiracı|tahliye/i.test(text)) add('kira hukuku');
+
+    // İdare hukuku
+    if (/idari işlem|idari islem|iptal davası/i.test(text)) add('idari işlemin iptali');
+    if (/disiplin cezası|disiplin cezasi/i.test(text)) add('disiplin cezası iptali');
+    if (/kamulaştırma|kamulastirma/i.test(text)) add('kamulaştırma');
+
+    // Tüketici hukuku
+    if (/tüketici|tuketici|ayıplı mal|ayipli mal/i.test(text)) add('tüketici hakları');
+
+    // İcra iflas
+    if (/icra|haciz/i.test(text)) add('icra hukuku');
+    if (/itirazın iptali|itirazin iptali/i.test(text)) add('itirazın iptali');
+
+    // Gayrimenkul
+    if (/tapu/i.test(text) && /iptal|tescil/i.test(text)) add('tapu iptal ve tescil');
+    if (/ecrimisil/i.test(text)) add('ecrimisil davası');
+    if (/kat mülkiyeti|kat mulkiyeti/i.test(text)) add('kat mülkiyeti');
+
+    // Ticaret hukuku
+    if (/çek|senet|bono|kambiyo/i.test(text)) add('kambiyo senetleri');
+    if (/iflas|konkordato/i.test(text)) add('iflas hukuku');
+
+    // Person names
     const fullNameMatches = text.match(/[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+/g) || [];
-    fullNameMatches.forEach(add);
+    fullNameMatches.slice(0, 3).forEach(add);
 
+    // Date references
+    const dateRefs = text.match(/\d{1,2}[.\/\-]\d{1,2}[.\/\-]\d{2,4}/g) || [];
+    dateRefs.slice(0, 2).forEach(add);
+
+    // Phrase chunks from text
     const phraseChunks = text.split(/[,\n;]+/g).map(chunk => chunk.trim()).filter(chunk => chunk.length >= 6);
     phraseChunks.slice(0, 10).forEach(add);
 
