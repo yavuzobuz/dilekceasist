@@ -44,5 +44,23 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: 'Gemini endpoint not found' });
     }
 
-    return selectedHandler(req, res);
+    try {
+        return await selectedHandler(req, res);
+    } catch (error) {
+        console.error(`Gemini API action error (${action}):`, error);
+        if (action === 'web-search') {
+            return res.status(200).json({
+                text: 'Web aramasi su anda kullanilamiyor. Soru genel hukuki cercevede yanitlanmalidir.',
+                groundingMetadata: null,
+                degraded: true,
+                warning: error?.message || 'Web search invocation failed',
+            });
+        }
+
+        return res.status(500).json({
+            error: process.env.NODE_ENV === 'production'
+                ? 'Gemini API error'
+                : (error?.message || 'Gemini API error'),
+        });
+    }
 }

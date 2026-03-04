@@ -158,7 +158,7 @@ export const searchLegalDecisions = async ({
   const payload = { source, keyword, filters };
   const body = JSON.stringify(payload);
   const endpoint = `${apiBaseUrl}/api/legal/search-decisions`;
-  const retries = [endpoint, `${endpoint}?retry=1`];
+  const retries = [endpoint, `${endpoint}?retry=1`, `${apiBaseUrl}/api/legal?action=search-decisions`];
 
   let lastErrorText = '';
   let lastStatus = 0;
@@ -226,7 +226,7 @@ export const getLegalDocument = async ({
   };
   const body = JSON.stringify(payload);
   const endpoint = `${apiBaseUrl}/api/legal/get-document`;
-  const retries = [endpoint, `${endpoint}?retry=1`];
+  const retries = [endpoint, `${endpoint}?retry=1`, `${apiBaseUrl}/api/legal?action=get-document`];
 
   let response: Response | null = null;
   let lastErrorText = '';
