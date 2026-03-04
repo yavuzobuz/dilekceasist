@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../../lib/supabase';
 import {
-    Users, Search, Filter, Mail, Calendar, MoreVertical, Eye,
-    User, Building2, FileText, ChevronLeft, ChevronRight, Loader2, X
+    Users, Search, Mail, Calendar, Eye,
+    FileText, ChevronLeft, ChevronRight, Loader2, X
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 

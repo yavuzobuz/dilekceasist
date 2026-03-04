@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../../lib/supabase';
 import {
-    BarChart3, TrendingUp, Users, FileText, Calendar,
-    ArrowUpRight, ArrowDownRight, Loader2
+    BarChart3, TrendingUp, Users, FileText,
+    ArrowUpRight, Loader2
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
-    Calculator, Save, RefreshCw, History, Download, Upload,
-    AlertCircle, CheckCircle, Loader2
+    Calculator, Save, RefreshCw, Download,
+    CheckCircle, Loader2
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { HARCLAR_2025, AVUKATLIK_UCRET_2025 } from '../../config/feeTariffs';
@@ -18,7 +18,7 @@ export const TariffManagement: React.FC = () => {
             // In production, this would save to database
             await new Promise(resolve => setTimeout(resolve, 1000));
             toast.success('Tarifeler kaydedildi (demo)');
-        } catch (error) {
+        } catch {
             toast.error('Kaydetme başarısız');
         } finally {
             setSaving(false);
@@ -39,7 +39,7 @@ export const TariffManagement: React.FC = () => {
             if (response.ok) {
                 toast.success('Güncel tarife arandı. Sonuçlar için konsolu kontrol edin.');
             }
-        } catch (error) {
+        } catch {
             toast.error('Arama başarısız');
         } finally {
             setChecking(false);

@@ -225,7 +225,7 @@ export const AppMain: React.FC = () => {
       setEditorReturnRoute(storedEditorReturnRoute === '/alt-app' ? '/alt-app' : '/app');
       sessionStorage.removeItem('templateContent'); // Clear after using
       sessionStorage.removeItem('editorReturnRoute');
-      addToast('Şablon yüklendi! ✨', 'success');
+      addToast('Şablon yüklendi! ?', 'success');
     } else if (petitionFromState) {
       setGeneratedPetition(petitionFromState.content || '');
       setPetitionVersion(v => v + 1);
@@ -713,13 +713,13 @@ export const AppMain: React.FC = () => {
 
       for await (const chunk of responseStream) {
         if (import.meta.env.DEV) {
-          console.log('[Chat Chunk]', JSON.stringify(chunk).substring(0, 500));
+          console.warn('[Chat Chunk]', JSON.stringify(chunk).substring(0, 500));
         }
 
         // Handle search results from function call (search_yargitay)
         if (chunk.functionCallResults && chunk.searchResults) {
           if (import.meta.env.DEV) {
-            console.log('[AI Search Results]', chunk.searchResults);
+            console.warn('[AI Search Results]', chunk.searchResults);
           }
           // Add search results to legalSearchResults state
           const newResults = chunk.searchResults.map((result: any) => ({
@@ -746,7 +746,7 @@ export const AppMain: React.FC = () => {
 
         if (hasNonTextParts) {
           if (import.meta.env.DEV) {
-            console.log('[AI Response] Contains non-text parts (internal metadata) - processing text and function calls');
+            console.warn('[AI Response] Contains non-text parts (internal metadata) - processing text and function calls');
           }
         }
 
@@ -938,7 +938,7 @@ export const AppMain: React.FC = () => {
         <Header onShowLanding={() => navigate('/')} />
         <div className="flex-grow flex items-center justify-center p-8">
           <div className="max-w-md w-full bg-[#111113] rounded-lg border border-white/10 p-8 text-center">
-            <div className="text-6xl mb-6">🔒</div>
+            <div className="text-6xl mb-6">??</div>
             <h2 className="text-2xl font-bold text-white mb-4">Giriş Gerekli</h2>
             <p className="text-gray-300 mb-6">
               Dilekçe oluşturmak için önce giriş yapmanız gerekiyor.
@@ -961,7 +961,7 @@ export const AppMain: React.FC = () => {
               onClick={() => navigate('/pool')}
               className="mt-4 text-gray-400 hover:text-white transition-colors text-sm"
             >
-              Veya Dilekçe Havuzuna göz at →
+              Veya Dilekçe Havuzuna göz at ›
             </button>
           </div>
         </div>
@@ -1173,5 +1173,7 @@ export const AppMain: React.FC = () => {
     </div>
   );
 };
+
+
 
 

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
     HARCLAR_2025,
     AVUKATLIK_UCRET_2025,
@@ -46,4 +46,3 @@ describe('feeTariffs config and helpers', () => {
         expect(next.getUTCDate()).toBe(15);
     });
 });
-

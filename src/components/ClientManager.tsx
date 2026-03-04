@@ -27,7 +27,7 @@ export const ClientManager: React.FC<ClientManagerProps> = ({ onSelect, onClose,
     });
     const [vekaletPdf, setVekaletPdf] = useState<File | null>(null);
     const [isDraggingPdf, setIsDraggingPdf] = useState(false);
-    const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+    const [_isUploadingPdf, setIsUploadingPdf] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const pdfInputRef = useRef<HTMLInputElement>(null);
 

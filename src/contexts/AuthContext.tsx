@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+﻿import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { Profile } from '../../lib/supabase';
@@ -64,10 +64,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (error) {
-        // Profil yoksa oluştur
+        // Profil yoksa oluÅŸtur
         if (error.code === 'PGRST116') {
           if (import.meta.env.DEV) {
-            console.log('Profil bulunamadı, yeni profil oluşturuluyor...');
+            console.warn('Profil bulunamadÄ±, yeni profil oluÅŸturuluyor...');
           }
           const { data: { user } } = await supabase.auth.getUser();
           
@@ -93,7 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setProfile(data);
     } catch (error: any) {
       console.error('Error loading profile:', error);
-      toast.error('Profil yüklenirken hata oluştu: ' + (error.message || 'Bilinmeyen hata'));
+      toast.error('Profil yÃ¼klenirken hata oluÅŸtu: ' + (error.message || 'Bilinmeyen hata'));
     } finally {
       setLoading(false);
     }
@@ -116,11 +116,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
 
       if (data.user) {
-        toast.success('Kayıt başarılı! Lütfen email adresinizi doğrulayın.');
+        toast.success('KayÄ±t baÅŸarÄ±lÄ±! LÃ¼tfen email adresinizi doÄŸrulayÄ±n.');
       }
     } catch (error: any) {
       console.error('Error signing up:', error);
-      toast.error(error.message || 'Kayıt olurken bir hata oluştu');
+      toast.error(error.message || 'KayÄ±t olurken bir hata oluÅŸtu');
       throw error;
     } finally {
       setLoading(false);
@@ -138,20 +138,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
 
       if (data.user) {
-        toast.success('Giriş başarılı!');
+        toast.success('GiriÅŸ baÅŸarÄ±lÄ±!');
       }
     } catch (error: any) {
       console.error('Error signing in:', error);
       
-      // Farklı hata tipleri için özel mesajlar
+      // FarklÄ± hata tipleri iÃ§in Ã¶zel mesajlar
       if (error.message?.includes('Email not confirmed')) {
-        toast.error('❌ Email adresiniz doğrulanmamış! Lütfen email kutunuzu kontrol edin ve doğrulama linkine tıklayın.');
+        toast.error('âŒ Email adresiniz doÄŸrulanmamÄ±ÅŸ! LÃ¼tfen email kutunuzu kontrol edin ve doÄŸrulama linkine tÄ±klayÄ±n.');
       } else if (error.message?.includes('Invalid login credentials')) {
-        toast.error('❌ Email veya şifre hatalı! Lütfen tekrar deneyin.');
+        toast.error('âŒ Email veya ÅŸifre hatalÄ±! LÃ¼tfen tekrar deneyin.');
       } else if (error.message?.includes('Email not found')) {
-        toast.error('❌ Bu email adresi ile kayıtlı kullanıcı bulunamadı.');
+        toast.error('âŒ Bu email adresi ile kayÄ±tlÄ± kullanÄ±cÄ± bulunamadÄ±.');
       } else {
-        toast.error(error.message || 'Giriş yapılırken bir hata oluştu');
+        toast.error(error.message || 'GiriÅŸ yapÄ±lÄ±rken bir hata oluÅŸtu');
       }
       throw error;
     } finally {
@@ -164,10 +164,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(true);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      toast.success('Çıkış yapıldı');
+      toast.success('Ã‡Ä±kÄ±ÅŸ yapÄ±ldÄ±');
     } catch (error: any) {
       console.error('Error signing out:', error);
-      toast.error(error.message || 'Çıkış yapılırken bir hata oluştu');
+      toast.error(error.message || 'Ã‡Ä±kÄ±ÅŸ yapÄ±lÄ±rken bir hata oluÅŸtu');
       throw error;
     } finally {
       setLoading(false);
@@ -175,7 +175,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateProfile = async (updates: Partial<Profile>) => {
-    if (!user) throw new Error('Kullanıcı oturum açmamış');
+    if (!user) throw new Error('KullanÄ±cÄ± oturum aÃ§mamÄ±ÅŸ');
 
     try {
       const { error } = await supabase
@@ -186,10 +186,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
 
       setProfile((prev) => (prev ? { ...prev, ...updates } : null));
-      toast.success('Profil güncellendi');
+      toast.success('Profil gÃ¼ncellendi');
     } catch (error: any) {
       console.error('Error updating profile:', error);
-      toast.error(error.message || 'Profil güncellenirken bir hata oluştu');
+      toast.error(error.message || 'Profil gÃ¼ncellenirken bir hata oluÅŸtu');
       throw error;
     }
   };
@@ -203,10 +203,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
 
-      toast.success('✅ Doğrulama emaili tekrar gönderildi! Lütfen email kutunuzu kontrol edin.');
+      toast.success('âœ… DoÄŸrulama emaili tekrar gÃ¶nderildi! LÃ¼tfen email kutunuzu kontrol edin.');
     } catch (error: any) {
       console.error('Error resending confirmation email:', error);
-      toast.error(error.message || 'Email gönderilirken bir hata oluştu');
+      toast.error(error.message || 'Email gÃ¶nderilirken bir hata oluÅŸtu');
       throw error;
     }
   };
@@ -224,3 +224,5 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+
+

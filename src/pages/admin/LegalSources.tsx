@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
     Globe, Plus, Search, Edit2, Trash2, ExternalLink, RefreshCw,
-    CheckCircle, XCircle, Loader2, X, Save
+    CheckCircle, XCircle, X, Save
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 

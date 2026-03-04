@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Calculator, Printer, Copy, Info, Check, Briefcase, Calendar, Clock, DollarSign, AlertCircle } from 'lucide-react';
+import { Calculator, Printer, Copy, Check, Briefcase, Calendar, Clock, DollarSign, AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 interface CalculatorInputs {

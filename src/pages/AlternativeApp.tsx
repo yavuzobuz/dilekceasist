@@ -16,7 +16,6 @@ import { ChatView } from '../../components/ChatView';
 import { VoiceInputButton } from '../../components/VoiceInputButton';
 import { Petition, supabase } from '../../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { toast } from 'react-hot-toast';
 import { getLegalDocument } from '../utils/legalSearch';
 import { File, FileCode2, FileImage, FileText } from 'lucide-react';
 import { MissingInfoChecklistPanel } from '../../components/MissingInfoChecklistPanel';
@@ -560,7 +559,6 @@ interface TemplateTransferContext {
     enableVariableEditor: boolean;
 }
 
-const TEMPLATE_CONTEXT_STORAGE_KEY = 'templateContext';
 const BULK_TEMPLATE_PACKAGE_STORAGE_KEY = 'templateBulkPackage';
 
 interface PendingBulkTemplatePackage {
@@ -818,7 +816,6 @@ export default function AlternativeApp() {
 
     // Visual State
     const [currentStep, setCurrentStep] = useState(1);
-    const [sidebarOpen, setSidebarOpen] = useState(true);
 
     // Inputs from user
     const [petitionType, setPetitionType] = useState<PetitionType>(
@@ -1348,7 +1345,7 @@ export default function AlternativeApp() {
                             xmlContent = 'UDF arsivinde .xml uzantili icerik dosyasi bulunamadi.';
                         }
                         udfContent += `\n\n--- UDF Belgesi: ${file.name} ---\n${xmlContent}`;
-                    } catch (e) {
+                    } catch {
                         udfContent += `\n\n--- UDF Belgesi: ${file.name} (HATA) ---\nKabul edilemedi.`;
                     }
                 } else if (extension === 'doc' || extension === 'docx') {

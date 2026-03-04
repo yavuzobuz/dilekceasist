@@ -5,7 +5,6 @@ import { SparklesIcon, ArrowDownTrayIcon, LinkIcon } from './Icon';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { saveAs } from 'file-saver';
-import JSZip from 'jszip';
 import { marked } from 'marked';
 import { sanitizeHtml } from '../src/utils/sanitizeHtml';
 
@@ -28,7 +27,7 @@ export interface PetitionPreviewProps {
 // ── Helpers ───────────────────────────────────────────
 const convertMarkdownToHtml = (text: string): string => {
     if (!text) return '';
-    let processed = text
+    const processed = text
         .replace(/\r\n/g, '\n')
         .replace(/\n{3,}/g, '\n\n')
         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')

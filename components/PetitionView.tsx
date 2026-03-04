@@ -1,11 +1,10 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { PetitionViewProps } from '../types';
 import { LoadingSpinner } from './LoadingSpinner';
 import { DocumentTextIcon, LinkIcon, SparklesIcon, ArrowDownTrayIcon } from './Icon';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { saveAs } from 'file-saver';
-import JSZip from 'jszip';
 import { marked } from 'marked';
 import { sanitizeHtml } from '../src/utils/sanitizeHtml';
 
@@ -27,7 +26,7 @@ const convertMarkdownToHtml = (text: string): string => {
   if (!text) return '';
 
   // First, normalize newlines and ensure proper paragraph separation
-  let processed = text
+  const processed = text
     .replace(/\r\n/g, '\n') // Normalize line endings
     .replace(/\n{3,}/g, '\n\n') // Reduce multiple newlines to max 2
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>') // Bold

@@ -33,7 +33,7 @@ const Register: React.FC = () => {
       setTimeout(() => {
         navigate('/login');
       }, 2000);
-    } catch (error) {
+    } catch {
       // Error is handled in AuthContext with toast
     } finally {
       setIsSubmitting(false);

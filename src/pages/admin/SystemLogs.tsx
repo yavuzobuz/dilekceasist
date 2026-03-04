@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-    FileText, Search, Filter, RefreshCw, Download, Trash2,
-    AlertCircle, AlertTriangle, Info, CheckCircle, Clock, ChevronDown
+    FileText, Search, RefreshCw, Download, Trash2,
+    AlertCircle, AlertTriangle, Info, CheckCircle
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 

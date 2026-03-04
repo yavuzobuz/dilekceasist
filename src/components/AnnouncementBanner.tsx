@@ -51,7 +51,7 @@ export const AnnouncementBanner: React.FC<AnnouncementBannerProps> = ({ position
         if (dismissedIds) {
             try {
                 setDismissed(new Set(JSON.parse(dismissedIds)));
-            } catch (e) {
+            } catch {
                 // Ignore parse errors
             }
         }

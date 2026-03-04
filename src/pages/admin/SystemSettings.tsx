@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
-    Settings, Key, Mail, Shield, AlertTriangle, Database,
-    Save, Eye, EyeOff, Loader2, RefreshCw, Power
+    Settings, Key, Shield, AlertTriangle, Database,
+    Save, Eye, EyeOff, Loader2, Power
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 

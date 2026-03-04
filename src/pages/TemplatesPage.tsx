@@ -312,12 +312,6 @@ const replaceTemplateVariables = (content: string, variables: Record<string, str
     return result.replace(/\{\{\s*[A-Z0-9_]+\s*\}\}/gi, '[...]');
 };
 
-const markdownToHtml = (content: string): string => {
-    const parsed = marked.parse(content);
-    const htmlBody = typeof parsed === 'string' ? parsed : '';
-    return `<!DOCTYPE html><html><head><meta charset="UTF-8" /></head><body>${htmlBody}</body></html>`;
-};
-
 const splitCsvLine = (line: string, delimiter: string): string[] => {
     const result: string[] = [];
     let current = '';
@@ -821,7 +815,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
     // Özel şablon yönetimi
     const { user } = useAuth();
     const [customTemplates, setCustomTemplates] = useState<UserCustomTemplate[]>([]);
-    const [isLoadingCustom, setIsLoadingCustom] = useState(false);
+    const [_isLoadingCustom, setIsLoadingCustom] = useState(false);
     const [showCustomTemplateModal, setShowCustomTemplateModal] = useState(false);
     const [editingCustomTemplate, setEditingCustomTemplate] = useState<UserCustomTemplate | null>(null);
     const [customForm, setCustomForm] = useState({

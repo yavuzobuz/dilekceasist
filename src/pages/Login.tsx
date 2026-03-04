@@ -47,7 +47,7 @@ const Login: React.FC = () => {
     setIsResending(true);
     try {
       await resendConfirmationEmail(email);
-    } catch (error) {
+    } catch {
       // Error is handled in AuthContext with toast
     } finally {
       setIsResending(false);

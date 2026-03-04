@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
-    Mail, Save, Eye, X, Edit2, RefreshCw,
-    Send, Code, CheckCircle, Loader2
+    Mail, Save, Eye, X, Edit2,
+    Send, Loader2
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 

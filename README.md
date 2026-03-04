@@ -19,6 +19,19 @@ View your app in AI Studio: https://ai.studio/apps/drive/1LfbFBy3UsZZeBhvXHMW_X7
 3. Run the app:
    `npm run dev`
 
+## Code Quality
+
+Quality commands:
+
+- `npm run typecheck`
+- `npm run lint`
+- `npm run lint:ci` (current warning budget: 17)
+- `npm run lint:fix`
+- `npm run format`
+- `npm run format:check`
+
+A CI workflow is available at `.github/workflows/quality.yml` and runs typecheck, lint, tests, and build on push/pull request.
+
 ## Stripe Setup (Plan Upgrade)
 
 1. Install Stripe:

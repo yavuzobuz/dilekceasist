@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     FileText, Plus, Search, Edit2, Trash2, Eye, X, Save,
-    ChevronDown, Loader2, AlertTriangle
+    Loader2
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 

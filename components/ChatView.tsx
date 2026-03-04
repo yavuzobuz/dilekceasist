@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChatMessage, WebSearchResult, ChatUploadedFile } from '../types';
+import { ChatMessage, WebSearchResult } from '../types';
 import { LoadingSpinner } from './LoadingSpinner';
 import { PaperAirplaneIcon, UserCircleIcon, SparklesIcon as AiIcon, ChevronDownIcon, PencilIcon, ClipboardDocumentListIcon, KeyIcon, GlobeAltIcon, DocumentTextIcon, LightBulbIcon } from './Icon';
 import { Paperclip, X, FileText, Image as ImageIcon } from 'lucide-react';

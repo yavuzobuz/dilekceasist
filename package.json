@@ -12,6 +12,12 @@
     "preview": "vite preview",
     "encoding:normalize": "node scripts/encoding-normalize.mjs",
     "encoding:check": "node scripts/encoding-check.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint \"{src,components,api,backend,services,lib,tests}/**/*.{js,ts,tsx}\" server.js AppRouter.tsx index.tsx",
+    "lint:ci": "npm run lint -- --max-warnings=17",
+    "lint:fix": "npm run lint -- --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage"
