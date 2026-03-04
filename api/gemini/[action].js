@@ -9,8 +9,7 @@ import webSearchHandler from '../../backend/gemini/web-search.js';
 export const config = {
     api: {
         bodyParser: {
-            // Vercel body limiti oncesinde kontrollu parse limiti
-            sizeLimit: process.env.UPLOAD_JSON_BODY_LIMIT || '4mb',
+            sizeLimit: '4mb',
         },
     },
 };

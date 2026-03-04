@@ -4,7 +4,7 @@ import { applyCors, getSafeErrorMessage } from '../lib/api/cors.js';
 export const config = {
     api: {
         bodyParser: {
-            sizeLimit: process.env.DOC_JSON_BODY_LIMIT || '2mb',
+            sizeLimit: '2mb',
         },
     },
 };
