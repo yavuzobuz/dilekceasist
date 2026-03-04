@@ -148,6 +148,17 @@ export const resolveAppBaseUrl = (req) => {
         }
     }
 
+    // Fallback to request-derived origin when CORS already admitted the request.
+    const requestOrigin = normalizeHttpUrl(req?.headers?.origin);
+    if (requestOrigin) {
+        return requestOrigin;
+    }
+
+    const requestBaseUrl = normalizeHttpUrl(buildRequestBaseUrl(req));
+    if (requestBaseUrl) {
+        return requestBaseUrl;
+    }
+
     return null;
 };
 

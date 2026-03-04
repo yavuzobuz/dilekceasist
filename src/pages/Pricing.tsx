@@ -49,7 +49,10 @@ const Pricing: React.FC = () => {
 
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(payload?.error || 'Odeme oturumu baslatilamadi.');
+        const message = [payload?.error, payload?.details]
+          .filter((part): part is string => typeof part === 'string' && part.trim().length > 0)
+          .join(': ');
+        throw new Error(message || `Odeme oturumu baslatilamadi (HTTP ${response.status}).`);
       }
 
       if (!payload?.url || typeof payload.url !== 'string') {
