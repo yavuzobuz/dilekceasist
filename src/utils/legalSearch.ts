@@ -28,13 +28,28 @@ interface GetLegalDocumentParams {
   apiBaseUrl?: string;
 }
 
-const REQUEST_TIMEOUT_MS = 25000;
+const REQUEST_TIMEOUT_MS = 35000;
+const LEGAL_SEARCH_TIMEOUT_MESSAGE = `Ictihat aramasi zaman asimina ugradi (${Math.round(REQUEST_TIMEOUT_MS / 1000)} sn). Lutfen tekrar deneyin.`;
+const LEGAL_DOCUMENT_TIMEOUT_MESSAGE = `Karar metni alma islemi zaman asimina ugradi (${Math.round(REQUEST_TIMEOUT_MS / 1000)} sn). Lutfen tekrar deneyin.`;
+
+const isAbortLikeError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') return false;
+  const anyError = error as { name?: string; message?: string };
+  const name = String(anyError.name || '').toLowerCase();
+  const message = String(anyError.message || '').toLowerCase();
+  return name === 'aborterror' || message.includes('aborted') || message.includes('abort');
+};
 
 const fetchWithTimeout = async (url: string, init: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS): Promise<Response> => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await fetch(url, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (isAbortLikeError(error)) {
+      throw new Error(`REQUEST_TIMEOUT:${timeoutMs}`);
+    }
+    throw error;
   } finally {
     clearTimeout(timer);
   }
@@ -147,21 +162,34 @@ export const searchLegalDecisions = async ({
 
   let lastErrorText = '';
   let lastStatus = 0;
+  let timedOut = false;
 
   for (const url of retries) {
-    const response = await fetchWithTimeout(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-    });
+    try {
+      const response = await fetchWithTimeout(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      });
 
-    if (response.ok) {
-      const data = await response.json();
-      return normalizeLegalSearchResults(data);
+      if (response.ok) {
+        const data = await response.json();
+        return normalizeLegalSearchResults(data);
+      }
+
+      lastStatus = response.status;
+      lastErrorText = await response.text().catch(() => '');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error || '');
+      if (message.startsWith('REQUEST_TIMEOUT:')) {
+        timedOut = true;
+      }
+      lastErrorText = message || lastErrorText;
     }
+  }
 
-    lastStatus = response.status;
-    lastErrorText = await response.text().catch(() => '');
+  if (timedOut) {
+    throw new Error(LEGAL_SEARCH_TIMEOUT_MESSAGE);
   }
 
   throw new Error(lastErrorText || `Ictihat aramasi sirasinda bir hata olustu (HTTP ${lastStatus || 500}).`);
@@ -203,21 +231,33 @@ export const getLegalDocument = async ({
   let response: Response | null = null;
   let lastErrorText = '';
   let lastStatus = 0;
+  let timedOut = false;
 
   for (const url of retries) {
-    response = await fetchWithTimeout(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-    });
+    try {
+      response = await fetchWithTimeout(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      });
 
-    if (response.ok) break;
+      if (response.ok) break;
 
-    lastStatus = response.status;
-    lastErrorText = await response.text().catch(() => '');
+      lastStatus = response.status;
+      lastErrorText = await response.text().catch(() => '');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error || '');
+      if (message.startsWith('REQUEST_TIMEOUT:')) {
+        timedOut = true;
+      }
+      lastErrorText = message || lastErrorText;
+    }
   }
 
   if (!response || !response.ok) {
+    if (timedOut) {
+      throw new Error(LEGAL_DOCUMENT_TIMEOUT_MESSAGE);
+    }
     throw new Error(lastErrorText || `Belge alinamadi (HTTP ${lastStatus || 500}).`);
   }
 
