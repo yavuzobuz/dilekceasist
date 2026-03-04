@@ -1,7 +1,8 @@
 {
   "functions": {
     "api/**/*.js": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "includeFiles": "api/_lib/**"
     }
   },
   "rewrites": [
@@ -9,6 +10,5 @@
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ],
-  "includeFiles": "api/_lib/**"
+  ]
 }
