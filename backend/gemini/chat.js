@@ -1,38 +1,17 @@
 import { GoogleGenAI, Type } from '@google/genai';
-import { consumeGenerationCredit, TRIAL_DAILY_GENERATION_LIMIT } from '../../lib/api/generationQuota.js';
-import { applyCors, getSafeErrorMessage } from '../../lib/api/cors.js';
-import { GEMINI_API_KEY, GEMINI_MODEL_NAME } from './_shared.js';
+import { consumeGenerationCredit, TRIAL_DAILY_GENERATION_LIMIT } from '../_lib/generationQuota.js';
 
-const MODEL_NAME = GEMINI_MODEL_NAME;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+const MODEL_NAME = process.env.GEMINI_MODEL_NAME || process.env.VITE_GEMINI_MODEL_NAME || 'gemini-2.5-flash';
 
 const getAiClient = () => {
     if (!GEMINI_API_KEY) {
-        throw new Error('GEMINI_API_KEY is not configured');
+        throw new Error('GEMINI_API_KEY or VITE_GEMINI_API_KEY is not configured');
     }
     return new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 };
 
 const normalizeText = (value) => (typeof value === 'string' ? value.trim() : '');
-
-const ensureContextObject = (value) => (value && typeof value === 'object' && !Array.isArray(value) ? value : {});
-
-const normalizeContextText = (value) => {
-    if (typeof value === 'string') return value.trim();
-    if (Array.isArray(value)) {
-        return value
-            .map((item) => normalizeText(item))
-            .filter(Boolean)
-            .join(', ');
-    }
-    return '';
-};
-
-const clipPromptText = (value, maxLength = 2200) => {
-    const normalized = normalizeContextText(value);
-    if (!normalized) return '';
-    if (normalized.length <= maxLength) return normalized;
-    return `${normalized.slice(0, maxLength)}...[truncated]`;
-};
 
 const normalizeKeywordText = (value = '') => String(value || '')
     .toLocaleLowerCase('tr-TR')
@@ -167,63 +146,6 @@ const isEmsalSearchQuestion = (text = '') => {
     const normalized = normalizeText(text.toLowerCase());
     if (!normalized) return false;
     return /(emsal|ictihat|içtihat|yargitay|danistay|karar ara|karar aramasi|karar arar misin)/i.test(normalized);
-};
-
-const isDefinitionQuestion = (text = '') => {
-    const raw = normalizeText(text);
-    if (!raw) return false;
-    if (isLikelyDocumentRequest(raw) || isEmsalSearchQuestion(raw)) return false;
-
-    const normalized = normalizeKeywordText(raw);
-    if (!normalized) return false;
-
-    const tokenCount = normalized.split(/\s+/).filter(Boolean).length;
-    const asksDefinition = /(nedir|ne demek|ne anlama gelir|anlami nedir|tanimi nedir|kime denir|nasil tanimlanir|kavrami nedir)/i.test(normalized);
-    const hasDisputeMarkers = /(parsel|ada|pafta|ruhsat|ruhsatsiz|imar|yikim|muhurl|iptal|tazminat|uyusmazlik|dava|muvekkil|dosya|risk|strateji|itiraz|savunma)/i.test(normalized);
-
-    // Kisa "X nedir?" sorularini tanim sorusu olarak kabul et.
-    if (asksDefinition && tokenCount <= 8) return true;
-
-    return asksDefinition && !hasDisputeMarkers && tokenCount <= 22;
-};
-
-const isDisputeOrApplicationQuestion = (text = '') => {
-    const raw = normalizeText(text);
-    if (!raw) return false;
-    if (isDefinitionQuestion(raw)) return false;
-
-    const normalized = normalizeKeywordText(raw);
-    if (!normalized) return false;
-
-    const tokenCount = normalized.split(/\s+/).filter(Boolean).length;
-    const hasRiskOrDisputeIntent = /(parsel|ada|pafta|ruhsat|ruhsatsiz|imar|koruma kurulu|yikim|muhurl|iptal|tazminat|idari islem|uyusmazlik|somut olay|dosya|muvekkil|risk|strateji|ne yapmaliyim|nasil ilerlemeliyim|itiraz|savunma)/i.test(normalized);
-    const hasCaseSignal = hasFactSignal(normalized) && /(olay|dosya|parsel|muvekkil|sanik|davaci|davali|islem|iddia|karar)/i.test(normalized);
-
-    return hasRiskOrDisputeIntent || hasCaseSignal || tokenCount > 28;
-};
-
-const getCurrentDateContext = () => {
-    const now = new Date();
-    const istanbulDate = new Intl.DateTimeFormat('tr-TR', {
-        timeZone: 'Europe/Istanbul',
-        weekday: 'long',
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-    }).format(now);
-    const istanbulTime = new Intl.DateTimeFormat('tr-TR', {
-        timeZone: 'Europe/Istanbul',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-    }).format(now);
-
-    return {
-        istanbulDate,
-        istanbulTime,
-        utcIso: now.toISOString(),
-    };
 };
 
 const hasWebEvidence = (summary, sourceCount) => {
@@ -418,12 +340,9 @@ async function runWebVerificationSearch(ai, keyword, question) {
 }
 
 export default async function handler(req, res) {
-    if (!applyCors(req, res, {
-        methods: 'POST, OPTIONS',
-        headers: 'Content-Type, Authorization, x-api-key',
-    })) {
-        return res.status(403).json({ error: 'CORS: Origin not allowed' });
-    }
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
 
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -431,36 +350,21 @@ export default async function handler(req, res) {
     try {
         const ai = getAiClient();
         const { chatHistory, analysisSummary, context, files } = req.body || {};
-        const safeContext = ensureContextObject(context);
+        const safeContext = context || {};
 
         if (!Array.isArray(chatHistory) || chatHistory.length === 0) {
             return res.status(400).json({ error: 'chatHistory must be a non-empty array' });
         }
 
-        const summaryFromBody = normalizeText(analysisSummary || '');
-        const summaryFromContext = normalizeContextText(safeContext.analysisSummary);
-        const effectiveAnalysisSummary = summaryFromBody || summaryFromContext;
-        const contextKeywords = normalizeContextText(safeContext.keywords);
-        const contextDocContent = normalizeContextText(safeContext.docContent);
-        const contextSpecifics = normalizeContextText(safeContext.specifics);
-        const contextCurrentDraft = normalizeContextText(
-            safeContext.currentDraft
-            || safeContext.currentPetition
-            || safeContext.generatedPetition
-            || safeContext.generatedDocument
-        );
-
         const lastUserMessage = getLastUserMessageText(chatHistory);
         const isDocumentRequest = isLikelyDocumentRequest(lastUserMessage);
         const isSimpleQuestion = isSimpleGuidanceQuestion(lastUserMessage);
         const isEmsalOnlyQuery = isEmsalSearchQuestion(lastUserMessage);
-        const isDefinitionOnlyQuery = isDefinitionQuestion(lastUserMessage);
-        const isDisputeOrApplicationQuery = isDisputeOrApplicationQuestion(lastUserMessage);
-        const requiresEvidenceForAnswer = isDocumentRequest || isEmsalOnlyQuery || isDisputeOrApplicationQuery;
-        const requiresWebEvidence = isDocumentRequest || isDisputeOrApplicationQuery;
-        const requiresLegalEvidence = isDocumentRequest || isEmsalOnlyQuery || isDisputeOrApplicationQuery;
-        const hasAnalysisSummary = effectiveAnalysisSummary.length > 0;
-        const hasUploadedDocument = (Array.isArray(files) && files.length > 0) || contextDocContent.length > 0;
+        const requiresEvidenceForAnswer = !isSimpleQuestion || isDocumentRequest || (Array.isArray(files) && files.length > 0);
+        const requiresWebEvidence = requiresEvidenceForAnswer && !isEmsalOnlyQuery;
+        const requiresLegalEvidence = requiresEvidenceForAnswer;
+        const hasAnalysisSummary = normalizeText(analysisSummary || '').length > 0;
+        const hasUploadedDocument = (Array.isArray(files) && files.length > 0) || normalizeText(safeContext.docContent || '').length > 0;
 
         if (isDocumentRequest && !hasAnalysisSummary) {
             return res.status(422).json({
@@ -469,13 +373,13 @@ export default async function handler(req, res) {
             });
         }
 
-        let effectiveSearchSummary = normalizeContextText(safeContext.searchSummary || safeContext.webSearchSummary);
-        let effectiveLegalSummary = normalizeContextText(safeContext.legalSummary);
+        let effectiveSearchSummary = normalizeText(safeContext.searchSummary || '');
+        let effectiveLegalSummary = normalizeText(safeContext.legalSummary || '');
         let effectiveWebSourceCount = Number(safeContext.webSourceCount || 0);
         let effectiveLegalResultCount = Number(safeContext.legalResultCount || 0);
 
         const keywordSeed = Array.from(new Set([
-            ...extractKeywordCandidates(contextKeywords),
+            ...extractKeywordCandidates(safeContext.keywords || ''),
             ...extractKeywordCandidates(lastUserMessage),
         ])).join(' ').trim();
 
@@ -512,34 +416,24 @@ export default async function handler(req, res) {
 
         const missingWebEvidenceForChat = requiresWebEvidence && !hasVerifiedWebEvidence;
         const missingLegalEvidenceForChat = requiresLegalEvidence && !hasVerifiedLegalEvidence;
-        const evidenceGapForChat = !isDocumentRequest && (missingWebEvidenceForChat || missingLegalEvidenceForChat);
+
+        if (requiresEvidenceForAnswer && !isDocumentRequest && (missingWebEvidenceForChat || missingLegalEvidenceForChat)) {
+            return res.status(422).json({
+                error: 'Bu soruya güvenli yanıt için web ve emsal karar doğrulaması tamamlanamadı. Lütfen tekrar deneyin.',
+                code: 'MISSING_REQUIRED_EVIDENCE_FOR_CHAT'
+            });
+        }
 
         const documentGenerationAllowed = hasVerifiedWebEvidence && hasVerifiedLegalEvidence;
-        const promptAnalysisSummary = clipPromptText(effectiveAnalysisSummary, 2200);
-        const promptKeywords = clipPromptText(contextKeywords || evidenceQuery, 900);
-        const promptSearchSummary = clipPromptText(effectiveSearchSummary, 2400);
-        const promptLegalSummary = clipPromptText(effectiveLegalSummary, 2400);
-        const promptDocContent = clipPromptText(contextDocContent, 1800);
-        const promptSpecifics = clipPromptText(contextSpecifics, 1200);
-        const promptCurrentDraft = clipPromptText(contextCurrentDraft, 3000);
-        const currentDateContext = getCurrentDateContext();
 
         const contextPrompt = `
 **MEVCUT DURUM:**
-- Vaka Ozeti: ${promptAnalysisSummary || 'Henuz analiz yapilmadi.'}
-- Anahtar Kelimeler: ${promptKeywords || 'Yok'}
-- Web Arastirma: ${promptSearchSummary || 'Yok'}
-- Emsal Karar Arastirmasi: ${promptLegalSummary || 'Yok'}
-- Kullanicinin Ek Metinleri: ${promptDocContent || 'Yok'}
-- Kullanicinin Ozel Talimatlari: ${promptSpecifics || 'Yok'}
-- Mevcut Dilekce Taslagi: ${promptCurrentDraft || 'Henuz olusturulan taslak yok'}
+- Vaka Ozeti: ${analysisSummary || 'Henuz analiz yapilmadi.'}
+- Anahtar Kelimeler: ${safeContext.keywords || evidenceQuery || 'Yok'}
+- Web Arastirma: ${effectiveSearchSummary || 'Yok'}
+- Emsal Karar Arastirmasi: ${effectiveLegalSummary || 'Yok'}
 - Web Kaynak Sayisi: ${effectiveWebSourceCount}
 - Emsal Karar Sayisi: ${effectiveLegalResultCount}
-- Dogrulama Modu: ${requiresEvidenceForAnswer ? 'Uygulama/Uyusmazlik - web+emsal arastirmasi gerekli' : 'Tanim/Genel - once mevzuat aciklamasi, sonra istege bagli emsal'}
-- Dogrulama Durumu: ${evidenceGapForChat ? 'Eksik kanit var, once soruyu analiz et; yalnizca gerekiyorsa arama oner veya arama yap' : 'Yeterli / zorunlu olmayan dogrulama'}
-- Sistem Tarihi (Europe/Istanbul): ${currentDateContext.istanbulDate}
-- Sistem Saati (Europe/Istanbul): ${currentDateContext.istanbulTime}
-- UTC Zaman Damgasi: ${currentDateContext.utcIso}
 ${Array.isArray(files) && files.length > 0 ? `- Yuklenen Belgeler: ${files.length} adet` : ''}
 `;
 
@@ -553,20 +447,10 @@ ${Array.isArray(files) && files.length > 0 ? `- Yuklenen Belgeler: ${files.lengt
 5. Sadece dogrulanmis bulgulara dayan
 ${documentGenerationAllowed ? '6. generate_document fonksiyonunu sadece dogrulanmis kanit varken kullan' : '6. generate_document kullanma, kanit eksigini bildir'}
 7. search_yargitay fonksiyonu ile ictihat ara
-8. Mevcut dilekce taslagi varsa, sorulari o taslak metin uzerinden yanitla ve revizyon onerilerini taslaga uygulayarak ver
-9. Kullanici sorusunu once siniflandir: tanim/genel, usul, uygulama/uyusmazlik.
-10. Tanim/genel sorularda arama zorunlu degil; kisa ve net cevap ver, isterse emsal arastirmasi teklif et.
-11. Uygulama/uyusmazlik sorularinda gerekli gordugunde arama yap; arama yapamadiysan eldeki bilgiyle sinirlarini belirterek yanitla, dogrudan engelleme mesaji verme.
 
 ${contextPrompt}
 
-Ek kural 1: Basit sorularda (or. hangi mahkeme, sure) kisa ve net cevap ver.
-${isDefinitionOnlyQuery
-        ? 'Ek kural 2: Tanim/kavram sorularinda once kisa mevzuat cevabi ver. Web veya emsal aramasi zorunlu degil; cevabin sonunda istenirse emsal ictihat arastirabilecegini tek cumleyle opsiyon olarak belirt.'
-        : isSimpleQuestion
-            ? 'Ek kural 2: Basit usul sorularinda gereksiz uzun analiz yapma.'
-            : 'Ek kural 2: Uygulama/uyusmazlik sorularinda dogrulanmis web ve emsal bulgularina oncelik ver.'}
-Ek kural 3: Tarih/saat sorularinda yukaridaki sistem tarih-saat bilgisini esas al; tarih uydurma.`;
+Ek kural: Basit sorularda (or. hangi mahkeme, sure) kisa ve net cevap ver.`;
 
         const updateKeywordsFunction = {
             name: 'update_search_keywords',
@@ -748,7 +632,7 @@ Ek kural 3: Tarih/saat sorularinda yukaridaki sistem tarih-saat bilgisini esas a
     } catch (error) {
         console.error('Chat Error:', error);
         if (!res.headersSent) {
-            res.status(500).json({ error: getSafeErrorMessage(error, 'Internal Server Error') });
+            res.status(500).json({ error: error?.message || 'Internal Server Error' });
         } else {
             res.write(JSON.stringify({
                 text: '\n\nSohbet servisi geçici olarak kullanılamıyor. Lütfen tekrar deneyin.\n',
