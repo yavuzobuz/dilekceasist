@@ -1091,8 +1091,18 @@ export default function AlternativeApp() {
 
             return normalizedResults;
         } catch (e: any) {
+            const rawMessage = String(e?.message || 'Bilinmeyen hata');
+            const normalizedMessage = rawMessage.toLowerCase();
+            const isTimeoutError = normalizedMessage.includes('504') || normalizedMessage.includes('timeout') || normalizedMessage.includes('zaman');
+            const readableMessage = isTimeoutError
+                ? 'Ictihat servisi zaman asimina ugradi (504). Biraz sonra tekrar deneyin.'
+                : rawMessage;
+
             if (!options?.suppressError) {
-                setError(`Ictihat arama hatasi: ${e.message}`);
+                setError(`Ictihat arama hatasi: ${readableMessage}`);
+                if (isTimeoutError) {
+                    addToast('Ictihat servisi gecici olarak yavas. Dilersen once web aramasiyla devam et, sonra tekrar dene.', 'info');
+                }
             }
             return [];
         } finally {
@@ -3278,13 +3288,18 @@ export default function AlternativeApp() {
                                         </button>
                                         <button
                                             onClick={handleGeneratePetition}
-                                            disabled={isLoadingPetition || missingInfoBlockingUnansweredCount > 0}
+                                            disabled={isLoadingPetition}
                                             className="px-8 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:opacity-50 text-white rounded-xl font-medium transition-all shadow-lg shadow-red-900/50 flex items-center gap-2"
                                         >
                                             {isLoadingPetition ? <LoadingSpinner className="w-5 h-5 text-white" /> : <SparklesIcon className="w-5 h-5" />}
                                             {isLoadingPetition ? 'Üretiliyor...' : 'Nihai Dilekçeyi Üret'}
                                         </button>
                                     </div>
+                                    {missingInfoBlockingUnansweredCount > 0 && (
+                                        <p className="text-xs text-red-300 border border-red-500/30 bg-red-500/10 rounded-lg px-3 py-2">
+                                            Eksikleri Tara alaninda {missingInfoBlockingUnansweredCount} bloklayici soru bos. Buton tiklanabilir, ancak uretimden once bu sorulari yanitlamaniz gerekir.
+                                        </p>
+                                    )}
                                 </div>
                             )}
 

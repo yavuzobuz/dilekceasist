@@ -602,11 +602,16 @@ export const InputPanel: React.FC<InputPanelProps> = ({
       {/* Step 5: Generate */}
       <div className="mt-auto pt-6 border-t border-white/10 space-y-4">
         <StepHeader number={5} title="Nihai Dilekçeyi Oluştur" />
-        <button onClick={onGenerate} disabled={isLoading || !analysisData || isAnalyzing || isSearching || isGeneratingKeywords || missingInfoBlockingUnansweredCount > 0} className="w-full flex items-center justify-center bg-gradient-to-r from-red-600 via-red-500 to-red-600 hover:from-red-500 hover:via-red-600 hover:to-red-500 disabled:from-[#111113] disabled:via-[#1A1A1D] disabled:to-[#111113] disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg shadow-xl shadow-red-500/30 hover:shadow-red-400/50 transition-all duration-500 transform hover:scale-105 disabled:scale-100 group relative overflow-hidden">
+        <button onClick={onGenerate} disabled={isLoading || !analysisData || isAnalyzing || isSearching || isGeneratingKeywords} className="w-full flex items-center justify-center bg-gradient-to-r from-red-600 via-red-500 to-red-600 hover:from-red-500 hover:via-red-600 hover:to-red-500 disabled:from-[#111113] disabled:via-[#1A1A1D] disabled:to-[#111113] disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg shadow-xl shadow-red-500/30 hover:shadow-red-400/50 transition-all duration-500 transform hover:scale-105 disabled:scale-100 group relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
           <div className="absolute inset-0 blur-xl bg-red-500/20 group-hover:bg-red-400/30 transition-all duration-500"></div>
           <span className="relative">{isLoading ? <><LoadingSpinner className="h-5 w-5 mr-2" /> Oluşturuluyor...</> : <><SparklesIcon className="h-5 w-5 mr-2 animate-spin" style={{ animationDuration: '3s' }} /> Dilekçeyi Oluştur</>}</span>
         </button>
+        {missingInfoBlockingUnansweredCount > 0 && (
+          <p className="text-xs text-red-300 border border-red-500/30 bg-red-500/10 rounded-lg px-3 py-2">
+            Eksikleri Tara alaninda {missingInfoBlockingUnansweredCount} bloklayici soru bos. Uretim denemesinden once bu sorulari yanitlayin.
+          </p>
+        )}
       </div>
     </div>
   );
