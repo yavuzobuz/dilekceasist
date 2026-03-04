@@ -9,6 +9,8 @@ const MODEL_NAME = process.env.LEGAL_GEMINI_MODEL_NAME
     || 'gemini-2.5-flash';
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+const YARGITAY_BASE_URL = 'https://karararama.yargitay.gov.tr';
+const YARGITAY_DEFAULT_PAGE_SIZE = 10;
 
 const normalizeOrigin = (origin = '') => String(origin || '').trim().replace(/\/+$/, '').toLowerCase();
 
@@ -139,6 +141,104 @@ const maybeExtractJson = (text = '') => {
     return null;
 };
 
+const decodeHtmlEntities = (value = '') => {
+    const namedEntities = {
+        amp: '&',
+        lt: '<',
+        gt: '>',
+        quot: '"',
+        apos: '\'',
+        nbsp: ' ',
+        rsquo: '\'',
+        lsquo: '\'',
+        rdquo: '"',
+        ldquo: '"',
+    };
+
+    return String(value || '').replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (full, token) => {
+        const raw = String(token || '');
+        if (!raw) return full;
+
+        if (raw[0] === '#') {
+            const isHex = raw[1]?.toLowerCase() === 'x';
+            const numeric = Number.parseInt(raw.slice(isHex ? 2 : 1), isHex ? 16 : 10);
+            if (Number.isFinite(numeric)) {
+                try {
+                    return String.fromCodePoint(numeric);
+                } catch {
+                    return full;
+                }
+            }
+            return full;
+        }
+
+        const named = namedEntities[raw.toLowerCase()];
+        return named !== undefined ? named : full;
+    });
+};
+
+const fixPossibleMojibake = (value = '') => {
+    const text = String(value || '');
+    if (!/[ÃÅÄÐ]/.test(text)) return text;
+    try {
+        return Buffer.from(text, 'latin1').toString('utf8');
+    } catch {
+        return text;
+    }
+};
+
+const normalizeYargitayText = (value = '') => fixPossibleMojibake(decodeHtmlEntities(String(value || ''))).trim();
+
+const stripHtmlToText = (html = '') => {
+    const normalizedHtml = String(html || '')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/p>/gi, '\n\n')
+        .replace(/<li[^>]*>/gi, '\n- ')
+        .replace(/<\/li>/gi, '')
+        .replace(/<\/div>/gi, '\n')
+        .replace(/<\/tr>/gi, '\n')
+        .replace(/<\/td>/gi, ' ');
+
+    const withoutTags = normalizedHtml.replace(/<[^>]+>/g, ' ');
+    return normalizeYargitayText(withoutTags)
+        .replace(/\r/g, '')
+        .replace(/[ \t]+\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .replace(/[ \t]{2,}/g, ' ')
+        .trim();
+};
+
+const fetchWithTimeout = async (url, init = {}, timeoutMs = 15000) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        return await fetch(url, { ...init, signal: controller.signal });
+    } catch (error) {
+        if (error?.name === 'AbortError') {
+            const timeoutError = new Error(`Request timeout after ${timeoutMs}ms`);
+            timeoutError.code = 'REQUEST_TIMEOUT';
+            throw timeoutError;
+        }
+        throw error;
+    } finally {
+        clearTimeout(timer);
+    }
+};
+
+const parseDecisionMetaFromText = (text = '') => {
+    const safe = normalizeYargitayText(text);
+    const matchEsas = safe.match(/(?:E\.?|Esas)\s*[:.]?\s*([0-9]{4}\/[0-9]+)/i);
+    const matchKarar = safe.match(/(?:K\.?|Karar)\s*[:.]?\s*([0-9]{4}\/[0-9]+)/i);
+    const matchTarih = safe.match(/(?:T\.?|Tarih(?:i)?)\s*[:.]?\s*([0-9]{1,2}[./-][0-9]{1,2}[./-][0-9]{2,4})/i);
+
+    return {
+        esasNo: matchEsas?.[1] || '',
+        kararNo: matchKarar?.[1] || '',
+        tarih: matchTarih?.[1] || '',
+    };
+};
+
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const isRetryableAiError = (error) => {
@@ -197,6 +297,106 @@ async function generateContentWithRetry(requestPayload, options = {}) {
     throw lastError || new Error('AI request failed');
 }
 
+async function searchYargitayOfficial(keyword, options = {}) {
+    const pageSize = Number.isFinite(options.pageSize) ? options.pageSize : YARGITAY_DEFAULT_PAGE_SIZE;
+    const pageNumber = Number.isFinite(options.pageNumber) ? options.pageNumber : 1;
+
+    const requestBody = JSON.stringify({
+        data: {
+            arananKelime: keyword,
+            pageSize,
+            pageNumber,
+        }
+    });
+
+    const response = await fetchWithTimeout(`${YARGITAY_BASE_URL}/aramalist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: requestBody,
+    }, 12000);
+
+    if (!response.ok) {
+        throw new Error(`Yargitay search HTTP ${response.status}`);
+    }
+
+    const text = await response.text();
+    const parsed = maybeExtractJson(text);
+    const rows = Array.isArray(parsed?.data?.data) ? parsed.data.data : [];
+
+    if (rows.length === 0) return [];
+
+    return rows
+        .map((row, index) => {
+            const rawId = String(row?.id || '').trim();
+            if (!rawId) return null;
+
+            const daire = normalizeYargitayText(row?.daire || '');
+            const esasNo = normalizeYargitayText(row?.esasNo || row?.esas_no || '');
+            const kararNo = normalizeYargitayText(row?.kararNo || row?.karar_no || '');
+            const tarih = normalizeYargitayText(row?.kararTarihi || row?.tarih || row?.date || '');
+            const decisionQuery = normalizeYargitayText(row?.arananKelime || keyword);
+
+            const titleParts = [daire];
+            if (esasNo) titleParts.push(`E. ${esasNo}`);
+            if (kararNo) titleParts.push(`K. ${kararNo}`);
+            if (tarih) titleParts.push(`T. ${tarih}`);
+
+            const title = titleParts.filter(Boolean).join(' - ') || `Yargitay Karari #${index + 1}`;
+            const sourceUrl = `${YARGITAY_BASE_URL}/getDokuman?id=${encodeURIComponent(rawId)}`;
+            const summary = [
+                `${daire || 'Yargitay'} karar kaydi.`,
+                esasNo ? `Esas No: ${esasNo}.` : '',
+                kararNo ? `Karar No: ${kararNo}.` : '',
+                tarih ? `Karar Tarihi: ${tarih}.` : '',
+                decisionQuery ? `Arama: ${decisionQuery}.` : '',
+                'Karar metni icin detayi acin.',
+            ].filter(Boolean).join(' ');
+
+            return {
+                id: rawId,
+                documentId: rawId,
+                title,
+                esasNo,
+                kararNo,
+                tarih,
+                daire,
+                ozet: summary,
+                sourceUrl,
+                documentUrl: sourceUrl,
+                relevanceScore: Math.max(0, 100 - (index * 5)),
+            };
+        })
+        .filter(Boolean);
+}
+
+async function getYargitayDocumentText({ documentId = '', documentUrl = '' }) {
+    let targetUrl = String(documentUrl || '').trim();
+
+    if (!targetUrl && documentId) {
+        targetUrl = `${YARGITAY_BASE_URL}/getDokuman?id=${encodeURIComponent(String(documentId).trim())}`;
+    }
+
+    if (!targetUrl) return '';
+
+    const response = await fetchWithTimeout(targetUrl, {
+        method: 'GET',
+        headers: { Accept: 'application/json, text/plain, */*' },
+    }, 12000);
+
+    if (!response.ok) {
+        throw new Error(`Yargitay getDokuman HTTP ${response.status}`);
+    }
+
+    const rawText = await response.text();
+    const parsed = maybeExtractJson(rawText);
+    const htmlContent = typeof parsed?.data === 'string'
+        ? parsed.data
+        : (typeof rawText === 'string' ? rawText : '');
+
+    const plainText = stripHtmlToText(htmlContent);
+    return plainText || '';
+}
+
 // GET /api/legal?action=sources
 async function handleSources(req, res) {
     res.json({
@@ -213,9 +413,28 @@ async function handleSources(req, res) {
 // POST /api/legal?action=search-decisions
 async function handleSearchDecisions(req, res) {
     const { source, keyword } = req.body || {};
+    const normalizedSource = String(source || 'all').trim().toLowerCase();
+    const shouldUseYargitayOfficial = !normalizedSource || normalizedSource === 'all' || normalizedSource === 'yargitay';
 
     if (!keyword) {
         return res.status(400).json({ error: 'Arama kelimesi (keyword) gereklidir.' });
+    }
+
+    if (shouldUseYargitayOfficial) {
+        try {
+            const yargitayResults = await searchYargitayOfficial(keyword, { pageSize: YARGITAY_DEFAULT_PAGE_SIZE, pageNumber: 1 });
+            if (yargitayResults.length > 0) {
+                return res.json({
+                    success: true,
+                    source: 'yargitay',
+                    provider: 'yargitay-official',
+                    keyword,
+                    results: yargitayResults,
+                });
+            }
+        } catch (error) {
+            console.error('Yargitay official search error:', error);
+        }
     }
 
     let text = '';
@@ -263,6 +482,7 @@ Sadece JSON array dondur:
             daire: r.daire || '',
             ozet: r.ozet || r.snippet || '',
             sourceUrl: r.sourceUrl || r.url || '',
+            documentUrl: r.documentUrl || r.sourceUrl || r.url || '',
             relevanceScore: Number(r.relevanceScore) || Math.max(0, 100 - (i * 8)),
         })).sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
         : [{
@@ -272,13 +492,17 @@ Sadece JSON array dondur:
             ozet: text.substring(0, 500),
         }];
 
+    const finalWarning = warning || (shouldUseYargitayOfficial
+        ? 'Resmi Yargitay servisi su an cevap vermedi, AI fallback sonucu gosteriliyor.'
+        : '');
+
     res.json({
         success: true,
         source: source || 'all',
         provider: 'ai-fallback',
         keyword,
         results,
-        ...(warning ? { warning } : {}),
+        ...(finalWarning ? { warning: finalWarning } : {}),
     });
 }
 
@@ -344,6 +568,48 @@ async function handleGetDocument(req, res) {
                 documentUrl: '',
             }
         });
+    }
+
+    const normalizedSource = String(source || '').trim().toLowerCase();
+    const isYargitaySource = normalizedSource === 'yargitay' || /karararama\.yargitay\.gov\.tr/i.test(String(documentUrl || ''));
+    const hasNumericDocumentId = /^\d{6,}$/.test(safeDocumentId);
+
+    if (isYargitaySource || hasNumericDocumentId) {
+        try {
+            const officialContent = await getYargitayDocumentText({ documentId: safeDocumentId, documentUrl });
+            if (officialContent) {
+                const inferredMeta = parseDecisionMetaFromText(officialContent);
+                return res.json({
+                    success: true,
+                    source: source || 'yargitay',
+                    provider: 'yargitay-official',
+                    document: {
+                        content: officialContent,
+                        mimeType: 'text/plain',
+                        documentId: safeDocumentId,
+                        documentUrl: documentUrl || `${YARGITAY_BASE_URL}/getDokuman?id=${encodeURIComponent(safeDocumentId)}`,
+                        esasNo: esasNo || inferredMeta.esasNo,
+                        kararNo: kararNo || inferredMeta.kararNo,
+                        tarih: tarih || inferredMeta.tarih,
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Yargitay official get-document error:', error);
+            if (summaryFallback) {
+                return res.json({
+                    success: true,
+                    source: source || 'yargitay',
+                    provider: 'summary-fallback',
+                    document: {
+                        content: summaryFallback,
+                        mimeType: 'text/plain',
+                        documentId: safeDocumentId,
+                        documentUrl: documentUrl || '',
+                    }
+                });
+            }
+        }
     }
 
     let content = '';
