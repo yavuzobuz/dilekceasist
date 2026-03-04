@@ -53,7 +53,7 @@ export default async function handler(req, res) {
         console.error('Billing webhook error:', error);
         return res.status(error.status || 500).json({
             error: getSafeErrorMessage(error, 'Stripe webhook islenemedi'),
-            details: process.env.NODE_ENV === 'production' ? null : (error.details || null),
+            details: error.details || error.message || null,
         });
     }
 }

@@ -142,6 +142,7 @@ export default async function handler(req, res) {
         console.error('Billing checkout session error:', error);
         return res.status(error.status || 500).json({
             error: getSafeErrorMessage(error, 'Odeme oturumu olusturulamadi'),
+            details: error.details || error.message || null,
         });
     }
 }
