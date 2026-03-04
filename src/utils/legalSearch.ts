@@ -51,6 +51,21 @@ const extractResultsFromText = (text: string): any[] => {
   }
 };
 
+const fetchWithTimeout = async (input: RequestInfo | URL, init: RequestInit, timeoutMs: number): Promise<Response> => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      throw new Error('Istek zaman asimina ugradi. Lutfen tekrar deneyin.');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
 export const normalizeLegalSearchResults = (payload: any): NormalizedLegalDecision[] => {
   const raw: any[] = [];
 
@@ -109,6 +124,8 @@ export const normalizeLegalSearchResults = (payload: any): NormalizedLegalDecisi
         daire,
         ozet,
         snippet: result.snippet || ozet,
+        sourceUrl: result.sourceUrl || result.url || '',
+        documentUrl: result.documentUrl || result.sourceUrl || result.url || '',
         relevanceScore: Number.isFinite(relevanceScore) ? relevanceScore : undefined,
       };
     })
@@ -137,18 +154,18 @@ export const searchLegalDecisions = async ({
         authHeaders.Authorization = `Bearer ${session.access_token}`;
     }
 
-  let response = await fetch(`${apiBaseUrl}/api/legal/search-decisions`, {
+  let response = await fetchWithTimeout(`${apiBaseUrl}/api/legal/search-decisions`, {
     method: 'POST',
     headers: authHeaders,
     body,
-  });
+  }, 18000);
 
   if (!response.ok) {
-    response = await fetch(`${apiBaseUrl}/api/legal?action=search-decisions`, {
+    response = await fetchWithTimeout(`${apiBaseUrl}/api/legal?action=search-decisions`, {
       method: 'POST',
       headers: authHeaders,
       body,
-    });
+    }, 18000);
   }
 
   if (!response.ok) {
@@ -173,6 +190,13 @@ export const getLegalDocument = async ({
   snippet,
   apiBaseUrl = '',
 }: GetLegalDocumentParams): Promise<string> => {
+  const summaryFallback = [ozet, snippet].map(value => String(value || '').trim()).filter(Boolean).join('\n\n');
+  const isSyntheticDocumentId = /^(search-|legal-|ai-summary)/i.test(String(documentId || ''));
+
+  if (!documentUrl && isSyntheticDocumentId && summaryFallback) {
+    return summaryFallback;
+  }
+
   if (!documentId && !documentUrl) {
     throw new Error('Belge kimligi bulunamadi.');
   }
@@ -196,18 +220,18 @@ export const getLegalDocument = async ({
     authHeaders.Authorization = `Bearer ${session.access_token}`;
   }
 
-  let response = await fetch(`${apiBaseUrl}/api/legal/get-document`, {
+  let response = await fetchWithTimeout(`${apiBaseUrl}/api/legal/get-document`, {
     method: 'POST',
     headers: authHeaders,
     body,
-  });
+  }, 18000);
 
   if (!response.ok) {
-    response = await fetch(`${apiBaseUrl}/api/legal?action=get-document`, {
+    response = await fetchWithTimeout(`${apiBaseUrl}/api/legal?action=get-document`, {
       method: 'POST',
       headers: authHeaders,
       body,
-    });
+    }, 18000);
   }
 
   if (!response.ok) {

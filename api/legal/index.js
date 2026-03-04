@@ -3,7 +3,10 @@ import { createClient } from '@supabase/supabase-js';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-const MODEL_NAME = 'gemini-2.5-pro';
+const MODEL_NAME = process.env.LEGAL_GEMINI_MODEL_NAME
+    || process.env.GEMINI_MODEL_NAME
+    || process.env.VITE_GEMINI_MODEL_NAME
+    || 'gemini-2.5-flash';
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
@@ -148,6 +151,7 @@ const isRetryableAiError = (error) => {
     return [
         'fetch failed',
         'etimedout',
+        'timeout',
         'econnreset',
         'socket hang up',
         'temporary failure',
@@ -160,12 +164,23 @@ const isRetryableAiError = (error) => {
 async function generateContentWithRetry(requestPayload, options = {}) {
     const maxRetries = Number.isFinite(options.maxRetries) ? options.maxRetries : 3;
     const initialDelayMs = Number.isFinite(options.initialDelayMs) ? options.initialDelayMs : 1000;
+    const requestTimeoutMs = Number.isFinite(options.requestTimeoutMs) ? options.requestTimeoutMs : 18000;
 
     let lastError = null;
 
     for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
         try {
-            return await ai.models.generateContent(requestPayload);
+            const response = await Promise.race([
+                ai.models.generateContent(requestPayload),
+                new Promise((_, reject) => {
+                    setTimeout(() => {
+                        const timeoutError = new Error(`AI request timeout after ${requestTimeoutMs}ms`);
+                        timeoutError.code = 'AI_TIMEOUT';
+                        reject(timeoutError);
+                    }, requestTimeoutMs);
+                }),
+            ]);
+            return response;
         } catch (error) {
             lastError = error;
             const canRetry = attempt < maxRetries && isRetryableAiError(error);
@@ -225,7 +240,7 @@ Her karar icin su alanlari uret:
 Sadece JSON array dondur:
 [{"mahkeme":"...","daire":"...","esasNo":"...","kararNo":"...","tarih":"...","ozet":"...","sourceUrl":"https://...","relevanceScore":85}]`,
             config: { tools: [{ googleSearch: {} }] }
-        });
+        }, { maxRetries: 1, initialDelayMs: 500, requestTimeoutMs: 14000 });
 
         text = response.text || '';
         const parsed = maybeExtractJson(text);
@@ -267,7 +282,10 @@ Sadece JSON array dondur:
     });
 }
 
-async function getDocumentViaAIFallback({ keyword = '', documentId = '', documentUrl = '', title = '', esasNo = '', kararNo = '', tarih = '', daire = '', ozet = '' }) {
+async function getDocumentViaAIFallback(
+    { keyword = '', documentId = '', documentUrl = '', title = '', esasNo = '', kararNo = '', tarih = '', daire = '', ozet = '' },
+    options = {}
+) {
     const queryParts = [
         keyword,
         title,
@@ -297,7 +315,7 @@ Kurallar:
             tools: [{ googleSearch: {} }],
             temperature: 0.1,
         }
-    });
+    }, options);
 
     return (response.text || '').replace(/https?:\/\/\S+/gi, '').trim();
 }
@@ -308,6 +326,24 @@ async function handleGetDocument(req, res) {
 
     if (!documentId && !documentUrl) {
         return res.status(400).json({ error: 'documentId veya documentUrl gereklidir.' });
+    }
+
+    const safeDocumentId = String(documentId || '');
+    const hasSyntheticDocumentId = /^(search-|legal-|ai-summary)/i.test(safeDocumentId);
+    const summaryFallback = [ozet, snippet].map(value => String(value || '').trim()).filter(Boolean).join('\n\n');
+
+    if (!documentUrl && hasSyntheticDocumentId) {
+        return res.json({
+            success: true,
+            source,
+            provider: 'summary-fallback',
+            document: {
+                content: summaryFallback || 'Karar metni kaynagi bulunamadi. Ozet goruntuleniyor.',
+                mimeType: 'text/plain',
+                documentId: safeDocumentId,
+                documentUrl: '',
+            }
+        });
     }
 
     let content = '';
@@ -322,7 +358,7 @@ async function handleGetDocument(req, res) {
             tarih,
             daire,
             ozet: [ozet, snippet].filter(Boolean).join(' '),
-        });
+        }, { maxRetries: 1, initialDelayMs: 400, requestTimeoutMs: 12000 });
     } catch (error) {
         console.error('AI get-document fallback error:', error);
     }

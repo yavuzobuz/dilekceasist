@@ -11,6 +11,8 @@ interface LegalSource {
 interface SearchResult {
     id?: string;
     documentId?: string;
+    sourceUrl?: string;
+    documentUrl?: string;
     title?: string;
     esasNo?: string;
     kararNo?: string;
@@ -68,6 +70,13 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
         return result.documentId || result.id || fallback;
     };
 
+    const shouldFetchDocumentFromApi = (result: SearchResult, fallbackId: string): boolean => {
+        const resolvedId = getResultId(result, fallbackId);
+        const hasSyntheticId = /^(search-|legal-|ai-summary)/i.test(String(resolvedId || ''));
+        const hasDocumentUrl = Boolean((result.documentUrl || result.sourceUrl || '').trim());
+        return hasDocumentUrl || !hasSyntheticId;
+    };
+
     const handleSearch = async () => {
         if (!keyword.trim()) return;
 
@@ -96,12 +105,17 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
             return documentContent[docId];
         }
 
+        if (!shouldFetchDocumentFromApi(result, fallbackId)) {
+            return result.ozet || result.snippet || '';
+        }
+
         setLoadingDocument(docId);
 
         try {
             const content = await getLegalDocument({
                 source: selectedSource,
                 documentId: docId,
+                documentUrl: result.documentUrl || result.sourceUrl,
                 title: result.title,
                 esasNo: result.esasNo,
                 kararNo: result.kararNo,
