@@ -1,12 +1,13 @@
 import { GoogleGenAI, Type } from '@google/genai';
-import { consumeGenerationCredit, TRIAL_DAILY_GENERATION_LIMIT } from '../_lib/generationQuota.js';
+import { consumeGenerationCredit, TRIAL_DAILY_GENERATION_LIMIT } from '../../api/_lib/generationQuota.js';
+import { applyCors, getSafeErrorMessage } from '../../api/_lib/cors.js';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const MODEL_NAME = process.env.GEMINI_MODEL_NAME || process.env.VITE_GEMINI_MODEL_NAME || 'gemini-2.5-flash';
 
 const getAiClient = () => {
     if (!GEMINI_API_KEY) {
-        throw new Error('GEMINI_API_KEY or VITE_GEMINI_API_KEY is not configured');
+        throw new Error('GEMINI_API_KEY is not configured');
     }
     return new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 };
@@ -340,9 +341,12 @@ async function runWebVerificationSearch(ai, keyword, question) {
 }
 
 export default async function handler(req, res) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
+    if (!applyCors(req, res, {
+        methods: 'POST, OPTIONS',
+        headers: 'Content-Type, Authorization, x-api-key',
+    })) {
+        return res.status(403).json({ error: 'CORS: Origin not allowed' });
+    }
 
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -632,7 +636,7 @@ Ek kural: Basit sorularda (or. hangi mahkeme, sure) kisa ve net cevap ver.`;
     } catch (error) {
         console.error('Chat Error:', error);
         if (!res.headersSent) {
-            res.status(500).json({ error: error?.message || 'Internal Server Error' });
+            res.status(500).json({ error: getSafeErrorMessage(error, 'Internal Server Error') });
         } else {
             res.write(JSON.stringify({
                 text: '\n\nSohbet servisi geçici olarak kullanılamıyor. Lütfen tekrar deneyin.\n',

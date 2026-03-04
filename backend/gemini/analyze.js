@@ -1,13 +1,16 @@
 import { GoogleGenAI } from '@google/genai';
+import { applyCors, getSafeErrorMessage } from '../../api/_lib/cors.js';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const MODEL_NAME = 'gemini-3-pro-preview';
 
 export default async function handler(req, res) {
-    // CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (!applyCors(req, res, {
+        methods: 'POST, OPTIONS',
+        headers: 'Content-Type, Authorization',
+    })) {
+        return res.status(403).json({ error: 'CORS: Origin not allowed' });
+    }
 
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
@@ -90,6 +93,6 @@ SADECE JSON döndür, başka açıklama ekleme.`;
 
     } catch (error) {
         console.error('Analyze Error:', error);
-        res.status(500).json({ error: error.message || 'Internal Server Error' });
+        res.status(500).json({ error: getSafeErrorMessage(error, 'Internal Server Error') });
     }
 }
