@@ -123,18 +123,33 @@ const Profile: React.FC = () => {
         Authorization: `Bearer ${session.access_token}`
       };
 
-      // Prefer dedicated endpoint; fallback keeps compatibility with environments
-      // where plan summary is exposed via /api/admin-users?action=plan-summary.
-      let response = await fetch('/api/user-plan-summary', { headers: authHeaders });
-      if (!response.ok) {
-        response = await fetch('/api/admin-users?action=plan-summary', { headers: authHeaders });
-      }
-      if (!response.ok) {
-        throw new Error('Plan bilgisi alınamadı');
+      const parseSummaryResponse = async (response: Response): Promise<UserPlanSummary | null | undefined> => {
+        if (!response.ok) return undefined;
+
+        const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+        if (!contentType.includes('application/json')) return undefined;
+
+        const data = await response.json().catch(() => undefined);
+        if (!data || typeof data !== 'object' || !('summary' in data)) return undefined;
+
+        return (data as { summary?: UserPlanSummary | null }).summary ?? null;
+      };
+
+      // Vercel rewrite fallback can return index.html for missing API routes.
+      // Start with the known existing endpoint and then try legacy path.
+      let summary = await parseSummaryResponse(
+        await fetch('/api/admin-users?action=plan-summary', { headers: authHeaders })
+      );
+
+      if (summary === undefined) {
+        summary = await parseSummaryResponse(
+          await fetch('/api/user-plan-summary', { headers: authHeaders })
+        );
       }
 
-      const data = await response.json();
-      const summary = data.summary || null;
+      if (summary === undefined) {
+        throw new Error('Plan bilgisi alinamadi');
+      }
       setPlanSummary(summary);
       return summary;
     } catch (error) {
@@ -175,7 +190,9 @@ const Profile: React.FC = () => {
 
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
-          console.warn('Billing confirm session failed:', payload?.error || payload?.details || response.status);
+          const errorMessage = payload?.details || payload?.error || `HTTP ${response.status}`;
+          console.warn('Billing confirm session failed:', errorMessage);
+          toast.error(errorMessage);
         }
       } catch (error) {
         console.warn('Billing confirm session request failed:', error);
