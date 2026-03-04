@@ -1,5 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
+import https from 'node:https';
+import dns from 'node:dns';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
@@ -11,6 +13,20 @@ const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 const YARGITAY_BASE_URL = 'https://karararama.yargitay.gov.tr';
 const YARGITAY_DEFAULT_PAGE_SIZE = 10;
+const toPositiveInt = (value, fallback) => {
+    const parsed = Number.parseInt(String(value ?? ''), 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+const YARGITAY_REQUEST_TIMEOUT_MS = toPositiveInt(process.env.YARGITAY_REQUEST_TIMEOUT_MS, 18000);
+const LEGAL_AI_FALLBACK_TIMEOUT_MS = toPositiveInt(process.env.LEGAL_AI_FALLBACK_TIMEOUT_MS, 9000);
+
+const YARGITAY_BROWSER_HEADERS = {
+    Accept: 'application/json, text/plain, */*',
+    Origin: YARGITAY_BASE_URL,
+    Referer: `${YARGITAY_BASE_URL}/`,
+    'X-Requested-With': 'XMLHttpRequest',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+};
 
 const normalizeOrigin = (origin = '') => String(origin || '').trim().replace(/\/+$/, '').toLowerCase();
 
@@ -226,6 +242,123 @@ const fetchWithTimeout = async (url, init = {}, timeoutMs = 15000) => {
     }
 };
 
+const toHeaderRecord = (headers = {}) => {
+    if (headers instanceof Headers) {
+        return Object.fromEntries(headers.entries());
+    }
+
+    if (Array.isArray(headers)) {
+        return headers.reduce((acc, [key, value]) => {
+            if (key && value !== undefined && value !== null) {
+                acc[String(key)] = String(value);
+            }
+            return acc;
+        }, {});
+    }
+
+    if (headers && typeof headers === 'object') {
+        return Object.entries(headers).reduce((acc, [key, value]) => {
+            if (value !== undefined && value !== null) {
+                acc[String(key)] = String(value);
+            }
+            return acc;
+        }, {});
+    }
+
+    return {};
+};
+
+const fetchWithIpv4Timeout = (targetUrl, init = {}, timeoutMs = 15000) => new Promise((resolve, reject) => {
+    const parsedUrl = new URL(targetUrl);
+    const method = String(init.method || 'GET').toUpperCase();
+    const headers = toHeaderRecord(init.headers);
+    const body = typeof init.body === 'string'
+        ? init.body
+        : (init.body ? String(init.body) : '');
+
+    if (body && !headers['Content-Length'] && !headers['content-length']) {
+        headers['Content-Length'] = String(Buffer.byteLength(body));
+    }
+
+    const request = https.request({
+        protocol: parsedUrl.protocol,
+        hostname: parsedUrl.hostname,
+        port: parsedUrl.port || 443,
+        path: `${parsedUrl.pathname}${parsedUrl.search}`,
+        method,
+        headers,
+        lookup: (hostname, _options, callback) => dns.lookup(hostname, { family: 4, all: false }, callback),
+    }, (response) => {
+        const chunks = [];
+
+        response.on('data', (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+        response.on('end', () => {
+            const bodyText = Buffer.concat(chunks).toString('utf8');
+            const status = Number(response.statusCode || 0);
+            resolve({
+                ok: status >= 200 && status < 300,
+                status,
+                text: bodyText,
+            });
+        });
+    });
+
+    request.on('error', reject);
+    request.setTimeout(timeoutMs, () => {
+        request.destroy(new Error(`Request timeout after ${timeoutMs}ms`));
+    });
+
+    if (body) request.write(body);
+    request.end();
+});
+
+const requestYargitayText = async (pathOrUrl, init = {}, timeoutMs = YARGITAY_REQUEST_TIMEOUT_MS) => {
+    const isAbsoluteUrl = /^https?:\/\//i.test(String(pathOrUrl || ''));
+    const targetUrl = isAbsoluteUrl
+        ? String(pathOrUrl)
+        : `${YARGITAY_BASE_URL}${String(pathOrUrl || '')}`;
+
+    const baseInit = {
+        ...init,
+        headers: {
+            ...toHeaderRecord(init.headers),
+        },
+    };
+
+    const browserLikeInit = {
+        ...baseInit,
+        headers: {
+            ...YARGITAY_BROWSER_HEADERS,
+            ...toHeaderRecord(baseInit.headers),
+        },
+    };
+
+    try {
+        const response = await fetchWithTimeout(targetUrl, baseInit, timeoutMs);
+        if (response.ok) {
+            return await response.text();
+        }
+    } catch {
+        // continue with browser-like and ipv4 fallbacks
+    }
+
+    try {
+        const response = await fetchWithTimeout(targetUrl, browserLikeInit, timeoutMs);
+        if (response.ok) {
+            return await response.text();
+        }
+    } catch {
+        // continue with ipv4 fallback
+    }
+
+    const ipv4Response = await fetchWithIpv4Timeout(targetUrl, browserLikeInit, timeoutMs);
+    if (!ipv4Response.ok) {
+        throw new Error(`Yargitay request failed (HTTP ${ipv4Response.status || 0})`);
+    }
+
+    return ipv4Response.text || '';
+};
+
 const parseDecisionMetaFromText = (text = '') => {
     const safe = normalizeYargitayText(text);
     const matchEsas = safe.match(/(?:E\.?|Esas)\s*[:.]?\s*([0-9]{4}\/[0-9]+)/i);
@@ -309,19 +442,16 @@ async function searchYargitayOfficial(keyword, options = {}) {
         }
     });
 
-    const response = await fetchWithTimeout(`${YARGITAY_BASE_URL}/aramalist`, {
+    const text = await requestYargitayText('/aramalist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: requestBody,
-    }, 12000);
+    }, YARGITAY_REQUEST_TIMEOUT_MS);
 
-    if (!response.ok) {
-        throw new Error(`Yargitay search HTTP ${response.status}`);
-    }
-
-    const text = await response.text();
     const parsed = maybeExtractJson(text);
-    const rows = Array.isArray(parsed?.data?.data) ? parsed.data.data : [];
+    const rows = Array.isArray(parsed?.data?.data)
+        ? parsed.data.data
+        : (Array.isArray(parsed?.data) ? parsed.data : []);
 
     if (rows.length === 0) return [];
 
@@ -378,16 +508,11 @@ async function getYargitayDocumentText({ documentId = '', documentUrl = '' }) {
 
     if (!targetUrl) return '';
 
-    const response = await fetchWithTimeout(targetUrl, {
+    const rawText = await requestYargitayText(targetUrl, {
         method: 'GET',
         headers: { Accept: 'application/json, text/plain, */*' },
-    }, 12000);
+    }, YARGITAY_REQUEST_TIMEOUT_MS);
 
-    if (!response.ok) {
-        throw new Error(`Yargitay getDokuman HTTP ${response.status}`);
-    }
-
-    const rawText = await response.text();
     const parsed = maybeExtractJson(rawText);
     const htmlContent = typeof parsed?.data === 'string'
         ? parsed.data
@@ -415,6 +540,7 @@ async function handleSearchDecisions(req, res) {
     const { source, keyword } = req.body || {};
     const normalizedSource = String(source || 'all').trim().toLowerCase();
     const shouldUseYargitayOfficial = !normalizedSource || normalizedSource === 'all' || normalizedSource === 'yargitay';
+    let officialSearchError = null;
 
     if (!keyword) {
         return res.status(400).json({ error: 'Arama kelimesi (keyword) gereklidir.' });
@@ -423,17 +549,17 @@ async function handleSearchDecisions(req, res) {
     if (shouldUseYargitayOfficial) {
         try {
             const yargitayResults = await searchYargitayOfficial(keyword, { pageSize: YARGITAY_DEFAULT_PAGE_SIZE, pageNumber: 1 });
-            if (yargitayResults.length > 0) {
-                return res.json({
-                    success: true,
-                    source: 'yargitay',
-                    provider: 'yargitay-official',
-                    keyword,
-                    results: yargitayResults,
-                });
-            }
+            return res.json({
+                success: true,
+                source: 'yargitay',
+                provider: 'yargitay-official',
+                keyword,
+                results: yargitayResults,
+                ...(yargitayResults.length === 0 ? { warning: 'Resmi Yargitay servisinde bu arama icin karar bulunamadi.' } : {}),
+            });
         } catch (error) {
             console.error('Yargitay official search error:', error);
+            officialSearchError = error;
         }
     }
 
@@ -459,7 +585,7 @@ Her karar icin su alanlari uret:
 Sadece JSON array dondur:
 [{"mahkeme":"...","daire":"...","esasNo":"...","kararNo":"...","tarih":"...","ozet":"...","sourceUrl":"https://...","relevanceScore":85}]`,
             config: { tools: [{ googleSearch: {} }] }
-        }, { maxRetries: 1, initialDelayMs: 500, requestTimeoutMs: 14000 });
+        }, { maxRetries: 0, initialDelayMs: 400, requestTimeoutMs: LEGAL_AI_FALLBACK_TIMEOUT_MS });
 
         text = response.text || '';
         const parsed = maybeExtractJson(text);
@@ -489,10 +615,11 @@ Sadece JSON array dondur:
             id: 'ai-summary',
             documentId: 'ai-summary',
             title: 'AI Arama Sonucu',
-            ozet: text.substring(0, 500),
+            ozet: text.substring(0, 500) || 'Resmi Yargitay servisi su an yanit vermedigi icin karar listesi olusturulamadi.',
         }];
 
-    const finalWarning = warning || (shouldUseYargitayOfficial
+    const hasOfficialFailure = shouldUseYargitayOfficial && Boolean(officialSearchError);
+    const finalWarning = warning || (hasOfficialFailure
         ? 'Resmi Yargitay servisi su an cevap vermedi, AI fallback sonucu gosteriliyor.'
         : '');
 
@@ -624,7 +751,7 @@ async function handleGetDocument(req, res) {
             tarih,
             daire,
             ozet: [ozet, snippet].filter(Boolean).join(' '),
-        }, { maxRetries: 1, initialDelayMs: 400, requestTimeoutMs: 12000 });
+        }, { maxRetries: 0, initialDelayMs: 300, requestTimeoutMs: LEGAL_AI_FALLBACK_TIMEOUT_MS });
     } catch (error) {
         console.error('AI get-document fallback error:', error);
     }
