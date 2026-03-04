@@ -399,10 +399,10 @@ const isSimpleGuidanceQuestion = (rawMessage: string): boolean => {
     if (isLikelyPetitionRequest(normalized)) return false;
 
     const tokenCount = normalized.split(/\s+/).filter(Boolean).length;
-    const hasSimpleIntent = /(nereye|hangi mahkeme|hangi mahkemeye|nasil|sure|kac gun|harc|gorevli|yetkili|acabilir miyim|acmaliyim|gerekli mi)/i.test(normalized);
+    const hasSimpleIntent = /(nedir|ne demek|ne anlama|nasil olur|kimdir|nereye|hangi mahkeme|hangi mahkemeye|nasil|sure|kac gun|harc|gorevli|yetkili|acabilir miyim|acmaliyim|gerekli mi)/i.test(normalized);
     const hasComplexIntent = /(emsal|ictihat|karar no|esas no|detayli analiz|madde madde|belge olustur|dilekce|taslak)/i.test(normalized);
 
-    return hasSimpleIntent && !hasComplexIntent && tokenCount <= 24;
+    return hasSimpleIntent && !hasComplexIntent && tokenCount <= 30;
 };
 
 const hasWebEvidence = (result: WebSearchResult | null): boolean => {

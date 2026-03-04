@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from '@google/genai';
-import { consumeGenerationCredit, TRIAL_DAILY_GENERATION_LIMIT } from '../_lib/generationQuota.js';
+import { consumeGenerationCredit, TRIAL_DAILY_GENERATION_LIMIT } from '../../lib/api/generationQuota.js';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 const MODEL_NAME = process.env.GEMINI_MODEL_NAME || process.env.VITE_GEMINI_MODEL_NAME || 'gemini-2.5-flash';
