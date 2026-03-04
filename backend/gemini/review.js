@@ -1,8 +1,7 @@
-import { GoogleGenAI } from '@google/genai';
-import { applyCors, getSafeErrorMessage } from '../../api/_lib/cors.js';
+import { applyCors, getSafeErrorMessage } from '../../lib/api/cors.js';
+import { GEMINI_MODEL_NAME, getGeminiClient } from './_shared.js';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const MODEL_NAME = 'gemini-3-pro-preview';
+const MODEL_NAME = GEMINI_MODEL_NAME;
 
 export default async function handler(req, res) {
     if (!applyCors(req, res, {
@@ -16,6 +15,7 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     try {
+        const ai = getGeminiClient();
         const params = req.body;
 
         const systemInstruction = `Sen üst düzey bir Türk hukuk editörüsün. Dilekçeyi gözden geçir ve iyileştir.`;

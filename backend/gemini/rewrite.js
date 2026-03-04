@@ -1,8 +1,7 @@
-import { GoogleGenAI } from '@google/genai';
-import { applyCors, getSafeErrorMessage } from '../../api/_lib/cors.js';
+import { applyCors, getSafeErrorMessage } from '../../lib/api/cors.js';
+import { GEMINI_MODEL_NAME, getGeminiClient } from './_shared.js';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const MODEL_NAME = 'gemini-3-pro-preview';
+const MODEL_NAME = GEMINI_MODEL_NAME;
 
 const REWRITE_MODE_CONFIG = {
     fix: {
@@ -39,6 +38,7 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     try {
+        const ai = getGeminiClient();
         const { textToRewrite, mode } = req.body || {};
         if (typeof textToRewrite !== 'string' || textToRewrite.trim().length === 0) {
             return res.status(400).json({ error: 'textToRewrite is required' });

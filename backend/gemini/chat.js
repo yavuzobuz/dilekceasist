@@ -1,9 +1,9 @@
 import { GoogleGenAI, Type } from '@google/genai';
-import { consumeGenerationCredit, TRIAL_DAILY_GENERATION_LIMIT } from '../../api/_lib/generationQuota.js';
-import { applyCors, getSafeErrorMessage } from '../../api/_lib/cors.js';
+import { consumeGenerationCredit, TRIAL_DAILY_GENERATION_LIMIT } from '../../lib/api/generationQuota.js';
+import { applyCors, getSafeErrorMessage } from '../../lib/api/cors.js';
+import { GEMINI_API_KEY, GEMINI_MODEL_NAME } from './_shared.js';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const MODEL_NAME = process.env.GEMINI_MODEL_NAME || process.env.VITE_GEMINI_MODEL_NAME || 'gemini-2.5-flash';
+const MODEL_NAME = GEMINI_MODEL_NAME;
 
 const getAiClient = () => {
     if (!GEMINI_API_KEY) {
