@@ -12,6 +12,7 @@ export const config = {
             sizeLimit: '4mb',
         },
     },
+    maxDuration: 60,
 };
 
 const ACTION_HANDLERS = {
