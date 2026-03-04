@@ -235,12 +235,47 @@ const KEYWORD_DRAFTING_TERMS = new Set([
     'bana', 'lutfen', 'yardim', 'hazir', 'yapalim'
 ]);
 
-const FACT_SIGNAL_REGEX = /\b(tck|cmk|hmk|tmk|anayasa|madde|maddesi|esas|karar|uyusturucu|hirsizlik|dolandiricilik|tehdit|yaralama|oldurme|gozalti|tutuk|delil|kamera|tanik|rapor|bilirkisi|ele gecir|kullanim siniri|ticaret|satici|isveren|kidem|ihbar|fesih|veraset|tapu)\b|\d{1,2}[./-]\d{1,2}[./-]\d{2,4}|\b\d{4,}\b/i;
+const FACT_SIGNAL_REGEX = /\b(tck|cmk|hmk|tmk|anayasa|madde|maddesi|esas|karar|uyusturucu|hirsizlik|dolandiricilik|tehdit|yaralama|oldurme|gozalti|tutuk|delil|kamera|tanik|rapor|bilirkisi|ele gecir|kullanim siniri|ticaret|satici|isveren|kidem|ihbar|fesih|veraset|tapu|imar|ruhsat)\b/i;
+const DATE_ONLY_REGEX = /^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/;
+const DIGITS_ONLY_REGEX = /^\d+$/;
+const PERSON_NAME_REGEX = /^[A-Z\u00C7\u011E\u0130\u00D6\u015E\u00DC][a-z\u00E7\u011F\u0131\u00F6\u015F\u00FC]+(?:\s+[A-Z\u00C7\u011E\u0130\u00D6\u015E\u00DC][a-z\u00E7\u011F\u0131\u00F6\u015F\u00FC]+){1,2}$/;
+const ADDRESS_HINT_REGEX = /\b(mahallesi|mah|sokak|sok|cadde|cad|bulvar|bulvari|apartman|apt|bina|daire|blok|kapi|no)\b/i;
+const BARE_MADDE_REGEX = /^\d{1,3}\.?\s*maddesi?$/i;
+const LAW_REFERENCE_REGEX = /\b(tck|cmk|hmk|tmk|tbk|iik|ttk|vuk|kmk|anayasa|imar kanunu|is kanunu)\b/i;
 
 const hasFactSignal = (rawValue: string): boolean => {
     const normalized = normalizeKeywordText(rawValue);
     if (!normalized) return false;
     return FACT_SIGNAL_REGEX.test(normalized);
+};
+
+const normalizeAmbiguousMaddeKeyword = (value: string, sourceText: string): string => {
+    const cleaned = String(value || '').replace(/[“”"']/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!cleaned) return '';
+
+    const maddeMatch = cleaned.match(/^(\d{1,3})\.?\s*maddesi?$/i);
+    if (!maddeMatch) return cleaned;
+
+    const maddeNo = maddeMatch[1];
+    const normalizedSource = normalizeKeywordText(sourceText);
+    if ((maddeNo === '32' || maddeNo === '42') && /(imar|ruhsat|ruhsatsiz|yapi|yikim|imar barisi)/i.test(normalizedSource)) {
+        return `3194 sayili Imar Kanunu ${maddeNo}. madde`;
+    }
+
+    return '';
+};
+
+const isNoisyKeywordCandidate = (value: string): boolean => {
+    const cleaned = String(value || '').replace(/[“”"']/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!cleaned) return true;
+
+    if (DATE_ONLY_REGEX.test(cleaned)) return true;
+    if (DIGITS_ONLY_REGEX.test(cleaned)) return true;
+    if (ADDRESS_HINT_REGEX.test(cleaned)) return true;
+    if (PERSON_NAME_REGEX.test(cleaned)) return true;
+    if (BARE_MADDE_REGEX.test(cleaned) && !LAW_REFERENCE_REGEX.test(cleaned)) return true;
+
+    return false;
 };
 
 const extractKeywordCandidates = (rawValue: string): string[] => {
@@ -252,8 +287,10 @@ const extractKeywordCandidates = (rawValue: string): string[] => {
     const seen = new Set<string>();
 
     const addCandidate = (value: string) => {
-        const cleaned = String(value || '').replace(/[“”"']/g, ' ').replace(/\s+/g, ' ').trim();
+        const normalizedMadde = normalizeAmbiguousMaddeKeyword(value, text);
+        const cleaned = String(normalizedMadde || '').replace(/[“”"']/g, ' ').replace(/\s+/g, ' ').trim();
         if (!cleaned || cleaned.length < 3) return;
+        if (isNoisyKeywordCandidate(cleaned)) return;
 
         const normalizedKey = normalizeKeywordText(cleaned);
         if (!normalizedKey || normalizedKey.length < 3) return;
@@ -288,11 +325,6 @@ const extractKeywordCandidates = (rawValue: string): string[] => {
 
     if (/kullanim sinirini asan|kullanim siniri/.test(normalizedText)) {
         addCandidate('kullanim sinirini asan miktarda madde');
-    }
-
-    const fullNameMatches = text.match(/\b[A-Z\u00C7\u011E\u0130\u00D6\u015E\u00DC][A-Za-z\u00C7\u011E\u0130\u00D6\u015E\u00DC\u00E7\u011F\u0131\u00F6\u015F\u00FC]+\s+[A-Z\u00C7\u011E\u0130\u00D6\u015E\u00DC][A-Za-z\u00C7\u011E\u0130\u00D6\u015E\u00DC\u00E7\u011F\u0131\u00F6\u015F\u00FC]+\b/g) || [];
-    for (const match of fullNameMatches) {
-        addCandidate(match);
     }
 
     const phraseChunks = text.split(/[,\n;]+/g);

@@ -46,6 +46,43 @@ const isWeakKeyword = (value = '') => {
     return false;
 };
 
+const DATE_ONLY_REGEX = /^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/;
+const DIGITS_ONLY_REGEX = /^\d+$/;
+const ADDRESS_HINT_REGEX = /\b(mahallesi|mah|sokak|sok|cadde|cad|bulvar|bulvari|apartman|apt|bina|daire|blok|kapi|no)\b/i;
+const PERSON_NAME_REGEX = /^[A-ZÇĞİÖŞÜ][a-zçğıöşü]+(?:\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+){1,2}$/;
+const BARE_MADDE_REGEX = /^\d{1,3}\.?\s*maddesi?$/i;
+const LAW_REFERENCE_REGEX = /\b(tck|cmk|hmk|tmk|tbk|iik|i\.?\s*i\.?\s*k|ttk|vuk|kmk|fsek|anayasa|imar kanunu|is kanunu|borclar kanunu)\b/i;
+
+const normalizeAmbiguousMaddeKeyword = (value = '', analysisText = '') => {
+    const normalized = normalizeKeyword(value);
+    if (!normalized) return '';
+
+    const maddeMatch = normalized.match(/^(\d{1,3})\.?\s*maddesi?$/i);
+    if (!maddeMatch) return normalized;
+
+    const maddeNo = maddeMatch[1];
+    const lowerAnalysis = String(analysisText || '').toLocaleLowerCase('tr-TR');
+
+    if ((maddeNo === '32' || maddeNo === '42') && /(imar|ruhsat|ruhsatsiz|yapi|yikim|imar barisi)/i.test(lowerAnalysis)) {
+        return `3194 sayili Imar Kanunu ${maddeNo}. madde`;
+    }
+
+    return '';
+};
+
+const isNoisyKeyword = (value = '') => {
+    const normalized = normalizeKeyword(value);
+    if (!normalized) return true;
+
+    if (DATE_ONLY_REGEX.test(normalized)) return true;
+    if (DIGITS_ONLY_REGEX.test(normalized)) return true;
+    if (ADDRESS_HINT_REGEX.test(normalized)) return true;
+    if (PERSON_NAME_REGEX.test(normalized)) return true;
+    if (BARE_MADDE_REGEX.test(normalized) && !LAW_REFERENCE_REGEX.test(normalized)) return true;
+
+    return false;
+};
+
 const pickFirst = (regex, text) => {
     const match = String(text || '').match(regex);
     return match ? normalizeKeyword(match[0]) : '';
@@ -711,27 +748,11 @@ const extractHeuristicKeywords = (analysisText = '') => {
 
     const keywords = [];
 
-    // Legal code references
+    // Sadece Kanun Kısaltması İçeren Maddeler (Örn: TCK 188)
     const codeRefs = text.match(/(?:TCK|CMK|HMK|TMK|TBK|İİK|IIK|TTK|BK|AİHM|AIHM|İYUK|IYUK|SGK|İK|VUK|KMK|FSEK)\s*(?:m\.?\s*)?\d+(?:\s*\/\s*\d+)?(?:\s*[-–]\s*\d+)?/gi) || [];
     codeRefs.forEach(ref => keywords.push(ref.replace(/\s+/g, ' ').trim()));
 
-    // "madde" references
-    const maddeRefs = text.match(/\d+\.?\s*madde(?:si)?/gi) || [];
-    maddeRefs.forEach(ref => keywords.push(ref.replace(/\s+/g, ' ').trim()));
-
-    // City/location context
-    const cityContext = pickFirst(/[A-ZÇĞİÖŞÜ][a-zçğıöşü]+(?:'da|'de|'ta|'te|'dan|'den|'tan|'ten)/, text);
-    if (cityContext) keywords.push(cityContext);
-
-    // Full person names
-    const fullNames = text.match(/\b[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\b/g) || [];
-    fullNames.slice(0, 3).forEach(name => keywords.push(name));
-
-    // Date references
-    const dateRefs = text.match(/\d{1,2}[.\/\-]\d{1,2}[.\/\-]\d{2,4}/g) || [];
-    dateRefs.slice(0, 2).forEach(date => keywords.push(date));
-
-    // Esas/Karar numbers
+    // Esas/Karar numbers (Hukuki dayanaklar için çok değerli)
     const esasKarar = text.match(/(?:E(?:sas)?\.?\s*(?:No\.?\s*)?[:.]?\s*\d{4}\/\d+|K(?:arar)?\.?\s*(?:No\.?\s*)?[:.]?\s*\d{4}\/\d+)/gi) || [];
     esasKarar.forEach(ref => keywords.push(ref.replace(/\s+/g, ' ').trim()));
 
@@ -768,16 +789,18 @@ const safeJsonParse = (raw = '') => {
 
 const buildFinalKeywords = (modelKeywords = [], analysisText = '') => {
     const combined = [
-        ...extractHeuristicKeywords(analysisText),
         ...(Array.isArray(modelKeywords) ? modelKeywords : []),
+        ...extractHeuristicKeywords(analysisText),
     ];
 
     const unique = [];
     const seen = new Set();
 
     for (const keyword of combined) {
-        const normalized = normalizeKeyword(keyword);
+        const normalized = normalizeAmbiguousMaddeKeyword(keyword, analysisText);
+        if (!normalized) continue;
         if (isWeakKeyword(normalized)) continue;
+        if (isNoisyKeyword(normalized)) continue;
 
         const key = keywordKey(normalized);
         if (seen.has(key)) continue;
@@ -845,6 +868,8 @@ export default async function handler(req, res) {
 - Cogu anahtar kelime 2-5 kelimelik hukuki ifadeler olsun
 - Tek kelimelik genel terimlerden kacin ("dava", "mahkeme" tek basina zayif)
 - Kanun maddesi referanslarini kisa tut ("TCK 188/3")
+- Kisi ad-soyad, mahalle/adres, bina no, tarih ve kimlik bilgilerini asla anahtar kelime yapma
+- "32. maddesi" gibi ciplak madde ifadeleri verme; kanun adini/numarasini mutlaka ekle
 - Turkce karakterleri dogru kullan
 - Minimum 8, maksimum 15 anahtar kelime uret
 

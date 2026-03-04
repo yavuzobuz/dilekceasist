@@ -78,6 +78,26 @@ function safeJsonObjectParse(text: string): any | null {
     }
 }
 
+const DATE_ONLY_REGEX = /^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/;
+const DIGITS_ONLY_REGEX = /^\d+$/;
+const PERSON_NAME_REGEX = /^[A-ZÇĞİÖŞÜ][a-zçğıöşü]+(?:\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+){1,2}$/;
+const ADDRESS_HINT_REGEX = /\b(mahallesi|mah|sokak|sok|cadde|cad|bulvar|bulvari|apartman|apt|bina|daire|blok|kapi|no)\b/i;
+const BARE_MADDE_REGEX = /^\d{1,3}\.?\s*maddesi?$/i;
+const LAW_REFERENCE_REGEX = /\b(tck|cmk|hmk|tmk|tbk|iik|ttk|vuk|kmk|anayasa|imar kanunu|is kanunu)\b/i;
+
+function isNoisyKeyword(value: string): boolean {
+    const normalized = String(value || '').replace(/[“”"']/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!normalized) return true;
+
+    if (DATE_ONLY_REGEX.test(normalized)) return true;
+    if (DIGITS_ONLY_REGEX.test(normalized)) return true;
+    if (ADDRESS_HINT_REGEX.test(normalized)) return true;
+    if (PERSON_NAME_REGEX.test(normalized)) return true;
+    if (BARE_MADDE_REGEX.test(normalized) && !LAW_REFERENCE_REGEX.test(normalized)) return true;
+
+    return false;
+}
+
 function dedupeKeywords(rawKeywords: unknown[]): string[] {
     const seen = new Set<string>();
     const keywords: string[] = [];
@@ -85,6 +105,7 @@ function dedupeKeywords(rawKeywords: unknown[]): string[] {
     for (const item of rawKeywords) {
         const normalized = String(item || '').replace(/[“”"']/g, ' ').replace(/\s+/g, ' ').trim();
         if (!normalized || normalized.length < 3) continue;
+        if (isNoisyKeyword(normalized)) continue;
         const key = normalized.toLocaleLowerCase('tr-TR');
         if (seen.has(key)) continue;
         seen.add(key);
@@ -98,7 +119,6 @@ function dedupeKeywords(rawKeywords: unknown[]): string[] {
 function extractKeywordFallbackFromAnalysis(analysisText: string): string[] {
     const text = String(analysisText || '');
     if (!text.trim()) return [];
-    const lowerText = text.toLocaleLowerCase('tr-TR');
 
     const candidates: string[] = [];
     const add = (value: string) => {
@@ -185,18 +205,6 @@ function extractKeywordFallbackFromAnalysis(analysisText: string): string[] {
     // Ticaret hukuku
     if (/çek|senet|bono|kambiyo/i.test(text)) add('kambiyo senetleri');
     if (/iflas|konkordato/i.test(text)) add('iflas hukuku');
-
-    // Person names
-    const fullNameMatches = text.match(/[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+/g) || [];
-    fullNameMatches.slice(0, 3).forEach(add);
-
-    // Date references
-    const dateRefs = text.match(/\d{1,2}[.\/\-]\d{1,2}[.\/\-]\d{2,4}/g) || [];
-    dateRefs.slice(0, 2).forEach(add);
-
-    // Phrase chunks from text
-    const phraseChunks = text.split(/[,\n;]+/g).map(chunk => chunk.trim()).filter(chunk => chunk.length >= 6);
-    phraseChunks.slice(0, 10).forEach(add);
 
     return dedupeKeywords(candidates);
 }
@@ -407,4 +415,3 @@ export async function reviewPetition(
     }));
     return data.text;
 }
-
