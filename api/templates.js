@@ -7,7 +7,7 @@
 import { ICRA_TEMPLATES, IS_HUKUKU_TEMPLATES } from '../templates-part1.js';
 import { TUKETICI_TEMPLATES, TICARET_TEMPLATES, MIRAS_TEMPLATES, CEZA_TEMPLATES, IDARI_TEMPLATES } from '../templates-part2.js';
 import { SOZLESME_VE_IHTARNAME_TEMPLATES } from '../templates-part3.js';
-import { applyCors, getSafeErrorMessage } from './_lib/cors.js';
+import { applyCors, getSafeErrorMessage } from '../lib/api/cors.js';
 
 const TEMPLATES = [
     ...ICRA_TEMPLATES,
@@ -150,7 +150,7 @@ export default async function handler(req, res) {
     try {
         if (req.method === 'GET') {
             if (process.env.NODE_ENV !== 'production') {
-                console.log('TEMPLATES API GET HIT. URL:', req.url);
+                console.warn('TEMPLATES API GET HIT. URL:', req.url);
             }
             const { category, search, id } = req.query;
 
@@ -234,7 +234,7 @@ export default async function handler(req, res) {
 
             // Single mode
             if (process.env.NODE_ENV !== 'production') {
-                console.log(`[TEMPLATE USE] ID: ${id}, variableCount: ${variables ? Object.keys(variables).length : 0}`);
+                console.warn(`[TEMPLATE USE] ID: ${id}, variableCount: ${variables ? Object.keys(variables).length : 0}`);
             }
             const content = fillTemplateContent(template, variables);
 
@@ -251,3 +251,5 @@ export default async function handler(req, res) {
         res.status(500).json({ error: getSafeErrorMessage(error, 'Templates API error') });
     }
 }
+
+

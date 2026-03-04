@@ -1,5 +1,5 @@
 import htmlToDocx from 'html-to-docx';
-import { applyCors, getSafeErrorMessage } from './_lib/cors.js';
+import { applyCors, getSafeErrorMessage } from '../lib/api/cors.js';
 
 export default async function handler(req, res) {
     if (!applyCors(req, res, {

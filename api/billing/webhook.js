@@ -30,7 +30,7 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { constructStripeWebhookEvent, processStripeWebhookEvent } = await import('../_lib/stripeCheckout.js');
+        const { constructStripeWebhookEvent, processStripeWebhookEvent } = await import('../../lib/api/stripeCheckout.js');
 
         const signatureHeader = Array.isArray(req.headers['stripe-signature'])
             ? req.headers['stripe-signature'][0]

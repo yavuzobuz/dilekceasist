@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { applyCors, getSafeErrorMessage } from '../_lib/cors.js';
-import { confirmStripeCheckoutSessionForUser } from '../_lib/stripeCheckout.js';
+import { applyCors, getSafeErrorMessage } from '../../lib/api/cors.js';
+import { confirmStripeCheckoutSessionForUser } from '../../lib/api/stripeCheckout.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
