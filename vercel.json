@@ -1,13 +1,12 @@
 {
   "functions": {
     "api/**/*.js": {
-      "maxDuration": 60,
-      "includeFiles": "api/_lib/**"
+      "maxDuration": 60
     }
   },
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]
