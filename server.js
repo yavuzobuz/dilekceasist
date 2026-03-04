@@ -29,10 +29,10 @@ dotenv.config();
 
 const app = express();
 const PORT = SERVER_CONFIG.PORT;
-const API_KEY = process.env.GEMINI_API_KEY;
+const API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 
 if (!API_KEY) {
-    console.error('âŒ GEMINI_API_KEY is not defined in .env file');
+    console.error('âŒ GEMINI_API_KEY (or VITE_GEMINI_API_KEY) is not defined in .env file');
     process.exit(1);
 }
 
@@ -1188,6 +1188,23 @@ app.post('/api/gemini/chat', async (req, res) => {
             hasConsumedDocumentCredit = true;
         }
 
+        const now = new Date();
+        const systemDateIstanbul = new Intl.DateTimeFormat('tr-TR', {
+            timeZone: 'Europe/Istanbul',
+            weekday: 'long',
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
+        }).format(now);
+        const systemTimeIstanbul = new Intl.DateTimeFormat('tr-TR', {
+            timeZone: 'Europe/Istanbul',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+        }).format(now);
+        const systemUtcIso = now.toISOString();
+
         const contextPrompt = `
 **MEVCUT DURUM VE BAÐLAM:**
 - **Vaka Özeti:** ${analysisSummary || "Henüz analiz yapýlmadý."}
@@ -1197,6 +1214,9 @@ app.post('/api/gemini/chat', async (req, res) => {
 - **Kullanýcýnýn Ek Metinleri:** ${safeContext.docContent || "Ek metin saðlanmadý."}
 - **Kullanýcýnýn Özel Talimatlarý:** ${safeContext.specifics || "Özel talimat saðlanmadý."}
 - **RAG Destek Baglami:** ${ragContext || "RAG baglami bulunamadi."}
+- **Sistem Tarihi (Europe/Istanbul):** ${systemDateIstanbul}
+- **Sistem Saati (Europe/Istanbul):** ${systemTimeIstanbul}
+- **UTC Zaman Damgasi:** ${systemUtcIso}
 ${requestFiles.length > 0 ? `- **Yüklenen Belgeler:** ${requestFiles.length} adet dosya yüklendi (${requestFiles.map(f => f.name).join(', ')})` : ''}
 `;
 
@@ -1218,7 +1238,7 @@ Kullanýcý dosya yüklediðinde:
 - Kullanýcýnýn sorularýný belge içeriðine göre yanýtla
 
 **YARGITAY KARARI ARAMA KURALLARI:**
-Kullanýcý þunlarý söylediðinde GERÇEK bir web aramasý yap:
+Kullanýcý sorusunu once analiz et; sadece gerekliyse GERCEK bir web aramasi yap:
 - "Yargýtay kararý ara", "emsal karar bul", "içtihat araþtýr"
 - "Bu konuda Yargýtay ne diyor?", "Yargýtay kararlarýný bul"
 - "Karar künyesi ver", "emsal karar listele"
@@ -1263,7 +1283,7 @@ Kullanýcý þunlarý söylediðinde generate_document fonksiyonunu MUTLAKA çaðýr:
 Ýþte mevcut davanýn baðlamý:
 ${contextPrompt}
 
-Türkçe yanýt ver. Yargýtay kararý aranmasý istendiðinde Google Search ile GERÇEK arama yap ve künyeli sonuçlar sun.`;
+Türkçe yanýt ver. Soruyu once analiz et; tanim/genel sorularda aramayi zorunlu tutma ve kisa mevzuat cevabi ver. Uygulama/uyusmazlik sorularinda gerekli gordugunde arama yap. Tarih/saat sorularinda, baglamdaki sistem tarih-saat bilgisini esas al.`;
 
         // Function for updating keywords
         const updateKeywordsFunction = {
@@ -4285,5 +4305,9 @@ app.all('/api/announcements', (req, res) => announcementsHandler(req, res));
 app.listen(PORT, () => {
     console.warn(`Server running on http://localhost:${PORT}`);
 });
+
+
+
+
 
 

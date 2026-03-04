@@ -169,6 +169,63 @@ const isEmsalSearchQuestion = (text = '') => {
     return /(emsal|ictihat|içtihat|yargitay|danistay|karar ara|karar aramasi|karar arar misin)/i.test(normalized);
 };
 
+const isDefinitionQuestion = (text = '') => {
+    const raw = normalizeText(text);
+    if (!raw) return false;
+    if (isLikelyDocumentRequest(raw) || isEmsalSearchQuestion(raw)) return false;
+
+    const normalized = normalizeKeywordText(raw);
+    if (!normalized) return false;
+
+    const tokenCount = normalized.split(/\s+/).filter(Boolean).length;
+    const asksDefinition = /(nedir|ne demek|ne anlama gelir|anlami nedir|tanimi nedir|kime denir|nasil tanimlanir|kavrami nedir)/i.test(normalized);
+    const hasDisputeMarkers = /(parsel|ada|pafta|ruhsat|ruhsatsiz|imar|yikim|muhurl|iptal|tazminat|uyusmazlik|dava|muvekkil|dosya|risk|strateji|itiraz|savunma)/i.test(normalized);
+
+    // Kisa "X nedir?" sorularini tanim sorusu olarak kabul et.
+    if (asksDefinition && tokenCount <= 8) return true;
+
+    return asksDefinition && !hasDisputeMarkers && tokenCount <= 22;
+};
+
+const isDisputeOrApplicationQuestion = (text = '') => {
+    const raw = normalizeText(text);
+    if (!raw) return false;
+    if (isDefinitionQuestion(raw)) return false;
+
+    const normalized = normalizeKeywordText(raw);
+    if (!normalized) return false;
+
+    const tokenCount = normalized.split(/\s+/).filter(Boolean).length;
+    const hasRiskOrDisputeIntent = /(parsel|ada|pafta|ruhsat|ruhsatsiz|imar|koruma kurulu|yikim|muhurl|iptal|tazminat|idari islem|uyusmazlik|somut olay|dosya|muvekkil|risk|strateji|ne yapmaliyim|nasil ilerlemeliyim|itiraz|savunma)/i.test(normalized);
+    const hasCaseSignal = hasFactSignal(normalized) && /(olay|dosya|parsel|muvekkil|sanik|davaci|davali|islem|iddia|karar)/i.test(normalized);
+
+    return hasRiskOrDisputeIntent || hasCaseSignal || tokenCount > 28;
+};
+
+const getCurrentDateContext = () => {
+    const now = new Date();
+    const istanbulDate = new Intl.DateTimeFormat('tr-TR', {
+        timeZone: 'Europe/Istanbul',
+        weekday: 'long',
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+    }).format(now);
+    const istanbulTime = new Intl.DateTimeFormat('tr-TR', {
+        timeZone: 'Europe/Istanbul',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+    }).format(now);
+
+    return {
+        istanbulDate,
+        istanbulTime,
+        utcIso: now.toISOString(),
+    };
+};
+
 const hasWebEvidence = (summary, sourceCount) => {
     const safeSummary = normalizeText(summary);
     const count = Number(sourceCount || 0);
@@ -397,9 +454,11 @@ export default async function handler(req, res) {
         const isDocumentRequest = isLikelyDocumentRequest(lastUserMessage);
         const isSimpleQuestion = isSimpleGuidanceQuestion(lastUserMessage);
         const isEmsalOnlyQuery = isEmsalSearchQuestion(lastUserMessage);
-        const requiresEvidenceForAnswer = !isSimpleQuestion || isDocumentRequest || (Array.isArray(files) && files.length > 0);
-        const requiresWebEvidence = requiresEvidenceForAnswer && !isEmsalOnlyQuery;
-        const requiresLegalEvidence = requiresEvidenceForAnswer;
+        const isDefinitionOnlyQuery = isDefinitionQuestion(lastUserMessage);
+        const isDisputeOrApplicationQuery = isDisputeOrApplicationQuestion(lastUserMessage);
+        const requiresEvidenceForAnswer = isDocumentRequest || isEmsalOnlyQuery || isDisputeOrApplicationQuery;
+        const requiresWebEvidence = isDocumentRequest || isDisputeOrApplicationQuery;
+        const requiresLegalEvidence = isDocumentRequest || isEmsalOnlyQuery || isDisputeOrApplicationQuery;
         const hasAnalysisSummary = effectiveAnalysisSummary.length > 0;
         const hasUploadedDocument = (Array.isArray(files) && files.length > 0) || contextDocContent.length > 0;
 
@@ -453,13 +512,7 @@ export default async function handler(req, res) {
 
         const missingWebEvidenceForChat = requiresWebEvidence && !hasVerifiedWebEvidence;
         const missingLegalEvidenceForChat = requiresLegalEvidence && !hasVerifiedLegalEvidence;
-
-        if (requiresEvidenceForAnswer && !isDocumentRequest && (missingWebEvidenceForChat || missingLegalEvidenceForChat)) {
-            return res.status(422).json({
-                error: 'Bu soruya güvenli yanıt için web ve emsal karar doğrulaması tamamlanamadı. Lütfen tekrar deneyin.',
-                code: 'MISSING_REQUIRED_EVIDENCE_FOR_CHAT'
-            });
-        }
+        const evidenceGapForChat = !isDocumentRequest && (missingWebEvidenceForChat || missingLegalEvidenceForChat);
 
         const documentGenerationAllowed = hasVerifiedWebEvidence && hasVerifiedLegalEvidence;
         const promptAnalysisSummary = clipPromptText(effectiveAnalysisSummary, 2200);
@@ -469,6 +522,7 @@ export default async function handler(req, res) {
         const promptDocContent = clipPromptText(contextDocContent, 1800);
         const promptSpecifics = clipPromptText(contextSpecifics, 1200);
         const promptCurrentDraft = clipPromptText(contextCurrentDraft, 3000);
+        const currentDateContext = getCurrentDateContext();
 
         const contextPrompt = `
 **MEVCUT DURUM:**
@@ -481,6 +535,11 @@ export default async function handler(req, res) {
 - Mevcut Dilekce Taslagi: ${promptCurrentDraft || 'Henuz olusturulan taslak yok'}
 - Web Kaynak Sayisi: ${effectiveWebSourceCount}
 - Emsal Karar Sayisi: ${effectiveLegalResultCount}
+- Dogrulama Modu: ${requiresEvidenceForAnswer ? 'Uygulama/Uyusmazlik - web+emsal arastirmasi gerekli' : 'Tanim/Genel - once mevzuat aciklamasi, sonra istege bagli emsal'}
+- Dogrulama Durumu: ${evidenceGapForChat ? 'Eksik kanit var, once soruyu analiz et; yalnizca gerekiyorsa arama oner veya arama yap' : 'Yeterli / zorunlu olmayan dogrulama'}
+- Sistem Tarihi (Europe/Istanbul): ${currentDateContext.istanbulDate}
+- Sistem Saati (Europe/Istanbul): ${currentDateContext.istanbulTime}
+- UTC Zaman Damgasi: ${currentDateContext.utcIso}
 ${Array.isArray(files) && files.length > 0 ? `- Yuklenen Belgeler: ${files.length} adet` : ''}
 `;
 
@@ -495,10 +554,19 @@ ${Array.isArray(files) && files.length > 0 ? `- Yuklenen Belgeler: ${files.lengt
 ${documentGenerationAllowed ? '6. generate_document fonksiyonunu sadece dogrulanmis kanit varken kullan' : '6. generate_document kullanma, kanit eksigini bildir'}
 7. search_yargitay fonksiyonu ile ictihat ara
 8. Mevcut dilekce taslagi varsa, sorulari o taslak metin uzerinden yanitla ve revizyon onerilerini taslaga uygulayarak ver
+9. Kullanici sorusunu once siniflandir: tanim/genel, usul, uygulama/uyusmazlik.
+10. Tanim/genel sorularda arama zorunlu degil; kisa ve net cevap ver, isterse emsal arastirmasi teklif et.
+11. Uygulama/uyusmazlik sorularinda gerekli gordugunde arama yap; arama yapamadiysan eldeki bilgiyle sinirlarini belirterek yanitla, dogrudan engelleme mesaji verme.
 
 ${contextPrompt}
 
-Ek kural: Basit sorularda (or. hangi mahkeme, sure) kisa ve net cevap ver.`;
+Ek kural 1: Basit sorularda (or. hangi mahkeme, sure) kisa ve net cevap ver.
+${isDefinitionOnlyQuery
+        ? 'Ek kural 2: Tanim/kavram sorularinda once kisa mevzuat cevabi ver. Web veya emsal aramasi zorunlu degil; cevabin sonunda istenirse emsal ictihat arastirabilecegini tek cumleyle opsiyon olarak belirt.'
+        : isSimpleQuestion
+            ? 'Ek kural 2: Basit usul sorularinda gereksiz uzun analiz yapma.'
+            : 'Ek kural 2: Uygulama/uyusmazlik sorularinda dogrulanmis web ve emsal bulgularina oncelik ver.'}
+Ek kural 3: Tarih/saat sorularinda yukaridaki sistem tarih-saat bilgisini esas al; tarih uydurma.`;
 
         const updateKeywordsFunction = {
             name: 'update_search_keywords',
