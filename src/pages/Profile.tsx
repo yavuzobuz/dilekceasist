@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, Petition } from '../../lib/supabase';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   User, Users, FileText, Calendar, Trash2, Eye, LogOut, ArrowLeft, Share2,
-  Plus, TrendingUp, Clock, CheckCircle, AlertCircle, Settings,
+  Plus, TrendingUp, Clock, CheckCircle, Settings,
   Download, Filter, Search, BarChart3, Briefcase, Edit3, Upload, Image, Save, X, Calculator,
   Building2, Phone, Mail, MapPin, ExternalLink, Loader2
 } from 'lucide-react';
@@ -53,6 +53,7 @@ const Profile: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'petitions' | 'clients' | 'statistics' | 'settings' | 'calculator' | 'labor'>('petitions');
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Office branding state
   const [officeLogoUrl, setOfficeLogoUrl] = useState<string | null>(profile?.office_logo_url || null);
@@ -99,6 +100,7 @@ const Profile: React.FC = () => {
   const [editVekaletPdf, setEditVekaletPdf] = useState<File | null>(null);
   const [removeExistingVekaletPdf, setRemoveExistingVekaletPdf] = useState(false);
   const editVekaletInputRef = useRef<HTMLInputElement>(null);
+  const billingSyncSessionRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -109,13 +111,13 @@ const Profile: React.FC = () => {
     }
   }, [user?.id]);
 
-  const loadPlanSummary = async () => {
-    if (!user) return;
+  const loadPlanSummary = async (): Promise<UserPlanSummary | null> => {
+    if (!user) return null;
 
     try {
       setLoadingPlanSummary(true);
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
+      if (!session?.access_token) return null;
 
       const authHeaders = {
         Authorization: `Bearer ${session.access_token}`
@@ -132,14 +134,78 @@ const Profile: React.FC = () => {
       }
 
       const data = await response.json();
-      setPlanSummary(data.summary || null);
+      const summary = data.summary || null;
+      setPlanSummary(summary);
+      return summary;
     } catch (error) {
       console.error('Error loading plan summary:', error);
       setPlanSummary(null);
+      return null;
     } finally {
       setLoadingPlanSummary(false);
     }
   };
+
+  useEffect(() => {
+    if (!user) return;
+
+    const params = new URLSearchParams(location.search);
+    const billing = String(params.get('billing') || '').toLowerCase();
+    const sessionId = String(params.get('session_id') || '').trim();
+    if (billing !== 'success' || !sessionId) return;
+
+    if (billingSyncSessionRef.current === sessionId) return;
+    billingSyncSessionRef.current = sessionId;
+
+    let cancelled = false;
+
+    const syncPlanAfterCheckout = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+
+        const response = await fetch('/api/billing/confirm-session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ sessionId }),
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          console.warn('Billing confirm session failed:', payload?.error || payload?.details || response.status);
+        }
+      } catch (error) {
+        console.warn('Billing confirm session request failed:', error);
+      }
+
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        if (cancelled) return;
+
+        const summary = await loadPlanSummary();
+        const normalizedPlan = String(summary?.plan_code || '').toLowerCase();
+        const normalizedStatus = String(summary?.status || '').toLowerCase();
+        if (normalizedStatus === 'active' && normalizedPlan && normalizedPlan !== 'trial') {
+          toast.success('Odeme onaylandi, planiniz guncellendi.');
+          return;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+
+      if (!cancelled) {
+        toast('Odeme alindi. Plan guncellemesi 1-2 dakika surebilir.');
+      }
+    };
+
+    syncPlanAfterCheckout();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [location.search, user?.id]);
 
   const loadPetitions = async () => {
     if (!user) return;
@@ -369,7 +435,7 @@ const Profile: React.FC = () => {
     try {
       await signOut();
       navigate('/');
-    } catch (error) {
+    } catch {
       // Error handled in AuthContext
     }
   };

@@ -626,3 +626,86 @@ export const createStripeCheckoutSession = async ({ req, user, plan, idempotency
 
     return session;
 };
+
+export const confirmStripeCheckoutSessionForUser = async ({ sessionId, userId }) => {
+    const normalizedSessionId = String(sessionId || '').trim();
+    const normalizedUserId = String(userId || '').trim();
+
+    if (!normalizedSessionId || !normalizedSessionId.startsWith('cs_')) {
+        throw httpError(400, 'Gecersiz checkout session id.');
+    }
+
+    if (!normalizedUserId) {
+        throw httpError(400, 'Gecersiz kullanici bilgisi.');
+    }
+
+    const stripe = getStripeClient();
+    const session = await stripe.checkout.sessions.retrieve(normalizedSessionId);
+
+    if (!session) {
+        throw httpError(404, 'Checkout session bulunamadi.');
+    }
+
+    if (String(session?.mode || '') !== 'subscription') {
+        return { handled: false, reason: 'non_subscription_checkout' };
+    }
+
+    const sessionUserId = getUserIdFromCheckoutSession(session);
+    if (!sessionUserId || sessionUserId !== normalizedUserId) {
+        throw httpError(403, 'Checkout session kullanici ile eslesmiyor.');
+    }
+
+    let plan = normalizePaidPlan(session?.metadata?.plan);
+    if (!plan && session?.subscription) {
+        const subscriptionId = typeof session.subscription === 'string'
+            ? session.subscription
+            : session.subscription.id;
+
+        if (subscriptionId) {
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+                expand: ['items.data.price'],
+            });
+            plan = derivePlanFromSubscription(subscription);
+        }
+    }
+
+    if (!plan) {
+        throw httpError(400, 'Checkout session plan bilgisi bulunamadi.');
+    }
+
+    const sessionStatus = String(session?.status || '').toLowerCase();
+    const paymentStatus = String(session?.payment_status || '').toLowerCase();
+    const isCompleted = sessionStatus === 'complete';
+    const isPayableState = paymentStatus === 'paid' || paymentStatus === 'no_payment_required';
+
+    if (!isCompleted || !isPayableState) {
+        return {
+            handled: false,
+            reason: 'checkout_not_completed',
+            sessionStatus,
+            paymentStatus,
+        };
+    }
+
+    const updatedPlan = await updateUserUsagePlan({
+        userId: normalizedUserId,
+        plan,
+        status: 'active',
+    });
+
+    return {
+        handled: true,
+        reason: null,
+        plan,
+        sessionStatus,
+        paymentStatus,
+        summary: {
+            user_id: normalizedUserId,
+            plan_code: String(updatedPlan?.plan_code || plan),
+            status: String(updatedPlan?.status || 'active'),
+            daily_limit: parsePositiveLimit(updatedPlan?.daily_limit),
+            trial_starts_at: updatedPlan?.trial_starts_at || null,
+            trial_ends_at: updatedPlan?.trial_ends_at || null,
+        },
+    };
+};
