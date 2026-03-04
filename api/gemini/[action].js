@@ -6,6 +6,15 @@ import reviewHandler from '../../backend/gemini/review.js';
 import rewriteHandler from '../../backend/gemini/rewrite.js';
 import webSearchHandler from '../../backend/gemini/web-search.js';
 
+export const config = {
+    api: {
+        bodyParser: {
+            // Vercel body limiti oncesinde kontrollu parse limiti
+            sizeLimit: process.env.UPLOAD_JSON_BODY_LIMIT || '4mb',
+        },
+    },
+};
+
 const ACTION_HANDLERS = {
     analyze: analyzeHandler,
     chat: chatHandler,

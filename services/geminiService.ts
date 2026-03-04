@@ -2,6 +2,7 @@
 import { supabase } from '../lib/supabase';
 
 const API_BASE_URL = '/api/gemini';
+const MAX_API_BODY_BYTES = 3.8 * 1024 * 1024;
 
 async function buildJsonHeaders(): Promise<Record<string, string>> {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -19,10 +20,37 @@ async function buildJsonHeaders(): Promise<Record<string, string>> {
 // Helper to handle API response errors
 async function handleResponse(response: Response) {
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `API Error: ${response.statusText}`);
+        const rawError = await response.text();
+        const fallbackMessage = `API Error (${response.status}): ${response.statusText}`;
+
+        if (response.status === 413) {
+            throw new Error('Istek boyutu limiti asildi. Daha kucuk dosya/metin ile tekrar deneyin.');
+        }
+
+        if (rawError) {
+            try {
+                const parsed = JSON.parse(rawError);
+                throw new Error(parsed?.error || parsed?.details || fallbackMessage);
+            } catch {
+                throw new Error(rawError || fallbackMessage);
+            }
+        }
+
+        throw new Error(fallbackMessage);
     }
     return response.json();
+}
+
+function stringifyPayloadWithLimit(payload: unknown, contextLabel: string): string {
+    const body = JSON.stringify(payload);
+    const bytes = new TextEncoder().encode(body).length;
+
+    if (bytes > MAX_API_BODY_BYTES) {
+        const mb = (bytes / (1024 * 1024)).toFixed(2);
+        throw new Error(`${contextLabel} icin gonderilen veri cok buyuk (${mb} MB). Lutfen dosyalari/parcalari kucultun.`);
+    }
+
+    return body;
 }
 
 // Helper to clean JSON string from Markdown code blocks
@@ -121,7 +149,7 @@ export async function analyzeDocuments(
     const data = await handleResponse(await fetch(`${API_BASE_URL}/analyze`, {
         method: 'POST',
         headers: await buildJsonHeaders(),
-        body: JSON.stringify(payload)
+        body: stringifyPayloadWithLimit(payload, 'Analiz')
     }));
 
     const rawResponseText = typeof data?.text === 'string' ? data.text : '';
@@ -194,7 +222,7 @@ export async function generateSearchKeywords(analysisText: string, userRole: Use
         if (Array.isArray(json?.keywords) && json.keywords.length > 0) {
             return dedupeKeywords(json.keywords);
         }
-    } catch (e) {
+    } catch {
         return extractKeywordFallbackFromAnalysis(analysisText);
     }
 
@@ -239,7 +267,7 @@ export async function* streamChatResponse(
         const response = await fetch(`${API_BASE_URL}/chat`, {
             method: 'POST',
             headers: await buildJsonHeaders(),
-            body: JSON.stringify({ chatHistory, analysisSummary, context, files })
+            body: stringifyPayloadWithLimit({ chatHistory, analysisSummary, context, files }, 'Sohbet')
         });
 
         if (!response.ok) {

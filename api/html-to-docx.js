@@ -1,6 +1,14 @@
 import htmlToDocx from 'html-to-docx';
 import { applyCors, getSafeErrorMessage } from '../lib/api/cors.js';
 
+export const config = {
+    api: {
+        bodyParser: {
+            sizeLimit: process.env.DOC_JSON_BODY_LIMIT || '2mb',
+        },
+    },
+};
+
 export default async function handler(req, res) {
     if (!applyCors(req, res, {
         methods: 'POST, OPTIONS',
