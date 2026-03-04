@@ -285,6 +285,27 @@ export const InputPanel: React.FC<InputPanelProps> = ({
     setCaseDetails({ ...caseDetails, [field]: value });
   };
 
+  const normalizeDateInputValue = (value: string): string => {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+    const parts = raw.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
+    if (!parts) return '';
+
+    const day = Number(parts[1]);
+    const month = Number(parts[2]);
+    const year = Number(parts[3].length === 2 ? `20${parts[3]}` : parts[3]);
+
+    if (!Number.isFinite(day) || !Number.isFinite(month) || !Number.isFinite(year)) return '';
+    if (year < 1900 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) return '';
+
+    const yyyy = String(year).padStart(4, '0');
+    const mm = String(month).padStart(2, '0');
+    const dd = String(day).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
   return (
     <div className="bg-[#111113] rounded-xl shadow-2xl shadow-red-900/10 p-6 space-y-8 h-full flex flex-col border border-white/10 hover:border-red-600/30 transition-all duration-500">
       <h2 className="text-2xl font-bold text-white border-b border-white/10 pb-4 flex items-center gap-2">
@@ -373,7 +394,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
             </div>
             <div className="transform transition-all duration-200 hover:scale-[1.01]">
               <label htmlFor="decisionDate" className="block text-sm font-medium text-gray-300 mb-1">Karar Tarihi</label>
-              <input id="decisionDate" type="date" value={caseDetails.decisionDate} onChange={e => handleCaseDetailsChange('decisionDate', e.target.value)} className="w-full p-2 bg-[#1A1A1D] border border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 hover:border-blue-400 transition-all duration-200 text-gray-200" />
+              <input id="decisionDate" type="date" value={normalizeDateInputValue(caseDetails.decisionDate)} onChange={e => handleCaseDetailsChange('decisionDate', e.target.value)} className="w-full p-2 bg-[#1A1A1D] border border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 hover:border-blue-400 transition-all duration-200 text-gray-200" />
             </div>
           </div>
         </div>
