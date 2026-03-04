@@ -14,7 +14,7 @@ export const SystemSettings: React.FC = () => {
         geminiApiKey: '••••••••••••••••••••',
         supabaseUrl: import.meta.env.VITE_SUPABASE_URL || '',
         contactEmail: 'destek@dilekai.com',
-        maxFileSize: '10',
+        maxFileSize: '15',
         sessionTimeout: '60'
     });
 

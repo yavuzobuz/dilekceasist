@@ -261,8 +261,8 @@ export const ClientManager: React.FC<ClientManagerProps> = ({ onSelect, onClose,
                                                 toast.error('Lütfen sadece PDF dosyası yükleyin');
                                                 return;
                                             }
-                                            if (file.size > 10 * 1024 * 1024) {
-                                                toast.error('Dosya boyutu 10MB\'ı aşamaz');
+                                            if (file.size > 15 * 1024 * 1024) {
+                                                toast.error('Dosya boyutu 15MB\'ı aşamaz');
                                                 return;
                                             }
                                             setVekaletPdf(file);
@@ -283,8 +283,8 @@ export const ClientManager: React.FC<ClientManagerProps> = ({ onSelect, onClose,
                                                 toast.error('Lütfen sadece PDF dosyası yükleyin');
                                                 return;
                                             }
-                                            if (file.size > 10 * 1024 * 1024) {
-                                                toast.error('Dosya boyutu 10MB\'ı aşamaz');
+                                            if (file.size > 15 * 1024 * 1024) {
+                                                toast.error('Dosya boyutu 15MB\'ı aşamaz');
                                                 return;
                                             }
                                             setVekaletPdf(file);
@@ -313,7 +313,7 @@ export const ClientManager: React.FC<ClientManagerProps> = ({ onSelect, onClose,
                                         <div className="flex flex-col items-center gap-2 text-gray-400">
                                             <Upload className="w-6 h-6" />
                                             <span className="text-sm">PDF sürükleyin veya tıklayın</span>
-                                            <span className="text-xs text-gray-500">Maks. 10MB</span>
+                                            <span className="text-xs text-gray-500">Maks. 15MB</span>
                                         </div>
                                     )}
                                 </div>

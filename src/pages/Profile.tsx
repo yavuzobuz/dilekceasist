@@ -534,8 +534,8 @@ const Profile: React.FC = () => {
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('Dosya boyutu 10MB\'i asamaz');
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error('Dosya boyutu 15MB\'i asamaz');
       return;
     }
 
