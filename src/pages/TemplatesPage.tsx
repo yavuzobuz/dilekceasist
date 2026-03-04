@@ -172,14 +172,6 @@ const CATEGORIES = [
 type CustomTemplateType = 'dilekce' | 'sozlesme' | 'ihtarname';
 type PetitionTemplateCategory = 'Hukuk' | 'Ceza' | 'Is Hukuku' | 'Icra' | 'Idari';
 
-const resolveCustomPetitionCategory = (
-    templateType: CustomTemplateType,
-    petitionCategory: PetitionTemplateCategory | ''
-): PetitionTemplateCategory | null => {
-    if (templateType !== 'dilekce') return null;
-    return petitionCategory || null;
-};
-
 const PETITION_CATEGORY_OPTIONS: Array<{ value: PetitionTemplateCategory; label: string }> = [
     { value: 'Hukuk', label: 'Hukuk' },
     { value: 'Ceza', label: 'Ceza' },
@@ -310,6 +302,12 @@ const replaceTemplateVariables = (content: string, variables: Record<string, str
     }
 
     return result.replace(/\{\{\s*[A-Z0-9_]+\s*\}\}/gi, '[...]');
+};
+
+const markdownToHtml = (content: string): string => {
+    const parsed = marked.parse(content);
+    const htmlBody = typeof parsed === 'string' ? parsed : '';
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8" /></head><body>${htmlBody}</body></html>`;
 };
 
 const splitCsvLine = (line: string, delimiter: string): string[] => {
@@ -658,20 +656,18 @@ const findBestMatchingHeaderForVariable = (variable: TemplateVariable, headers: 
         normalized: normalizeLookupKey(header),
     }));
     const aliases = getVariableAliases(variable);
-    let bestHeader: string | null = null;
-    let bestScore = Number.NEGATIVE_INFINITY;
+    let best: { header: string; score: number } | null = null;
 
-    for (const headerInfo of normalizedHeaders) {
-        for (const alias of aliases) {
+    normalizedHeaders.forEach(headerInfo => {
+        aliases.forEach(alias => {
             const score = scoreHeaderMatch(alias, headerInfo.normalized);
-            if (score > bestScore) {
-                bestScore = score;
-                bestHeader = headerInfo.raw;
+            if (!best || score > best.score) {
+                best = { header: headerInfo.raw, score };
             }
-        }
-    }
+        });
+    });
 
-    return bestScore >= 30 ? bestHeader : null;
+    return best && best.score >= 30 ? best.header : null;
 };
 
 const inferColumnMapping = (variables: TemplateVariable[], headers: string[]): Record<string, string> => {
@@ -815,7 +811,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
     // Özel şablon yönetimi
     const { user } = useAuth();
     const [customTemplates, setCustomTemplates] = useState<UserCustomTemplate[]>([]);
-    const [_isLoadingCustom, setIsLoadingCustom] = useState(false);
+    const [isLoadingCustom, setIsLoadingCustom] = useState(false);
     const [showCustomTemplateModal, setShowCustomTemplateModal] = useState(false);
     const [editingCustomTemplate, setEditingCustomTemplate] = useState<UserCustomTemplate | null>(null);
     const [customForm, setCustomForm] = useState({
@@ -999,7 +995,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                     title: customForm.title.trim(),
                     description: customForm.description.trim() || null,
                     template_type: customForm.template_type,
-                    petition_category: resolveCustomPetitionCategory(customForm.template_type, customForm.petition_category),
+                    petition_category: customForm.template_type === 'dilekce' ? customForm.petition_category : null,
                     content: customForm.content,
                     style_notes: customForm.style_notes.trim() || null,
                     source_file_name: customForm.source_file_name,
@@ -1011,7 +1007,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                     title: customForm.title.trim(),
                     description: customForm.description.trim() || null,
                     template_type: customForm.template_type,
-                    petition_category: resolveCustomPetitionCategory(customForm.template_type, customForm.petition_category),
+                    petition_category: customForm.template_type === 'dilekce' ? customForm.petition_category : null,
                     content: customForm.content,
                     style_notes: customForm.style_notes.trim() || null,
                     source_file_name: customForm.source_file_name,
@@ -1399,7 +1395,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
             };
 
             try {
-                sessionStorage.setItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY, JSON.stringify(pendingBulkPackage));
+                localStorage.setItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY, JSON.stringify(pendingBulkPackage));
             } catch (storageError) {
                 console.error('Bulk package storage error:', storageError);
                 setBulkError('Seri paket verisi kaydedilemedi. Tarayici depolama alani yetersiz olabilir.');

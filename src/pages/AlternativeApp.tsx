@@ -16,6 +16,7 @@ import { ChatView } from '../../components/ChatView';
 import { VoiceInputButton } from '../../components/VoiceInputButton';
 import { Petition, supabase } from '../../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { toast } from 'react-hot-toast';
 import { getLegalDocument } from '../utils/legalSearch';
 import { File, FileCode2, FileImage, FileText } from 'lucide-react';
 import { MissingInfoChecklistPanel } from '../../components/MissingInfoChecklistPanel';
@@ -105,8 +106,6 @@ const extractResultsFromText = (text: string): any[] => {
 type AlternativeLegalSearchResult = LegalSearchResult & {
     id?: string;
     documentId?: string;
-    sourceUrl?: string;
-    documentUrl?: string;
     snippet?: string;
 };
 
@@ -167,8 +166,6 @@ const normalizeLegalSearchResults = (payload: any): AlternativeLegalSearchResult
                 daire,
                 ozet: result.ozet || result.snippet || result.summary || '',
                 snippet: result.snippet || result.ozet || result.summary || '',
-                sourceUrl: result.sourceUrl || result.url || '',
-                documentUrl: result.documentUrl || result.sourceUrl || result.url || '',
                 relevanceScore: Number.isFinite(relevanceScore) ? relevanceScore : undefined,
             };
         })
@@ -408,37 +405,6 @@ const isSimpleGuidanceQuestion = (rawMessage: string): boolean => {
     return hasSimpleIntent && !hasComplexIntent && tokenCount <= 24;
 };
 
-const isDefinitionQuestion = (rawMessage: string): boolean => {
-    if (!rawMessage) return false;
-    if (isLikelyPetitionRequest(rawMessage)) return false;
-
-    const normalized = normalizeKeywordText(rawMessage);
-    if (!normalized) return false;
-
-    const tokenCount = normalized.split(/\s+/).filter(Boolean).length;
-    const asksDefinition = /(nedir|ne demek|ne anlama gelir|anlami nedir|tanimi nedir|kime denir|nasil tanimlanir|kavrami nedir)/i.test(normalized);
-    const hasDisputeMarkers = /(parsel|ada|pafta|ruhsat|ruhsatsiz|imar|yikim|muhurl|iptal|tazminat|uyusmazlik|dava|muvekkil|dosya|risk|strateji|itiraz|savunma)/i.test(normalized);
-
-    // Kisa "X nedir?" sorularini tanim sorusu olarak kabul et.
-    if (asksDefinition && tokenCount <= 8) return true;
-
-    return asksDefinition && !hasDisputeMarkers && tokenCount <= 22;
-};
-
-const isDisputeOrApplicationQuestion = (rawMessage: string): boolean => {
-    if (!rawMessage) return false;
-    if (isDefinitionQuestion(rawMessage)) return false;
-
-    const normalized = normalizeKeywordText(rawMessage);
-    if (!normalized) return false;
-
-    const tokenCount = normalized.split(/\s+/).filter(Boolean).length;
-    const hasRiskOrDisputeIntent = /(parsel|ada|pafta|ruhsat|ruhsatsiz|imar|koruma kurulu|yikim|muhurl|iptal|tazminat|idari islem|uyusmazlik|somut olay|dosya|muvekkil|risk|strateji|ne yapmaliyim|nasil ilerlemeliyim|itiraz|savunma)/i.test(normalized);
-    const hasCaseSignal = hasFactSignal(normalized) && /(olay|dosya|parsel|muvekkil|sanik|davaci|davali|islem|iddia|karar)/i.test(normalized);
-
-    return hasRiskOrDisputeIntent || hasCaseSignal || tokenCount > 28;
-};
-
 const hasWebEvidence = (result: WebSearchResult | null): boolean => {
     if (!result) return false;
     const summary = typeof result.summary === 'string' ? result.summary.trim() : '';
@@ -594,9 +560,8 @@ interface TemplateTransferContext {
     enableVariableEditor: boolean;
 }
 
+const TEMPLATE_CONTEXT_STORAGE_KEY = 'templateContext';
 const BULK_TEMPLATE_PACKAGE_STORAGE_KEY = 'templateBulkPackage';
-const ALT_APP_EDITOR_RETURN_STATE_KEY = 'altAppEditorReturnState';
-const EDITOR_RETURN_STATE_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 
 interface PendingBulkTemplatePackage {
     source: string;
@@ -612,13 +577,6 @@ interface TemplateVariableEditorItem {
     key: string;
     label: string;
     required: boolean;
-}
-
-interface AltAppEditorReturnState {
-    source: 'alt-app';
-    returnStep: number;
-    chatHistory: ChatMessage[];
-    createdAt: string;
 }
 
 const parseTemplateTransferContext = (rawValue: string | null): TemplateTransferContext | null => {
@@ -642,41 +600,6 @@ const parsePendingBulkTemplatePackage = (rawValue: string | null): PendingBulkTe
     } catch {
         return null;
     }
-};
-
-const parseAltAppEditorReturnState = (rawValue: string | null): AltAppEditorReturnState | null => {
-    if (!rawValue) return null;
-    try {
-        const parsed = JSON.parse(rawValue);
-        if (!parsed || typeof parsed !== 'object') return null;
-        if (parsed.source !== 'alt-app') return null;
-
-        const returnStep = Number(parsed.returnStep);
-        const safeStep = Number.isFinite(returnStep) && returnStep >= 1 ? Math.floor(returnStep) : 4;
-        const safeChatHistory = Array.isArray(parsed.chatHistory) ? parsed.chatHistory : [];
-        const createdAt = typeof parsed.createdAt === 'string' ? parsed.createdAt : new Date().toISOString();
-        const createdAtMs = Date.parse(createdAt);
-        if (Number.isFinite(createdAtMs) && Math.abs(Date.now() - createdAtMs) > EDITOR_RETURN_STATE_MAX_AGE_MS) {
-            return null;
-        }
-
-        return {
-            source: 'alt-app',
-            returnStep: safeStep,
-            chatHistory: safeChatHistory,
-            createdAt,
-        };
-    } catch {
-        return null;
-    }
-};
-
-const compactChatHistoryForStorage = (messages: ChatMessage[]): ChatMessage[] => {
-    if (!Array.isArray(messages)) return [];
-    return messages.map((message) => ({
-        role: message?.role === 'model' ? 'model' : 'user',
-        text: String(message?.text || ''),
-    }));
 };
 
 const extractTemplateVariableKeys = (content: string): string[] => {
@@ -895,6 +818,7 @@ export default function AlternativeApp() {
 
     // Visual State
     const [currentStep, setCurrentStep] = useState(1);
+    const [sidebarOpen, setSidebarOpen] = useState(true);
 
     // Inputs from user
     const [petitionType, setPetitionType] = useState<PetitionType>(
@@ -1009,14 +933,11 @@ export default function AlternativeApp() {
     }, []);
 
     useEffect(() => {
-        const templateContent = sessionStorage.getItem('templateContent');
-        const rawTemplateCtx = sessionStorage.getItem('templateContext');
-        const rawBulkPackage = sessionStorage.getItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
-        const rawEditorReturnState = sessionStorage.getItem(ALT_APP_EDITOR_RETURN_STATE_KEY);
+        const templateContent = localStorage.getItem('templateContent');
+        const rawTemplateCtx = localStorage.getItem('templateContext');
+        const rawBulkPackage = localStorage.getItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
         const templateCtx = parseTemplateTransferContext(rawTemplateCtx);
         const bulkPackage = parsePendingBulkTemplatePackage(rawBulkPackage);
-        const editorReturnState = parseAltAppEditorReturnState(rawEditorReturnState);
-        const isEditorReturnFlow = editorReturnState?.source === 'alt-app';
 
         if (templateContent) {
             const hasPendingBulkPackage = Boolean(templateCtx?.bulkPackagePending && bulkPackage);
@@ -1040,18 +961,17 @@ export default function AlternativeApp() {
             setTemplateVariableValues(hasTemplateVariableEditor ? nextTemplateVariableValues : {});
             setHasTemplateVariableChanges(false);
             setPetitionVersion(v => v + 1);
-            setCurrentStep(hasPendingBulkPackage ? 4 : (isEditorReturnFlow ? editorReturnState.returnStep : 2));
+            setCurrentStep(hasPendingBulkPackage ? 4 : 2);
             setPendingBulkPackage(hasPendingBulkPackage ? bulkPackage : null);
             setDocContent(prev => [
                 prev,
                 `SABLON TASLAK METNI\n${initialTemplateDraft}`,
             ].filter(Boolean).join('\n\n'));
-            sessionStorage.removeItem('templateContent');
-            sessionStorage.removeItem('templateContext');
+            localStorage.removeItem('templateContent');
+            localStorage.removeItem('templateContext');
             if (!hasPendingBulkPackage) {
-                sessionStorage.removeItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
+                localStorage.removeItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
             }
-            sessionStorage.removeItem(ALT_APP_EDITOR_RETURN_STATE_KEY);
 
             // TemplateContext varsa: kararları, alan değerlerini ve AI güçlendirme flag'ini aktar
             if (templateCtx) {
@@ -1068,13 +988,6 @@ export default function AlternativeApp() {
                 }
             }
 
-            if (isEditorReturnFlow) {
-                setChatMessages(editorReturnState.chatHistory);
-                if (editorReturnState.chatHistory.length > 0) {
-                    setIsChatOpen(true);
-                }
-            }
-
             if (hasPendingBulkPackage) {
                 addToast(`Seri paket taslağı açıldı. Düzenleme sonrası ${bulkPackage?.rowVariables.length || 0} dilekçeyi onayla ve indir.`, 'success');
             } else {
@@ -1086,8 +999,7 @@ export default function AlternativeApp() {
             setTemplateVariableItems([]);
             setTemplateVariableValues({});
             setHasTemplateVariableChanges(false);
-            sessionStorage.removeItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
-            sessionStorage.removeItem(ALT_APP_EDITOR_RETURN_STATE_KEY);
+            localStorage.removeItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
             setGeneratedPetition(petitionFromState.content || '');
             setPetitionVersion(v => v + 1);
             setCurrentStep(4);
@@ -1182,18 +1094,8 @@ export default function AlternativeApp() {
 
             return normalizedResults;
         } catch (e: any) {
-            const rawMessage = String(e?.message || 'Bilinmeyen hata');
-            const normalizedMessage = rawMessage.toLowerCase();
-            const isTimeoutError = normalizedMessage.includes('504') || normalizedMessage.includes('timeout') || normalizedMessage.includes('zaman');
-            const readableMessage = isTimeoutError
-                ? 'Ictihat servisi zaman asimina ugradi (504). Biraz sonra tekrar deneyin.'
-                : rawMessage;
-
             if (!options?.suppressError) {
-                setError(`Ictihat arama hatasi: ${readableMessage}`);
-                if (isTimeoutError) {
-                    addToast('Ictihat servisi gecici olarak yavas. Dilersen once web aramasiyla devam et, sonra tekrar dene.', 'info');
-                }
+                setError(`Ictihat arama hatasi: ${e.message}`);
             }
             return [];
         } finally {
@@ -1319,7 +1221,7 @@ export default function AlternativeApp() {
                 addToast(`${rowVariables.length} satirlik paket indirildi. ${failedDocxRows.length} satirda DOCX hatasi var.`, 'info');
             }
 
-            sessionStorage.removeItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
+            localStorage.removeItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
             setPendingBulkPackage(null);
         } catch (downloadError) {
             const message = downloadError instanceof Error ? downloadError.message : 'Seri paket indirilirken hata oluştu.';
@@ -1446,7 +1348,7 @@ export default function AlternativeApp() {
                             xmlContent = 'UDF arsivinde .xml uzantili icerik dosyasi bulunamadi.';
                         }
                         udfContent += `\n\n--- UDF Belgesi: ${file.name} ---\n${xmlContent}`;
-                    } catch {
+                    } catch (e) {
                         udfContent += `\n\n--- UDF Belgesi: ${file.name} (HATA) ---\nKabul edilemedi.`;
                     }
                 } else if (extension === 'doc' || extension === 'docx') {
@@ -1609,21 +1511,10 @@ export default function AlternativeApp() {
         setIsDecisionModalOpen(true);
         setIsDecisionContentLoading(true);
 
-        const resolvedDocumentId = result.documentId || result.id || `${result.title || 'karar'}-${index}`;
-        const hasSyntheticDocumentId = /^(search-|legal-|ai-summary)/i.test(String(resolvedDocumentId || ''));
-        const hasDocumentUrl = Boolean((result.documentUrl || result.sourceUrl || '').trim());
-
-        if (hasSyntheticDocumentId && !hasDocumentUrl) {
-            setSelectedDecisionContent(result.ozet || result.snippet || 'Tam metin kaynagi bulunamadi. Karar ozeti goruntuleniyor.');
-            setIsDecisionContentLoading(false);
-            return;
-        }
-
         try {
             const content = await getLegalDocument({
                 source: 'yargitay',
-                documentId: resolvedDocumentId,
-                documentUrl: result.documentUrl || result.sourceUrl,
+                documentId: result.documentId || result.id || `${result.title || 'karar'}-${index}`,
                 title: result.title,
                 esasNo: result.esasNo,
                 kararNo: result.kararNo,
@@ -1909,27 +1800,11 @@ export default function AlternativeApp() {
             return;
         }
 
-        const editorReturnState: AltAppEditorReturnState = {
-            source: 'alt-app',
-            returnStep: 4,
-            chatHistory: compactChatHistoryForStorage(chatMessages),
-            createdAt: new Date().toISOString(),
-        };
-
-        try {
-            sessionStorage.setItem('templateContent', generatedPetition);
-            sessionStorage.setItem(ALT_APP_EDITOR_RETURN_STATE_KEY, JSON.stringify(editorReturnState));
-            sessionStorage.setItem('editorReturnRoute', '/alt-app');
-        } catch (storageError) {
-            console.error('Editor return state kaydedilemedi:', storageError);
-            addToast('Editor donus verisi kaydedilemedi, sohbet geri yuklenmeyebilir.', 'warning');
-            sessionStorage.removeItem(ALT_APP_EDITOR_RETURN_STATE_KEY);
-            sessionStorage.setItem('templateContent', generatedPetition);
-            sessionStorage.setItem('editorReturnRoute', '/alt-app');
-        }
+        localStorage.setItem('templateContent', generatedPetition);
+        localStorage.setItem('editorReturnRoute', '/alt-app');
         addToast('Taslak editör sayfasına gönderildi.', 'success');
         navigate('/app');
-    }, [generatedPetition, chatMessages, addToast, navigate]);
+    }, [generatedPetition, addToast, navigate]);
 
     const handleSendChatMessage = useCallback(async (message: string, files?: File[]) => {
         const normalizedMessage = (message || '').trim();
@@ -1986,11 +1861,9 @@ export default function AlternativeApp() {
         const explicitKeywordAddRequest = isExplicitKeywordAddRequest(normalizedMessage);
         const userRequestedPetition = isLikelyPetitionRequest(normalizedMessage);
         const isSimpleQuestion = isSimpleGuidanceQuestion(normalizedMessage);
-        const isDefinitionOnlyQuestion = isDefinitionQuestion(normalizedMessage);
-        const isDisputeOrApplicationQuery = isDisputeOrApplicationQuestion(normalizedMessage);
         const isEmsalSearchRequest = /(emsal|ictihat|içtihat|yargitay|danistay|karar ara|karar aramasi|karar arar misin)/i.test(normalizedMessage);
-        const requiresEvidenceForChat = !isSimpleQuestion && !isDefinitionOnlyQuestion && (isEmsalSearchRequest || isDisputeOrApplicationQuery);
-        const requiresWebEvidenceForChat = requiresEvidenceForChat && isDisputeOrApplicationQuery;
+        const requiresEvidenceForChat = !isSimpleQuestion;
+        const requiresWebEvidenceForChat = requiresEvidenceForChat && !isEmsalSearchRequest;
         const requiresLegalEvidenceForChat = requiresEvidenceForChat;
         const requiresStrictEvidenceForDocument = userRequestedPetition;
 
@@ -2178,7 +2051,14 @@ export default function AlternativeApp() {
             const missingLegalEvidenceForChat = (requiresLegalEvidenceForChat || requiresStrictEvidenceForDocument) && !hasLegalEvidenceForChat(mergedLegalResults);
 
             if (requiresEvidenceForChat && (missingWebEvidenceForChat || missingLegalEvidenceForChat)) {
-                addToast('Soru once AI tarafinda analiz edilip gerekirse arama yapilacak.', 'info');
+                const blockedText = evidenceKeywords.length === 0
+                    ? (hasUploadedDocumentContext
+                        ? 'Belge analizi tamamlanmadan web ve emsal karar aramasina gecilemez. Once belgeyi analiz et, sonra anahtar kelime olusturulsun, ardindan web ve emsal karar aramasi calissin.'
+                        : 'Sorgudan dogrulama icin arama terimi cikarilamadi. Soruyu biraz daha somut yazin veya anahtar kelime olarak arama terimi ekleyin.')
+                    : 'Bu soruya guvenli cevap verebilmem icin web ve emsal karar dogrulamasi tamamlanmali. Lutfen tekrar deneyin veya soruyu daha kisa/sade sorun.';
+                setChatMessages(prev => [...prev, { role: 'model', text: blockedText }]);
+                setError(blockedText);
+                return;
             }
 
             if (requiresStrictEvidenceForDocument && (!activeAnalysisSummary || !hasWebEvidence(mergedWebSearchResult) || !hasLegalEvidenceForGeneration(mergedLegalResults))) {
@@ -2211,9 +2091,6 @@ export default function AlternativeApp() {
                     legalResultCount: mergedLegalResults.length,
                     docContent: mergedDocContent,
                     specifics: specificsWithMissingInfo,
-                    analysisSummary: activeAnalysisSummary || '',
-                    currentDraft: generatedPetition || '',
-                    petitionType,
                 },
                 sanitizeChatFilesForApi(chatFiles)
             );
@@ -2451,7 +2328,6 @@ export default function AlternativeApp() {
                             legalSearchResult: buildLegalResultsPrompt(mergedLegalResults),
                             docContent: mergedDocContent,
                             specifics: specificsWithMissingInfo,
-                            searchKeywords: mergedKeywords,
                             chatHistory: [...newMessages, { role: 'model', text: assistantText }],
                             parties,
                             webSourceCount: mergedWebSearchResult?.sources?.length || 0,
@@ -2516,7 +2392,6 @@ export default function AlternativeApp() {
         savePetitionToSupabase,
         userRole,
         petitionType,
-        generatedPetition,
         caseDetails,
         parties,
         missingInfoBlockingUnansweredCount,
@@ -2549,7 +2424,7 @@ export default function AlternativeApp() {
                 analysisSummary: analysisData.summary,
                 webSearchResult: webSearchResult?.summary || '',
                 legalSearchResult: legalResultsText,
-                docContent, specifics: specificsWithMissingInfo, searchKeywords, chatHistory: chatMessages, parties,
+                docContent, specifics: specificsWithMissingInfo, chatHistory: chatMessages, parties,
                 webSourceCount: webSearchResult?.sources?.length || 0,
                 legalResultCount: legalSearchResults.length,
                 lawyerInfo: analysisData.lawyerInfo, contactInfo: analysisData.contactInfo,
@@ -3401,18 +3276,13 @@ export default function AlternativeApp() {
                                         </button>
                                         <button
                                             onClick={handleGeneratePetition}
-                                            disabled={isLoadingPetition}
+                                            disabled={isLoadingPetition || missingInfoBlockingUnansweredCount > 0}
                                             className="px-8 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:opacity-50 text-white rounded-xl font-medium transition-all shadow-lg shadow-red-900/50 flex items-center gap-2"
                                         >
                                             {isLoadingPetition ? <LoadingSpinner className="w-5 h-5 text-white" /> : <SparklesIcon className="w-5 h-5" />}
                                             {isLoadingPetition ? 'Üretiliyor...' : 'Nihai Dilekçeyi Üret'}
                                         </button>
                                     </div>
-                                    {missingInfoBlockingUnansweredCount > 0 && (
-                                        <p className="text-xs text-red-300 border border-red-500/30 bg-red-500/10 rounded-lg px-3 py-2">
-                                            Eksikleri Tara alaninda {missingInfoBlockingUnansweredCount} bloklayici soru bos. Buton tiklanabilir, ancak uretimden once bu sorulari yanitlamaniz gerekir.
-                                        </p>
-                                    )}
                                 </div>
                             )}
 

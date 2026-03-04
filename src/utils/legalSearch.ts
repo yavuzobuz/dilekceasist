@@ -1,5 +1,4 @@
 import type { LegalSearchResult } from '../../types';
-import { supabase } from '../../lib/supabase';
 
 export interface NormalizedLegalDecision extends LegalSearchResult {
   id?: string;
@@ -48,21 +47,6 @@ const extractResultsFromText = (text: string): any[] => {
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
-  }
-};
-
-const fetchWithTimeout = async (input: RequestInfo | URL, init: RequestInit, timeoutMs: number): Promise<Response> => {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(input, { ...init, signal: controller.signal });
-  } catch (error: any) {
-    if (error?.name === 'AbortError') {
-      throw new Error('Istek zaman asimina ugradi. Lutfen tekrar deneyin.');
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeout);
   }
 };
 
@@ -124,8 +108,6 @@ export const normalizeLegalSearchResults = (payload: any): NormalizedLegalDecisi
         daire,
         ozet,
         snippet: result.snippet || ozet,
-        sourceUrl: result.sourceUrl || result.url || '',
-        documentUrl: result.documentUrl || result.sourceUrl || result.url || '',
         relevanceScore: Number.isFinite(relevanceScore) ? relevanceScore : undefined,
       };
     })
@@ -146,26 +128,21 @@ export const searchLegalDecisions = async ({
   filters = {},
   apiBaseUrl = '',
 }: SearchLegalDecisionsParams): Promise<NormalizedLegalDecision[]> => {
-    const payload = { source, keyword, filters };
-    const body = JSON.stringify(payload);
-    const { data: { session } } = await supabase.auth.getSession();
-    const authHeaders: HeadersInit = { 'Content-Type': 'application/json' };
-    if (session?.access_token) {
-        authHeaders.Authorization = `Bearer ${session.access_token}`;
-    }
+  const payload = { source, keyword, filters };
+  const body = JSON.stringify(payload);
 
-  let response = await fetchWithTimeout(`${apiBaseUrl}/api/legal/search-decisions`, {
+  let response = await fetch(`${apiBaseUrl}/api/legal/search-decisions`, {
     method: 'POST',
-    headers: authHeaders,
+    headers: { 'Content-Type': 'application/json' },
     body,
-  }, 18000);
+  });
 
   if (!response.ok) {
-    response = await fetchWithTimeout(`${apiBaseUrl}/api/legal?action=search-decisions`, {
+    response = await fetch(`${apiBaseUrl}/api/legal?action=search-decisions`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: { 'Content-Type': 'application/json' },
       body,
-    }, 18000);
+    });
   }
 
   if (!response.ok) {
@@ -190,13 +167,6 @@ export const getLegalDocument = async ({
   snippet,
   apiBaseUrl = '',
 }: GetLegalDocumentParams): Promise<string> => {
-  const summaryFallback = [ozet, snippet].map(value => String(value || '').trim()).filter(Boolean).join('\n\n');
-  const isSyntheticDocumentId = /^(search-|legal-|ai-summary)/i.test(String(documentId || ''));
-
-  if (!documentUrl && isSyntheticDocumentId && summaryFallback) {
-    return summaryFallback;
-  }
-
   if (!documentId && !documentUrl) {
     throw new Error('Belge kimligi bulunamadi.');
   }
@@ -214,24 +184,19 @@ export const getLegalDocument = async ({
     snippet,
   };
   const body = JSON.stringify(payload);
-  const { data: { session } } = await supabase.auth.getSession();
-  const authHeaders: HeadersInit = { 'Content-Type': 'application/json' };
-  if (session?.access_token) {
-    authHeaders.Authorization = `Bearer ${session.access_token}`;
-  }
 
-  let response = await fetchWithTimeout(`${apiBaseUrl}/api/legal/get-document`, {
+  let response = await fetch(`${apiBaseUrl}/api/legal/get-document`, {
     method: 'POST',
-    headers: authHeaders,
+    headers: { 'Content-Type': 'application/json' },
     body,
-  }, 18000);
+  });
 
   if (!response.ok) {
-    response = await fetchWithTimeout(`${apiBaseUrl}/api/legal?action=get-document`, {
+    response = await fetch(`${apiBaseUrl}/api/legal?action=get-document`, {
       method: 'POST',
-      headers: authHeaders,
+      headers: { 'Content-Type': 'application/json' },
       body,
-    }, 18000);
+    });
   }
 
   if (!response.ok) {
