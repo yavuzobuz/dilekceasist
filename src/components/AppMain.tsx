@@ -579,8 +579,11 @@ export const AppMain: React.FC = () => {
         legalSearchResult: legalResultsText, // Add legal search results
         docContent,
         specifics: specificsWithMissingInfo,
+        searchKeywords,
         chatHistory: chatMessages,
         parties,
+        webSourceCount: webSearchResult?.sources?.length || 0,
+        legalResultCount: legalSearchResults.length,
         lawyerInfo: analysisData.lawyerInfo,
         contactInfo: analysisData.contactInfo,
       });
@@ -600,7 +603,7 @@ export const AppMain: React.FC = () => {
     } finally {
       setIsLoadingPetition(false);
     }
-  }, [userRole, petitionType, caseDetails, analysisData, webSearchResult, legalSearchResults, docContent, specificsWithMissingInfo, chatMessages, parties, user, missingInfoBlockingUnansweredCount]);
+  }, [userRole, petitionType, caseDetails, analysisData, webSearchResult, legalSearchResults, docContent, specificsWithMissingInfo, searchKeywords, chatMessages, parties, user, missingInfoBlockingUnansweredCount]);
 
   const savePetitionToSupabase = async (content: string, specificsOverride?: string) => {
     if (!user) return;
@@ -701,6 +704,9 @@ export const AppMain: React.FC = () => {
           legalResultCount: legalSearchResults.length,
           docContent: docContent,
           specifics: specificsWithMissingInfo,
+          analysisSummary: analysisData?.summary || '',
+          currentDraft: generatedPetition || '',
+          petitionType,
         },
         sanitizeChatFilesForApi(chatFiles)
       );
@@ -853,7 +859,7 @@ export const AppMain: React.FC = () => {
     } finally {
       setIsLoadingChat(false);
     }
-  }, [chatMessages, analysisData, searchKeywords, webSearchResult, legalSearchResults, docContent, specificsWithMissingInfo, mergeLegalResults, addToast, user, savePetitionToSupabase, missingInfoBlockingUnansweredCount]);
+  }, [chatMessages, analysisData, searchKeywords, webSearchResult, legalSearchResults, docContent, specificsWithMissingInfo, mergeLegalResults, addToast, user, savePetitionToSupabase, missingInfoBlockingUnansweredCount, generatedPetition, petitionType]);
 
   const handleRewriteText = useCallback(async (text: string): Promise<string> => {
     setError(null);

@@ -19,6 +19,16 @@ function formatPartiesForPrompt(parties) {
     return Object.entries(parties).map(([role, name]) => `${role}: ${name}`).join(', ');
 }
 
+function formatSearchKeywordsForPrompt(rawKeywords) {
+    if (Array.isArray(rawKeywords)) {
+        const cleaned = rawKeywords.map((item) => normalizeText(item)).filter(Boolean);
+        return cleaned.length > 0 ? cleaned.join(', ') : 'Saglanmadi.';
+    }
+
+    const text = normalizeText(rawKeywords);
+    return text || 'Saglanmadi.';
+}
+
 function formatChatHistoryForPrompt(chatHistory) {
     if (!chatHistory || chatHistory.length === 0) return 'Sohbet gecmisi yok.';
     return chatHistory.map((m) => `${m.role === 'user' ? 'Kullanici' : 'Asistan'}: ${m.text}`).join('\n');
@@ -121,6 +131,7 @@ Saglanan ham verileri, profesyonel ve ikna edici bir hukuki anlatia donusturmek.
 **Vekil Bilgileri:** ${formatLawyerInfoForPrompt(params.lawyerInfo)}
 **Taraflar:** ${formatPartiesForPrompt(params.parties)}
 **Olay Ozeti:** ${params.analysisSummary || 'Saglanmadi.'}
+**Arama Anahtar Kelimeleri:** ${formatSearchKeywordsForPrompt(params.searchKeywords)}
 **Hukuki Arastirma:** ${params.webSearchResult || 'Saglanmadi.'}
 **Emsal Kararlar:** ${params.legalSearchResult || 'Saglanmadi.'}
 **Ek Notlar:** ${params.docContent || 'Saglanmadi.'}

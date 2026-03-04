@@ -14,6 +14,26 @@ const getAiClient = () => {
 
 const normalizeText = (value) => (typeof value === 'string' ? value.trim() : '');
 
+const ensureContextObject = (value) => (value && typeof value === 'object' && !Array.isArray(value) ? value : {});
+
+const normalizeContextText = (value) => {
+    if (typeof value === 'string') return value.trim();
+    if (Array.isArray(value)) {
+        return value
+            .map((item) => normalizeText(item))
+            .filter(Boolean)
+            .join(', ');
+    }
+    return '';
+};
+
+const clipPromptText = (value, maxLength = 2200) => {
+    const normalized = normalizeContextText(value);
+    if (!normalized) return '';
+    if (normalized.length <= maxLength) return normalized;
+    return `${normalized.slice(0, maxLength)}...[truncated]`;
+};
+
 const normalizeKeywordText = (value = '') => String(value || '')
     .toLocaleLowerCase('tr-TR')
     .normalize('NFD')
@@ -354,11 +374,24 @@ export default async function handler(req, res) {
     try {
         const ai = getAiClient();
         const { chatHistory, analysisSummary, context, files } = req.body || {};
-        const safeContext = context || {};
+        const safeContext = ensureContextObject(context);
 
         if (!Array.isArray(chatHistory) || chatHistory.length === 0) {
             return res.status(400).json({ error: 'chatHistory must be a non-empty array' });
         }
+
+        const summaryFromBody = normalizeText(analysisSummary || '');
+        const summaryFromContext = normalizeContextText(safeContext.analysisSummary);
+        const effectiveAnalysisSummary = summaryFromBody || summaryFromContext;
+        const contextKeywords = normalizeContextText(safeContext.keywords);
+        const contextDocContent = normalizeContextText(safeContext.docContent);
+        const contextSpecifics = normalizeContextText(safeContext.specifics);
+        const contextCurrentDraft = normalizeContextText(
+            safeContext.currentDraft
+            || safeContext.currentPetition
+            || safeContext.generatedPetition
+            || safeContext.generatedDocument
+        );
 
         const lastUserMessage = getLastUserMessageText(chatHistory);
         const isDocumentRequest = isLikelyDocumentRequest(lastUserMessage);
@@ -367,8 +400,8 @@ export default async function handler(req, res) {
         const requiresEvidenceForAnswer = !isSimpleQuestion || isDocumentRequest || (Array.isArray(files) && files.length > 0);
         const requiresWebEvidence = requiresEvidenceForAnswer && !isEmsalOnlyQuery;
         const requiresLegalEvidence = requiresEvidenceForAnswer;
-        const hasAnalysisSummary = normalizeText(analysisSummary || '').length > 0;
-        const hasUploadedDocument = (Array.isArray(files) && files.length > 0) || normalizeText(safeContext.docContent || '').length > 0;
+        const hasAnalysisSummary = effectiveAnalysisSummary.length > 0;
+        const hasUploadedDocument = (Array.isArray(files) && files.length > 0) || contextDocContent.length > 0;
 
         if (isDocumentRequest && !hasAnalysisSummary) {
             return res.status(422).json({
@@ -377,13 +410,13 @@ export default async function handler(req, res) {
             });
         }
 
-        let effectiveSearchSummary = normalizeText(safeContext.searchSummary || '');
-        let effectiveLegalSummary = normalizeText(safeContext.legalSummary || '');
+        let effectiveSearchSummary = normalizeContextText(safeContext.searchSummary || safeContext.webSearchSummary);
+        let effectiveLegalSummary = normalizeContextText(safeContext.legalSummary);
         let effectiveWebSourceCount = Number(safeContext.webSourceCount || 0);
         let effectiveLegalResultCount = Number(safeContext.legalResultCount || 0);
 
         const keywordSeed = Array.from(new Set([
-            ...extractKeywordCandidates(safeContext.keywords || ''),
+            ...extractKeywordCandidates(contextKeywords),
             ...extractKeywordCandidates(lastUserMessage),
         ])).join(' ').trim();
 
@@ -429,13 +462,23 @@ export default async function handler(req, res) {
         }
 
         const documentGenerationAllowed = hasVerifiedWebEvidence && hasVerifiedLegalEvidence;
+        const promptAnalysisSummary = clipPromptText(effectiveAnalysisSummary, 2200);
+        const promptKeywords = clipPromptText(contextKeywords || evidenceQuery, 900);
+        const promptSearchSummary = clipPromptText(effectiveSearchSummary, 2400);
+        const promptLegalSummary = clipPromptText(effectiveLegalSummary, 2400);
+        const promptDocContent = clipPromptText(contextDocContent, 1800);
+        const promptSpecifics = clipPromptText(contextSpecifics, 1200);
+        const promptCurrentDraft = clipPromptText(contextCurrentDraft, 3000);
 
         const contextPrompt = `
 **MEVCUT DURUM:**
-- Vaka Ozeti: ${analysisSummary || 'Henuz analiz yapilmadi.'}
-- Anahtar Kelimeler: ${safeContext.keywords || evidenceQuery || 'Yok'}
-- Web Arastirma: ${effectiveSearchSummary || 'Yok'}
-- Emsal Karar Arastirmasi: ${effectiveLegalSummary || 'Yok'}
+- Vaka Ozeti: ${promptAnalysisSummary || 'Henuz analiz yapilmadi.'}
+- Anahtar Kelimeler: ${promptKeywords || 'Yok'}
+- Web Arastirma: ${promptSearchSummary || 'Yok'}
+- Emsal Karar Arastirmasi: ${promptLegalSummary || 'Yok'}
+- Kullanicinin Ek Metinleri: ${promptDocContent || 'Yok'}
+- Kullanicinin Ozel Talimatlari: ${promptSpecifics || 'Yok'}
+- Mevcut Dilekce Taslagi: ${promptCurrentDraft || 'Henuz olusturulan taslak yok'}
 - Web Kaynak Sayisi: ${effectiveWebSourceCount}
 - Emsal Karar Sayisi: ${effectiveLegalResultCount}
 ${Array.isArray(files) && files.length > 0 ? `- Yuklenen Belgeler: ${files.length} adet` : ''}
@@ -451,6 +494,7 @@ ${Array.isArray(files) && files.length > 0 ? `- Yuklenen Belgeler: ${files.lengt
 5. Sadece dogrulanmis bulgulara dayan
 ${documentGenerationAllowed ? '6. generate_document fonksiyonunu sadece dogrulanmis kanit varken kullan' : '6. generate_document kullanma, kanit eksigini bildir'}
 7. search_yargitay fonksiyonu ile ictihat ara
+8. Mevcut dilekce taslagi varsa, sorulari o taslak metin uzerinden yanitla ve revizyon onerilerini taslaga uygulayarak ver
 
 ${contextPrompt}
 

@@ -428,6 +428,7 @@ export interface GeneratePetitionParams {
   legalSearchResult?: string; // Yargıtay, Danıştay etc. court decisions
   docContent: string;
   specifics: string;
+  searchKeywords?: string[] | string;
   chatHistory: ChatMessage[];
   parties: { [key: string]: string };
   webSourceCount?: number;
@@ -458,4 +459,7 @@ export interface ChatContext {
   legalResultCount?: number;
   docContent: string;
   specifics: string;
+  analysisSummary?: string;
+  currentDraft?: string;
+  petitionType?: string;
 }
