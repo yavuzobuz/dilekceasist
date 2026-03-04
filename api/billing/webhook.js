@@ -1,11 +1,14 @@
-import { constructStripeWebhookEvent, processStripeWebhookEvent } from '../_lib/stripeCheckout.js';
-import { getSafeErrorMessage } from '../_lib/cors.js';
-
 export const config = {
     api: {
         bodyParser: false,
     },
 };
+
+const getSafeErrorMessage = (error, fallbackMessage) => (
+    process.env.NODE_ENV === 'production'
+        ? fallbackMessage
+        : (error?.message || fallbackMessage)
+);
 
 const readRawBody = async (req) => {
     if (Buffer.isBuffer(req.body)) return req.body;
@@ -27,6 +30,8 @@ export default async function handler(req, res) {
     }
 
     try {
+        const { constructStripeWebhookEvent, processStripeWebhookEvent } = await import('../_lib/stripeCheckout.js');
+
         const signatureHeader = Array.isArray(req.headers['stripe-signature'])
             ? req.headers['stripe-signature'][0]
             : req.headers['stripe-signature'];
