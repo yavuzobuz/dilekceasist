@@ -2,7 +2,7 @@
 import { supabase } from '../lib/supabase';
 
 const API_BASE_URL = '/api/gemini';
-const MAX_API_BODY_BYTES = 3.8 * 1024 * 1024;
+const MAX_API_BODY_BYTES = 15 * 1024 * 1024;
 
 async function buildJsonHeaders(): Promise<Record<string, string>> {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
