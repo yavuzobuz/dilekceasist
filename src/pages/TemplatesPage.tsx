@@ -172,6 +172,14 @@ const CATEGORIES = [
 type CustomTemplateType = 'dilekce' | 'sozlesme' | 'ihtarname';
 type PetitionTemplateCategory = 'Hukuk' | 'Ceza' | 'Is Hukuku' | 'Icra' | 'Idari';
 
+const resolveCustomPetitionCategory = (
+    templateType: CustomTemplateType,
+    petitionCategory: PetitionTemplateCategory | ''
+): PetitionTemplateCategory | null => {
+    if (templateType !== 'dilekce') return null;
+    return petitionCategory || null;
+};
+
 const PETITION_CATEGORY_OPTIONS: Array<{ value: PetitionTemplateCategory; label: string }> = [
     { value: 'Hukuk', label: 'Hukuk' },
     { value: 'Ceza', label: 'Ceza' },
@@ -656,18 +664,20 @@ const findBestMatchingHeaderForVariable = (variable: TemplateVariable, headers: 
         normalized: normalizeLookupKey(header),
     }));
     const aliases = getVariableAliases(variable);
-    let best: { header: string; score: number } | null = null;
+    let bestHeader: string | null = null;
+    let bestScore = Number.NEGATIVE_INFINITY;
 
-    normalizedHeaders.forEach(headerInfo => {
-        aliases.forEach(alias => {
+    for (const headerInfo of normalizedHeaders) {
+        for (const alias of aliases) {
             const score = scoreHeaderMatch(alias, headerInfo.normalized);
-            if (!best || score > best.score) {
-                best = { header: headerInfo.raw, score };
+            if (score > bestScore) {
+                bestScore = score;
+                bestHeader = headerInfo.raw;
             }
-        });
-    });
+        }
+    }
 
-    return best && best.score >= 30 ? best.header : null;
+    return bestScore >= 30 ? bestHeader : null;
 };
 
 const inferColumnMapping = (variables: TemplateVariable[], headers: string[]): Record<string, string> => {
@@ -995,7 +1005,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                     title: customForm.title.trim(),
                     description: customForm.description.trim() || null,
                     template_type: customForm.template_type,
-                    petition_category: customForm.template_type === 'dilekce' ? customForm.petition_category : null,
+                    petition_category: resolveCustomPetitionCategory(customForm.template_type, customForm.petition_category),
                     content: customForm.content,
                     style_notes: customForm.style_notes.trim() || null,
                     source_file_name: customForm.source_file_name,
@@ -1007,7 +1017,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                     title: customForm.title.trim(),
                     description: customForm.description.trim() || null,
                     template_type: customForm.template_type,
-                    petition_category: customForm.template_type === 'dilekce' ? customForm.petition_category : null,
+                    petition_category: resolveCustomPetitionCategory(customForm.template_type, customForm.petition_category),
                     content: customForm.content,
                     style_notes: customForm.style_notes.trim() || null,
                     source_file_name: customForm.source_file_name,
@@ -1395,7 +1405,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
             };
 
             try {
-                localStorage.setItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY, JSON.stringify(pendingBulkPackage));
+                sessionStorage.setItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY, JSON.stringify(pendingBulkPackage));
             } catch (storageError) {
                 console.error('Bulk package storage error:', storageError);
                 setBulkError('Seri paket verisi kaydedilemedi. Tarayici depolama alani yetersiz olabilir.');

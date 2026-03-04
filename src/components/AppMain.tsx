@@ -215,16 +215,16 @@ export const AppMain: React.FC = () => {
 
   // Load petition from state if provided (only on mount or when petitionFromState changes)
   useEffect(() => {
-    // Check for template content from localStorage
-    const templateContent = localStorage.getItem('templateContent');
-    const storedEditorReturnRoute = localStorage.getItem('editorReturnRoute');
+    // Check for template content from sessionStorage
+    const templateContent = sessionStorage.getItem('templateContent');
+    const storedEditorReturnRoute = sessionStorage.getItem('editorReturnRoute');
     if (templateContent) {
       setGeneratedPetition(templateContent);
       setPetitionVersion(v => v + 1);
       setIsFullPageEditorMode(true);
       setEditorReturnRoute(storedEditorReturnRoute === '/alt-app' ? '/alt-app' : '/app');
-      localStorage.removeItem('templateContent'); // Clear after using
-      localStorage.removeItem('editorReturnRoute');
+      sessionStorage.removeItem('templateContent'); // Clear after using
+      sessionStorage.removeItem('editorReturnRoute');
       addToast('Şablon yüklendi! ✨', 'success');
     } else if (petitionFromState) {
       setGeneratedPetition(petitionFromState.content || '');
@@ -254,7 +254,7 @@ export const AppMain: React.FC = () => {
   const handleExitFullPageEditor = useCallback(() => {
     if (editorReturnRoute === '/alt-app') {
       if (generatedPetition?.trim()) {
-        localStorage.setItem('templateContent', generatedPetition);
+        sessionStorage.setItem('templateContent', generatedPetition);
       }
       navigate('/alt-app');
       return;
@@ -712,12 +712,15 @@ export const AppMain: React.FC = () => {
       let generatedDocument = false;
 
       for await (const chunk of responseStream) {
-        // Debug: Log the raw chunk structure
-        console.log('[Chat Chunk]', JSON.stringify(chunk).substring(0, 500));
+        if (import.meta.env.DEV) {
+          console.log('[Chat Chunk]', JSON.stringify(chunk).substring(0, 500));
+        }
 
         // Handle search results from function call (search_yargitay)
         if (chunk.functionCallResults && chunk.searchResults) {
-          console.log('[AI Search Results]', chunk.searchResults);
+          if (import.meta.env.DEV) {
+            console.log('[AI Search Results]', chunk.searchResults);
+          }
           // Add search results to legalSearchResults state
           const newResults = chunk.searchResults.map((result: any) => ({
             title: result.title || 'Yargıtay Kararı',
@@ -742,7 +745,9 @@ export const AppMain: React.FC = () => {
         );
 
         if (hasNonTextParts) {
-          console.log('[AI Response] Contains non-text parts (internal metadata) - processing text and function calls');
+          if (import.meta.env.DEV) {
+            console.log('[AI Response] Contains non-text parts (internal metadata) - processing text and function calls');
+          }
         }
 
         // Extract text from chunk - handle both direct text and candidates structure

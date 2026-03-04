@@ -62,6 +62,7 @@ vi.mock('../src/pages/admin', () => ({
 describe('AppRouter', () => {
     beforeEach(() => {
         localStorage.clear();
+        sessionStorage.clear();
     });
 
     it('should navigate from landing page to alt-app and set hasVisited', () => {
@@ -87,7 +88,6 @@ describe('AppRouter', () => {
         fireEvent.click(screen.getByText('Use Mock Template'));
 
         expect(screen.getByText('Alternative App')).toBeInTheDocument();
-        expect(localStorage.getItem('templateContent')).toBe('mock-template-content');
+        expect(sessionStorage.getItem('templateContent')).toBe('mock-template-content');
     });
 });
-

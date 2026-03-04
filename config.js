@@ -17,7 +17,7 @@ export const AI_CONFIG = {
 
 export const SERVER_CONFIG = {
     PORT: Number(process.env.PORT || 3001),
-    JSON_LIMIT: '50mb',
+    JSON_LIMIT: '100kb',
 };
 
 export const CORS_CONFIG = {

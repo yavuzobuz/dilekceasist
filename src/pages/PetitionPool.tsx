@@ -7,6 +7,7 @@ import { Footer } from '../../components/Footer';
 import { toast } from 'react-hot-toast';
 import { PetitionType } from '../../types';
 import { BookOpenIcon, StarIcon, StarSolidIcon, EyeIcon, ArrowDownCircleIcon, XMarkIcon } from '../../components/Icon';
+import { sanitizeHtml } from '../utils/sanitizeHtml';
 
 interface PublicPetition {
   id: string;
@@ -38,6 +39,10 @@ export default function PetitionPool() {
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedPetition, setSelectedPetition] = useState<PublicPetition | null>(null);
   const [favoritedPetitions, setFavoritedPetitions] = useState<Set<string>>(new Set());
+  const sanitizedSelectedPetitionContent = React.useMemo(
+    () => sanitizeHtml(selectedPetition?.content || ''),
+    [selectedPetition?.content]
+  );
 
   useEffect(() => {
     fetchPetitions();
@@ -61,7 +66,9 @@ export default function PetitionPool() {
 
       // If foreign key relationship doesn't exist yet, try without profiles join
       if (error && error.code === 'PGRST200') {
-        console.log('Profiles relationship not found, fetching without join...');
+        if (import.meta.env.DEV) {
+          console.log('Profiles relationship not found, fetching without join...');
+        }
         const result = await supabase
           .from('public_petitions')
           .select('*')
@@ -75,7 +82,9 @@ export default function PetitionPool() {
       if (error) {
         // Table doesn't exist
         if (error.code === '42P01') {
-          console.log('public_petitions table does not exist yet. Please run the migration.');
+          if (import.meta.env.DEV) {
+            console.log('public_petitions table does not exist yet. Please run the migration.');
+          }
           setPetitions([]);
           return;
         }
@@ -391,7 +400,7 @@ export default function PetitionPool() {
             </div>
             <div className="p-4 sm:p-6 flex-1 overflow-y-auto">
               <div className="prose prose-invert max-w-none prose-sm sm:prose-base">
-                <div dangerouslySetInnerHTML={{ __html: selectedPetition.content }} />
+                <div dangerouslySetInnerHTML={{ __html: sanitizedSelectedPetitionContent }} />
               </div>
             </div>
             <div className="p-4 sm:p-6 border-t border-gray-700 flex flex-col sm:flex-row gap-2 sm:gap-4 flex-shrink-0">

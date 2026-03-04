@@ -1,9 +1,11 @@
 // Admin Users API - list users with plan/quota and assign rights
 import { createClient } from '@supabase/supabase-js';
+import { applyCors, getSafeErrorMessage } from './_lib/cors.js';
+import { cancelStripeSubscriptionForUser } from './_lib/stripeCheckout.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'kibrit74@gmail.com')
     .split(',')
     .map(email => email.trim().toLowerCase())
@@ -386,25 +388,22 @@ const handlePatch = async (req, res, supabaseAdmin) => {
 
 const handleCancelPlan = async (req, res, supabaseAdmin) => {
     const authenticatedUser = await getAuthenticatedUser(req);
-    await getOrCreateUserPlan(supabaseAdmin, authenticatedUser.id);
-
-    const { error: updateError } = await supabaseAdmin
-        .from('user_usage_plans')
-        .update({ status: 'inactive' })
-        .eq('user_id', authenticatedUser.id);
-
-    if (updateError) {
-        throw updateError;
-    }
+    const stripeCancellation = await cancelStripeSubscriptionForUser({
+        userId: authenticatedUser.id,
+        email: authenticatedUser.email || '',
+    });
 
     const summary = await buildPlanUsageSummary(supabaseAdmin, authenticatedUser.id);
-    res.status(200).json({ success: true, summary });
+    res.status(200).json({ success: true, summary, stripeCancellation });
 };
 
 export default async function handler(req, res) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (!applyCors(req, res, {
+        methods: 'GET, PATCH, POST, OPTIONS',
+        headers: 'Content-Type, Authorization',
+    })) {
+        return res.status(403).json({ error: 'CORS: Origin not allowed' });
+    }
 
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
@@ -437,6 +436,8 @@ export default async function handler(req, res) {
         return await handlePatch(req, res, supabaseAdmin);
     } catch (error) {
         console.error('Admin users error:', error);
-        res.status(error.status || 500).json({ error: error.message || 'Admin users API error' });
+        res.status(error.status || 500).json({
+            error: getSafeErrorMessage(error, 'Admin users API error'),
+        });
     }
 }

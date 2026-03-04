@@ -7,6 +7,7 @@
 import { ICRA_TEMPLATES, IS_HUKUKU_TEMPLATES } from '../templates-part1.js';
 import { TUKETICI_TEMPLATES, TICARET_TEMPLATES, MIRAS_TEMPLATES, CEZA_TEMPLATES, IDARI_TEMPLATES } from '../templates-part2.js';
 import { SOZLESME_VE_IHTARNAME_TEMPLATES } from '../templates-part3.js';
+import { applyCors, getSafeErrorMessage } from './_lib/cors.js';
 
 const TEMPLATES = [
     ...ICRA_TEMPLATES,
@@ -137,15 +138,20 @@ const fillTemplateContent = (template, variables = {}) => {
 };
 
 export default async function handler(req, res) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (!applyCors(req, res, {
+        methods: 'GET, POST, OPTIONS',
+        headers: 'Content-Type, Authorization',
+    })) {
+        return res.status(403).json({ error: 'CORS: Origin not allowed' });
+    }
 
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     try {
         if (req.method === 'GET') {
-            console.log("TEMPLATES API GET HIT. URL:", req.url, "QUERY:", req.query);
+            if (process.env.NODE_ENV !== 'production') {
+                console.log('TEMPLATES API GET HIT. URL:', req.url);
+            }
             const { category, search, id } = req.query;
 
             if (id) {
@@ -227,7 +233,9 @@ export default async function handler(req, res) {
             }
 
             // Single mode
-            console.log(`[TEMPLATE USE] ID: ${id}, Variables:`, JSON.stringify(variables, null, 2));
+            if (process.env.NODE_ENV !== 'production') {
+                console.log(`[TEMPLATE USE] ID: ${id}, variableCount: ${variables ? Object.keys(variables).length : 0}`);
+            }
             const content = fillTemplateContent(template, variables);
 
             return res.json({
@@ -240,6 +248,6 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     } catch (error) {
         console.error('Templates Error:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: getSafeErrorMessage(error, 'Templates API error') });
     }
 }

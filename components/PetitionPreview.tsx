@@ -7,6 +7,7 @@ import html2canvas from 'html2canvas';
 import { saveAs } from 'file-saver';
 import JSZip from 'jszip';
 import { marked } from 'marked';
+import { sanitizeHtml } from '../src/utils/sanitizeHtml';
 
 marked.setOptions({ breaks: true, gfm: true });
 
@@ -32,7 +33,7 @@ const convertMarkdownToHtml = (text: string): string => {
         .replace(/\n{3,}/g, '\n\n')
         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
         .replace(/\*([^*]+)\*/g, '<em>$1</em>');
-    return marked.parse(processed) as string;
+    return sanitizeHtml(marked.parse(processed) as string);
 };
 
 // ── Floating AI Toolbar ───────────────────────────────
@@ -141,7 +142,7 @@ export const PetitionPreview: React.FC<PetitionPreviewProps> = ({
             selectionRange.deleteContents();
             selectionRange.insertNode(document.createTextNode(rewrittenText));
             if (editorRef.current) {
-                setPetition(editorRef.current.innerHTML);
+                setPetition(sanitizeHtml(editorRef.current.innerHTML));
             }
         } catch (error) {
             console.error('AI rewrite failed:', error);
@@ -153,7 +154,7 @@ export const PetitionPreview: React.FC<PetitionPreviewProps> = ({
 
     // Handle manual edit
     const handleInput = useCallback((event: React.FormEvent<HTMLDivElement>) => {
-        setPetition(event.currentTarget.innerHTML);
+        setPetition(sanitizeHtml(event.currentTarget.innerHTML));
     }, [setPetition]);
 
     // Download handlers
@@ -189,14 +190,14 @@ export const PetitionPreview: React.FC<PetitionPreviewProps> = ({
         setIsDownloading(true);
         setIsDownloadMenuOpen(false);
         try {
-            let contentHtml = editorRef.current.innerHTML;
+            let contentHtml = sanitizeHtml(editorRef.current.innerHTML);
             if (officeLogoUrl || corporateHeader) {
                 let brandingHtml = '<div style="margin-bottom: 20px; display: flex; gap: 20px; align-items: center;">';
                 if (officeLogoUrl) {
                     brandingHtml += `<img src="${officeLogoUrl}" width="80" height="80" style="width: 80px; height: 80px; object-fit: contain;" />`;
                 }
                 if (corporateHeader) {
-                    brandingHtml += `<div style="font-family: 'Times New Roman'; white-space: pre-line;">${corporateHeader}</div>`;
+                    brandingHtml += `<div style="font-family: 'Times New Roman'; white-space: pre-line;">${sanitizeHtml(corporateHeader)}</div>`;
                 }
                 brandingHtml += '</div><hr />';
                 contentHtml = brandingHtml + contentHtml;
@@ -225,7 +226,7 @@ export const PetitionPreview: React.FC<PetitionPreviewProps> = ({
         setIsDownloadMenuOpen(false);
         try {
             const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = editorRef.current.innerHTML;
+            tempDiv.innerHTML = sanitizeHtml(editorRef.current.innerHTML);
             let textContent = tempDiv.innerText || tempDiv.textContent || '';
             if (corporateHeader) {
                 textContent = `${corporateHeader}\n\n${textContent}`;
@@ -241,25 +242,25 @@ export const PetitionPreview: React.FC<PetitionPreviewProps> = ({
         }
     };
 
-  const handleDownloadUdf = async () => {
-    if (!editorRef.current) return;
-    setIsDownloading(true);
-    setIsDownloadMenuOpen(false);
-    try {
-      const { generateUdfBlob } = await import('../services/udfGenerator');
-      const blob = await generateUdfBlob({
-        html: editorRef.current.innerHTML,
+  const handleDownloadUdf = async () => {
+    if (!editorRef.current) return;
+    setIsDownloading(true);
+    setIsDownloadMenuOpen(false);
+    try {
+      const { generateUdfBlob } = await import('../services/udfGenerator');
+      const blob = await generateUdfBlob({
+        html: sanitizeHtml(editorRef.current.innerHTML),
         title: 'Dilekçe',
-        corporateHeader: corporateHeader || undefined,
-      });
-      saveAs(blob, 'dilekce.udf');
-      setDownloadSuccess('UDF');
-      setTimeout(() => setDownloadSuccess(null), 3000);
-    } catch (error) {
-      console.error("Error generating UDF:", error);
-    } finally {
-      setIsDownloading(false);
-    }
+        corporateHeader: corporateHeader || undefined,
+      });
+      saveAs(blob, 'dilekce.udf');
+      setDownloadSuccess('UDF');
+      setTimeout(() => setDownloadSuccess(null), 3000);
+    } catch (error) {
+      console.error("Error generating UDF:", error);
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
     return (

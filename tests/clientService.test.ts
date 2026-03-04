@@ -36,6 +36,7 @@ describe('clientService', () => {
         mockSupabase.auth.getUser.mockReset();
         mockSupabase.from.mockReset();
         mockSupabase.storage.from.mockReset();
+        mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'user-default' } } });
     });
 
     it('getClients should return ordered clients list', async () => {
@@ -50,6 +51,7 @@ describe('clientService', () => {
 
         expect(mockSupabase.from).toHaveBeenCalledWith('clients');
         expect(chain.select).toHaveBeenCalledWith('*');
+        expect(chain.eq).toHaveBeenCalledWith('user_id', 'user-default');
         expect(chain.order).toHaveBeenCalledWith('name');
         expect(result).toEqual([{ id: '1', name: 'Ali' }]);
     });
@@ -99,7 +101,8 @@ describe('clientService', () => {
         const result = await clientService.updateClient('c2', { name: 'Guncel' } as any);
 
         expect(chain.update).toHaveBeenCalledWith({ name: 'Guncel' });
-        expect(chain.eq).toHaveBeenCalledWith('id', 'c2');
+        expect(chain.eq).toHaveBeenNthCalledWith(1, 'id', 'c2');
+        expect(chain.eq).toHaveBeenNthCalledWith(2, 'user_id', 'user-default');
         expect(result.name).toBe('Guncel');
     });
 
@@ -111,6 +114,7 @@ describe('clientService', () => {
         const deletePdfSpy = vi.spyOn(clientService, 'deleteVekaletPdf').mockResolvedValueOnce();
 
         const chain = createClientQueryChain();
+        chain.eq.mockImplementationOnce(() => chain);
         chain.eq.mockResolvedValueOnce({ error: null });
         mockSupabase.from.mockReturnValueOnce(chain);
 
@@ -119,7 +123,8 @@ describe('clientService', () => {
         expect(getClientSpy).toHaveBeenCalledWith('c3');
         expect(deletePdfSpy).toHaveBeenCalledWith('c3');
         expect(chain.delete).toHaveBeenCalled();
-        expect(chain.eq).toHaveBeenCalledWith('id', 'c3');
+        expect(chain.eq).toHaveBeenNthCalledWith(1, 'id', 'c3');
+        expect(chain.eq).toHaveBeenNthCalledWith(2, 'user_id', 'user-default');
     });
 
     it('uploadVekaletPdf should upload and update client with file path', async () => {
@@ -150,6 +155,7 @@ describe('clientService', () => {
     });
 
     it('getVekaletPdfUrl should return null on storage error', async () => {
+        mockSupabase.auth.getUser.mockResolvedValueOnce({ data: { user: { id: 'user-77' } } });
         const createSignedUrl = vi.fn().mockResolvedValueOnce({
             data: null,
             error: new Error('storage fail'),
@@ -157,7 +163,7 @@ describe('clientService', () => {
         mockSupabase.storage.from.mockReturnValue({ createSignedUrl });
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-        const result = await clientService.getVekaletPdfUrl('x/y/z.pdf');
+        const result = await clientService.getVekaletPdfUrl('user-77/x/y.pdf');
 
         expect(result).toBeNull();
         expect(errorSpy).toHaveBeenCalled();

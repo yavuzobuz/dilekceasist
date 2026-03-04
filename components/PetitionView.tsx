@@ -7,6 +7,7 @@ import html2canvas from 'html2canvas';
 import { saveAs } from 'file-saver';
 import JSZip from 'jszip';
 import { marked } from 'marked';
+import { sanitizeHtml } from '../src/utils/sanitizeHtml';
 
 // Configure marked for proper line breaks and formatting
 marked.setOptions({
@@ -33,7 +34,7 @@ const convertMarkdownToHtml = (text: string): string => {
     .replace(/\*([^*]+)\*/g, '<em>$1</em>'); // Italic
 
   // Use marked to convert to HTML
-  const html = marked.parse(processed) as string;
+  const html = sanitizeHtml(marked.parse(processed) as string);
 
   return html;
 };
@@ -134,7 +135,7 @@ export const PetitionView: React.FC<PetitionViewProps> = ({ petition, setGenerat
 
   const handleInput = (event: React.FormEvent<HTMLDivElement>) => {
     // Sync state for direct edits
-    setGeneratedPetition(event.currentTarget.innerHTML);
+    setGeneratedPetition(sanitizeHtml(event.currentTarget.innerHTML));
   };
 
   const handleRewrite = async () => {
@@ -161,7 +162,7 @@ export const PetitionView: React.FC<PetitionViewProps> = ({ petition, setGenerat
 
       // Update the main state with the new editor content
       if (editorRef.current) {
-        setGeneratedPetition(editorRef.current.innerHTML);
+        setGeneratedPetition(sanitizeHtml(editorRef.current.innerHTML));
       }
 
     } catch (error) {
@@ -205,7 +206,7 @@ export const PetitionView: React.FC<PetitionViewProps> = ({ petition, setGenerat
     setIsDownloadMenuOpen(false);
     try {
       // Construct HTML with branding if available
-      let contentHtml = editorRef.current.innerHTML;
+      let contentHtml = sanitizeHtml(editorRef.current.innerHTML);
 
       if (officeLogoUrl || corporateHeader) {
         let brandingHtml = '<div style="margin-bottom: 20px; display: flex; gap: 20px; align-items: center;">';
@@ -213,7 +214,7 @@ export const PetitionView: React.FC<PetitionViewProps> = ({ petition, setGenerat
           brandingHtml += `<img src="${officeLogoUrl}" width="80" height="80" style="width: 80px; height: 80px; object-fit: contain;" />`;
         }
         if (corporateHeader) {
-          brandingHtml += `<div style="font-family: 'Times New Roman'; white-space: pre-line;">${corporateHeader}</div>`;
+          brandingHtml += `<div style="font-family: 'Times New Roman'; white-space: pre-line;">${sanitizeHtml(corporateHeader)}</div>`;
         }
         brandingHtml += '</div><hr />';
         contentHtml = brandingHtml + contentHtml;
@@ -256,7 +257,7 @@ export const PetitionView: React.FC<PetitionViewProps> = ({ petition, setGenerat
     try {
       // Extract plain text from HTML content
       const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = editorRef.current.innerHTML;
+      tempDiv.innerHTML = sanitizeHtml(editorRef.current.innerHTML);
       let textContent = tempDiv.innerText || tempDiv.textContent || '';
 
       // Prepend corporate header to text content
@@ -276,7 +277,7 @@ export const PetitionView: React.FC<PetitionViewProps> = ({ petition, setGenerat
 
   const syncEditorContent = useCallback(() => {
     if (editorRef.current) {
-      setGeneratedPetition(editorRef.current.innerHTML);
+      setGeneratedPetition(sanitizeHtml(editorRef.current.innerHTML));
     }
   }, [setGeneratedPetition]);
 
@@ -491,23 +492,23 @@ export const PetitionView: React.FC<PetitionViewProps> = ({ petition, setGenerat
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleDownloadUdf = async () => {
-    if (!editorRef.current) return;
-    setIsDownloading(true);
-    setIsDownloadMenuOpen(false);
-    try {
-      const { generateUdfBlob } = await import('../services/udfGenerator');
-      const blob = await generateUdfBlob({
-        html: editorRef.current.innerHTML,
+  const handleDownloadUdf = async () => {
+    if (!editorRef.current) return;
+    setIsDownloading(true);
+    setIsDownloadMenuOpen(false);
+    try {
+      const { generateUdfBlob } = await import('../services/udfGenerator');
+      const blob = await generateUdfBlob({
+        html: sanitizeHtml(editorRef.current.innerHTML),
         title: 'Dilekçe',
-        corporateHeader: corporateHeader || undefined,
-      });
-      saveAs(blob, 'dilekce.udf');
-    } catch (error) {
-      console.error("Error generating UDF:", error);
-    } finally {
-      setIsDownloading(false);
-    }
+        corporateHeader: corporateHeader || undefined,
+      });
+      saveAs(blob, 'dilekce.udf');
+    } catch (error) {
+      console.error("Error generating UDF:", error);
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
 

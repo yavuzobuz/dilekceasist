@@ -933,9 +933,9 @@ export default function AlternativeApp() {
     }, []);
 
     useEffect(() => {
-        const templateContent = localStorage.getItem('templateContent');
-        const rawTemplateCtx = localStorage.getItem('templateContext');
-        const rawBulkPackage = localStorage.getItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
+        const templateContent = sessionStorage.getItem('templateContent');
+        const rawTemplateCtx = sessionStorage.getItem('templateContext');
+        const rawBulkPackage = sessionStorage.getItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
         const templateCtx = parseTemplateTransferContext(rawTemplateCtx);
         const bulkPackage = parsePendingBulkTemplatePackage(rawBulkPackage);
 
@@ -967,10 +967,10 @@ export default function AlternativeApp() {
                 prev,
                 `SABLON TASLAK METNI\n${initialTemplateDraft}`,
             ].filter(Boolean).join('\n\n'));
-            localStorage.removeItem('templateContent');
-            localStorage.removeItem('templateContext');
+            sessionStorage.removeItem('templateContent');
+            sessionStorage.removeItem('templateContext');
             if (!hasPendingBulkPackage) {
-                localStorage.removeItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
+                sessionStorage.removeItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
             }
 
             // TemplateContext varsa: kararları, alan değerlerini ve AI güçlendirme flag'ini aktar
@@ -999,7 +999,7 @@ export default function AlternativeApp() {
             setTemplateVariableItems([]);
             setTemplateVariableValues({});
             setHasTemplateVariableChanges(false);
-            localStorage.removeItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
+            sessionStorage.removeItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
             setGeneratedPetition(petitionFromState.content || '');
             setPetitionVersion(v => v + 1);
             setCurrentStep(4);
@@ -1221,7 +1221,7 @@ export default function AlternativeApp() {
                 addToast(`${rowVariables.length} satirlik paket indirildi. ${failedDocxRows.length} satirda DOCX hatasi var.`, 'info');
             }
 
-            localStorage.removeItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
+            sessionStorage.removeItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
             setPendingBulkPackage(null);
         } catch (downloadError) {
             const message = downloadError instanceof Error ? downloadError.message : 'Seri paket indirilirken hata oluştu.';
@@ -1800,8 +1800,8 @@ export default function AlternativeApp() {
             return;
         }
 
-        localStorage.setItem('templateContent', generatedPetition);
-        localStorage.setItem('editorReturnRoute', '/alt-app');
+        sessionStorage.setItem('templateContent', generatedPetition);
+        sessionStorage.setItem('editorReturnRoute', '/alt-app');
         addToast('Taslak editör sayfasına gönderildi.', 'success');
         navigate('/app');
     }, [generatedPetition, addToast, navigate]);

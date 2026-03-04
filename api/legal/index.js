@@ -1,7 +1,101 @@
 import { GoogleGenAI } from '@google/genai';
+import { createClient } from '@supabase/supabase-js';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const MODEL_NAME = 'gemini-2.5-pro';
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+const normalizeOrigin = (origin = '') => String(origin || '').trim().replace(/\/+$/, '').toLowerCase();
+
+const parseOriginList = (...values) => values
+    .filter(Boolean)
+    .flatMap(value => String(value).split(','))
+    .map(normalizeOrigin)
+    .filter(Boolean);
+
+const isLocalDevOrigin = (origin) => {
+    try {
+        const parsed = new URL(origin);
+        const host = (parsed.hostname || '').toLowerCase();
+        return host === 'localhost' || host === '127.0.0.1' || host === '::1';
+    } catch {
+        return false;
+    }
+};
+
+const allowedOriginSet = new Set(parseOriginList(
+    process.env.APP_BASE_URL,
+    process.env.FRONTEND_URL,
+    process.env.CORS_ORIGINS,
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:4173',
+    'http://127.0.0.1:4173'
+));
+
+const applyCors = (req, res) => {
+    const requestOrigin = req.headers?.origin;
+    if (requestOrigin) {
+        const normalized = normalizeOrigin(requestOrigin);
+        const isAllowed = allowedOriginSet.has(normalized)
+            || (process.env.NODE_ENV !== 'production' && isLocalDevOrigin(requestOrigin));
+        if (!isAllowed) return false;
+
+        res.setHeader('Access-Control-Allow-Origin', requestOrigin);
+        res.setHeader('Vary', 'Origin');
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    return true;
+};
+
+const getBearerToken = (authorizationHeader = '') => {
+    if (typeof authorizationHeader !== 'string') return null;
+    const [scheme, token] = authorizationHeader.split(' ');
+    if (!scheme || scheme.toLowerCase() !== 'bearer' || !token) {
+        return null;
+    }
+    return token.trim();
+};
+
+const requireAuthenticatedUser = async (req) => {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+        const error = new Error('Supabase auth config missing on server');
+        error.status = 500;
+        throw error;
+    }
+
+    const token = getBearerToken(req.headers?.authorization);
+    if (!token) {
+        const error = new Error('Unauthorized: Bearer token required');
+        error.status = 401;
+        throw error;
+    }
+
+    const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    const { data: { user }, error } = await supabaseAuth.auth.getUser(token);
+    if (error || !user) {
+        const authError = new Error('Unauthorized: Invalid token');
+        authError.status = 401;
+        throw authError;
+    }
+
+    return user;
+};
+
+const getSafeErrorMessage = (error, fallback) => (
+    process.env.NODE_ENV === 'production'
+        ? fallback
+        : (error?.message || fallback)
+);
 
 const maybeExtractJson = (text = '') => {
     if (!text || typeof text !== 'string') return null;
@@ -243,14 +337,20 @@ async function handleGetDocument(req, res) {
 }
 
 export default async function handler(req, res) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (!applyCors(req, res)) {
+        return res.status(403).json({ error: 'CORS: Origin not allowed' });
+    }
 
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     try {
         const action = req.query.action || req.body?.action;
+        const isProtectedPostAction = req.method === 'POST'
+            && (action === 'search-decisions' || action === 'get-document');
+
+        if (isProtectedPostAction) {
+            await requireAuthenticatedUser(req);
+        }
 
         switch (action) {
             case 'sources':
@@ -268,6 +368,8 @@ export default async function handler(req, res) {
 
     } catch (error) {
         console.error('Legal API Error:', error);
-        res.status(500).json({ error: 'Bir hata olustu.', details: error.message });
+        res.status(error.status || 500).json({
+            error: getSafeErrorMessage(error, 'Bir hata olustu.'),
+        });
     }
 }

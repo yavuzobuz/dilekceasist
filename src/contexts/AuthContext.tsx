@@ -66,7 +66,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         // Profil yoksa oluştur
         if (error.code === 'PGRST116') {
-          console.log('Profil bulunamadı, yeni profil oluşturuluyor...');
+          if (import.meta.env.DEV) {
+            console.log('Profil bulunamadı, yeni profil oluşturuluyor...');
+          }
           const { data: { user } } = await supabase.auth.getUser();
           
           if (user) {

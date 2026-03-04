@@ -19,6 +19,24 @@ View your app in AI Studio: https://ai.studio/apps/drive/1LfbFBy3UsZZeBhvXHMW_X7
 3. Run the app:
    `npm run dev`
 
+## Stripe Setup (Plan Upgrade)
+
+1. Install Stripe:
+   `npm install stripe`
+2. Add these variables to `.env` (or your deployment environment):
+   - `STRIPE_SECRET_KEY`
+   - `STRIPE_PRICE_ID_PRO`
+   - `STRIPE_PRICE_ID_TEAM`
+   - `STRIPE_WEBHOOK_SECRET`
+   - `APP_BASE_URL` (for checkout return URLs)
+3. Start backend + frontend together:
+   `npm run dev:all`
+4. Open `/fiyatlandirma`, click `Pro Plan Sec` or `Team Plan Sec`, and verify Stripe Checkout opens.
+5. In Stripe Dashboard, add webhook endpoint:
+   - Local: `http://localhost:3001/api/billing/webhook`
+   - Prod: `https://<your-domain>/api/billing/webhook`
+   - Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
+
 ## Codex Agent Team
 
 This repo now includes a role-based Codex workflow in `AGENTS.md`.

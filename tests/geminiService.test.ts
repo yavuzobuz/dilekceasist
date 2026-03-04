@@ -73,14 +73,15 @@ describe('geminiService', () => {
             expect(result.length).toBe(3);
         });
 
-        it('should return empty array on parse failure', async () => {
+        it('should fall back to extracted keywords on parse failure', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
                 json: () => Promise.resolve({ text: 'invalid json' }),
             });
 
             const result = await generateSearchKeywords('Ozet metni', UserRole.Davaci);
-            expect(result).toEqual([]);
+            expect(result).toContain('Ozet metni');
+            expect(result.length).toBeGreaterThan(0);
         });
     });
 

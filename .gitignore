@@ -16,6 +16,13 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+.env.*
+!.env.example
+!.env.template
+!.env.sample
+*.pem
+*.key
+*.p12
 
 # Editor directories and files
 .vscode/*

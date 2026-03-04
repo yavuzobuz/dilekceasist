@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { Petition } from '../../lib/supabase';
+import { sanitizeHtml } from '../utils/sanitizeHtml';
 
 interface ShareModalProps {
   petition: Petition;
@@ -38,7 +39,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ petition, isOpen, onClos
           original_petition_id: petition.id,
           title: petition.title,
           petition_type: petition.petition_type,
-          content: petition.content,
+          content: sanitizeHtml(petition.content),
           description: description.trim() || null,
           tags: tagArray.length > 0 ? tagArray : null,
           is_premium: isPremium,

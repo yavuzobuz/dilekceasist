@@ -5,21 +5,35 @@ import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
 import path from 'path';
 import rateLimit from 'express-rate-limit';
+import slowDown from 'express-slow-down';
+import helmet from 'helmet';
+import hpp from 'hpp';
+import xss from 'xss-clean';
+import mongoSanitize from 'express-mongo-sanitize';
+import { body, param, validationResult } from 'express-validator';
+import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { AI_CONFIG, SERVER_CONFIG } from './config.js';
 import templatesHandler from './api/templates.js';
 import announcementsHandler from './api/announcements.js';
+import {
+    cancelStripeSubscriptionForUser,
+    constructStripeWebhookEvent,
+    createStripeCheckoutSession,
+    normalizePaidPlan,
+    parseRequestBody,
+    processStripeWebhookEvent
+} from './api/_lib/stripeCheckout.js';
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
 const PORT = SERVER_CONFIG.PORT;
-// Support both GEMINI_API_KEY and VITE_GEMINI_API_KEY for flexibility
-const API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+const API_KEY = process.env.GEMINI_API_KEY;
 
 if (!API_KEY) {
-    console.error('âŒ GEMINI_API_KEY or VITE_GEMINI_API_KEY is not defined in .env file');
+    console.error('âŒ GEMINI_API_KEY is not defined in .env file');
     process.exit(1);
 }
 
@@ -82,7 +96,41 @@ const corsOptions = {
             callback(new Error('CORS: Origin not allowed'));
         }
     },
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'stripe-signature'],
+    optionsSuccessStatus: 204,
+    maxAge: 60 * 60
+};
+
+const getSafeErrorMessage = (error, fallbackMessage) => {
+    if (process.env.NODE_ENV === 'production') {
+        return fallbackMessage;
+    }
+    return error?.message || fallbackMessage;
+};
+
+const validateRequest = (validations) => [
+    ...validations,
+    (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                error: 'Gecersiz istek verisi.',
+                details: errors.array({ onlyFirstError: true }).map((item) => ({
+                    field: item.path,
+                    message: item.msg,
+                })),
+            });
+        }
+        return next();
+    },
+];
+
+const createCheckoutIdempotencyKey = ({ userId, plan }) => {
+    const bucket = Math.floor(Date.now() / (5 * 60 * 1000));
+    const rawKey = `${String(userId || '').trim()}:${String(plan || '').trim()}:${bucket}`;
+    return crypto.createHash('sha256').update(rawKey).digest('hex').slice(0, 64);
 };
 
 // Auth Middleware (optional - only enforced if SERVER_API_KEY is set)
@@ -109,16 +157,48 @@ const getBearerToken = (authorizationHeader = '') => {
     return token.trim();
 };
 
+const requireUserAuth = async (req, res, next) => {
+    try {
+        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+            return res.status(500).json({ error: 'Supabase auth config missing on server' });
+        }
+
+        const token = getBearerToken(req.headers.authorization);
+        if (!token) {
+            return res.status(401).json({ error: 'Unauthorized: Bearer token required' });
+        }
+
+        const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: { autoRefreshToken: false, persistSession: false }
+        });
+
+        const { data: { user }, error } = await supabaseAuth.auth.getUser(token);
+        if (error || !user) {
+            return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+        }
+
+        req.authUser = {
+            id: user.id,
+            email: user.email || null,
+            user,
+        };
+        return next();
+    } catch (error) {
+        console.error('User auth error:', error);
+        return res.status(500).json({ error: 'Authentication failed' });
+    }
+};
+
 // Shared helper for Supabase service role client validation
 const createServiceRoleClient = () => {
     const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl) {
         throw new Error('VITE_SUPABASE_URL not configured');
     }
     if (!serviceRoleKey) {
-        throw new Error('SUPABASE_SERVICE_ROLE_KEY or VITE_SUPABASE_SERVICE_ROLE_KEY not configured');
+        throw new Error('SUPABASE_SERVICE_ROLE_KEY not configured');
     }
 
     return createClient(supabaseUrl, serviceRoleKey, {
@@ -170,6 +250,8 @@ const requireAdminAuth = async (req, res, next) => {
 };
 
 // Middleware
+app.set('trust proxy', 1);
+app.use(helmet());
 app.use(cors(corsOptions));
 app.use((err, req, res, next) => {
     if (err?.message === 'CORS: Origin not allowed') {
@@ -180,17 +262,29 @@ app.use((err, req, res, next) => {
     }
     return next(err);
 });
-app.use(express.json({ limit: '50mb' })); // Increased limit for file uploads
 
-// Rate Limiting Configuration
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests' },
+});
+
+const speedLimiter = slowDown({
+    windowMs: 15 * 60 * 1000,
+    delayAfter: 50,
+    delayMs: () => 500,
+});
+
 const aiRateLimiter = rateLimit({
-    windowMs: 60 * 1000, // 1 minute window
-    max: 30, // Max 30 requests per minute per IP
+    windowMs: 60 * 1000,
+    max: 30,
     message: {
         error: 'Çok fazla istek gönderdiniz. Lütfen bir dakika bekleyip tekrar deneyin.',
         retryAfter: 60
     },
-    standardHeaders: true, // Return rate limit info in headers
+    standardHeaders: true,
     legacyHeaders: false,
     handler: (req, res, next, options) => {
         console.warn(`âš ï¸ Rate limit exceeded for IP: ${req.ip}`);
@@ -198,8 +292,54 @@ const aiRateLimiter = rateLimit({
     }
 });
 
-// Apply rate limiter to AI endpoints
+app.use('/api/', apiLimiter);
+app.use('/api/', speedLimiter);
 app.use('/api/gemini', aiRateLimiter);
+
+// Stripe webhook signature verification requires raw request body.
+const handleStripeWebhook = async (req, res) => {
+    try {
+        const signatureHeader = Array.isArray(req.headers['stripe-signature'])
+            ? req.headers['stripe-signature'][0]
+            : req.headers['stripe-signature'];
+
+        const event = constructStripeWebhookEvent({
+            rawBody: req.body,
+            signature: signatureHeader,
+        });
+
+        const result = await processStripeWebhookEvent(event);
+        return res.status(200).json({
+            received: true,
+            handled: result?.handled !== false,
+            eventType: event?.type || null,
+            reason: result?.reason || null,
+        });
+    } catch (error) {
+        console.error('Stripe webhook error:', error);
+        return res.status(error.status || 500).json({
+            error: getSafeErrorMessage(error, 'Stripe webhook islenemedi.'),
+            details: process.env.NODE_ENV === 'production' ? null : (error.details || null),
+        });
+    }
+};
+
+app.post('/webhook', express.raw({ type: 'application/json', limit: '1mb' }), handleStripeWebhook);
+app.post('/api/billing/webhook', express.raw({ type: 'application/json', limit: '1mb' }), handleStripeWebhook);
+
+// Route-level body limits for heavier payload endpoints
+app.use('/api/gemini/analyze', express.json({ limit: process.env.UPLOAD_JSON_BODY_LIMIT || '8mb' }));
+app.use('/api/gemini/chat', express.json({ limit: process.env.UPLOAD_JSON_BODY_LIMIT || '8mb' }));
+app.use('/api/html-to-docx', express.json({ limit: process.env.DOC_JSON_BODY_LIMIT || '1mb' }));
+
+// Default body limits
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '100kb' }));
+app.use(express.urlencoded({ extended: false, limit: process.env.URLENCODED_BODY_LIMIT || '100kb' }));
+
+// Input sanitization middleware
+app.use(mongoSanitize({ replaceWith: '_' }));
+app.use(xss());
+app.use(hpp());
 
 
 // --- Helper Functions (Copied from geminiService.ts) ---
@@ -487,8 +627,8 @@ const buildLightweightRagContext = ({
 // --- API Endpoints ---
 
 // Apply auth middleware to all /api/gemini routes
-app.use('/api/gemini', authMiddleware);
-app.use('/api/html-to-docx', authMiddleware);
+app.use('/api/gemini', authMiddleware, requireUserAuth);
+app.use('/api/html-to-docx', authMiddleware, requireUserAuth);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -603,7 +743,7 @@ Sonucu 'summary', 'potentialParties', 'caseDetails', 'lawyerInfo' ve 'contactInf
 
     } catch (error) {
         console.error('Analyze Error:', error);
-        res.status(500).json({ error: error.message || 'Internal Server Error' });
+        res.status(500).json({ error: getSafeErrorMessage(error, 'Internal Server Error') });
     }
 });
 
@@ -636,7 +776,7 @@ app.post('/api/gemini/keywords', async (req, res) => {
         res.json({ text: response.text });
     } catch (error) {
         console.error('Keywords Error:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: getSafeErrorMessage(error, 'Metin yeniden yazilamadi.') });
     }
 });
 
@@ -739,7 +879,7 @@ ${mevzuatQueries.map(q => `- ${q}`).join('\n')}
 
     } catch (error) {
         console.error('Web Search Error:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: getSafeErrorMessage(error, 'Dilekce gozden gecirilemedi.') });
     }
 });
 
@@ -955,7 +1095,7 @@ Yukarıdaki ham verileri kullanarak:
     } catch (error) {
         console.error('Generate Petition Error:', error);
         const statusCode = Number(error?.status || 500);
-        res.status(statusCode).json({ error: error.message });
+        res.status(statusCode).json({ error: getSafeErrorMessage(error, 'Belge uretimi sirasinda hata olustu.') });
     }
 });
 
@@ -1319,7 +1459,7 @@ Türkçe yanıt ver. Yargıtay kararı aranması istendiğinde Google Search ile
     } catch (error) {
         console.error('Chat Error:', error);
         if (!res.headersSent) {
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ error: getSafeErrorMessage(error, 'Sohbet servisi gecici olarak kullanilamiyor.') });
         } else {
             res.end();
         }
@@ -1327,7 +1467,16 @@ Türkçe yanıt ver. Yargıtay kararı aranması istendiğinde Google Search ile
 });
 
 // 8. HTML to DOCX
-app.post('/api/html-to-docx', async (req, res) => {
+app.post('/api/html-to-docx', validateRequest([
+    body('html')
+        .isString()
+        .isLength({ min: 1, max: 500000 })
+        .withMessage('HTML content is required and must be under 500000 chars.'),
+    body('options')
+        .optional()
+        .isObject()
+        .withMessage('options bir nesne olmalidir.'),
+]), async (req, res) => {
     try {
         const { html, options } = req.body;
         if (!html) return res.status(400).json({ error: 'HTML content is required' });
@@ -1345,7 +1494,7 @@ app.post('/api/html-to-docx', async (req, res) => {
         res.send(fileBuffer);
     } catch (error) {
         console.error('DOCX Error:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: getSafeErrorMessage(error, 'DOCX olusturulamadi.') });
     }
 });
 
@@ -1399,6 +1548,10 @@ const buildQuotaErrorPayload = ({ trialEndsAt, dailyLimit, usedToday, reason }) 
 });
 
 const getAuthenticatedUserFromRequest = async (req) => {
+    if (req?.authUser?.user) {
+        return req.authUser.user;
+    }
+
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
         const err = new Error('Supabase auth config missing on server');
         err.status = 500;
@@ -1422,6 +1575,12 @@ const getAuthenticatedUserFromRequest = async (req) => {
         err.status = 401;
         throw err;
     }
+
+    req.authUser = {
+        id: user.id,
+        email: user.email || null,
+        user,
+    };
 
     return user;
 };
@@ -1674,7 +1833,7 @@ METIN:
         res.json({ text: output, mode: normalizedMode });
     } catch (error) {
         console.error('Rewrite Error:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: getSafeErrorMessage(error, 'Anahtar kelime uretilirken hata olustu.') });
     }
 });
 
@@ -1719,33 +1878,7 @@ ${params.currentPetition}
         res.json({ text: response.text.trim() });
     } catch (error) {
         console.error('Review Error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// HTML to DOCX conversion endpoint (Existing)
-app.post('/api/html-to-docx', async (req, res) => {
-    try {
-        const { html, options } = req.body;
-
-        if (!html) {
-            return res.status(400).json({ error: 'HTML content is required' });
-        }
-
-        // Generate DOCX
-        const fileBuffer = await htmlToDocx(html, null, {
-            font: options?.font || 'Calibri',
-            fontSize: options?.fontSize || '22',
-            ...options
-        });
-
-        // Send as downloadable file
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-        res.setHeader('Content-Disposition', 'attachment; filename="dilekce.docx"');
-        res.send(Buffer.from(fileBuffer));
-    } catch (error) {
-        console.error('Error generating DOCX:', error);
-        res.status(500).json({ error: 'Failed to generate DOCX file' });
+        res.status(500).json({ error: getSafeErrorMessage(error, 'Dilekce gozden gecirilemedi.') });
     }
 });
 
@@ -2141,13 +2274,26 @@ Kurallar:
     }
 }
 // Search legal decisions endpoint
-app.post('/api/legal/search-decisions', authMiddleware, async (req, res) => {
+app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
+    body('source')
+        .optional()
+        .isString()
+        .trim()
+        .isLength({ min: 0, max: 40 })
+        .withMessage('source gecersiz.'),
+    body('keyword')
+        .isString()
+        .trim()
+        .isLength({ min: 2, max: 300 })
+        .withMessage('Arama kelimesi (keyword) 2-300 karakter arasinda olmalidir.'),
+    body('filters')
+        .optional()
+        .isObject()
+        .withMessage('filters bir nesne olmalidir.'),
+]), async (req, res) => {
     try {
+        await getAuthenticatedUserFromRequest(req);
         const { source, keyword, filters = {} } = req.body;
-
-        if (!keyword) {
-            return res.status(400).json({ error: 'Arama kelimesi (keyword) gereklidir.' });
-        }
 
         console.log(`ğŸ“š Legal Search: "${keyword}" (source: ${source || 'all'})`);
 
@@ -2191,14 +2337,34 @@ app.post('/api/legal/search-decisions', authMiddleware, async (req, res) => {
         console.error('Legal Search Error:', error);
         res.status(500).json({
             error: 'İçtihat arama sırasında bir hata oluştu.',
-            details: error.message
+            details: process.env.NODE_ENV === 'production' ? undefined : error.message
         });
     }
 });
 
 // Get specific legal document endpoint
-app.post('/api/legal/get-document', authMiddleware, async (req, res) => {
+app.post('/api/legal/get-document', authMiddleware, validateRequest([
+    body('source')
+        .optional()
+        .isString()
+        .trim()
+        .isLength({ min: 0, max: 40 })
+        .withMessage('source gecersiz.'),
+    body('documentId')
+        .optional()
+        .isString()
+        .trim()
+        .isLength({ min: 1, max: 240 })
+        .withMessage('documentId gecersiz.'),
+    body('documentUrl')
+        .optional()
+        .isString()
+        .trim()
+        .isLength({ min: 1, max: 1000 })
+        .withMessage('documentUrl gecersiz.'),
+]), async (req, res) => {
     try {
+        await getAuthenticatedUserFromRequest(req);
         const { source, documentId, documentUrl, title, esasNo, kararNo, tarih, daire, ozet, snippet } = req.body;
 
         if (!documentId && !documentUrl) {
@@ -2262,7 +2428,7 @@ app.post('/api/legal/get-document', authMiddleware, async (req, res) => {
         console.error('Get Document Error:', error);
         res.status(500).json({
             error: 'Belge alınırken bir hata oluştu.',
-            details: error.message
+            details: process.env.NODE_ENV === 'production' ? undefined : error.message
         });
     }
 });
@@ -3783,7 +3949,16 @@ app.get('/api/templates/:id', (req, res) => {
 });
 
 // Use template - fill variables and generate content
-app.post('/api/templates/:id/use', (req, res) => {
+app.post('/api/templates/:id/use', validateRequest([
+    param('id')
+        .trim()
+        .matches(/^[a-zA-Z0-9_-]{2,120}$/)
+        .withMessage('Gecersiz sablon kimligi.'),
+    body('variables')
+        .optional()
+        .isObject()
+        .withMessage('variables bir nesne olmalidir.'),
+]), (req, res) => {
     const template = SANITIZED_TEMPLATES.find(t => t.id === req.params.id);
 
     if (!template) {
@@ -3791,7 +3966,7 @@ app.post('/api/templates/:id/use', (req, res) => {
     }
 
     const { variables } = req.body;
-    console.log(`[TEMPLATE USE] ID: ${req.params.id}, Variables received:`, JSON.stringify(variables, null, 2));
+    console.log(`[TEMPLATE USE] ID: ${req.params.id}, variableCount: ${variables ? Object.keys(variables).length : 0}`);
 
     let content = template.content;
 
@@ -3804,8 +3979,8 @@ app.post('/api/templates/:id/use', (req, res) => {
     if (variables) {
         for (const [key, value] of Object.entries(variables)) {
             const placeholder = '{{' + key + '}}';
-            console.log('[TEMPLATE] Replacing:', placeholder, '->', value);
-            content = content.split(placeholder).join(value || '');
+            const safeValue = String(value ?? '').slice(0, 2000);
+            content = content.split(placeholder).join(safeValue);
         }
     }
 
@@ -3817,6 +3992,37 @@ app.post('/api/templates/:id/use', (req, res) => {
         content,
         title: template.title
     });
+});
+
+// Authenticated checkout session creation for paid plan upgrades
+app.post('/api/billing/create-checkout-session', validateRequest([
+    body('plan')
+        .trim()
+        .toLowerCase()
+        .isIn(['pro', 'team'])
+        .withMessage('Gecersiz plan secimi.'),
+]), async (req, res) => {
+    try {
+        const user = await getAuthenticatedUserFromRequest(req);
+        const body = parseRequestBody(req);
+        const plan = normalizePaidPlan(body?.plan);
+
+        if (!plan) {
+            return res.status(400).json({ error: 'Gecersiz plan secimi. Yalnizca pro veya team desteklenir.' });
+        }
+
+        const idempotencyKey = createCheckoutIdempotencyKey({ userId: user.id, plan });
+        const session = await createStripeCheckoutSession({ req, user, plan, idempotencyKey });
+        return res.json({
+            sessionId: session.id,
+            url: session.url,
+        });
+    } catch (error) {
+        console.error('Stripe checkout create session error:', error);
+        return res.status(error.status || 500).json({
+            error: getSafeErrorMessage(error, 'Odeme oturumu olusturulamadi.'),
+        });
+    }
 });
 
 const normalizePlanCode = (planCode) => {
@@ -3842,7 +4048,7 @@ app.get('/api/user-plan-summary', async (req, res) => {
         res.json({ summary });
     } catch (error) {
         console.error('User plan summary error:', error);
-        res.status(error.status || 500).json({ error: error.message || 'Plan ozeti alinamadi' });
+        res.status(error.status || 500).json({ error: getSafeErrorMessage(error, 'Plan ozeti alinamadi') });
     }
 });
 
@@ -3851,22 +4057,16 @@ app.post('/api/user-plan-cancel', async (req, res) => {
     try {
         const user = await getAuthenticatedUserFromRequest(req);
         const serviceClient = createServiceRoleClient();
-        await getOrCreateUserPlan(serviceClient, user.id);
-
-        const { error: updateError } = await serviceClient
-            .from('user_usage_plans')
-            .update({ status: 'inactive' })
-            .eq('user_id', user.id);
-
-        if (updateError) {
-            throw updateError;
-        }
+        const stripeCancellation = await cancelStripeSubscriptionForUser({
+            userId: user.id,
+            email: user.email || '',
+        });
 
         const summary = await buildPlanUsageSummary(serviceClient, user.id);
-        res.json({ success: true, summary });
+        res.json({ success: true, summary, stripeCancellation });
     } catch (error) {
         console.error('User plan cancel error:', error);
-        res.status(error.status || 500).json({ error: error.message || 'Abonelik iptal edilemedi' });
+        res.status(error.status || 500).json({ error: getSafeErrorMessage(error, 'Abonelik iptal edilemedi') });
     }
 });
 
@@ -3992,7 +4192,7 @@ app.get('/api/admin-users', requireAdminAuth, async (req, res) => {
 
     } catch (error) {
         console.error('Admin users error:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: getSafeErrorMessage(error, 'Web arastirmasi sirasinda hata olustu.') });
     }
 });
 
@@ -4076,7 +4276,7 @@ app.patch('/api/admin-users', requireAdminAuth, async (req, res) => {
         res.json({ success: true, summary });
     } catch (error) {
         console.error('Admin user rights update error:', error);
-        res.status(500).json({ error: error.message || 'Kullanici haklari guncellenemedi.' });
+        res.status(500).json({ error: getSafeErrorMessage(error, 'Kullanici haklari guncellenemedi.') });
     }
 });
 

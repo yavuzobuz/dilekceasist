@@ -1,11 +1,21 @@
 import { supabase } from '../../lib/supabase';
 import { Client } from '../types';
 
+const getAuthenticatedUserId = async (): Promise<string> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.id) {
+        throw new Error('Kullanıcı oturumu bulunamadı');
+    }
+    return user.id;
+};
+
 export const clientService = {
     async getClients(): Promise<Client[]> {
+        const userId = await getAuthenticatedUserId();
         const { data, error } = await supabase
             .from('clients')
             .select('*')
+            .eq('user_id', userId)
             .order('name');
 
         if (error) throw error;
@@ -13,10 +23,12 @@ export const clientService = {
     },
 
     async getClient(id: string): Promise<Client | null> {
+        const userId = await getAuthenticatedUserId();
         const { data, error } = await supabase
             .from('clients')
             .select('*')
             .eq('id', id)
+            .eq('user_id', userId)
             .single();
 
         if (error) throw error;
@@ -24,12 +36,11 @@ export const clientService = {
     },
 
     async addClient(client: Omit<Client, 'id' | 'user_id' | 'created_at'>): Promise<Client> {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Kullanıcı oturumu bulunamadı');
+        const userId = await getAuthenticatedUserId();
 
         const { data, error } = await supabase
             .from('clients')
-            .insert([{ ...client, user_id: user.id }])
+            .insert([{ ...client, user_id: userId }])
             .select()
             .single();
 
@@ -38,10 +49,12 @@ export const clientService = {
     },
 
     async updateClient(id: string, updates: Partial<Client>): Promise<Client> {
+        const userId = await getAuthenticatedUserId();
         const { data, error } = await supabase
             .from('clients')
             .update(updates)
             .eq('id', id)
+            .eq('user_id', userId)
             .select()
             .single();
 
@@ -50,6 +63,7 @@ export const clientService = {
     },
 
     async deleteClient(id: string): Promise<void> {
+        const userId = await getAuthenticatedUserId();
         // First get the client to check for PDF
         const client = await this.getClient(id);
 
@@ -61,20 +75,20 @@ export const clientService = {
         const { error } = await supabase
             .from('clients')
             .delete()
-            .eq('id', id);
+            .eq('id', id)
+            .eq('user_id', userId);
 
         if (error) throw error;
     },
 
     // Upload vekaletname PDF
     async uploadVekaletPdf(clientId: string, file: File): Promise<string> {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Kullanıcı oturumu bulunamadı');
+        const userId = await getAuthenticatedUserId();
 
         // Create unique filename: userId/clientId/timestamp_filename.pdf
         const timestamp = Date.now();
         const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const filePath = `${user.id}/${clientId}/${timestamp}_${safeName}`;
+        const filePath = `${userId}/${clientId}/${timestamp}_${safeName}`;
 
         // Upload to storage
         const { error: uploadError } = await supabase.storage
@@ -102,6 +116,10 @@ export const clientService = {
     // Get signed URL for viewing PDF
     async getVekaletPdfUrl(filePath: string): Promise<string | null> {
         if (!filePath) return null;
+        const userId = await getAuthenticatedUserId();
+        if (!filePath.startsWith(`${userId}/`)) {
+            return null;
+        }
 
         const { data, error } = await supabase.storage
             .from('client-documents')

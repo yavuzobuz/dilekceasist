@@ -45,11 +45,11 @@ export default function App() {
 
   const handleUseTemplate = (content: string, context?: TemplateTransferContext) => {
     // Store template content and navigate to app
-    localStorage.setItem('templateContent', content);
+    sessionStorage.setItem('templateContent', content);
     if (context) {
-      localStorage.setItem('templateContext', JSON.stringify(context));
+      sessionStorage.setItem('templateContext', JSON.stringify(context));
     } else {
-      localStorage.removeItem('templateContext');
+      sessionStorage.removeItem('templateContext');
     }
     navigate('/alt-app');
   };

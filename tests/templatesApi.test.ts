@@ -25,6 +25,7 @@ interface MockReq {
     method: string;
     query: Record<string, any>;
     body: Record<string, any>;
+    headers: Record<string, string>;
     url: string;
     originalUrl: string;
 }
@@ -44,6 +45,7 @@ const createReq = (overrides: Partial<MockReq> = {}): MockReq => ({
     method: 'GET',
     query: {},
     body: {},
+    headers: { origin: 'http://localhost:3000' },
     url: '/api/templates',
     originalUrl: '/api/templates',
     ...overrides,
@@ -91,9 +93,9 @@ describe('api/templates handler', () => {
 
         expect(res.statusCode).toBe(200);
         expect(res.ended).toBe(true);
-        expect(res.headers['Access-Control-Allow-Origin']).toBe('*');
+        expect(res.headers['Access-Control-Allow-Origin']).toBe('http://localhost:3000');
         expect(res.headers['Access-Control-Allow-Methods']).toContain('GET');
-        expect(res.headers['Access-Control-Allow-Headers']).toBe('Content-Type');
+        expect(res.headers['Access-Control-Allow-Headers']).toContain('Content-Type');
     });
 
     it('should return all templates for GET /api/templates', async () => {

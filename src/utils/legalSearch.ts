@@ -1,4 +1,5 @@
 import type { LegalSearchResult } from '../../types';
+import { supabase } from '../../lib/supabase';
 
 export interface NormalizedLegalDecision extends LegalSearchResult {
   id?: string;
@@ -128,19 +129,24 @@ export const searchLegalDecisions = async ({
   filters = {},
   apiBaseUrl = '',
 }: SearchLegalDecisionsParams): Promise<NormalizedLegalDecision[]> => {
-  const payload = { source, keyword, filters };
-  const body = JSON.stringify(payload);
+    const payload = { source, keyword, filters };
+    const body = JSON.stringify(payload);
+    const { data: { session } } = await supabase.auth.getSession();
+    const authHeaders: HeadersInit = { 'Content-Type': 'application/json' };
+    if (session?.access_token) {
+        authHeaders.Authorization = `Bearer ${session.access_token}`;
+    }
 
   let response = await fetch(`${apiBaseUrl}/api/legal/search-decisions`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders,
     body,
   });
 
   if (!response.ok) {
     response = await fetch(`${apiBaseUrl}/api/legal?action=search-decisions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders,
       body,
     });
   }
@@ -184,17 +190,22 @@ export const getLegalDocument = async ({
     snippet,
   };
   const body = JSON.stringify(payload);
+  const { data: { session } } = await supabase.auth.getSession();
+  const authHeaders: HeadersInit = { 'Content-Type': 'application/json' };
+  if (session?.access_token) {
+    authHeaders.Authorization = `Bearer ${session.access_token}`;
+  }
 
   let response = await fetch(`${apiBaseUrl}/api/legal/get-document`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders,
     body,
   });
 
   if (!response.ok) {
     response = await fetch(`${apiBaseUrl}/api/legal?action=get-document`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders,
       body,
     });
   }
