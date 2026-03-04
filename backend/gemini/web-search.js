@@ -125,17 +125,22 @@ export default async function handler(req, res) {
 
             const fallbackPrompt = `Asagidaki anahtar kelimelere gore Turk hukuku kapsaminda kisa bir mevzuat odakli on degerlendirme ver. Uydurma karar numarasi yazma.\n\nAnahtar kelimeler: ${keywords.join(', ')}`;
 
-            response = await withTimeout(
-                ai.models.generateContent({
-                    model: MODEL_NAME,
-                    contents: fallbackPrompt,
-                    config: {
-                        systemInstruction: SYSTEM_INSTRUCTION,
-                    },
-                }),
-                Math.max(8000, Math.floor(SEARCH_TIMEOUT_MS / 2)),
-                'Fallback search timed out'
-            );
+            try {
+                response = await withTimeout(
+                    ai.models.generateContent({
+                        model: MODEL_NAME,
+                        contents: fallbackPrompt,
+                        config: {
+                            systemInstruction: SYSTEM_INSTRUCTION,
+                        },
+                    }),
+                    Math.max(8000, Math.floor(SEARCH_TIMEOUT_MS / 2)),
+                    'Fallback search timed out'
+                );
+            } catch (fallbackError) {
+                warning = getSafeErrorMessage(fallbackError, warning || 'Live/Fallback web search failed');
+                response = { text: 'Canli arama su an tamamlanamadi. Mevcut bilgilerle genel bir hukuki yonlendirme sunulabilir.' };
+            }
         }
 
         return res.status(200).json({
@@ -146,6 +151,11 @@ export default async function handler(req, res) {
         });
     } catch (error) {
         console.error('Web Search Error:', error);
-        return res.status(500).json({ error: getSafeErrorMessage(error, 'Web search API error') });
+        return res.status(200).json({
+            text: 'Web aramasi su anda kullanilamiyor. Soru genel hukuki cercevede yanitlanmalidir.',
+            groundingMetadata: null,
+            degraded: true,
+            warning: getSafeErrorMessage(error, 'Web search API error'),
+        });
     }
 }

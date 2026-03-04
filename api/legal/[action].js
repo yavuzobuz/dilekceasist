@@ -1,7 +1,19 @@
 import { GoogleGenAI } from '@google/genai';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const MODEL_NAME = 'gemini-2.5-pro';
+export const config = {
+    maxDuration: 60,
+};
+
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+const MODEL_NAME = process.env.GEMINI_MODEL_NAME || process.env.VITE_GEMINI_MODEL_NAME || 'gemini-2.5-flash';
+const LEGAL_AI_TIMEOUT_MS = Number(process.env.LEGAL_AI_TIMEOUT_MS || 18000);
+
+const getAiClient = () => {
+    if (!GEMINI_API_KEY) {
+        throw new Error('GEMINI_API_KEY or VITE_GEMINI_API_KEY is not configured');
+    }
+    return new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+};
 
 const maybeExtractJson = (text = '') => {
     if (!text || typeof text !== 'string') return null;
@@ -36,6 +48,18 @@ const maybeExtractJson = (text = '') => {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+const withTimeout = async (promise, timeoutMs, timeoutMessage) => {
+    let timer = null;
+    try {
+        const timeoutPromise = new Promise((_, reject) => {
+            timer = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+        });
+        return await Promise.race([promise, timeoutPromise]);
+    } finally {
+        if (timer) clearTimeout(timer);
+    }
+};
+
 const isRetryableAiError = (error) => {
     const message = [
         error?.message || '',
@@ -46,6 +70,7 @@ const isRetryableAiError = (error) => {
     return [
         'fetch failed',
         'etimedout',
+        'timed out',
         'econnreset',
         'socket hang up',
         'temporary failure',
@@ -56,14 +81,19 @@ const isRetryableAiError = (error) => {
 };
 
 async function generateContentWithRetry(requestPayload, options = {}) {
-    const maxRetries = Number.isFinite(options.maxRetries) ? options.maxRetries : 3;
-    const initialDelayMs = Number.isFinite(options.initialDelayMs) ? options.initialDelayMs : 1000;
+    const maxRetries = Number.isFinite(options.maxRetries) ? options.maxRetries : 0;
+    const initialDelayMs = Number.isFinite(options.initialDelayMs) ? options.initialDelayMs : 500;
 
     let lastError = null;
+    const ai = getAiClient();
 
     for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
         try {
-            return await ai.models.generateContent(requestPayload);
+            return await withTimeout(
+                ai.models.generateContent(requestPayload),
+                LEGAL_AI_TIMEOUT_MS,
+                'Legal AI request timed out'
+            );
         } catch (error) {
             lastError = error;
             const canRetry = attempt < maxRetries && isRetryableAiError(error);
@@ -123,6 +153,8 @@ Her karar icin su alanlari uret:
 Sadece JSON array dondur:
 [{"mahkeme":"...","daire":"...","esasNo":"...","kararNo":"...","tarih":"...","ozet":"...","sourceUrl":"https://...","relevanceScore":85}]`,
             config: { tools: [{ googleSearch: {} }] }
+        }, {
+            maxRetries: 0,
         });
 
         text = response.text || '';
@@ -132,7 +164,18 @@ Sadece JSON array dondur:
         console.error('AI search-decisions fallback error:', error);
         warning = 'Emsal arama servislerine gecici olarak ulasilamiyor. Lutfen kisa bir sure sonra tekrar deneyin.';
         rows = [];
-        text = '';
+        try {
+            const fallback = await generateContentWithRetry({
+                model: MODEL_NAME,
+                contents: `Turkiye hukukunda "${keyword}" konusuyla ilgili genel emsal alanlarini ve arama odakli kisa bir rehber ver. Uydurma esas/karar numarasi yazma.`,
+                config: { temperature: 0.1 }
+            }, {
+                maxRetries: 0,
+            });
+            text = fallback.text || '';
+        } catch {
+            text = '';
+        }
     }
 
     const results = rows.length > 0
@@ -195,6 +238,8 @@ Kurallar:
             tools: [{ googleSearch: {} }],
             temperature: 0.1,
         }
+    }, {
+        maxRetries: 0,
     });
 
     return (response.text || '').replace(/https?:\/\/\S+/gi, '').trim();

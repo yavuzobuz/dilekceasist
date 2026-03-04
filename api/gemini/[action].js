@@ -9,7 +9,7 @@ import webSearchHandler from '../../backend/gemini/web-search.js';
 export const config = {
     api: {
         bodyParser: {
-            sizeLimit: '4mb',
+            sizeLimit: '15mb',
         },
     },
     maxDuration: 60,

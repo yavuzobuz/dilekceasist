@@ -28,6 +28,18 @@ interface GetLegalDocumentParams {
   apiBaseUrl?: string;
 }
 
+const REQUEST_TIMEOUT_MS = 25000;
+
+const fetchWithTimeout = async (url: string, init: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS): Promise<Response> => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 const extractResultsFromText = (text: string): any[] => {
   if (!text || typeof text !== 'string') return [];
 
@@ -130,28 +142,29 @@ export const searchLegalDecisions = async ({
 }: SearchLegalDecisionsParams): Promise<NormalizedLegalDecision[]> => {
   const payload = { source, keyword, filters };
   const body = JSON.stringify(payload);
+  const endpoint = `${apiBaseUrl}/api/legal/search-decisions`;
+  const retries = [endpoint, `${endpoint}?retry=1`];
 
-  let response = await fetch(`${apiBaseUrl}/api/legal/search-decisions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body,
-  });
+  let lastErrorText = '';
+  let lastStatus = 0;
 
-  if (!response.ok) {
-    response = await fetch(`${apiBaseUrl}/api/legal?action=search-decisions`, {
+  for (const url of retries) {
+    const response = await fetchWithTimeout(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body,
     });
+
+    if (response.ok) {
+      const data = await response.json();
+      return normalizeLegalSearchResults(data);
+    }
+
+    lastStatus = response.status;
+    lastErrorText = await response.text().catch(() => '');
   }
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(errorText || 'Ictihat aramasi sirasinda bir hata olustu.');
-  }
-
-  const data = await response.json();
-  return normalizeLegalSearchResults(data);
+  throw new Error(lastErrorText || `Ictihat aramasi sirasinda bir hata olustu (HTTP ${lastStatus || 500}).`);
 };
 
 export const getLegalDocument = async ({
@@ -184,24 +197,28 @@ export const getLegalDocument = async ({
     snippet,
   };
   const body = JSON.stringify(payload);
+  const endpoint = `${apiBaseUrl}/api/legal/get-document`;
+  const retries = [endpoint, `${endpoint}?retry=1`];
 
-  let response = await fetch(`${apiBaseUrl}/api/legal/get-document`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body,
-  });
+  let response: Response | null = null;
+  let lastErrorText = '';
+  let lastStatus = 0;
 
-  if (!response.ok) {
-    response = await fetch(`${apiBaseUrl}/api/legal?action=get-document`, {
+  for (const url of retries) {
+    response = await fetchWithTimeout(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body,
     });
+
+    if (response.ok) break;
+
+    lastStatus = response.status;
+    lastErrorText = await response.text().catch(() => '');
   }
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(errorText || 'Belge alinamadi.');
+  if (!response || !response.ok) {
+    throw new Error(lastErrorText || `Belge alinamadi (HTTP ${lastStatus || 500}).`);
   }
 
   const data = await response.json();

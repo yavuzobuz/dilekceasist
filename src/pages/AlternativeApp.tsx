@@ -17,7 +17,7 @@ import { VoiceInputButton } from '../../components/VoiceInputButton';
 import { Petition, supabase } from '../../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
-import { getLegalDocument } from '../utils/legalSearch';
+import { getLegalDocument, searchLegalDecisions } from '../utils/legalSearch';
 import { File, FileCode2, FileImage, FileText } from 'lucide-react';
 import { MissingInfoChecklistPanel } from '../../components/MissingInfoChecklistPanel';
 import {
@@ -403,6 +403,20 @@ const isSimpleGuidanceQuestion = (rawMessage: string): boolean => {
     const hasComplexIntent = /(emsal|ictihat|karar no|esas no|detayli analiz|madde madde|belge olustur|dilekce|taslak)/i.test(normalized);
 
     return hasSimpleIntent && !hasComplexIntent && tokenCount <= 30;
+};
+
+const isDefinitionQuestion = (rawMessage: string): boolean => {
+    const normalized = String(rawMessage || '').toLowerCase().trim();
+    if (!normalized) return false;
+    if (isLikelyPetitionRequest(normalized)) return false;
+    return /(nedir|ne demek|ne anlama gelir|kimdir|tanimi nedir|anlami nedir)/i.test(normalized);
+};
+
+const isDisputeOrRiskQuestion = (rawMessage: string): boolean => {
+    const normalized = String(rawMessage || '').toLowerCase().trim();
+    if (!normalized) return false;
+    if (isDefinitionQuestion(normalized)) return false;
+    return /(parsel|ada|pafta|ruhsat|ruhsatsiz|imar|koruma kurulu|yikim|muhurl|iptal|tazminat|uyusmazlik|dava|risk|somut olay|strateji|ne yapmaliyim|nasil ilerlemeliyim|itiraz|savunma)/i.test(normalized);
 };
 
 const hasWebEvidence = (result: WebSearchResult | null): boolean => {
@@ -1058,30 +1072,11 @@ export default function AlternativeApp() {
 
         try {
             const keyword = keywordsForSearch.slice(0, 5).join(' ');
-            const body = JSON.stringify({ source: 'yargitay', keyword });
-
-            let response = await fetch('/api/legal/search-decisions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body,
-            });
-
-            // Backward compatibility for deployments still using action-based route.
-            if (!response.ok) {
-                response = await fetch('/api/legal?action=search-decisions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body,
-                });
-            }
-
-            if (!response.ok) {
-                const errorText = await response.text().catch(() => '');
-                throw new Error(errorText || 'Ictihat aramasi basarisiz oldu.');
-            }
-
-            const payload = await response.json();
-            const normalizedResults = normalizeLegalSearchResults(payload);
+            const normalizedResults = (await searchLegalDecisions({
+                source: 'yargitay',
+                keyword,
+                apiBaseUrl: '',
+            })) as AlternativeLegalSearchResult[];
             mergeLegalResults(normalizedResults);
 
             if (!options?.silent) {
@@ -1861,10 +1856,14 @@ export default function AlternativeApp() {
         const explicitKeywordAddRequest = isExplicitKeywordAddRequest(normalizedMessage);
         const userRequestedPetition = isLikelyPetitionRequest(normalizedMessage);
         const isSimpleQuestion = isSimpleGuidanceQuestion(normalizedMessage);
+        const isDefinitionOnlyQuestion = isDefinitionQuestion(normalizedMessage);
+        const isDisputeQuestion = isDisputeOrRiskQuestion(normalizedMessage);
         const isEmsalSearchRequest = /(emsal|ictihat|içtihat|yargitay|danistay|karar ara|karar aramasi|karar arar misin)/i.test(normalizedMessage);
-        const requiresEvidenceForChat = !isSimpleQuestion;
-        const requiresWebEvidenceForChat = requiresEvidenceForChat && !isEmsalSearchRequest;
-        const requiresLegalEvidenceForChat = requiresEvidenceForChat;
+        const hasUploadedChatFiles = chatSourceFiles.length > 0 || chatFiles.length > 0;
+        const requiresEvidenceForChat = hasUploadedChatFiles
+            || (!isSimpleQuestion && !isDefinitionOnlyQuestion && (isEmsalSearchRequest || isDisputeQuestion));
+        const requiresWebEvidenceForChat = hasUploadedChatFiles || isDisputeQuestion;
+        const requiresLegalEvidenceForChat = hasUploadedChatFiles || isEmsalSearchRequest || isDisputeQuestion;
         const requiresStrictEvidenceForDocument = userRequestedPetition;
 
         try {
@@ -3617,7 +3616,3 @@ export default function AlternativeApp() {
         </div >
     );
 }
-
-
-
-

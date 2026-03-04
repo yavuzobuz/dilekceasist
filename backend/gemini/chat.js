@@ -182,6 +182,20 @@ const isEmsalSearchQuestion = (text = '') => {
     return /(emsal|ictihat|içtihat|yargitay|danistay|karar ara|karar aramasi|karar arar misin)/i.test(normalized);
 };
 
+const isDefinitionQuestion = (text = '') => {
+    const normalized = normalizeText(text.toLowerCase());
+    if (!normalized) return false;
+    if (isLikelyDocumentRequest(normalized)) return false;
+    return /(nedir|ne demek|ne anlama gelir|kimdir|tanimi nedir|anlami nedir)/i.test(normalized);
+};
+
+const isDisputeOrRiskQuestion = (text = '') => {
+    const normalized = normalizeText(text.toLowerCase());
+    if (!normalized) return false;
+    if (isDefinitionQuestion(normalized)) return false;
+    return /(parsel|ada|pafta|ruhsat|ruhsatsiz|imar|koruma kurulu|yikim|muhurl|iptal|tazminat|uyusmazlik|dava|risk|somut olay|strateji|ne yapmaliyim|nasil ilerlemeliyim|itiraz|savunma)/i.test(normalized);
+};
+
 const hasWebEvidence = (summary, sourceCount) => {
     const safeSummary = normalizeText(summary);
     const count = Number(sourceCount || 0);
@@ -392,11 +406,13 @@ export default async function handler(req, res) {
 
         const lastUserMessage = getLastUserMessageText(chatHistory);
         const isDocumentRequest = isLikelyDocumentRequest(lastUserMessage);
-        const isSimpleQuestion = isSimpleGuidanceQuestion(lastUserMessage);
         const isEmsalOnlyQuery = isEmsalSearchQuestion(lastUserMessage);
-        const requiresEvidenceForAnswer = !isSimpleQuestion || isDocumentRequest || (Array.isArray(files) && files.length > 0);
-        const requiresWebEvidence = requiresEvidenceForAnswer && !isEmsalOnlyQuery;
-        const requiresLegalEvidence = requiresEvidenceForAnswer;
+        const isDefinitionOnlyQuery = isDefinitionQuestion(lastUserMessage);
+        const isDisputeQuery = isDisputeOrRiskQuestion(lastUserMessage);
+        const hasUploadedChatFiles = Array.isArray(files) && files.length > 0;
+        const requiresEvidenceForAnswer = isDocumentRequest || isEmsalOnlyQuery || isDisputeQuery || hasUploadedChatFiles;
+        const requiresWebEvidence = isDocumentRequest || isDisputeQuery;
+        const requiresLegalEvidence = isDocumentRequest || isEmsalOnlyQuery || isDisputeQuery;
         const hasAnalysisSummary = normalizeText(analysisSummary || '').length > 0;
         const hasUploadedDocument = (Array.isArray(files) && files.length > 0) || normalizeText(safeContext.docContent || '').length > 0;
 
@@ -711,4 +727,3 @@ Ek kural: Basit sorularda (or. hangi mahkeme, sure) kisa ve net cevap ver.`;
         }
     }
 }
-
