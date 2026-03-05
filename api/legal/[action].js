@@ -211,7 +211,7 @@ const compactLegalKeywordQuery = (keyword, maxLen = 180) => {
         mustKeep.push(probe);
     }
 
-    const stopWords = new Set(['ve', 'veya', 'ile', 'icin', 'gibi', 'olan', 'olarak', 'dair', 'kararlari', 'kararlari', 'karar']);
+    const stopWords = new Set(['ve', 'veya', 'ile', 'icin', 'gibi', 'olan', 'olarak', 'dair', 'kararlari', 'karar']);
     const tokenFallback = normalized
         .split(/\s+/)
         .filter(token => token.length >= 3 && !stopWords.has(token))

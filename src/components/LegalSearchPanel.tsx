@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { Search, Scale, FileText, X, Plus, Loader2, AlertCircle } from 'lucide-react';
 import { getLegalDocument, searchLegalDecisions } from '../utils/legalSearch';
+import { resolveLegalSourceForQuery } from '../utils/legalSource';
 
 interface LegalSource {
     id: string;
@@ -32,6 +33,7 @@ interface LegalSearchPanelProps {
 }
 
 const LEGAL_SOURCES: LegalSource[] = [
+    { id: 'all', name: 'Tum Kaynaklar', description: 'Kaynak otomatik secilsin' },
     { id: 'yargitay', name: 'Yargitay', description: 'Yargitay Kararlari' },
     { id: 'danistay', name: 'Danistay', description: 'Danistay Kararlari' },
     { id: 'uyap', name: 'Emsal (UYAP)', description: 'UYAP Emsal Kararlari' },
@@ -47,7 +49,7 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
     onAddToPetition,
     initialKeywords = [],
 }) => {
-    const [selectedSource, setSelectedSource] = useState<string>('yargitay');
+    const [selectedSource, setSelectedSource] = useState<string>('all');
     const [keyword, setKeyword] = useState('');
     const [results, setResults] = useState<SearchResult[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -62,7 +64,13 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
 
     useEffect(() => {
         if (isOpen && initialKeywords.length > 0 && !keyword) {
-            setKeyword(initialKeywords.slice(0, 3).join(' '));
+            const initialQuery = initialKeywords.slice(0, 3).join(' ');
+            setKeyword(initialQuery);
+            setSelectedSource(prev => (
+                prev === 'all'
+                    ? resolveLegalSourceForQuery(initialQuery, 'all')
+                    : prev
+            ));
         }
     }, [isOpen, initialKeywords, keyword]);
 
@@ -112,8 +120,12 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
         setLoadingDocument(docId);
 
         try {
+            const documentSource = resolveLegalSourceForQuery(
+                [selectedSource, keyword, result.title || '', result.daire || '', result.ozet || result.snippet || ''],
+                'all'
+            );
             const content = await getLegalDocument({
-                source: selectedSource,
+                source: documentSource,
                 documentId: docId,
                 documentUrl: result.documentUrl || result.sourceUrl,
                 title: result.title,

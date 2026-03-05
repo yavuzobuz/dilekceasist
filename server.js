@@ -2013,8 +2013,8 @@ const isRetryableAiError = (error) => {
 };
 
 async function generateContentWithRetry(requestPayload, options = {}) {
-    const maxRetries = Number.isFinite(AI_CONFIG.MAX_RETRIES) ? AI_CONFIG.MAX_RETRIES : 2;
-    const initialDelayMs = Number.isFinite(AI_CONFIG.INITIAL_RETRY_DELAY_MS) ? AI_CONFIG.INITIAL_RETRY_DELAY_MS : 1000;
+    const maxRetries = Number.isFinite(options.maxRetries) ? options.maxRetries : (Number.isFinite(AI_CONFIG.MAX_RETRIES) ? AI_CONFIG.MAX_RETRIES : 2);
+    const initialDelayMs = Number.isFinite(options.initialDelayMs) ? options.initialDelayMs : (Number.isFinite(AI_CONFIG.INITIAL_RETRY_DELAY_MS) ? AI_CONFIG.INITIAL_RETRY_DELAY_MS : 1000);
     const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : Number(process.env.LEGAL_AI_TIMEOUT_MS || 14000);
 
     let lastError = null;
@@ -2103,7 +2103,7 @@ const compactLegalKeywordQuery = (keyword, maxLen = 180) => {
     const normalized = normalizeForRouting(raw);
     const mustKeep = [];
 
-    const lawMatch = raw.match(/\b\d{3,4}\s*say[i1]l[i1]\s*[^.,;:\n]*?kanun[ua]\b/i);
+    const lawMatch = raw.match(/\b\d{3,4}\s*say\w*\s*[^.,;:\n]*?kanun[ua]\b/i);
     if (lawMatch) mustKeep.push(lawMatch[0].trim());
 
     const articleMatches = raw.match(/\b\d{1,3}\.?\s*maddesi?\b/gi) || [];
@@ -2130,7 +2130,7 @@ const compactLegalKeywordQuery = (keyword, maxLen = 180) => {
         mustKeep.push(probe);
     }
 
-    const stopWords = new Set(['ve', 'veya', 'ile', 'icin', 'gibi', 'olan', 'olarak', 'dair', 'kararlari', 'kararlari', 'karar']);
+    const stopWords = new Set(['ve', 'veya', 'ile', 'icin', 'gibi', 'olan', 'olarak', 'dair', 'kararlari', 'karar']);
     const tokenFallback = normalized
         .split(/\s+/)
         .filter(token => token.length >= 3 && !stopWords.has(token))
@@ -2268,7 +2268,7 @@ const resolveSourceByRules = (keyword, requestedSource = 'all') => {
 };
 
 const tryResolveSourceWithAI = async ({ keyword, requestedSource = 'all' }) => {
-    if (!GEMINI_API_KEY) return null;
+    if (!API_KEY) return null;
 
     const requested = normalizeSourceValue(requestedSource, 'all');
     const routingPrompt = [
@@ -2286,7 +2286,7 @@ const tryResolveSourceWithAI = async ({ keyword, requestedSource = 'all' }) => {
 
     try {
         const response = await generateContentWithRetry({
-            model: MODEL_NAME,
+            model: AI_CONFIG.MODEL_NAME,
             contents: routingPrompt,
             config: { temperature: 0.1 },
         }, { maxRetries: 0, timeoutMs: LEGAL_ROUTER_TIMEOUT_MS });
