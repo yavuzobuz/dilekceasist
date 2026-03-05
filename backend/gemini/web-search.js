@@ -106,6 +106,9 @@ export default async function handler(req, res) {
         let degraded = false;
         let warning = null;
 
+        let _debugPrimaryError = null;
+        let _debugFallbackError = null;
+
         try {
             response = await withTimeout(
                 ai.models.generateContent({
@@ -121,6 +124,8 @@ export default async function handler(req, res) {
             );
         } catch (searchError) {
             degraded = true;
+            _debugPrimaryError = String(searchError?.message || searchError || 'unknown');
+            console.error('[web-search] Primary search error:', searchError);
             warning = getSafeErrorMessage(searchError, 'Live web search failed');
 
             const fallbackPrompt = `Asagidaki anahtar kelimelere gore Turk hukuku kapsaminda kisa bir mevzuat odakli on degerlendirme ver. Uydurma karar numarasi yazma.\n\nAnahtar kelimeler: ${keywords.join(', ')}`;
@@ -138,6 +143,8 @@ export default async function handler(req, res) {
                     'Fallback search timed out'
                 );
             } catch (fallbackError) {
+                _debugFallbackError = String(fallbackError?.message || fallbackError || 'unknown');
+                console.error('[web-search] Fallback search error:', fallbackError);
                 warning = getSafeErrorMessage(fallbackError, warning || 'Live/Fallback web search failed');
                 response = { text: 'Canli arama su an tamamlanamadi. Mevcut bilgilerle genel bir hukuki yonlendirme sunulabilir.' };
             }
@@ -148,6 +155,8 @@ export default async function handler(req, res) {
             groundingMetadata: response?.candidates?.[0]?.groundingMetadata || null,
             degraded,
             warning,
+            _debugPrimaryError,
+            _debugFallbackError,
         });
     } catch (error) {
         console.error('Web Search Error:', error);
