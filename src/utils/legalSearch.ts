@@ -55,6 +55,27 @@ const fetchWithTimeout = async (url: string, init: RequestInit, timeoutMs = REQU
   }
 };
 
+const getAuthHeaderValue = async (): Promise<string | null> => {
+  try {
+    const supabaseModule = await import('../../lib/supabase');
+    const sessionResult = await supabaseModule.supabase.auth.getSession();
+    const token = sessionResult?.data?.session?.access_token;
+    if (typeof token === 'string' && token.trim().length > 0) {
+      return `Bearer ${token}`;
+    }
+  } catch {
+    // Supabase client may be unavailable in test/runtime edge cases.
+  }
+  return null;
+};
+
+const buildJsonHeaders = async (): Promise<Record<string, string>> => {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const authHeader = await getAuthHeaderValue();
+  if (authHeader) headers.Authorization = authHeader;
+  return headers;
+};
+
 const extractResultsFromText = (text: string): any[] => {
   if (!text || typeof text !== 'string') return [];
 
@@ -157,6 +178,7 @@ export const searchLegalDecisions = async ({
 }: SearchLegalDecisionsParams): Promise<NormalizedLegalDecision[]> => {
   const payload = { source, keyword, filters };
   const body = JSON.stringify(payload);
+  const headers = await buildJsonHeaders();
   const endpoint = `${apiBaseUrl}/api/legal/search-decisions`;
   const retries = [endpoint, `${endpoint}?retry=1`, `${apiBaseUrl}/api/legal?action=search-decisions`];
 
@@ -168,7 +190,7 @@ export const searchLegalDecisions = async ({
     try {
       const response = await fetchWithTimeout(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body,
       });
 
@@ -225,6 +247,7 @@ export const getLegalDocument = async ({
     snippet,
   };
   const body = JSON.stringify(payload);
+  const headers = await buildJsonHeaders();
   const endpoint = `${apiBaseUrl}/api/legal/get-document`;
   const retries = [endpoint, `${endpoint}?retry=1`, `${apiBaseUrl}/api/legal?action=get-document`];
 
@@ -237,7 +260,7 @@ export const getLegalDocument = async ({
     try {
       response = await fetchWithTimeout(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body,
       });
 

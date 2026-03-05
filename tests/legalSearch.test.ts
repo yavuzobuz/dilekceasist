@@ -99,7 +99,7 @@ describe('legalSearch utils', () => {
         expect(data[0].title).toBe('Karar A');
     });
 
-    it('searchLegalDecisions should fallback to action endpoint when primary fails', async () => {
+    it('searchLegalDecisions should retry same endpoint with retry query when primary fails', async () => {
         mockFetch
             .mockResolvedValueOnce({ ok: false, text: async () => 'primary failed' })
             .mockResolvedValueOnce({
@@ -116,20 +116,21 @@ describe('legalSearch utils', () => {
 
         expect(mockFetch).toHaveBeenNthCalledWith(
             2,
-            '/api/legal?action=search-decisions',
+            '/api/legal/search-decisions?retry=1',
             expect.objectContaining({ method: 'POST' })
         );
         expect(data[0].title).toBe('Karar B');
     });
 
-    it('searchLegalDecisions should throw backend error text when both endpoints fail', async () => {
+    it('searchLegalDecisions should throw backend error text when all retries fail', async () => {
         mockFetch
             .mockResolvedValueOnce({ ok: false, text: async () => 'first error' })
-            .mockResolvedValueOnce({ ok: false, text: async () => 'second error' });
+            .mockResolvedValueOnce({ ok: false, text: async () => 'second error' })
+            .mockResolvedValueOnce({ ok: false, text: async () => 'third error' });
 
         await expect(
             searchLegalDecisions({ source: 'yargitay', keyword: 'test' })
-        ).rejects.toThrow('second error');
+        ).rejects.toThrow('third error');
     });
 
     it('getLegalDocument should reject when document id and url are missing', async () => {
@@ -162,10 +163,9 @@ describe('legalSearch utils', () => {
 
         expect(mockFetch).toHaveBeenNthCalledWith(
             2,
-            '/api/legal?action=get-document',
+            '/api/legal/get-document?retry=1',
             expect.objectContaining({ method: 'POST' })
         );
         expect(content).toContain('# Baslik');
     });
 });
-

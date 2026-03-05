@@ -190,14 +190,14 @@ const requireUserAuth = async (req, res, next) => {
 
 // Shared helper for Supabase service role client validation
 const createServiceRoleClient = () => {
-    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl) {
-        throw new Error('VITE_SUPABASE_URL not configured');
+        throw new Error('SUPABASE_URL (or VITE_SUPABASE_URL) not configured');
     }
     if (!serviceRoleKey) {
-        throw new Error('SUPABASE_SERVICE_ROLE_KEY not configured');
+        throw new Error('SUPABASE_SERVICE_ROLE_KEY (or VITE_SUPABASE_SERVICE_ROLE_KEY) not configured');
     }
 
     return createClient(supabaseUrl, serviceRoleKey, {
@@ -2352,11 +2352,19 @@ app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
             results
         });
 
-    } catch (error) {
+        } catch (error) {
+        const statusCode = Number(error?.status) || 500;
         console.error('Legal Search Error:', error);
-        res.status(500).json({
-            error: 'Ýçtihat arama sýrasýnda bir hata oluþtu.',
-            details: process.env.NODE_ENV === 'production' ? undefined : error.message
+        res.status(statusCode).json({
+            error: getSafeErrorMessage(
+                error,
+                statusCode === 401
+                    ? 'Ictihat aramasi icin giris yapmaniz gerekiyor.'
+                    : 'Ictihat arama sirasinda bir hata olustu.'
+            ),
+            details: statusCode >= 500 && process.env.NODE_ENV === 'production'
+                ? undefined
+                : (error?.message || undefined)
         });
     }
 });
@@ -2443,11 +2451,19 @@ app.post('/api/legal/get-document', authMiddleware, validateRequest([
             }
         });
 
-    } catch (error) {
+        } catch (error) {
+        const statusCode = Number(error?.status) || 500;
         console.error('Get Document Error:', error);
-        res.status(500).json({
-            error: 'Belge alýnýrken bir hata oluþtu.',
-            details: process.env.NODE_ENV === 'production' ? undefined : error.message
+        res.status(statusCode).json({
+            error: getSafeErrorMessage(
+                error,
+                statusCode === 401
+                    ? 'Karar metni almak icin giris yapmaniz gerekiyor.'
+                    : 'Belge alinirken bir hata olustu.'
+            ),
+            details: statusCode >= 500 && process.env.NODE_ENV === 'production'
+                ? undefined
+                : (error?.message || undefined)
         });
     }
 });
@@ -4305,6 +4321,7 @@ app.all('/api/announcements', (req, res) => announcementsHandler(req, res));
 app.listen(PORT, () => {
     console.warn(`Server running on http://localhost:${PORT}`);
 });
+
 
 
 
