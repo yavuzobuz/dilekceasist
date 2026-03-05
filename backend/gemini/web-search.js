@@ -2,7 +2,7 @@ import { applyCors, getSafeErrorMessage } from '../../lib/api/cors.js';
 import { GEMINI_MODEL_NAME, getGeminiClient } from './_shared.js';
 
 const MODEL_NAME = GEMINI_MODEL_NAME;
-const SEARCH_TIMEOUT_MS = Number(process.env.GEMINI_WEB_SEARCH_TIMEOUT_MS || 18000);
+const SEARCH_TIMEOUT_MS = Number(process.env.GEMINI_WEB_SEARCH_TIMEOUT_MS || 45000);
 
 const normalizeKeywordList = (rawKeywords) => {
     if (!Array.isArray(rawKeywords)) return [];
@@ -139,7 +139,7 @@ export default async function handler(req, res) {
                             systemInstruction: SYSTEM_INSTRUCTION,
                         },
                     }),
-                    Math.max(8000, Math.floor(SEARCH_TIMEOUT_MS / 2)),
+                    10000, // 10s cap so 45s + 10s = 55s (under 60s Vercel limit)
                     'Fallback search timed out'
                 );
             } catch (fallbackError) {
