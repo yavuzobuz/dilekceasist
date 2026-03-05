@@ -7,7 +7,8 @@ export const config = {
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 const MODEL_NAME = process.env.GEMINI_MODEL_NAME || process.env.VITE_GEMINI_MODEL_NAME || 'gemini-2.5-flash';
 const LEGAL_AI_TIMEOUT_MS = Number(process.env.LEGAL_AI_TIMEOUT_MS || 14000);
-const BEDESTEN_TIMEOUT_MS = Number(process.env.BEDESTEN_TIMEOUT_MS || 14000);
+const BEDESTEN_TIMEOUT_MS = Number(process.env.BEDESTEN_TIMEOUT_MS || 9000);
+const LEGAL_ROUTER_TIMEOUT_MS = Number(process.env.LEGAL_ROUTER_TIMEOUT_MS || 4500);
 
 const BEDESTEN_BASE_URL = 'https://bedesten.adalet.gov.tr';
 const BEDESTEN_SEARCH_URL = `${BEDESTEN_BASE_URL}/emsal-karar/searchDocuments`;
@@ -158,6 +159,306 @@ const getBedestenItemTypeList = (source) => {
     }
 };
 
+const LEGAL_SOURCE_SET = new Set(['all', 'yargitay', 'danistay', 'uyap', 'anayasa', 'kik']);
+
+const normalizeForRouting = (value = '') => String(value || '')
+    .toLocaleLowerCase('tr-TR')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\u0131/g, 'i')
+    .replace(/[^a-z0-9\s./-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const normalizeSourceValue = (value, fallback = 'all') => {
+    const normalized = normalizeForRouting(value);
+    if (LEGAL_SOURCE_SET.has(normalized)) return normalized;
+    return fallback;
+};
+
+const compactLegalKeywordQuery = (keyword, maxLen = 180) => {
+    const raw = String(keyword || '').replace(/\s+/g, ' ').trim();
+    if (!raw) return '';
+    if (raw.length <= maxLen) return raw;
+
+    const normalized = normalizeForRouting(raw);
+    const mustKeep = [];
+
+    const lawMatch = raw.match(/\b\d{3,4}\s*say[iı]l[iı]\s*[^.,;:\n]*?kanun[ua]\b/i);
+    if (lawMatch) mustKeep.push(lawMatch[0].trim());
+
+    const articleMatches = raw.match(/\b\d{1,3}\.?\s*maddesi?\b/gi) || [];
+    for (const article of articleMatches) {
+        if (mustKeep.length >= 3) break;
+        mustKeep.push(article.trim());
+    }
+
+    const phraseProbes = [
+        'imar kanunu',
+        'kacak yapi',
+        'ruhsatsiz insaat',
+        'imar mevzuatina aykirilik',
+        'yikim karari',
+        'idari para cezasi',
+        'yapi tatil tutanagi',
+        'proje tadilatina aykiri yapi',
+        'encumen karari',
+    ];
+
+    for (const probe of phraseProbes) {
+        if (!normalized.includes(probe)) continue;
+        if (mustKeep.length >= 6) break;
+        mustKeep.push(probe);
+    }
+
+    const stopWords = new Set(['ve', 'veya', 'ile', 'icin', 'gibi', 'olan', 'olarak', 'dair', 'kararlari', 'kararlari', 'karar']);
+    const tokenFallback = normalized
+        .split(/\s+/)
+        .filter(token => token.length >= 3 && !stopWords.has(token))
+        .slice(0, 18);
+
+    const merged = [...mustKeep, ...tokenFallback]
+        .map(item => String(item || '').trim())
+        .filter(Boolean);
+
+    const uniq = [];
+    const seen = new Set();
+    for (const item of merged) {
+        const key = normalizeForRouting(item);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        uniq.push(item);
+    }
+
+    let compacted = uniq.join(' ');
+    if (compacted.length > maxLen) {
+        compacted = compacted.slice(0, maxLen).trim();
+    }
+    return compacted || raw.slice(0, maxLen).trim();
+};
+
+const resolveSourceByRules = (keyword, requestedSource = 'all') => {
+    const text = normalizeForRouting(keyword);
+    const requested = normalizeSourceValue(requestedSource, 'all');
+    if (!text) {
+        return {
+            source: requested,
+            confidence: requested === 'all' ? 0.4 : 0.75,
+            secondarySource: null,
+            secondaryScore: 0,
+            method: 'rules',
+        };
+    }
+
+    const scores = {
+        danistay: 0,
+        yargitay: 0,
+        anayasa: 0,
+        uyap: 0,
+    };
+
+    const addSignals = (source, probes, weight) => {
+        for (const probe of probes) {
+            if (text.includes(probe)) scores[source] += weight;
+        }
+    };
+
+    addSignals('danistay', ['danistay'], 5);
+    addSignals('yargitay', ['yargitay'], 5);
+    addSignals('anayasa', ['anayasa mahkemesi', 'aym', 'bireysel basvuru'], 4.5);
+    addSignals('uyap', ['uyap', 'istinaf', 'bolge adliye', 'yerel mahkeme', 'bolge idare'], 3.5);
+
+    addSignals('danistay', [
+        'imar',
+        '3194',
+        'ruhsat',
+        'ruhsatsiz',
+        'kacak yapi',
+        'kacak',
+        'yikim',
+        'encumen',
+        'yapi tatil',
+        'idari para cezasi',
+        'idari yargi',
+        'idare mahkemesi',
+        'iptal davasi',
+        'tam yargi',
+        'belediye',
+        'imar barisi',
+    ], 1.35);
+
+    addSignals('yargitay', [
+        'tck',
+        'cmk',
+        'hmk',
+        'tbk',
+        'kambiyo',
+        'icra',
+        'ceza',
+        'bosanma',
+        'is davasi',
+        'alacak davasi',
+        'dolandiricilik',
+        'hirsizlik',
+        'yaralama',
+    ], 1.1);
+
+    const explicitDanistay = text.includes('danistay');
+    const explicitYargitay = text.includes('yargitay');
+    if (explicitDanistay && explicitYargitay) {
+        return {
+            source: 'all',
+            confidence: 0.98,
+            secondarySource: null,
+            secondaryScore: 0,
+            method: 'rules',
+        };
+    }
+
+    const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+    const [topSource = 'all', topScore = 0] = sorted[0] || [];
+    const [secondSource = null, secondScore = 0] = sorted[1] || [];
+
+    if (!topSource || topScore <= 0) {
+        return {
+            source: requested,
+            confidence: requested === 'all' ? 0.45 : 0.75,
+            secondarySource: null,
+            secondaryScore: 0,
+            method: 'rules',
+        };
+    }
+
+    const diff = Math.max(0, topScore - secondScore);
+    let confidence = 0.55 + Math.min(0.3, topScore * 0.08) + Math.min(0.1, diff * 0.06);
+    confidence = Math.max(0.52, Math.min(0.95, confidence));
+
+    let source = topSource;
+    if (requested !== 'all' && requested !== topSource && diff < 1.2) {
+        source = requested;
+        confidence = Math.max(0.72, confidence - 0.08);
+    }
+
+    return {
+        source: normalizeSourceValue(source, requested),
+        confidence,
+        secondarySource: secondScore >= 1 ? secondSource : null,
+        secondaryScore: secondScore,
+        method: 'rules',
+    };
+};
+
+const tryResolveSourceWithAI = async ({ keyword, requestedSource = 'all' }) => {
+    if (!GEMINI_API_KEY) return null;
+
+    const requested = normalizeSourceValue(requestedSource, 'all');
+    const routingPrompt = [
+        'Asagidaki ictihat arama sorgusu icin en uygun yargi kaynagini sec.',
+        'Gecerli source: danistay, yargitay, anayasa, uyap, all',
+        'Kurallar:',
+        '- Imar/ruhsat/yikim/encumen/idari para cezasi/idari yargi konularinda danistay agirlikli sec.',
+        '- Ceza ve ozel hukuk temyiz agirlikli konularda yargitay sec.',
+        '- Emin degilsen all sec.',
+        'Sadece JSON dondur:',
+        '{"source":"...","confidence":0.0,"birimAdi":"ALL","compactQuery":"..."}',
+        `requestedSource: ${requested}`,
+        `query: ${keyword}`,
+    ].join('\n');
+
+    try {
+        const response = await generateContentWithRetry({
+            model: MODEL_NAME,
+            contents: routingPrompt,
+            config: { temperature: 0.1 },
+        }, { maxRetries: 0, timeoutMs: LEGAL_ROUTER_TIMEOUT_MS });
+
+        const parsed = maybeExtractJson(response.text || '');
+        if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') return null;
+
+        const source = normalizeSourceValue(parsed.source, 'all');
+        const confidenceRaw = Number(parsed.confidence);
+        const confidence = Number.isFinite(confidenceRaw)
+            ? Math.max(0, Math.min(1, confidenceRaw))
+            : 0.5;
+        const compactQuery = typeof parsed.compactQuery === 'string'
+            ? parsed.compactQuery.trim()
+            : '';
+        const birimAdi = typeof parsed.birimAdi === 'string'
+            ? parsed.birimAdi.trim()
+            : '';
+
+        return {
+            source,
+            confidence,
+            compactQuery: compactQuery || keyword,
+            birimAdi: birimAdi || 'ALL',
+            method: 'ai',
+        };
+    } catch (error) {
+        console.error('Legal source AI router error:', error);
+        return null;
+    }
+};
+
+const buildSearchRoutingPlan = async ({ keyword, requestedSource = 'all', filters = {} }) => {
+    const requested = normalizeSourceValue(requestedSource, 'all');
+    const compactKeyword = compactLegalKeywordQuery(keyword);
+    const ruleDecision = resolveSourceByRules(compactKeyword, requested);
+    const aiDecision = await tryResolveSourceWithAI({ keyword: compactKeyword, requestedSource: requested });
+
+    let resolvedSource = ruleDecision.source;
+    let confidence = ruleDecision.confidence;
+    let router = ruleDecision.method;
+
+    if (aiDecision && aiDecision.source) {
+        const aiCanOverrideRule = aiDecision.confidence >= 0.64 && (
+            ruleDecision.confidence < 0.84
+            || aiDecision.source === requested
+            || requested === 'all'
+        );
+
+        if (aiCanOverrideRule) {
+            resolvedSource = aiDecision.source;
+            confidence = Math.max(confidence, aiDecision.confidence);
+            router = 'ai';
+        }
+    }
+
+    if (requested !== 'all' && requested !== resolvedSource) {
+        const strongOverride = confidence >= 0.86;
+        if (!strongOverride) {
+            resolvedSource = requested;
+            confidence = Math.max(confidence, 0.75);
+            router = 'requested';
+        }
+    }
+
+    const fallbackSources = [];
+    for (const candidate of [resolvedSource, ruleDecision.secondarySource, 'all']) {
+        const normalized = normalizeSourceValue(candidate, '');
+        if (!normalized || fallbackSources.includes(normalized)) continue;
+        fallbackSources.push(normalized);
+        if (fallbackSources.length >= 3) break;
+    }
+
+    const nextFilters = { ...(filters || {}) };
+    if ((!nextFilters.birimAdi || nextFilters.birimAdi === 'ALL') && aiDecision?.birimAdi && aiDecision.birimAdi !== 'ALL') {
+        nextFilters.birimAdi = aiDecision.birimAdi;
+    }
+
+    return {
+        requestedSource: requested,
+        resolvedSource,
+        confidence,
+        router,
+        keyword: aiDecision?.compactQuery ? compactLegalKeywordQuery(aiDecision.compactQuery) : compactKeyword,
+        originalKeyword: String(keyword || ''),
+        fallbackSources,
+        filters: nextFilters,
+        compacted: compactKeyword !== String(keyword || '').trim(),
+    };
+};
+
 const toBedestenFormattedDecision = (item, index) => {
     const safe = item || {};
     const esasNo = safe.esasNo || (safe.esasYili && safe.esasSiraNo ? `${safe.esasYili}/${safe.esasSiraNo}` : '');
@@ -268,6 +569,7 @@ async function getBedestenDocumentContent(documentId) {
 async function generateContentWithRetry(requestPayload, options = {}) {
     const maxRetries = Number.isFinite(options.maxRetries) ? options.maxRetries : 1;
     const initialDelayMs = Number.isFinite(options.initialDelayMs) ? options.initialDelayMs : 500;
+    const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : LEGAL_AI_TIMEOUT_MS;
 
     let lastError = null;
     const ai = getAiClient();
@@ -276,7 +578,7 @@ async function generateContentWithRetry(requestPayload, options = {}) {
         try {
             return await withTimeout(
                 ai.models.generateContent(requestPayload),
-                LEGAL_AI_TIMEOUT_MS,
+                timeoutMs,
                 'Legal AI request timed out'
             );
         } catch (error) {
@@ -295,11 +597,15 @@ async function generateContentWithRetry(requestPayload, options = {}) {
     throw lastError || new Error('AI request failed');
 }
 
-async function searchEmsalFallback(keyword) {
+async function searchEmsalFallback(keyword, sourceHint = 'all') {
     try {
+        const normalizedSourceHint = normalizeSourceValue(sourceHint, 'all');
+        const sourceDirective = normalizedSourceHint === 'all'
+            ? 'Yargitay ve Danistay agirlikli'
+            : `${normalizedSourceHint.toUpperCase()} agirlikli`;
         const response = await generateContentWithRetry({
             model: MODEL_NAME,
-            contents: `Turkiye'de "${keyword}" konusunda emsal Yargitay ve Danistay kararlarini bul.
+            contents: `Turkiye'de "${keyword}" konusunda ${sourceDirective} emsal kararlarini bul.
 
 Her karar icin su alanlari uret:
 - mahkeme
@@ -406,42 +712,89 @@ async function handleSearchDecisions(req, res) {
         return res.status(400).json({ error: 'Arama kelimesi (keyword) gereklidir.' });
     }
 
-    let provider = 'bedesten';
-    let warning = '';
-    let results = [];
+    const routingPlan = await buildSearchRoutingPlan({
+        keyword,
+        requestedSource: source,
+        filters,
+    });
 
-    try {
-        results = await searchBedestenAPI(keyword, source, filters);
-    } catch (error) {
-        provider = 'ai-fallback';
-        warning = 'MCP/Bedesten servisi gecici olarak yanit vermedi, AI fallback kullaniliyor.';
-        console.error('Bedesten search error:', error);
+    let provider = 'bedesten';
+    const warningParts = [];
+    let results = [];
+    let usedSource = routingPlan.resolvedSource;
+    const bedestenErrors = [];
+
+    for (const candidateSource of routingPlan.fallbackSources) {
+        usedSource = candidateSource;
+        try {
+            const bedestenResults = await searchBedestenAPI(
+                routingPlan.keyword,
+                candidateSource,
+                routingPlan.filters
+            );
+            if (Array.isArray(bedestenResults) && bedestenResults.length > 0) {
+                results = bedestenResults;
+                break;
+            }
+        } catch (error) {
+            bedestenErrors.push(`${candidateSource}:${error?.message || 'unknown-error'}`);
+            if (error?.code === 'REQUEST_TIMEOUT') {
+                warningParts.push('MCP/Bedesten aramasi zaman asimina ugradi, AI fallback kullaniliyor.');
+                break;
+            }
+            console.error(`Bedesten search error (${candidateSource}):`, error);
+        }
     }
 
     if (!Array.isArray(results) || results.length === 0) {
         provider = 'ai-fallback';
-        const fallback = await searchEmsalFallback(keyword);
+        const fallback = await searchEmsalFallback(routingPlan.keyword, usedSource);
         results = fallback.results || [];
 
         if (!fallback.success && results.length === 0) {
             return res.json({
                 success: true,
-                source: source || 'all',
+                source: usedSource || routingPlan.resolvedSource || 'all',
                 provider,
-                keyword,
+                keyword: routingPlan.keyword,
                 results: [],
                 warning: 'Emsal arama servislerine su an ulasilamiyor. Lutfen biraz sonra tekrar deneyin.',
+                routing: {
+                    requestedSource: routingPlan.requestedSource,
+                    resolvedSource: routingPlan.resolvedSource,
+                    usedSource,
+                    fallbackSources: routingPlan.fallbackSources,
+                    router: routingPlan.router,
+                    confidence: routingPlan.confidence,
+                    compacted: routingPlan.compacted,
+                },
             });
         }
     }
 
+    if (routingPlan.compacted) {
+        warningParts.push('Uzun sorgu optimize edilerek arama yapildi.');
+    }
+    if (bedestenErrors.length > 0) {
+        warningParts.push('Bazi Bedesten denemeleri basarisiz oldu.');
+    }
+
     return res.json({
         success: true,
-        source: source || 'all',
+        source: usedSource || routingPlan.resolvedSource || 'all',
         provider,
-        keyword,
+        keyword: routingPlan.keyword,
         results,
-        ...(warning ? { warning } : {}),
+        routing: {
+            requestedSource: routingPlan.requestedSource,
+            resolvedSource: routingPlan.resolvedSource,
+            usedSource,
+            fallbackSources: routingPlan.fallbackSources,
+            router: routingPlan.router,
+            confidence: routingPlan.confidence,
+            compacted: routingPlan.compacted,
+        },
+        ...(warningParts.length > 0 ? { warning: warningParts.join(' ') } : {}),
     });
 }
 
