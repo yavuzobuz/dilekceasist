@@ -19,6 +19,7 @@ import { Petition, supabase } from '../../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { searchLegalDecisions } from '../utils/legalSearch';
+import { resolveLegalSourceForQuery } from '../utils/legalSource';
 import {
   buildMissingInfoQuestions,
   getMissingInfoAnswerCounts,
@@ -485,8 +486,9 @@ export const AppMain: React.FC = () => {
       addToast('Ictihat aramasi baslatiliyor...', 'info');
       try {
         const searchQuery = keywords.slice(0, 5).join(' ');
+        const resolvedSource = resolveLegalSourceForQuery(searchQuery, 'all');
         const newResults = await searchLegalDecisions({
-          source: 'yargitay',
+          source: resolvedSource,
           keyword: searchQuery,
         });
 

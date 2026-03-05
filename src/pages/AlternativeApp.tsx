@@ -18,6 +18,7 @@ import { Petition, supabase } from '../../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { getLegalDocument, searchLegalDecisions } from '../utils/legalSearch';
+import { resolveLegalSourceForQuery } from '../utils/legalSource';
 import { File, FileCode2, FileImage, FileText } from 'lucide-react';
 import { MissingInfoChecklistPanel } from '../../components/MissingInfoChecklistPanel';
 import {
@@ -1104,8 +1105,9 @@ export default function AlternativeApp() {
 
         try {
             const keyword = keywordsForSearch.slice(0, 5).join(' ');
+            const resolvedSource = resolveLegalSourceForQuery(keyword, 'all');
             const normalizedResults = (await searchLegalDecisions({
-                source: 'yargitay',
+                source: resolvedSource,
                 keyword,
                 apiBaseUrl: '',
             })) as AlternativeLegalSearchResult[];
@@ -1539,8 +1541,17 @@ export default function AlternativeApp() {
         setIsDecisionContentLoading(true);
 
         try {
+            const resolvedSource = resolveLegalSourceForQuery(
+                [
+                    result.source || '',
+                    result.title || '',
+                    result.daire || '',
+                    result.ozet || '',
+                ],
+                'all'
+            );
             const content = await getLegalDocument({
-                source: 'yargitay',
+                source: resolvedSource,
                 documentId: result.documentId || result.id || `${result.title || 'karar'}-${index}`,
                 title: result.title,
                 esasNo: result.esasNo,

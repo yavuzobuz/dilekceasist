@@ -38,6 +38,7 @@ import mammoth from 'mammoth';
 import { ClientManager } from '../components/ClientManager';
 import { Client } from '../types';
 import { searchLegalDecisions, type NormalizedLegalDecision } from '../utils/legalSearch';
+import { resolveLegalSourceForQuery } from '../utils/legalSource';
 import { useAuth } from '../contexts/AuthContext';
 import {
     fetchUserTemplates,
@@ -1137,14 +1138,15 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
         setMcpSearchError(null);
 
         try {
+            const resolvedSource = resolveLegalSourceForQuery(keyword, 'all');
             const results = await searchLegalDecisions({
-                source: 'yargitay',
+                source: resolvedSource,
                 keyword,
                 apiBaseUrl: API_BASE_URL,
             });
             setMcpSearchResults(results);
         } catch (searchError) {
-            const message = searchError instanceof Error ? searchError.message : 'MCP Yargıtay aramasında hata oluştu.';
+            const message = searchError instanceof Error ? searchError.message : 'MCP karar aramasinda hata olustu.';
             setMcpSearchError(message);
             setMcpSearchResults([]);
         } finally {

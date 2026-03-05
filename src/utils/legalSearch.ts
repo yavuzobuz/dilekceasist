@@ -1,4 +1,5 @@
 import type { LegalSearchResult } from '../../types';
+import { normalizeLegalSource } from './legalSource';
 
 export interface NormalizedLegalDecision extends LegalSearchResult {
   id?: string;
@@ -100,6 +101,7 @@ const extractResultsFromText = (text: string): any[] => {
 
 export const normalizeLegalSearchResults = (payload: any): NormalizedLegalDecision[] => {
   const raw: any[] = [];
+  const payloadSource = normalizeLegalSource(payload?.source);
 
   if (Array.isArray(payload)) raw.push(...payload);
   if (Array.isArray(payload?.results)) raw.push(...payload.results);
@@ -155,6 +157,7 @@ export const normalizeLegalSearchResults = (payload: any): NormalizedLegalDecisi
         tarih: result.tarih || result.date || '',
         daire,
         ozet,
+        source: normalizeLegalSource(result.source) || payloadSource || undefined,
         snippet: result.snippet || ozet,
         relevanceScore: Number.isFinite(relevanceScore) ? relevanceScore : undefined,
       };
