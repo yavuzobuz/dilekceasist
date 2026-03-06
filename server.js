@@ -1126,6 +1126,12 @@ const decodeBase64Utf8 = (base64Value = '') => {
     }
 };
 
+const truncateChatSearchText = (value = '', maxLen = 160) => {
+    const raw = String(value || '').replace(/\s+/g, ' ').trim();
+    if (!raw || raw.length <= maxLen) return raw;
+    return `${raw.slice(0, Math.max(0, maxLen - 3)).trim()}...`;
+};
+
 const appendGeminiFileParts = (parts, files = []) => {
     if (!Array.isArray(parts) || !Array.isArray(files)) return;
 
@@ -1446,45 +1452,64 @@ T�rk�e yan�t ver. Soruyu once analiz et; tanim/genel sorularda aramayi zor
             return;
         }
 
-        // If there were search_yargitay function calls, execute them and send results
+        // If there were search_yargitay function calls, execute a single consolidated legal search
         if (pendingFunctionCalls.length > 0) {
-            for (const fc of pendingFunctionCalls) {
-                try {
-                    const searchQuery = fc.args?.searchQuery || fc.args?.keywords?.join(' ') || '';
-                    console.warn(`[LEGAL_SEARCH] AI requesting legal search: "${searchQuery}"`);
-
-                    // Execute the legal search using existing function
-                    const searchResult = await searchEmsalFallback(searchQuery);
-
-                    // Format results for the AI
-                    let formattedResults = '\n\n### BULUNAN YARGITAY KARARLARI\n\n';
-                    if (searchResult.results && searchResult.results.length > 0) {
-                        searchResult.results.forEach((result, index) => {
-                            formattedResults += `**${index + 1}. ${result.title || 'Yargitay Karari'}**\n`;
-                            if (result.esasNo) formattedResults += `E. ${result.esasNo} `;
-                            if (result.kararNo) formattedResults += `K. ${result.kararNo} `;
-                            if (result.tarih) formattedResults += `T. ${result.tarih}`;
-                            formattedResults += '\n';
-                            if (result.ozet) formattedResults += `Ozet: ${result.ozet}\n`;
-                            formattedResults += '\n';
-                        });
-                    } else {
-                        formattedResults += 'Bu konuda emsal karar bulunamadi.\n';
+            try {
+                const rawSearchParts = [];
+                for (const fc of pendingFunctionCalls) {
+                    const args = fc?.args && typeof fc.args === 'object' ? fc.args : {};
+                    if (typeof args.searchQuery === 'string' && args.searchQuery.trim()) {
+                        rawSearchParts.push(args.searchQuery.trim());
                     }
-
-                    // Send search results as additional chunk
-                    const resultChunk = {
-                        text: formattedResults,
-                        functionCallResults: true,
-                        searchResults: searchResult.results || []
-                    };
-                    res.write(JSON.stringify(resultChunk) + '\n');
-
-                } catch (searchError) {
-                    console.error('Legal search error in chat:', searchError);
-                    const errorChunk = { text: '\n\nEmsal karar aramasi sirasinda bir hata olustu.\n' };
-                    res.write(JSON.stringify(errorChunk) + '\n');
+                    if (Array.isArray(args.keywords)) {
+                        for (const keyword of args.keywords) {
+                            if (typeof keyword === 'string' && keyword.trim()) {
+                                rawSearchParts.push(keyword.trim());
+                            }
+                        }
+                    }
                 }
+
+                const combinedSearchText = rawSearchParts.join(' ').trim() || latestUserMessage || '';
+                const strictSearchQuery = buildStrictBedestenQuery(combinedSearchText);
+                const compactSearchQuery = compactLegalKeywordQuery(combinedSearchText, 180);
+                const searchQuery = strictSearchQuery || compactSearchQuery || combinedSearchText;
+
+                console.warn(`[LEGAL_SEARCH] consolidated legal search: "${searchQuery}"`);
+
+                const searchResult = await searchEmsalFallback(searchQuery);
+                const visibleResults = Array.isArray(searchResult.results)
+                    ? searchResult.results.slice(0, 3)
+                    : [];
+                const hiddenCount = Math.max(0, (searchResult.results?.length || 0) - visibleResults.length);
+
+                let formattedResults = '\n\n### BULUNAN EMSAL KARARLAR\n\n';
+                if (visibleResults.length > 0) {
+                    visibleResults.forEach((result, index) => {
+                        formattedResults += `**${index + 1}. ${result.title || 'Emsal Karar'}**\n`;
+                        if (result.esasNo) formattedResults += `E. ${result.esasNo} `;
+                        if (result.kararNo) formattedResults += `K. ${result.kararNo} `;
+                        if (result.tarih) formattedResults += `T. ${result.tarih}`;
+                        formattedResults += '\n';
+                        if (result.ozet) formattedResults += `Ozet: ${truncateChatSearchText(result.ozet, 160)}\n\n`;
+                    });
+                    if (hiddenCount > 0) {
+                        formattedResults += `+ ${hiddenCount} ek karar bulundu. Tam liste baglama eklendi.\n`;
+                    }
+                } else {
+                    formattedResults += 'Bu konuda emsal karar bulunamadi.\n';
+                }
+
+                const resultChunk = {
+                    text: formattedResults,
+                    functionCallResults: true,
+                    searchResults: searchResult.results || []
+                };
+                res.write(JSON.stringify(resultChunk) + '\n');
+            } catch (searchError) {
+                console.error('Legal search error in chat:', searchError);
+                const errorChunk = { text: '\n\nEmsal karar aramasi sirasinda bir hata olustu.\n' };
+                res.write(JSON.stringify(errorChunk) + '\n');
             }
         }
 
@@ -1967,11 +1992,12 @@ const YARGI_MCP_COURT_TYPES_BY_SOURCE = {
 };
 const BEDESTEN_TIMEOUT_MS = Number(process.env.BEDESTEN_TIMEOUT_MS || 15000);
 const LEGAL_ROUTER_TIMEOUT_MS = Number(process.env.LEGAL_ROUTER_TIMEOUT_MS || 8000);
-const LEGAL_CONTENT_RERANK_LIMIT = Math.max(1, Math.min(30, Number(process.env.LEGAL_CONTENT_RERANK_LIMIT || 15)));
+const LEGAL_RESULT_RETURN_LIMIT = Math.max(10, Math.min(100, Number(process.env.LEGAL_RESULT_RETURN_LIMIT || 50)));
+const LEGAL_CONTENT_RERANK_LIMIT = Math.max(LEGAL_RESULT_RETURN_LIMIT, Math.min(100, Number(process.env.LEGAL_CONTENT_RERANK_LIMIT || 50)));
 const LEGAL_QUERY_VARIANT_LIMIT = Math.max(6, Math.min(20, Number(process.env.LEGAL_QUERY_VARIANT_LIMIT || 10)));
-const LEGAL_VARIANT_RESULT_CAP = Math.max(20, Math.min(120, Number(process.env.LEGAL_VARIANT_RESULT_CAP || 40)));
+const LEGAL_VARIANT_RESULT_CAP = Math.max(LEGAL_RESULT_RETURN_LIMIT, Math.min(150, Number(process.env.LEGAL_VARIANT_RESULT_CAP || 50)));
 const USE_GEMINI_SEMANTIC_RERANK = process.env.LEGAL_USE_GEMINI_SEMANTIC !== '0';
-const LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT = Math.max(5, Math.min(40, Number(process.env.LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT || 25)));
+const LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT = Math.max(LEGAL_RESULT_RETURN_LIMIT, Math.min(100, Number(process.env.LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT || 50)));
 const LEGAL_DEBUG_SEARCH = process.env.LEGAL_DEBUG_SEARCH !== '0';
 
 const createLegalDebugId = () => `ls-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -3136,7 +3162,7 @@ const runPhraseFallbackSearch = async ({ keyword = '', source = 'all', filters =
 
     return {
         applied: true,
-        results: finalResults.slice(0, 10),
+        results: finalResults.slice(0, LEGAL_RESULT_RETURN_LIMIT),
         phraseCandidates,
     };
 };
@@ -3228,7 +3254,7 @@ const semanticRerankWithGemini = async ({ candidates = [], keyword = '', debugCo
 
         return {
             applied: true,
-            results: ranked.slice(0, 10),
+            results: ranked.slice(0, LEGAL_RESULT_RETURN_LIMIT),
         };
     } catch (error) {
         if (debugContext?.id) {
@@ -3573,7 +3599,7 @@ async function searchBedestenAPI(keyword, source, filters = {}, debugContext = n
     }
 
     const pageNumber = Math.max(1, Number(filters.pageNumber) || 1);
-    const pageSize = Math.min(40, Math.max(1, Number(filters.pageSize) || 20));
+    const pageSize = Math.min(50, Math.max(1, Number(filters.pageSize) || LEGAL_RESULT_RETURN_LIMIT));
     const rawBirimAdi = typeof filters.birimAdi === 'string' ? filters.birimAdi.trim() : '';
     const birimAdi = (!rawBirimAdi || rawBirimAdi.toUpperCase() === 'ALL') ? '' : rawBirimAdi;
 
@@ -4166,7 +4192,7 @@ app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
 
             if (contentRerank.applied && contentRerank.fetchedCount > 0) {
                 if (Array.isArray(contentRerank.results) && contentRerank.results.length > 0) {
-                    results = contentRerank.results.slice(0, Math.min(10, contentRerank.results.length));
+                    results = contentRerank.results.slice(0, Math.min(LEGAL_RESULT_RETURN_LIMIT, contentRerank.results.length));
                     if (contentRerank.filteredOutCount > 0) {
                         warningParts.push(`${contentRerank.filteredOutCount} sonuc tam metinde anahtar kelime uyusmasi dusuk oldugu icin elendi.`);
                     }
@@ -4181,7 +4207,7 @@ app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
                     const thresholdMatches = scoring.scoredResults
                         .filter((item) => Number(item?.relevanceScore || 0) >= LEGAL_MIN_MATCH_SCORE);
                     if (thresholdMatches.length > 0) {
-                        results = thresholdMatches.slice(0, Math.min(10, thresholdMatches.length));
+                        results = thresholdMatches.slice(0, Math.min(LEGAL_RESULT_RETURN_LIMIT, thresholdMatches.length));
                         warningParts.push(`Kati ifade filtresi nedeniyle skor >= ${LEGAL_MIN_MATCH_SCORE} olan en yakin MCP sonuclari listelendi.`);
                     } else if (
                         contentRerank.applied
@@ -4189,7 +4215,7 @@ app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
                         && contentRerank.fetchErrorCount > 0
                         && contentCandidates.length > 0
                     ) {
-                        results = contentCandidates.slice(0, Math.min(10, contentCandidates.length));
+                        results = contentCandidates.slice(0, Math.min(LEGAL_RESULT_RETURN_LIMIT, contentCandidates.length));
                         warningParts.push('Karar tam metinleri cekilemedigi icin ilk bulunan MCP sonuclari listelendi.');
                     } else {
                         results = [];
@@ -4201,7 +4227,7 @@ app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
                         && contentRerank.fetchErrorCount > 0
                         && contentCandidates.length > 0
                     ) {
-                        results = contentCandidates.slice(0, Math.min(10, contentCandidates.length));
+                        results = contentCandidates.slice(0, Math.min(LEGAL_RESULT_RETURN_LIMIT, contentCandidates.length));
                         warningParts.push('Karar tam metinleri cekilemedigi icin ilk bulunan MCP sonuclari listelendi.');
                     } else {
                     results = [];
@@ -4224,7 +4250,7 @@ app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
                 debugContext: { id: debugId },
             });
             if (semanticRerank.applied && Array.isArray(semanticRerank.results) && semanticRerank.results.length > 0) {
-                results = semanticRerank.results.slice(0, 10);
+                results = semanticRerank.results.slice(0, LEGAL_RESULT_RETURN_LIMIT);
                 warningParts.push('Gemini semantik siralama fallback kullanildi.');
             }
         }

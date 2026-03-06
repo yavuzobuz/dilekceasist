@@ -9,11 +9,12 @@ const MODEL_NAME = process.env.GEMINI_MODEL_NAME || process.env.VITE_GEMINI_MODE
 const LEGAL_AI_TIMEOUT_MS = Number(process.env.LEGAL_AI_TIMEOUT_MS || 35000);
 const BEDESTEN_TIMEOUT_MS = Number(process.env.BEDESTEN_TIMEOUT_MS || 15000);
 const LEGAL_ROUTER_TIMEOUT_MS = Number(process.env.LEGAL_ROUTER_TIMEOUT_MS || 8000);
-const LEGAL_CONTENT_RERANK_LIMIT = Math.max(1, Math.min(30, Number(process.env.LEGAL_CONTENT_RERANK_LIMIT || 15)));
+const LEGAL_RESULT_RETURN_LIMIT = Math.max(10, Math.min(100, Number(process.env.LEGAL_RESULT_RETURN_LIMIT || 50)));
+const LEGAL_CONTENT_RERANK_LIMIT = Math.max(LEGAL_RESULT_RETURN_LIMIT, Math.min(100, Number(process.env.LEGAL_CONTENT_RERANK_LIMIT || 50)));
 const LEGAL_QUERY_VARIANT_LIMIT = Math.max(6, Math.min(20, Number(process.env.LEGAL_QUERY_VARIANT_LIMIT || 10)));
-const LEGAL_VARIANT_RESULT_CAP = Math.max(20, Math.min(120, Number(process.env.LEGAL_VARIANT_RESULT_CAP || 40)));
+const LEGAL_VARIANT_RESULT_CAP = Math.max(LEGAL_RESULT_RETURN_LIMIT, Math.min(150, Number(process.env.LEGAL_VARIANT_RESULT_CAP || 50)));
 const USE_GEMINI_SEMANTIC_RERANK = process.env.LEGAL_USE_GEMINI_SEMANTIC !== '0';
-const LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT = Math.max(5, Math.min(40, Number(process.env.LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT || 25)));
+const LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT = Math.max(LEGAL_RESULT_RETURN_LIMIT, Math.min(100, Number(process.env.LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT || 50)));
 const USE_MCP_SEMANTIC_SEARCH = process.env.LEGAL_USE_MCP_SEMANTIC !== '0';
 const YARGI_MCP_SEMANTIC_TIMEOUT_MS = Number(process.env.YARGI_MCP_SEMANTIC_TIMEOUT_MS || 90000);
 
@@ -1201,7 +1202,7 @@ const runPhraseFallbackSearch = async ({ keyword = '', source = 'all', filters =
 
     return {
         applied: true,
-        results: finalResults.slice(0, 10),
+        results: finalResults.slice(0, LEGAL_RESULT_RETURN_LIMIT),
         phraseCandidates,
     };
 };
@@ -1285,7 +1286,7 @@ const semanticRerankWithGemini = async ({ candidates = [], keyword = '' }) => {
 
         return {
             applied: true,
-            results: ranked.slice(0, 10),
+            results: ranked.slice(0, LEGAL_RESULT_RETURN_LIMIT),
         };
     } catch {
         return { applied: false, results: [] };
@@ -1703,7 +1704,7 @@ async function searchBedestenAPI(keyword, source, filters = {}) {
     // MCP is used for semantic search, not keyword search variants.
 
     const pageNumber = Math.max(1, Number(filters.pageNumber) || 1);
-    const pageSize = Math.min(40, Math.max(1, Number(filters.pageSize) || 20));
+    const pageSize = Math.min(50, Math.max(1, Number(filters.pageSize) || LEGAL_RESULT_RETURN_LIMIT));
     const rawBirimAdi = typeof filters.birimAdi === 'string' ? filters.birimAdi.trim() : '';
     const birimAdi = (!rawBirimAdi || rawBirimAdi.toUpperCase() === 'ALL') ? '' : rawBirimAdi;
 
@@ -2253,7 +2254,7 @@ async function handleSearchDecisions(req, res) {
 
         if (contentRerank.applied && contentRerank.fetchedCount > 0) {
             if (Array.isArray(contentRerank.results) && contentRerank.results.length > 0) {
-                results = contentRerank.results.slice(0, Math.min(10, contentRerank.results.length));
+                results = contentRerank.results.slice(0, Math.min(LEGAL_RESULT_RETURN_LIMIT, contentRerank.results.length));
                 if (contentRerank.filteredOutCount > 0) {
                     warningParts.push(`${contentRerank.filteredOutCount} sonuc tam metinde anahtar kelime uyusmasi dusuk oldugu icin elendi.`);
                 }
@@ -2268,7 +2269,7 @@ async function handleSearchDecisions(req, res) {
                 const thresholdMatches = scoring.scoredResults
                     .filter((item) => Number(item?.relevanceScore || 0) >= LEGAL_MIN_MATCH_SCORE);
                 if (thresholdMatches.length > 0) {
-                    results = thresholdMatches.slice(0, Math.min(10, thresholdMatches.length));
+                    results = thresholdMatches.slice(0, Math.min(LEGAL_RESULT_RETURN_LIMIT, thresholdMatches.length));
                     warningParts.push(`Kati ifade filtresi nedeniyle skor >= ${LEGAL_MIN_MATCH_SCORE} olan en yakin MCP sonuclari listelendi.`);
                 } else {
                     results = [];
@@ -2292,7 +2293,7 @@ async function handleSearchDecisions(req, res) {
             keyword: routingPlan.originalKeyword || routingPlan.keyword,
         });
         if (semanticRerank.applied && Array.isArray(semanticRerank.results) && semanticRerank.results.length > 0) {
-            results = semanticRerank.results.slice(0, 10);
+            results = semanticRerank.results.slice(0, LEGAL_RESULT_RETURN_LIMIT);
             warningParts.push('Gemini semantik siralama fallback kullanildi.');
         }
     }
