@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import htmlToDocx from 'html-to-docx';
 import cors from 'cors';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -114,6 +114,7 @@ const validateRequest = (validations) => [
     (req, res, next) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
+            console.error('Validation errors for ' + req.path + ':', errors.array());
             return res.status(400).json({
                 error: 'Gecersiz istek verisi.',
                 details: errors.array({ onlyFirstError: true }).map((item) => ({
@@ -372,6 +373,7 @@ const formatPartiesForPrompt = (parties) => {
 const formatCaseDetailsForPrompt = (details) => {
     if (!details) return "Dava k�nye bilgisi sa�lanmad�.";
     const detailEntries = [
+        details.caseTitle && `Dava Basligi / Konu: ${details.caseTitle}`,
         details.court && `Mahkeme: ${details.court}`,
         details.fileNumber && `Dosya Numaras� (Esas No): ${details.fileNumber}`,
         details.decisionNumber && `Karar Numaras�: ${details.decisionNumber}`,
@@ -696,6 +698,7 @@ Sonucu 'summary', 'potentialParties', 'caseDetails', 'lawyerInfo' ve 'contactInf
                         caseDetails: {
                             type: Type.OBJECT,
                             properties: {
+                                caseTitle: { type: Type.STRING },
                                 court: { type: Type.STRING },
                                 fileNumber: { type: Type.STRING },
                                 decisionNumber: { type: Type.STRING },
@@ -1167,6 +1170,9 @@ app.post('/api/gemini/chat', async (req, res) => {
         const requestFiles = Array.isArray(files) ? files : [];
         const model = AI_CONFIG.MODEL_NAME;
         const latestUserMessage = extractLatestUserMessage(safeChatHistory);
+        const isDocumentGenerationRequest = isLikelyDocumentGenerationRequest(latestUserMessage);
+        const userRequestedLegalSearch = safeContext?.allowLegalSearch === true || isExplicitLegalSearchRequest(latestUserMessage);
+        const allowSearchYargitayTool = isDocumentGenerationRequest || userRequestedLegalSearch;
         const ragContext = buildLightweightRagContext({
             queryText: [
                 latestUserMessage || '',
@@ -1180,7 +1186,7 @@ app.post('/api/gemini/chat', async (req, res) => {
         });
         let hasConsumedDocumentCredit = false;
 
-        if (isLikelyDocumentGenerationRequest(latestUserMessage)) {
+        if (isDocumentGenerationRequest) {
             const initialCredit = await consumeGenerationCredit(req, 'chat_document_generation');
             if (!initialCredit.allowed) {
                 return res.status(initialCredit.status).json(initialCredit.payload);
@@ -1282,6 +1288,10 @@ Kullan�c� �unlar� s�yledi�inde generate_document fonksiyonunu MUTLAK
 
 ��te mevcut davan�n ba�lam�:
 ${contextPrompt}
+${allowSearchYargitayTool
+                ? 'Kullanici acikca emsal/ictihat talep ettiginde search_yargitay fonksiyonunu kullan.'
+                : 'Kullanici talep etmedikce search_yargitay fonksiyonunu cagirma.'}
+
 
 T�rk�e yan�t ver. Soruyu once analiz et; tanim/genel sorularda aramayi zorunlu tutma ve kisa mevzuat cevabi ver. Uygulama/uyusmazlik sorularinda gerekli gordugunde arama yap. Tarih/saat sorularinda, baglamdaki sistem tarih-saat bilgisini esas al.`;
 
@@ -1346,6 +1356,11 @@ T�rk�e yan�t ver. Soruyu once analiz et; tanim/genel sorularda aramayi zor
             },
         };
 
+        const functionDeclarations = [updateKeywordsFunction, generateDocumentFunction];
+        if (allowSearchYargitayTool) {
+            functionDeclarations.push(searchYargitayFunction);
+        }
+
         // Build contents array - include files if provided
         const contents = safeChatHistory.map(msg => {
             const parts = [{ text: msg.text }];
@@ -1374,7 +1389,7 @@ T�rk�e yan�t ver. Soruyu once analiz et; tanim/genel sorularda aramayi zor
             contents: contents,
             config: {
                 systemInstruction: systemInstruction,
-                tools: [{ functionDeclarations: [updateKeywordsFunction, generateDocumentFunction, searchYargitayFunction] }],
+                tools: [{ functionDeclarations }],
             },
         });
 
@@ -1390,7 +1405,7 @@ T�rk�e yan�t ver. Soruyu once analiz et; tanim/genel sorularda aramayi zor
             const candidate = chunk.candidates?.[0];
             if (candidate?.content?.parts) {
                 for (const part of candidate.content.parts) {
-                    if (part.functionCall && part.functionCall.name === 'search_yargitay') {
+                    if (part.functionCall && part.functionCall.name === 'search_yargitay' && allowSearchYargitayTool) {
                         pendingFunctionCalls.push(part.functionCall);
                     }
                     if (part.functionCall && part.functionCall.name === 'generate_document' && !hasConsumedDocumentCredit) {
@@ -1436,25 +1451,25 @@ T�rk�e yan�t ver. Soruyu once analiz et; tanim/genel sorularda aramayi zor
             for (const fc of pendingFunctionCalls) {
                 try {
                     const searchQuery = fc.args?.searchQuery || fc.args?.keywords?.join(' ') || '';
-                    console.warn(`🔍 AI requesting legal search: "${searchQuery}"`);
+                    console.warn(`[LEGAL_SEARCH] AI requesting legal search: "${searchQuery}"`);
 
                     // Execute the legal search using existing function
                     const searchResult = await searchEmsalFallback(searchQuery);
 
                     // Format results for the AI
-                    let formattedResults = '\n\n### 📚 BULUNAN YARGITAY KARARLARI\n\n';
+                    let formattedResults = '\n\n### BULUNAN YARGITAY KARARLARI\n\n';
                     if (searchResult.results && searchResult.results.length > 0) {
                         searchResult.results.forEach((result, index) => {
-                            formattedResults += `**${index + 1}. ${result.title || 'Yarg�tay Karar�'}**\n`;
+                            formattedResults += `**${index + 1}. ${result.title || 'Yargitay Karari'}**\n`;
                             if (result.esasNo) formattedResults += `E. ${result.esasNo} `;
                             if (result.kararNo) formattedResults += `K. ${result.kararNo} `;
                             if (result.tarih) formattedResults += `T. ${result.tarih}`;
                             formattedResults += '\n';
-                            if (result.ozet) formattedResults += `�zet: ${result.ozet}\n`;
+                            if (result.ozet) formattedResults += `Ozet: ${result.ozet}\n`;
                             formattedResults += '\n';
                         });
                     } else {
-                        formattedResults += 'Bu konuda emsal karar bulunamad�.\n';
+                        formattedResults += 'Bu konuda emsal karar bulunamadi.\n';
                     }
 
                     // Send search results as additional chunk
@@ -1467,7 +1482,7 @@ T�rk�e yan�t ver. Soruyu once analiz et; tanim/genel sorularda aramayi zor
 
                 } catch (searchError) {
                     console.error('Legal search error in chat:', searchError);
-                    const errorChunk = { text: '\n\n⚠️ Emsal karar aramas� s�ras�nda bir hata olu�tu.\n' };
+                    const errorChunk = { text: '\n\nEmsal karar aramasi sirasinda bir hata olustu.\n' };
                     res.write(JSON.stringify(errorChunk) + '\n');
                 }
             }
@@ -1538,10 +1553,38 @@ const REWRITE_MODE_CONFIG = {
 
 const isLikelyDocumentGenerationRequest = (rawMessage = '') => {
     if (!rawMessage) return false;
-    const text = String(rawMessage).toLocaleLowerCase('tr-TR');
-    const hasDocumentIntent = /(dilekce|dilek�e|sozlesme|s�zle�me|ihtarname|belge|taslak|metin|talep)/i.test(text);
-    const hasGenerationVerb = /(olustur|olu�tur|uret|�ret|hazirla|haz�rla|yaz)/i.test(text);
+    const text = String(rawMessage || '')
+        .toLocaleLowerCase('tr-TR')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\u0131/g, 'i');
+    const hasDocumentIntent = /\b(dilekce|sozlesme|ihtarname|belge|taslak|metin|talep)\b/i.test(text);
+    const hasGenerationVerb = /\b(olustur|uret|hazirla|yaz)\b/i.test(text);
     return hasDocumentIntent && hasGenerationVerb;
+};
+
+const hasSearchOptOutIntent = (rawMessage = '') => {
+    const text = String(rawMessage || '')
+        .toLocaleLowerCase('tr-TR')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\u0131/g, 'i');
+    if (!text) return false;
+    return /(arama|arastirma|ictihat|emsal|yargitay|danistay|web|internet).*(yapma|istemiyorum|olmasin|gerek yok|gerekli degil|yapmayin)|\b(yapma|istemiyorum|olmasin|gerek yok|gerekli degil|yapmayin).*(arama|arastirma|ictihat|emsal|yargitay|danistay|web|internet)\b/i.test(text);
+};
+
+const isExplicitLegalSearchRequest = (rawMessage = '') => {
+    const text = String(rawMessage || '')
+        .toLocaleLowerCase('tr-TR')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\u0131/g, 'i');
+    if (!text || hasSearchOptOutIntent(text)) return false;
+
+    const hasLegalToken = /\b(emsal|ictihat|yargitay|danistay|karar no|esas no|karar ara)\b/i.test(text);
+    const hasSearchVerb = /\b(ara|arama|arastir|arastirma|bul|getir|goster|listele|paylas)\b/i.test(text);
+    const hasLookupQuestion = /\b(var mi|ne diyor|ornek)\b/i.test(text);
+    return hasLegalToken && (hasSearchVerb || hasLookupQuestion);
 };
 
 const extractLatestUserMessage = (chatHistory = []) => {
@@ -1864,28 +1907,28 @@ app.post('/api/gemini/review', async (req, res) => {
         const systemInstruction = `You are a senior Turkish legal editor...`;
 
         const promptText = `
-**G�REV: A�A�IDAK� MEVCUT D�LEK�E TASLA�INI, SA�LANAN BA�LAM B�LG�LER�N� KULLANARAK G�ZDEN GE��R VE �Y�LE�T�R.**
+**Gï¿½REV: Aï¿½Aï¿½IDAKï¿½ MEVCUT Dï¿½LEKï¿½E TASLAï¿½INI, SAï¿½LANAN BAï¿½LAM Bï¿½LGï¿½LERï¿½Nï¿½ KULLANARAK Gï¿½ZDEN GEï¿½ï¿½R VE ï¿½Yï¿½LEï¿½Tï¿½R.**
 
-**1. �Y�LE�T�R�LECEK MEVCUT D�LEK�E TASLA�I:**
+**1. ï¿½Yï¿½LEï¿½Tï¿½Rï¿½LECEK MEVCUT Dï¿½LEKï¿½E TASLAï¿½I:**
 ---
 ${params.currentPetition}
 ---
 
-**2. D�LEK�EN�N HAZIRLANMASINDA KULLANILAN OR�J�NAL BA�LAM B�LG�LER�:**
-- **KULLANICININ ROL�:** ${params.userRole}
-- **D�LEK�E T�R�:** ${params.petitionType}
-- **DAVA K�NYES�:** ${formatCaseDetailsForPrompt(params.caseDetails)}
-- **VEK�L B�LG�LER�:** ${formatLawyerInfoForPrompt(params.lawyerInfo)}
-- **�LET���M B�LG�LER�:** ${formatContactInfoForPrompt(params.contactInfo)}
-- **OLAYIN �ZET�:** ${params.analysisSummary}
+**2. Dï¿½LEKï¿½ENï¿½N HAZIRLANMASINDA KULLANILAN ORï¿½Jï¿½NAL BAï¿½LAM Bï¿½LGï¿½LERï¿½:**
+- **KULLANICININ ROLï¿½:** ${params.userRole}
+- **Dï¿½LEKï¿½E Tï¿½Rï¿½:** ${params.petitionType}
+- **DAVA Kï¿½NYESï¿½:** ${formatCaseDetailsForPrompt(params.caseDetails)}
+- **VEKï¿½L Bï¿½LGï¿½LERï¿½:** ${formatLawyerInfoForPrompt(params.lawyerInfo)}
+- **ï¿½LETï¿½ï¿½ï¿½M Bï¿½LGï¿½LERï¿½:** ${formatContactInfoForPrompt(params.contactInfo)}
+- **OLAYIN ï¿½ZETï¿½:** ${params.analysisSummary}
 - **TARAFLAR:** ${formatPartiesForPrompt(params.parties)}
-- **�LG�L� HUKUK� ARA�TIRMA:** ${params.webSearchResult}
-- **EK MET�N VE NOTLAR:** ${params.docContent}
-- **�ZEL TAL�MATLAR:** ${params.specifics}
-- **�NCEK� SOHBET GE�M���:** ${formatChatHistoryForPrompt(params.chatHistory)}
+- **ï¿½LGï¿½Lï¿½ HUKUKï¿½ ARAï¿½TIRMA:** ${params.webSearchResult}
+- **EK METï¿½N VE NOTLAR:** ${params.docContent}
+- **ï¿½ZEL TALï¿½MATLAR:** ${params.specifics}
+- **ï¿½NCEKï¿½ SOHBET GEï¿½Mï¿½ï¿½ï¿½:** ${formatChatHistoryForPrompt(params.chatHistory)}
 
-**�Y�LE�T�R�LM�� N�HA� D�LEK�E METN�:**
-[Buraya, yukar�daki tasla�� t�m ba�lam� dikkate alarak daha g��l�, ikna edici ve hukuken sa�lam hale getirilmi� tam dilek�e metnini yaz.]
+**ï¿½Yï¿½LEï¿½Tï¿½Rï¿½LMï¿½ï¿½ Nï¿½HAï¿½ Dï¿½LEKï¿½E METNï¿½:**
+[Buraya, yukarï¿½daki taslaï¿½ï¿½ tï¿½m baï¿½lamï¿½ dikkate alarak daha gï¿½ï¿½lï¿½, ikna edici ve hukuken saï¿½lam hale getirilmiï¿½ tam dilekï¿½e metnini yaz.]
 `;
 
         const response = await ai.models.generateContent({
@@ -1909,8 +1952,48 @@ ${params.currentPetition}
 const BEDESTEN_BASE_URL = 'https://bedesten.adalet.gov.tr';
 const BEDESTEN_SEARCH_URL = `${BEDESTEN_BASE_URL}/emsal-karar/searchDocuments`;
 const BEDESTEN_DOCUMENT_URL = `${BEDESTEN_BASE_URL}/emsal-karar/getDocumentContent`;
+const YARGI_MCP_URL = String(process.env.YARGI_MCP_URL || 'https://yargimcp.fastmcp.app/mcp/').trim();
+const YARGI_MCP_PROTOCOL_VERSION = process.env.YARGI_MCP_PROTOCOL_VERSION || '2024-11-05';
+const YARGI_MCP_TIMEOUT_MS = Number(process.env.YARGI_MCP_TIMEOUT_MS || 25000);
+const USE_YARGI_MCP = process.env.LEGAL_USE_YARGI_MCP !== '0';
+const STRICT_MCP_ONLY = process.env.LEGAL_STRICT_MCP !== '0';
+
+const YARGI_MCP_COURT_TYPES_BY_SOURCE = {
+    yargitay: ['YARGITAYKARARI'],
+    danistay: ['DANISTAYKARAR'],
+    uyap: ['YERELHUKUK', 'ISTINAFHUKUK', 'KYB'],
+    anayasa: ['YARGITAYKARARI', 'DANISTAYKARAR', 'YERELHUKUK', 'ISTINAFHUKUK', 'KYB'],
+    all: ['YARGITAYKARARI', 'DANISTAYKARAR', 'YERELHUKUK', 'ISTINAFHUKUK', 'KYB'],
+};
 const BEDESTEN_TIMEOUT_MS = Number(process.env.BEDESTEN_TIMEOUT_MS || 15000);
 const LEGAL_ROUTER_TIMEOUT_MS = Number(process.env.LEGAL_ROUTER_TIMEOUT_MS || 8000);
+const LEGAL_CONTENT_RERANK_LIMIT = Math.max(1, Math.min(30, Number(process.env.LEGAL_CONTENT_RERANK_LIMIT || 15)));
+const LEGAL_QUERY_VARIANT_LIMIT = Math.max(6, Math.min(20, Number(process.env.LEGAL_QUERY_VARIANT_LIMIT || 10)));
+const LEGAL_VARIANT_RESULT_CAP = Math.max(20, Math.min(120, Number(process.env.LEGAL_VARIANT_RESULT_CAP || 40)));
+const USE_GEMINI_SEMANTIC_RERANK = process.env.LEGAL_USE_GEMINI_SEMANTIC !== '0';
+const LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT = Math.max(5, Math.min(40, Number(process.env.LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT || 25)));
+const LEGAL_DEBUG_SEARCH = process.env.LEGAL_DEBUG_SEARCH !== '0';
+
+const createLegalDebugId = () => `ls-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+const buildLegalResultSample = (results = [], max = 3) => {
+    if (!Array.isArray(results) || results.length === 0) return [];
+    return results.slice(0, max).map((item) => ({
+        documentId: item?.documentId || item?.id || '',
+        title: item?.title || '',
+        daire: item?.daire || item?.birimAdi || '',
+        relevanceScore: Number(item?.relevanceScore || 0),
+    }));
+};
+
+const logLegalSearchDebug = (debugId, stage, payload = {}) => {
+    if (!LEGAL_DEBUG_SEARCH) return;
+    try {
+        console.warn(`[LEGAL_DEBUG][${debugId}] ${stage}: ${JSON.stringify(payload)}`);
+    } catch {
+        console.warn(`[LEGAL_DEBUG][${debugId}] ${stage}`);
+    }
+};
 
 const stripHtmlToText = (html = '') => {
     if (!html || typeof html !== 'string') return '';
@@ -1993,6 +2076,153 @@ const fetchWithTimeout = async (url, init = {}, timeoutMs = BEDESTEN_TIMEOUT_MS)
     }
 };
 
+const normalizeYargiMcpUrl = () => {
+    const raw = String(YARGI_MCP_URL || '').trim();
+    if (!raw) {
+        throw new Error('YARGI_MCP_URL tanimli degil.');
+    }
+    return raw.endsWith('/') ? raw : `${raw}/`;
+};
+
+const normalizeYargiMcpBirimAdi = (value = 'ALL') => {
+    const raw = String(value || '').trim().toUpperCase();
+    if (!raw || raw === 'ALL') return 'ALL';
+    if (/^(H([1-9]|1\d|2[0-3])|C([1-9]|1\d|2[0-3])|D([1-9]|1[0-7])|HGK|CGK|BGK|HBK|CBK|DBGK|IDDK|VDDK|IBK|IIK|DBK|AYIM|AYIMDK|AYIMB|AYIM1|AYIM2|AYIM3)$/.test(raw)) {
+        return raw;
+    }
+    return 'ALL';
+};
+
+const parseMcpEventPayload = (rawText = '') => {
+    const text = String(rawText || '').trim();
+    if (!text) return null;
+
+    const dataLines = text
+        .split(/\r?\n/)
+        .filter((line) => line.startsWith('data:'))
+        .map((line) => line.slice(5).trim())
+        .filter(Boolean);
+
+    if (dataLines.length === 0) {
+        return maybeExtractJson(text);
+    }
+    return maybeExtractJson(dataLines.join('\n'));
+};
+
+const postYargiMcp = async (payload, sessionId = '') => {
+    const endpoint = normalizeYargiMcpUrl();
+    const headers = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
+    };
+    if (sessionId) {
+        headers['mcp-session-id'] = sessionId;
+    }
+
+    const response = await fetchWithTimeout(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+    }, YARGI_MCP_TIMEOUT_MS);
+
+    const responseText = await response.text().catch(() => '');
+    if (!response.ok) {
+        throw new Error(`Yargi MCP HTTP ${response.status}: ${responseText.slice(0, 500)}`);
+    }
+
+    const eventPayload = parseMcpEventPayload(responseText);
+    const nextSessionId = response.headers.get('mcp-session-id') || sessionId;
+
+    if (eventPayload?.error) {
+        throw new Error(`Yargi MCP error: ${eventPayload.error?.message || 'unknown-error'}`);
+    }
+
+    return { eventPayload, responseText, sessionId: nextSessionId };
+};
+
+const initYargiMcpSession = async () => {
+    const initPayload = {
+        jsonrpc: '2.0',
+        id: `init-${Date.now()}`,
+        method: 'initialize',
+        params: {
+            protocolVersion: YARGI_MCP_PROTOCOL_VERSION,
+            capabilities: {},
+            clientInfo: {
+                name: 'dilekceasist',
+                version: '1.0.0',
+            },
+        },
+    };
+
+    const initResponse = await postYargiMcp(initPayload);
+    const sessionId = initResponse.sessionId;
+    if (!sessionId) {
+        throw new Error('Yargi MCP session id alinamadi.');
+    }
+
+    await postYargiMcp({
+        jsonrpc: '2.0',
+        method: 'notifications/initialized',
+        params: {},
+    }, sessionId);
+
+    return sessionId;
+};
+
+const closeYargiMcpSession = async (sessionId = '') => {
+    if (!sessionId) return;
+    try {
+        await fetchWithTimeout(normalizeYargiMcpUrl(), {
+            method: 'DELETE',
+            headers: { 'mcp-session-id': sessionId },
+        }, 5000);
+    } catch {
+        // session cleanup best effort
+    }
+};
+
+const callYargiMcpTool = async (name, args = {}) => {
+    let sessionId = '';
+    try {
+        sessionId = await initYargiMcpSession();
+        const callPayload = {
+            jsonrpc: '2.0',
+            id: `call-${Date.now()}`,
+            method: 'tools/call',
+            params: {
+                name,
+                arguments: args,
+            },
+        };
+        const callResult = await postYargiMcp(callPayload, sessionId);
+        const toolResult = callResult.eventPayload?.result || {};
+        const textPayload = Array.isArray(toolResult.content)
+            ? toolResult.content
+                .filter((item) => item && item.type === 'text')
+                .map((item) => String(item.text || ''))
+                .join('\n')
+                .trim()
+            : '';
+
+        if (toolResult.isError) {
+            throw new Error(textPayload || `Yargi MCP tool hatasi (${name})`);
+        }
+
+        return {
+            text: textPayload,
+            parsed: maybeExtractJson(textPayload),
+        };
+    } finally {
+        await closeYargiMcpSession(sessionId);
+    }
+};
+
+const getMcpCourtTypesBySource = (source = 'all') => {
+    const normalized = normalizeSourceValue(source, 'all');
+    return YARGI_MCP_COURT_TYPES_BY_SOURCE[normalized] || YARGI_MCP_COURT_TYPES_BY_SOURCE.all;
+};
+
 const isRetryableAiError = (error) => {
     const message = [
         error?.message || '',
@@ -2045,21 +2275,16 @@ async function generateContentWithRetry(requestPayload, options = {}) {
 }
 
 const getBedestenHeaders = () => ({
-    'Accept': 'application/json, text/plain, */*',
-    'Accept-Language': 'tr,en-US;q=0.9,en;q=0.8',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'Content-Type': 'application/json',
-    'Origin': 'https://emsal.yargitay.gov.tr',
-    'Pragma': 'no-cache',
-    'Referer': 'https://emsal.yargitay.gov.tr/',
+    'Accept': '*/*',
+    'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+    'AdaletApplicationName': 'UyapMevzuat',
+    'Content-Type': 'application/json; charset=utf-8',
+    'Origin': 'https://mevzuat.adalet.gov.tr',
+    'Referer': 'https://mevzuat.adalet.gov.tr/',
     'Sec-Fetch-Dest': 'empty',
     'Sec-Fetch-Mode': 'cors',
-    'Sec-Fetch-Site': 'cross-site',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    'sec-ch-ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
-    'sec-ch-ua-mobile': '?0',
-    'sec-ch-ua-platform': '"Windows"',
+    'Sec-Fetch-Site': 'same-site',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
 });
 
 const getBedestenItemTypeList = (source) => {
@@ -2114,14 +2339,39 @@ const compactLegalKeywordQuery = (keyword, maxLen = 180) => {
 
     const phraseProbes = [
         'imar kanunu',
+        'imar barisi',
+        'imar barışı',
+        'yapi kayit belgesi',
+        'yapı kayıt belgesi',
+        'gecici 16',
+        'geçici 16',
+        'sit alani',
+        'sit alanı',
         'kacak yapi',
         'ruhsatsiz insaat',
+        'ruhsatsız yapı',
         'imar mevzuatina aykirilik',
         'yikim karari',
+        'yıkım kararı',
         'idari para cezasi',
+        'idari para cezası',
         'yapi tatil tutanagi',
+        'yapı tatil tutanağı',
         'proje tadilatina aykiri yapi',
         'encumen karari',
+        'itirazin iptali',
+        'icra takibi',
+        'menfi tespit',
+        'hizmet tespiti',
+        'kidem tazminati',
+        'ise iade',
+        'kasten oldurme',
+        'uyusturucu madde',
+        'muhur fekki',
+        'mühürleme',
+        'iskan belgesi',
+        'yapı kullanma izin belgesi',
+        'yapi kullanma izin belgesi',
     ];
 
     for (const probe of phraseProbes) {
@@ -2156,6 +2406,840 @@ const compactLegalKeywordQuery = (keyword, maxLen = 180) => {
     return compacted || raw.slice(0, maxLen).trim();
 };
 
+const LEGAL_QUERY_STOPWORDS = new Set([
+    've', 'veya', 'ile', 'icin', 'gibi', 'olan', 'olarak', 'dair',
+    'karar', 'kararlari', 'karari', 'davasi', 'davasi',
+    'maddesi', 'madde', 'sayili', 'kanun', 'kanunu', 'hukuku',
+]);
+
+const LEGAL_QUERY_PHRASE_ANCHORS = [
+    'itirazin iptali',
+    'zaman asimi',
+    'icra takibi',
+    'borca itiraz',
+    'menfi tespit',
+    'konkordato',
+    'iflasin ertelenmesi',
+    'tasarrufun iptali',
+    'kacak elektrik',
+    'tespit tutanagi',
+    'muhur fekki',
+    'epdk',
+    'idari islemin iptali',
+    'tam yargi davasi',
+    'yurutmenin durdurulmasi',
+    'kamulastirma bedeli',
+    'kamu ihale',
+    'idari para cezasi',
+    'imar kanunu',
+    'imar barisi',
+    'yapi kayit belgesi',
+    'gecici 16',
+    '7143',
+    'ruhsatsiz yapi',
+    'yapi tatil tutanagi',
+    'kasten oldurme',
+    'uyusturucu madde',
+    'haksiz tahrik',
+    'gorevi kotuye kullanma',
+    'ise iade',
+    'fazla mesai alacagi',
+    'kidem tazminati',
+    'ihbar tazminati',
+    'is akdi feshi',
+    'iscilik alacagi',
+];
+
+const buildStrictBedestenQuery = (keyword = '') => {
+    const raw = String(keyword || '').replace(/\s+/g, ' ').trim();
+    if (!raw) return '';
+
+    const normalized = normalizeForRouting(raw);
+    const requiredPhrases = LEGAL_QUERY_PHRASE_ANCHORS
+        .filter((phrase) => normalized.includes(phrase))
+        .slice(0, 5);
+
+    const numericAnchors = (raw.match(/\b\d{2,4}\b/g) || []).slice(0, 3);
+    const tokenAnchors = normalized
+        .split(/\s+/)
+        .filter((token) => token.length >= 3 && !LEGAL_QUERY_STOPWORDS.has(token))
+        .slice(0, 6);
+
+    const parts = [...requiredPhrases, ...numericAnchors, ...tokenAnchors];
+    const uniq = [];
+    const seen = new Set();
+    for (const part of parts) {
+        const key = normalizeForRouting(part);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        uniq.push(part.includes(' ') ? `"${part}"` : part);
+    }
+
+    if (uniq.length < 2) return '';
+
+    const strictQuery = uniq.join(' AND ').trim();
+    return strictQuery.length > 220 ? strictQuery.slice(0, 220).trim() : strictQuery;
+};
+
+const buildBedestenQueryVariants = (keyword = '', originalKeyword = '') => {
+    const routed = String(keyword || '').replace(/\s+/g, ' ').trim();
+    const raw = String(originalKeyword || routed).replace(/\s+/g, ' ').trim();
+    if (!raw) return [];
+
+    const variants = [];
+    const seen = new Set();
+    const pushVariant = (value) => {
+        const cleaned = String(value || '').replace(/\s+/g, ' ').trim();
+        if (!cleaned) return;
+        const key = normalizeForRouting(cleaned);
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        variants.push(cleaned);
+    };
+
+    pushVariant(raw);
+    if (routed && routed !== raw) {
+        pushVariant(routed);
+    }
+    pushVariant(buildStrictBedestenQuery(raw));
+    pushVariant(compactLegalKeywordQuery(raw, 140));
+    pushVariant(compactLegalKeywordQuery(raw, 95));
+
+    const normalized = normalizeForRouting(raw);
+    const matchedAnchors = LEGAL_QUERY_PHRASE_ANCHORS
+        .filter((phrase) => normalized.includes(phrase))
+        .slice(0, 6);
+    const hasDenseAnchorIntent = matchedAnchors.length >= 3;
+    if (matchedAnchors.length >= 2) {
+        pushVariant(`"${matchedAnchors[0]}" AND "${matchedAnchors[1]}"`);
+    }
+    if (matchedAnchors.length >= 3) {
+        pushVariant(`"${matchedAnchors[0]}" AND "${matchedAnchors[1]}" AND "${matchedAnchors[2]}"`);
+    }
+    if (matchedAnchors.length >= 4) {
+        pushVariant(`"${matchedAnchors[0]}" AND "${matchedAnchors[1]}" AND "${matchedAnchors[2]}" AND "${matchedAnchors[3]}"`);
+    }
+    if (hasDenseAnchorIntent) {
+        const maxPairAnchors = Math.min(5, matchedAnchors.length);
+        for (let idx = 0; idx < maxPairAnchors - 1; idx += 1) {
+            pushVariant(`"${matchedAnchors[idx]}" AND "${matchedAnchors[idx + 1]}"`);
+        }
+    } else {
+        for (const phrase of matchedAnchors) {
+            pushVariant(phrase);
+        }
+    }
+
+    const segmentedTokens = normalized
+        .split(/\s+/)
+        .filter((token) => token.length >= 4 && !LEGAL_QUERY_STOPWORDS.has(token))
+        .slice(0, 12);
+    if (segmentedTokens.length >= 3) {
+        pushVariant(`${segmentedTokens[0]} ${segmentedTokens[1]} ${segmentedTokens[2]}`);
+    }
+    if (hasDenseAnchorIntent) {
+        if (segmentedTokens.length >= 4) {
+            pushVariant(`${segmentedTokens[0]} ${segmentedTokens[1]} ${segmentedTokens[2]} ${segmentedTokens[3]}`);
+        }
+    } else {
+        for (let idx = 0; idx < segmentedTokens.length; idx += 2) {
+            const pair = segmentedTokens.slice(idx, idx + 2);
+            if (pair.length >= 2) {
+                pushVariant(pair.join(' '));
+            }
+        }
+    }
+
+    const focused = [];
+    if (normalized.includes('3194')) focused.push('3194');
+    if (normalized.includes('gecici 16')) focused.push('gecici 16');
+    if (normalized.includes('imar')) focused.push('imar');
+    if (normalized.includes('yapi kayit')) focused.push('yapi kayit belgesi');
+    if (normalized.includes('sit')) focused.push('sit alani');
+    if (normalized.includes('koruma')) focused.push('koruma alani');
+    if (normalized.includes('idari para cezasi')) focused.push('idari para cezasi');
+    if (focused.length >= 2) {
+        pushVariant(focused.map(item => (item.includes(' ') ? `"${item}"` : item)).join(' AND '));
+    }
+
+    return variants.slice(0, LEGAL_QUERY_VARIANT_LIMIT);
+};
+
+const LEGAL_MATCH_PHRASES = [
+    'itirazin iptali',
+    'icra takibi',
+    'borca itiraz',
+    'menfi tespit',
+    'konkordato',
+    'iflasin ertelenmesi',
+    'tasarrufun iptali',
+    'hizmet tespiti',
+    'hizmet tespit',
+    'ise iade',
+    'fazla mesai alacagi',
+    'kidem tazminati',
+    'ihbar tazminati',
+    'is akdi feshi',
+    'iscilik alacagi',
+    'idari para cezasi',
+    'idari islemin iptali',
+    'tam yargi davasi',
+    'yurutmenin durdurulmasi',
+    'kamulastirma bedeli',
+    'kamu ihale',
+    'imar kanunu',
+    'imar barisi',
+    'gecici 16',
+    '7143',
+    'yapi kayit belgesi',
+    'ruhsatsiz yapi',
+    'yapi tatil tutanagi',
+    'sit alani',
+    'kacak elektrik',
+    'tespit tutanagi',
+    'kasten oldurme',
+    'uyusturucu madde',
+    'haksiz tahrik',
+    'gorevi kotuye kullanma',
+    'epdk',
+];
+
+const LEGAL_CORE_PHRASE_SET = new Set([
+    'itirazin iptali',
+    'icra takibi',
+    'borca itiraz',
+    'menfi tespit',
+    'konkordato',
+    'iflasin ertelenmesi',
+    'tasarrufun iptali',
+    'hizmet tespiti',
+    'hizmet tespit',
+    'ise iade',
+    'fazla mesai alacagi',
+    'kidem tazminati',
+    'ihbar tazminati',
+    'is akdi feshi',
+    'iscilik alacagi',
+    'idari para cezasi',
+    'idari islemin iptali',
+    'tam yargi davasi',
+    'yurutmenin durdurulmasi',
+    'kamulastirma bedeli',
+    'kamu ihale',
+    'imar kanunu',
+    'imar barisi',
+    'gecici 16',
+    '7143',
+    'yapi kayit belgesi',
+    'ruhsatsiz yapi',
+    'yapi tatil tutanagi',
+    'sit alani',
+    'kacak elektrik',
+    'tespit tutanagi',
+    'kasten oldurme',
+    'uyusturucu madde',
+    'haksiz tahrik',
+    'gorevi kotuye kullanma',
+    'epdk',
+]);
+
+const LEGAL_BROAD_PHRASE_SET = new Set([
+    'idari para cezasi',
+]);
+
+const LEGAL_GENERIC_MATCH_TOKENS = new Set([
+    'hukuki',
+    'sonuclari',
+    'uygulamasi',
+    'gecerliligi',
+    'gecerlilik',
+    'davasi',
+    'dava',
+    'islemin',
+    'iptali',
+    'idari',
+    'ceza',
+    'cezasi',
+    'para',
+    'karar',
+    'karari',
+    'kararlari',
+    'hakki',
+    'kapsaminda',
+    'kapsami',
+    'itiraz',
+    'itirazi',
+    'tutanagi',
+    'hukumleri',
+]);
+
+const clampScore = (value) => Math.max(0, Math.min(100, Math.round(value)));
+const LEGAL_MIN_MATCH_SCORE = 75;
+const escapeRegex = (value = '') => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const containsWholeTerm = (haystack = '', term = '') => {
+    const token = String(term || '').trim();
+    if (!token) return false;
+    return new RegExp(`(?:^|\\s)${escapeRegex(token)}(?=\\s|$)`).test(String(haystack || ''));
+};
+
+const extractKeywordSignals = (keyword = '') => {
+    const raw = String(keyword || '').replace(/\s+/g, ' ').trim();
+    const normalized = normalizeForRouting(raw);
+    if (!normalized) {
+        return { tokens: [], anchorTokens: [], phrases: [], phraseKeys: [], corePhraseKeys: [], anchorPhraseKeys: [] };
+    }
+
+    const tokens = Array.from(new Set(
+        normalized
+            .split(/\s+/)
+            .filter((token) => token.length >= 3 && !LEGAL_QUERY_STOPWORDS.has(token))
+            .slice(0, 20)
+    ));
+
+    const phraseCandidates = [];
+    for (const phrase of LEGAL_MATCH_PHRASES) {
+        if (normalized.includes(phrase)) phraseCandidates.push(phrase);
+    }
+
+    const quoted = [
+        ...(raw.match(/"([^"]{3,80})"/g) || []),
+        ...(raw.match(/'([^']{3,80})'/g) || []),
+    ]
+        .map((segment) => segment.replace(/^["']|["']$/g, '').trim())
+        .filter(Boolean);
+    phraseCandidates.push(...quoted);
+
+    const numericAnchors = (raw.match(/\b\d{2,4}\b/g) || []).slice(0, 4);
+    tokens.push(...numericAnchors);
+
+    const uniqPhrases = Array.from(new Set(
+        phraseCandidates
+            .map((item) => String(item || '').trim())
+            .filter(Boolean)
+    ));
+    const phraseKeys = uniqPhrases.map((phrase) => normalizeForRouting(phrase)).filter(Boolean);
+    const corePhraseKeys = phraseKeys.filter((phrase) => LEGAL_CORE_PHRASE_SET.has(phrase));
+    const anchorTokens = tokens.filter((token) => token.length >= 4 && !LEGAL_GENERIC_MATCH_TOKENS.has(token));
+    const anchorPhraseKeys = phraseKeys.filter((phrase) => !LEGAL_BROAD_PHRASE_SET.has(phrase));
+
+    return {
+        tokens: Array.from(new Set(tokens)),
+        anchorTokens: Array.from(new Set(anchorTokens)),
+        phrases: uniqPhrases,
+        phraseKeys,
+        corePhraseKeys,
+        anchorPhraseKeys,
+    };
+};
+
+const scoreAndFilterResultsByKeyword = (results = [], keyword = '') => {
+    if (!Array.isArray(results) || results.length === 0) {
+        return { results: [], filteredOutCount: 0, scoredResults: [] };
+    }
+
+    const signals = extractKeywordSignals(keyword);
+    const hasSignals = signals.tokens.length > 0 || signals.phraseKeys.length > 0;
+    const hasCorePhrases = signals.corePhraseKeys.length > 0;
+    const requiredCorePhraseHits = hasCorePhrases ? (signals.corePhraseKeys.length >= 3 ? 2 : 1) : 0;
+    const hasAnchorSignals = signals.anchorTokens.length > 0 || signals.anchorPhraseKeys.length > 0;
+    const minTokenHits = hasCorePhrases ? 2 : (signals.tokens.length >= 6 ? 2 : 1);
+    const minAnchorTokenHits = signals.anchorTokens.length >= 4 ? 2 : (signals.anchorTokens.length > 0 ? 1 : 0);
+    const minScore = LEGAL_MIN_MATCH_SCORE;
+    const metadataOnlyMode = !results.some((item) => {
+        const ozetLength = String(item?.ozet || item?.snippet || '').trim().length;
+        return ozetLength >= 40;
+    });
+
+    const scored = results.map((result) => {
+        const haystack = normalizeForRouting([
+            result?.title || '',
+            result?.mahkeme || '',
+            result?.daire || '',
+            result?.ozet || '',
+            result?.esasNo || '',
+            result?.kararNo || '',
+            result?.tarih || '',
+        ].join(' '));
+
+        const tokenHitCount = signals.tokens.filter((token) => containsWholeTerm(haystack, token)).length;
+        const anchorTokenHitCount = signals.anchorTokens.filter((token) => containsWholeTerm(haystack, token)).length;
+        const phraseHitCount = signals.phraseKeys.filter((phrase) => phrase && containsWholeTerm(haystack, phrase)).length;
+        const corePhraseHitCount = signals.corePhraseKeys.filter((phrase) => phrase && containsWholeTerm(haystack, phrase)).length;
+        const anchorPhraseHitCount = signals.anchorPhraseKeys.filter((phrase) => phrase && containsWholeTerm(haystack, phrase)).length;
+        const tokenCoverage = signals.tokens.length > 0 ? tokenHitCount / signals.tokens.length : 0;
+        const phraseCoverage = signals.phraseKeys.length > 0 ? phraseHitCount / signals.phraseKeys.length : 0;
+        const anchorTokenCoverage = signals.anchorTokens.length > 0 ? anchorTokenHitCount / signals.anchorTokens.length : 0;
+        const upstreamScore = Number(result?.relevanceScore);
+
+        let computedScore = (tokenCoverage * 68) + (phraseCoverage * 22);
+        if (tokenHitCount >= 2) computedScore += 8;
+        if (tokenHitCount >= 3) computedScore += 4;
+        if (anchorTokenCoverage > 0) computedScore += anchorTokenCoverage * 12;
+        if (anchorTokenHitCount >= 2) computedScore += 8;
+        if (phraseHitCount > 0) computedScore += 10;
+        if (corePhraseHitCount > 0) computedScore += 12;
+        if (anchorPhraseHitCount > 0) computedScore += 10;
+
+        if (metadataOnlyMode && tokenHitCount === 0 && phraseHitCount === 0 && corePhraseHitCount === 0) {
+            computedScore = 0;
+        }
+
+        const finalScore = clampScore(computedScore);
+        const relaxedCoreFallback = hasCorePhrases
+            && corePhraseHitCount === 0
+            && anchorTokenHitCount >= Math.max(2, minAnchorTokenHits + 1)
+            && tokenHitCount >= Math.max(3, minTokenHits + 1);
+        const corePhraseRequirementSatisfied = !hasCorePhrases || corePhraseHitCount >= requiredCorePhraseHits || relaxedCoreFallback;
+        const anchorTokenFallbackSatisfied = anchorTokenHitCount >= Math.max(2, minAnchorTokenHits + 1);
+        const anchorRequirementSatisfied = signals.anchorPhraseKeys.length > 0
+            ? (anchorPhraseHitCount > 0 || anchorTokenFallbackSatisfied)
+            : (!hasAnchorSignals || anchorTokenHitCount >= minAnchorTokenHits);
+        const metadataOnlyMatch = phraseHitCount > 0 || tokenHitCount >= minTokenHits;
+        const standardMatch = (
+            phraseHitCount > 0
+            || tokenHitCount >= minTokenHits
+            || finalScore >= minScore
+        );
+        const isMatch = !hasSignals
+            || (corePhraseRequirementSatisfied && anchorRequirementSatisfied && (metadataOnlyMode ? metadataOnlyMatch : standardMatch));
+
+        return {
+            ...result,
+            relevanceScore: finalScore,
+            _tokenHitCount: tokenHitCount,
+            _anchorTokenHitCount: anchorTokenHitCount,
+            _phraseHitCount: phraseHitCount,
+            _corePhraseHitCount: corePhraseHitCount,
+            _anchorPhraseHitCount: anchorPhraseHitCount,
+            _upstreamScore: Number.isFinite(upstreamScore) ? upstreamScore : 0,
+            _isMatch: isMatch,
+        };
+    });
+
+    const scoredSorted = scored
+        .sort((a, b) => {
+            const diff = (b.relevanceScore || 0) - (a.relevanceScore || 0);
+            if (diff !== 0) return diff;
+            return (b._upstreamScore || 0) - (a._upstreamScore || 0);
+        });
+
+    const matched = scoredSorted
+        .filter((item) => item._isMatch)
+        .map(({ _tokenHitCount, _anchorTokenHitCount, _phraseHitCount, _corePhraseHitCount, _anchorPhraseHitCount, _upstreamScore, _isMatch, ...rest }) => rest);
+
+    const ranked = scoredSorted
+        .map(({ _tokenHitCount, _anchorTokenHitCount, _phraseHitCount, _corePhraseHitCount, _anchorPhraseHitCount, _upstreamScore, _isMatch, ...rest }) => rest);
+
+    return {
+        results: matched,
+        filteredOutCount: Math.max(0, scoredSorted.length - matched.length),
+        scoredResults: ranked,
+    };
+};
+
+const getLegalDecisionDocumentId = (result = {}) =>
+    String(result?.documentId || result?.id || '').trim();
+
+const rerankResultsByDecisionContent = async (results = [], keyword = '', debugContext = null) => {
+    if (!Array.isArray(results) || results.length === 0) {
+        return {
+            applied: false,
+            results: [],
+            candidateCount: 0,
+            fetchedCount: 0,
+            matchedCount: 0,
+            filteredOutCount: 0,
+            fetchErrorCount: 0,
+            emptyContentCount: 0,
+        };
+    }
+
+    const signals = extractKeywordSignals(keyword);
+    const hasSignals = signals.tokens.length > 0 || signals.phraseKeys.length > 0;
+    if (!hasSignals) {
+        return {
+            applied: false,
+            results: [],
+            candidateCount: 0,
+            fetchedCount: 0,
+            matchedCount: 0,
+            filteredOutCount: 0,
+            fetchErrorCount: 0,
+            emptyContentCount: 0,
+        };
+    }
+
+    const uniqueCandidates = [];
+    const seenIds = new Set();
+    for (const item of results) {
+        const documentId = getLegalDecisionDocumentId(item);
+        if (!documentId || seenIds.has(documentId)) continue;
+        seenIds.add(documentId);
+        uniqueCandidates.push(item);
+        if (uniqueCandidates.length >= LEGAL_CONTENT_RERANK_LIMIT) break;
+    }
+
+    if (uniqueCandidates.length === 0) {
+        return {
+            applied: false,
+            results: [],
+            candidateCount: 0,
+            fetchedCount: 0,
+            matchedCount: 0,
+            filteredOutCount: 0,
+            fetchErrorCount: 0,
+            emptyContentCount: 0,
+        };
+    }
+
+    const hasCorePhrases = signals.corePhraseKeys.length > 0;
+    const requiredCorePhraseHits = hasCorePhrases ? (signals.corePhraseKeys.length >= 3 ? 2 : 1) : 0;
+    const hasAnchorSignals = signals.anchorTokens.length > 0 || signals.anchorPhraseKeys.length > 0;
+    const minTokenHits = hasCorePhrases ? 2 : (signals.tokens.length >= 6 ? 2 : 1);
+    const minAnchorTokenHits = signals.anchorTokens.length >= 4 ? 2 : (signals.anchorTokens.length > 0 ? 1 : 0);
+    const minScore = LEGAL_MIN_MATCH_SCORE;
+
+    const settled = await Promise.all(uniqueCandidates.map(async (result) => {
+        const documentId = getLegalDecisionDocumentId(result);
+        if (!documentId) {
+            return {
+                ok: false,
+                documentId,
+                result,
+                reason: 'missing-document-id',
+            };
+        }
+        try {
+            const bedestenDoc = await getBedestenDocumentContent(documentId);
+            const content = String(bedestenDoc?.content || '').trim();
+            if (!content) {
+                return {
+                    ok: true,
+                    documentId,
+                    result,
+                    content: '',
+                };
+            }
+            return {
+                ok: true,
+                documentId,
+                result,
+                content,
+            };
+        } catch (error) {
+            return {
+                ok: false,
+                documentId,
+                result,
+                reason: error?.message || 'content-fetch-failed',
+            };
+        }
+    }));
+
+    let fetchedCount = 0;
+    let matchedCount = 0;
+    let fetchErrorCount = 0;
+    let emptyContentCount = 0;
+    const matched = [];
+
+    for (const item of settled) {
+        if (!item?.ok) {
+            fetchErrorCount += 1;
+            continue;
+        }
+
+        fetchedCount += 1;
+        const normalizedContent = normalizeForRouting(item.content || '');
+        if (!normalizedContent) {
+            emptyContentCount += 1;
+        }
+        const contentHaystack = normalizeForRouting([
+            item.content || '',
+            item?.result?.title || '',
+            item?.result?.mahkeme || '',
+            item?.result?.daire || '',
+            item?.result?.ozet || '',
+            item?.result?.snippet || '',
+            item?.result?.esasNo || '',
+            item?.result?.kararNo || '',
+        ].join(' '));
+        if (!contentHaystack) continue;
+
+        const tokenHitCount = signals.tokens.filter((token) => containsWholeTerm(contentHaystack, token)).length;
+        const anchorTokenHitCount = signals.anchorTokens.filter((token) => containsWholeTerm(contentHaystack, token)).length;
+        const phraseHitCount = signals.phraseKeys.filter((phrase) => phrase && containsWholeTerm(contentHaystack, phrase)).length;
+        const corePhraseHitCount = signals.corePhraseKeys.filter((phrase) => phrase && containsWholeTerm(contentHaystack, phrase)).length;
+        const anchorPhraseHitCount = signals.anchorPhraseKeys.filter((phrase) => phrase && containsWholeTerm(contentHaystack, phrase)).length;
+        const tokenCoverage = signals.tokens.length > 0 ? tokenHitCount / signals.tokens.length : 0;
+        const phraseCoverage = signals.phraseKeys.length > 0 ? phraseHitCount / signals.phraseKeys.length : 0;
+        const anchorTokenCoverage = signals.anchorTokens.length > 0 ? anchorTokenHitCount / signals.anchorTokens.length : 0;
+
+        let contentScore = (tokenCoverage * 72) + (phraseCoverage * 24);
+        if (tokenHitCount >= 2) contentScore += 8;
+        if (tokenHitCount >= 3) contentScore += 5;
+        if (anchorTokenCoverage > 0) contentScore += anchorTokenCoverage * 14;
+        if (anchorTokenHitCount >= 2) contentScore += 10;
+        if (phraseHitCount > 0) contentScore += 12;
+        if (corePhraseHitCount > 0) contentScore += 14;
+        if (anchorPhraseHitCount > 0) contentScore += 12;
+
+        const normalizedContentScore = clampScore(contentScore);
+        const relaxedCoreFallback = hasCorePhrases
+            && corePhraseHitCount === 0
+            && anchorTokenHitCount >= Math.max(2, minAnchorTokenHits + 1)
+            && tokenHitCount >= Math.max(4, minTokenHits + 1);
+        const corePhraseRequirementSatisfied = !hasCorePhrases || corePhraseHitCount >= requiredCorePhraseHits || relaxedCoreFallback;
+        const anchorTokenFallbackSatisfied = anchorTokenHitCount >= Math.max(2, minAnchorTokenHits + 1);
+        const anchorRequirementSatisfied = signals.anchorPhraseKeys.length > 0
+            ? (anchorPhraseHitCount > 0 || anchorTokenFallbackSatisfied)
+            : (!hasAnchorSignals || anchorTokenHitCount >= minAnchorTokenHits);
+        const hasContentHit = phraseHitCount > 0 || tokenHitCount >= minTokenHits;
+        const isMatch = corePhraseRequirementSatisfied
+            && anchorRequirementSatisfied
+            && (hasContentHit || normalizedContentScore >= minScore);
+
+        if (!isMatch) continue;
+
+        matchedCount += 1;
+        const baseRelevanceScore = Number(item?.result?.relevanceScore) || 0;
+
+        let snippetText = item.result?.ozet || item.result?.snippet;
+        if (!snippetText && item.content) {
+            // Get first ~600 chars as snippet
+            const cleanContent = item.content.replace(/\s+/g, ' ').trim();
+            snippetText = cleanContent.length > 600 ? cleanContent.substring(0, 600) + '...' : cleanContent;
+        }
+
+        matched.push({
+            ...item.result,
+            relevanceScore: clampScore(Math.max(baseRelevanceScore, normalizedContentScore)),
+            ozet: snippetText || `Anahtar kelime eslesmesi bulundu (metin skoru: ${normalizedContentScore}).`,
+            // Also pass full content so the user can copy the full text if needed
+            snippet: item.content || snippetText || `Anahtar kelime eslesmesi bulundu (metin skoru: ${normalizedContentScore}).`,
+        });
+    }
+
+    matched.sort((a, b) => Number(b?.relevanceScore || 0) - Number(a?.relevanceScore || 0));
+
+    if (debugContext?.id) {
+        logLegalSearchDebug(debugContext.id, 'content-rerank', {
+            candidateCount: uniqueCandidates.length,
+            fetchedCount,
+            matchedCount,
+            filteredOutCount: Math.max(0, uniqueCandidates.length - matchedCount),
+            fetchErrorCount,
+            emptyContentCount,
+            sample: buildLegalResultSample(matched, 3),
+        });
+    }
+
+    return {
+        applied: true,
+        results: matched,
+        candidateCount: uniqueCandidates.length,
+        fetchedCount,
+        matchedCount,
+        filteredOutCount: Math.max(0, uniqueCandidates.length - matchedCount),
+        fetchErrorCount,
+        emptyContentCount,
+    };
+};
+
+const runPhraseFallbackSearch = async ({ keyword = '', source = 'all', filters = {}, debugContext = null }) => {
+    const normalizedKeyword = normalizeForRouting(keyword);
+    const signals = extractKeywordSignals(keyword);
+    const directKnownPhrases = LEGAL_MATCH_PHRASES
+        .filter((phrase) => normalizedKeyword.includes(phrase))
+        .slice(0, 6);
+    const compactTokens = normalizedKeyword
+        .split(/\s+/)
+        .filter((token) => token.length >= 3 && !LEGAL_QUERY_STOPWORDS.has(token))
+        .slice(0, 16);
+    const ngramCandidates = [];
+    for (let idx = 0; idx < compactTokens.length - 1; idx += 1) {
+        ngramCandidates.push(`${compactTokens[idx]} ${compactTokens[idx + 1]}`);
+        if (idx + 2 < compactTokens.length) {
+            ngramCandidates.push(`${compactTokens[idx]} ${compactTokens[idx + 1]} ${compactTokens[idx + 2]}`);
+        }
+    }
+
+    const phraseCandidates = Array.from(new Set([
+        ...(Array.isArray(signals.anchorPhraseKeys) ? signals.anchorPhraseKeys : []),
+        ...(Array.isArray(signals.corePhraseKeys) ? signals.corePhraseKeys : []),
+        ...directKnownPhrases,
+        ...ngramCandidates,
+    ]))
+        .filter((phrase) => String(phrase || '').trim().split(/\s+/).length >= 2)
+        .slice(0, 6);
+
+    if (phraseCandidates.length < 2) {
+        return {
+            applied: false,
+            results: [],
+            phraseCandidates: [],
+        };
+    }
+
+    const collected = [];
+    const seen = new Set();
+    const addCollected = (items = []) => {
+        for (const item of (Array.isArray(items) ? items : [])) {
+            const key = getLegalDecisionDocumentId(item)
+                || `${item?.title || ''}|${item?.esasNo || ''}|${item?.kararNo || ''}|${item?.tarih || ''}`;
+            if (!key || seen.has(key)) continue;
+            seen.add(key);
+            collected.push(item);
+        }
+    };
+
+    for (const phrase of phraseCandidates) {
+        try {
+            const phraseResults = await searchBedestenAPI(phrase, source, filters, debugContext);
+            if (!Array.isArray(phraseResults) || phraseResults.length === 0) continue;
+
+            const phraseRerank = await rerankResultsByDecisionContent(phraseResults, phrase, debugContext);
+            if (phraseRerank.applied && Array.isArray(phraseRerank.results) && phraseRerank.results.length > 0) {
+                addCollected(phraseRerank.results.slice(0, 6));
+                continue;
+            }
+
+            const phraseScoring = scoreAndFilterResultsByKeyword(phraseResults, phrase);
+            if (Array.isArray(phraseScoring.results) && phraseScoring.results.length > 0) {
+                addCollected(phraseScoring.results.slice(0, 6));
+            }
+        } catch (error) {
+            if (debugContext?.id) {
+                logLegalSearchDebug(debugContext.id, 'phrase-fallback-error', {
+                    phrase,
+                    source,
+                    message: error?.message || 'unknown-error',
+                });
+            }
+        }
+    }
+
+    let finalResults = collected;
+    try {
+        const fullKeywordScoring = scoreAndFilterResultsByKeyword(collected, keyword);
+        // Rescore collected results based on the FULL keyword, not just the tiny phrase.
+        if (Array.isArray(fullKeywordScoring.results) && fullKeywordScoring.results.length > 0) {
+            finalResults = fullKeywordScoring.results;
+        } else if (Array.isArray(fullKeywordScoring.scoredResults) && fullKeywordScoring.scoredResults.length > 0) {
+            // Include anything that has at least some relevance to the full context.
+            finalResults = fullKeywordScoring.scoredResults.filter(item => Number(item?.relevanceScore || 0) >= LEGAL_MIN_MATCH_SCORE);
+        }
+    } catch (e) {
+        console.error('Fallback rescoring error:', e);
+    }
+
+    finalResults.sort((a, b) => Number(b?.relevanceScore || 0) - Number(a?.relevanceScore || 0));
+
+    return {
+        applied: true,
+        results: finalResults.slice(0, 10),
+        phraseCandidates,
+    };
+};
+
+const semanticRerankWithGemini = async ({ candidates = [], keyword = '', debugContext = null }) => {
+    if (!USE_GEMINI_SEMANTIC_RERANK || !API_KEY) {
+        return { applied: false, results: [] };
+    }
+    if (!Array.isArray(candidates) || candidates.length === 0) {
+        return { applied: false, results: [] };
+    }
+
+    const uniq = [];
+    const seen = new Set();
+    for (const item of candidates) {
+        const key = getLegalDecisionDocumentId(item)
+            || `${item?.title || ''}|${item?.esasNo || ''}|${item?.kararNo || ''}|${item?.tarih || ''}`;
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        uniq.push(item);
+        if (uniq.length >= LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT) break;
+    }
+    if (uniq.length === 0) {
+        return { applied: false, results: [] };
+    }
+
+    const promptRows = uniq.map((item, index) => {
+        const key = getLegalDecisionDocumentId(item) || `cand-${index + 1}`;
+        const preview = String(item?.ozet || item?.snippet || '').replace(/\s+/g, ' ').slice(0, 240);
+        return `${index + 1}) id=${key} | title=${item?.title || ''} | daire=${item?.daire || ''} | esas=${item?.esasNo || ''} | karar=${item?.kararNo || ''} | ozet=${preview}`;
+    }).join('\n');
+
+    const prompt = [
+        'Asagidaki Turkce hukuk karar adaylarini verilen sorguya gore anlamsal olarak puanla.',
+        'Kurallar:',
+        '- Sadece JSON dondur.',
+        '- JSON array formati: [{"id":"...","score":0-100}]',
+        '- Sorguyla ilgisiz adaylara dusuk skor ver (0-30).',
+        '- En ilgili adaylara yuksek skor ver (70-100).',
+        `Sorgu: ${keyword}`,
+        '',
+        'Adaylar:',
+        promptRows,
+    ].join('\n');
+
+    try {
+        const response = await generateContentWithRetry({
+            model: AI_CONFIG.MODEL_NAME,
+            contents: prompt,
+            config: { temperature: 0.1 },
+        }, { maxRetries: 0, timeoutMs: Math.max(9000, LEGAL_ROUTER_TIMEOUT_MS) });
+
+        const parsed = maybeExtractJson(response?.text || '');
+        const list = Array.isArray(parsed)
+            ? parsed
+            : (Array.isArray(parsed?.results) ? parsed.results : []);
+        if (!Array.isArray(list) || list.length === 0) {
+            return { applied: true, results: [] };
+        }
+
+        const scoreMap = new Map();
+        for (const row of list) {
+            const id = String(row?.id || '').trim();
+            const scoreRaw = Number(row?.score);
+            if (!id || !Number.isFinite(scoreRaw)) continue;
+            scoreMap.set(id, clampScore(scoreRaw));
+        }
+
+        const ranked = uniq.map((item, index) => {
+            const id = getLegalDecisionDocumentId(item) || `cand-${index + 1}`;
+            const semanticScore = Number(scoreMap.get(id) || 0);
+            return {
+                ...item,
+                relevanceScore: clampScore(Math.max(Number(item?.relevanceScore || 0), semanticScore)),
+                _semanticScore: semanticScore,
+            };
+        })
+            .filter((item) => Number(item._semanticScore || 0) >= 40)
+            .sort((a, b) => Number(b._semanticScore || 0) - Number(a._semanticScore || 0))
+            .map(({ _semanticScore, ...rest }) => rest);
+
+        if (debugContext?.id) {
+            logLegalSearchDebug(debugContext.id, 'gemini-semantic-rerank', {
+                candidateCount: uniq.length,
+                rankedCount: ranked.length,
+                sample: buildLegalResultSample(ranked, 3),
+            });
+        }
+
+        return {
+            applied: true,
+            results: ranked.slice(0, 10),
+        };
+    } catch (error) {
+        if (debugContext?.id) {
+            logLegalSearchDebug(debugContext.id, 'gemini-semantic-error', {
+                message: error?.message || 'unknown-error',
+            });
+        }
+        return { applied: false, results: [] };
+    }
+};
+
 const resolveSourceByRules = (keyword, requestedSource = 'all') => {
     const text = normalizeForRouting(keyword);
     const requested = normalizeSourceValue(requestedSource, 'all');
@@ -2187,40 +3271,61 @@ const resolveSourceByRules = (keyword, requestedSource = 'all') => {
     addSignals('anayasa', ['anayasa mahkemesi', 'aym', 'bireysel basvuru'], 4.5);
     addSignals('uyap', ['uyap', 'istinaf', 'bolge adliye', 'yerel mahkeme', 'bolge idare'], 3.5);
 
+    // Danistay sinyalleri: idari yargi
     addSignals('danistay', [
-        'imar',
-        '3194',
-        'ruhsat',
-        'ruhsatsiz',
-        'kacak yapi',
-        'kacak',
-        'yikim',
-        'encumen',
-        'yapi tatil',
-        'idari para cezasi',
-        'idari yargi',
-        'idare mahkemesi',
-        'iptal davasi',
-        'tam yargi',
-        'belediye',
-        'imar barisi',
+        'imar', '3194', 'ruhsat', 'ruhsatsiz', 'kacak yapi',
+        'yikim karari', 'encumen', 'yapi tatil', 'imar barisi', 'yapi kayit belgesi', 'gecici 16',
+        'idari yargi', 'idare mahkemesi', 'tam yargi', 'tam yargi davasi', 'iptal davasi', 'idari islemin iptali',
+        'yurutmenin durdurulmasi', 'kamulastirma bedeli',
+        'bolge idare', 'vergi mahkemesi',
+        'belediye', 'idari para cezasi',
+        'kamu ihale', 'kik', 'ihale iptal',
+        'epdk', 'tedas', 'kacak elektrik', 'elektrik piyasasi',
+        'kayip kacak', 'enerji piyasasi', 'tespit tutanagi elektrik',
+        'dagitim lisansi', 'elektrik abonelik',
+        'vergi inceleme', 'vergi cezasi', 'disiplin cezasi', 'gumruk',
     ], 1.35);
 
+    // Yargitay sinyalleri: ozel hukuk ve ceza
     addSignals('yargitay', [
-        'tck',
-        'cmk',
-        'hmk',
-        'tbk',
-        'kambiyo',
-        'icra',
-        'ceza',
-        'bosanma',
-        'is davasi',
-        'alacak davasi',
-        'dolandiricilik',
-        'hirsizlik',
-        'yaralama',
+        'tck', 'cmk', 'hmk', 'tbk', 'tmk', 'iik', 'ttk',
+        'kambiyo', 'icra', 'icra takibi', 'icra iflas', 'borca itiraz',
+        'itirazin iptali', 'menfi tespit', 'alacak davasi', 'zaman asimi', 'zamanaasimi',
+        'konkordato', 'iflasin ertelenmesi', 'tasarrufun iptali',
+        'ceza', 'dolandiricilik', 'hirsizlik', 'yaralama', 'tehdit', 'uyusturucu', 'uyusturucu madde', 'kasten oldurme', 'haksiz tahrik', 'gorevi kotuye kullanma',
+        'bosanma', 'nafaka', 'velayet', 'miras', 'veraset',
+        'is davasi', 'kidem tazminati', 'ihbar tazminati', 'hizmet tespiti', 'is akdi', 'ise iade', 'fazla mesai alacagi',
+        'kira sozlesmesi', 'kira alacagi', 'tahliye', 'tapu tescil',
+        'trafik kazasi', 'sigorta tazminati',
     ], 1.1);
+
+    // Baglamsal duzeltme: itirazin iptali + idari baglam -> Danistay
+    if (text.includes('itirazin iptali') &&
+        (text.includes('idari') || text.includes('vergi') ||
+            text.includes('belediye') || text.includes('kamu') || text.includes('idare'))) {
+        scores.danistay += 2.5;
+        scores.yargitay = Math.max(0, scores.yargitay - 1.5);
+    }
+
+    // Baglamsal duzeltme: kacak elektrik + icra/alacak/zaman asimi baglami -> Yargitay
+    if (text.includes('kacak elektrik') &&
+        (text.includes('itirazin iptali') || text.includes('icra') || text.includes('alacak') || text.includes('menfi tespit') || text.includes('zaman asimi')) &&
+        !(text.includes('idari') || text.includes('epdk') || text.includes('idare mahkemesi'))) {
+        scores.yargitay += 3.0;
+        scores.danistay = Math.max(0, scores.danistay - 1.5);
+    }
+    if (text.includes('kacak elektrik') && text.includes('tespit tutanagi') &&
+        (text.includes('hukuki') || text.includes('gecerlilik') || text.includes('gecerliligi')) &&
+        !(text.includes('idari') || text.includes('epdk') || text.includes('idare mahkemesi'))) {
+        scores.yargitay += 2.5;
+        scores.danistay = Math.max(0, scores.danistay - 1.0);
+    }
+
+    // Baglamsal duzeltme: imar barisi/yapi kayit/gecici 16 -> Danistay
+    if (text.includes('imar barisi') || text.includes('yapi kayit belgesi') || text.includes('gecici 16') || text.includes('3194')) {
+        scores.danistay += 3.0;
+        scores.yargitay = Math.max(0, scores.yargitay - 1.0);
+    }
 
     const explicitDanistay = text.includes('danistay');
     const explicitYargitay = text.includes('yargitay');
@@ -2321,7 +3426,8 @@ const tryResolveSourceWithAI = async ({ keyword, requestedSource = 'all' }) => {
 
 const buildSearchRoutingPlan = async ({ keyword, requestedSource = 'all', filters = {} }) => {
     const requested = normalizeSourceValue(requestedSource, 'all');
-    const compactKeyword = compactLegalKeywordQuery(keyword);
+    const originalKeyword = String(keyword || '').replace(/\s+/g, ' ').trim();
+    const compactKeyword = compactLegalKeywordQuery(originalKeyword);
     const ruleDecision = resolveSourceByRules(compactKeyword, requested);
     const aiDecision = await tryResolveSourceWithAI({ keyword: compactKeyword, requestedSource: requested });
 
@@ -2365,16 +3471,20 @@ const buildSearchRoutingPlan = async ({ keyword, requestedSource = 'all', filter
         nextFilters.birimAdi = aiDecision.birimAdi;
     }
 
+    const routedKeyword = (router === 'ai' && aiDecision?.compactQuery)
+        ? compactLegalKeywordQuery(aiDecision.compactQuery)
+        : compactKeyword;
+
     return {
         requestedSource: requested,
         resolvedSource,
         confidence,
         router,
-        keyword: aiDecision?.compactQuery ? compactLegalKeywordQuery(aiDecision.compactQuery) : compactKeyword,
-        originalKeyword: String(keyword || ''),
+        keyword: routedKeyword || originalKeyword,
+        originalKeyword,
         fallbackSources,
         filters: nextFilters,
-        compacted: compactKeyword !== String(keyword || '').trim(),
+        compacted: compactKeyword !== originalKeyword,
     };
 };
 
@@ -2401,9 +3511,71 @@ const toBedestenFormattedDecision = (item, index) => {
     };
 };
 
-async function searchBedestenAPI(keyword, source, filters = {}) {
+async function searchBedestenViaMcp(keyword, source, filters = {}, debugContext = null) {
     const pageNumber = Math.max(1, Number(filters.pageNumber) || 1);
-    const pageSize = Math.min(50, Math.max(10, Number(filters.pageSize) || 20));
+    const mcpArgs = {
+        phrase: String(keyword || '').trim(),
+        court_types: getMcpCourtTypesBySource(source),
+        pageNumber,
+        birimAdi: normalizeYargiMcpBirimAdi(filters.birimAdi || 'ALL'),
+    };
+    if (filters.kararTarihiStart) mcpArgs.kararTarihiStart = filters.kararTarihiStart;
+    if (filters.kararTarihiEnd) mcpArgs.kararTarihiEnd = filters.kararTarihiEnd;
+
+    if (debugContext?.id) {
+        logLegalSearchDebug(debugContext.id, 'mcp-search-call', {
+            source,
+            phrase: mcpArgs.phrase,
+            courtTypes: mcpArgs.court_types,
+            birimAdi: mcpArgs.birimAdi,
+            pageNumber: mcpArgs.pageNumber,
+            kararTarihiStart: mcpArgs.kararTarihiStart || '',
+            kararTarihiEnd: mcpArgs.kararTarihiEnd || '',
+        });
+    }
+
+    const toolResponse = await callYargiMcpTool('search_bedesten_unified', mcpArgs);
+    const payload = toolResponse.parsed && typeof toolResponse.parsed === 'object'
+        ? toolResponse.parsed
+        : maybeExtractJson(toolResponse.text) || {};
+    const decisions = Array.isArray(payload?.decisions) ? payload.decisions : [];
+
+    if (debugContext?.id) {
+        logLegalSearchDebug(debugContext.id, 'mcp-search-response', {
+            rawDecisionCount: decisions.length,
+            sample: buildLegalResultSample(decisions, 2),
+        });
+    }
+
+    return decisions.map((item, index) => toBedestenFormattedDecision({
+        ...item,
+        relevanceScore: Number(item?.relevanceScore ?? item?.score) || Math.max(0, 100 - (index * 4)),
+    }, index));
+}
+
+async function searchBedestenAPI(keyword, source, filters = {}, debugContext = null) {
+    if (USE_YARGI_MCP) {
+        try {
+            return await searchBedestenViaMcp(keyword, source, filters, debugContext);
+        } catch (mcpError) {
+            if (debugContext?.id) {
+                logLegalSearchDebug(debugContext.id, 'mcp-search-error', {
+                    source,
+                    phrase: String(keyword || ''),
+                    message: mcpError?.message || 'unknown-error',
+                });
+            }
+            console.error('Yargi MCP search failed:', mcpError);
+            if (STRICT_MCP_ONLY) {
+                throw mcpError;
+            }
+        }
+    }
+
+    const pageNumber = Math.max(1, Number(filters.pageNumber) || 1);
+    const pageSize = Math.min(40, Math.max(1, Number(filters.pageSize) || 20));
+    const rawBirimAdi = typeof filters.birimAdi === 'string' ? filters.birimAdi.trim() : '';
+    const birimAdi = (!rawBirimAdi || rawBirimAdi.toUpperCase() === 'ALL') ? '' : rawBirimAdi;
 
     const payload = {
         data: {
@@ -2411,15 +3583,18 @@ async function searchBedestenAPI(keyword, source, filters = {}) {
             pageNumber,
             itemTypeList: getBedestenItemTypeList(source),
             phrase: keyword,
-            birimAdi: (typeof filters.birimAdi === 'string' && filters.birimAdi.trim()) ? filters.birimAdi.trim() : 'ALL',
-            kararTarihiStart: filters.kararTarihiStart || null,
-            kararTarihiEnd: filters.kararTarihiEnd || null,
+            birimAdi,
+            kararTarihiStart: filters.kararTarihiStart || '',
+            kararTarihiEnd: filters.kararTarihiEnd || '',
             sortFields: Array.isArray(filters.sortFields) && filters.sortFields.length > 0 ? filters.sortFields : ['KARAR_TARIHI'],
-            sortDirection: (filters.sortDirection || 'DESC').toString().toUpperCase() === 'ASC' ? 'ASC' : 'DESC',
+            sortDirection: (filters.sortDirection || 'desc').toString().toLowerCase() === 'asc' ? 'asc' : 'desc',
         },
         applicationName: 'UyapMevzuat',
         paging: true,
     };
+    if (!payload.data.birimAdi) {
+        delete payload.data.birimAdi;
+    }
 
     const response = await fetchWithTimeout(BEDESTEN_SEARCH_URL, {
         method: 'POST',
@@ -2440,7 +3615,15 @@ async function searchBedestenAPI(keyword, source, filters = {}) {
     ];
     const rawList = rawListCandidates.find(Array.isArray) || [];
 
-    return rawList.map((item, index) => toBedestenFormattedDecision(item, index));
+    const formatted = rawList.map((item, index) => toBedestenFormattedDecision(item, index));
+    if (debugContext?.id) {
+        logLegalSearchDebug(debugContext.id, 'direct-bedesten-search-response', {
+            rawDecisionCount: rawList.length,
+            formattedCount: formatted.length,
+            sample: buildLegalResultSample(formatted, 2),
+        });
+    }
+    return formatted;
 }
 
 async function extractPdfTextWithGemini(base64Data, documentId = '') {
@@ -2450,7 +3633,7 @@ async function extractPdfTextWithGemini(base64Data, documentId = '') {
             contents: {
                 parts: [
                     {
-                        text: `A�a��daki hukuk karar PDF i�eri�ini d�z metin olarak ��kar.\nKurallar:\n- Link veya a��klama ekleme.\n- Karar�n g�r�len metnini m�mk�n oldu�unca eksiksiz d�nd�r.\n- Metni T�rk�e karakterleri koruyarak yaz.\nBelge Kimli�i: ${documentId || 'bilinmiyor'}`
+                        text: `Aï¿½aï¿½ï¿½daki hukuk karar PDF iï¿½eriï¿½ini dï¿½z metin olarak ï¿½ï¿½kar.\nKurallar:\n- Link veya aï¿½ï¿½klama ekleme.\n- Kararï¿½n gï¿½rï¿½len metnini mï¿½mkï¿½n olduï¿½unca eksiksiz dï¿½ndï¿½r.\n- Metni Tï¿½rkï¿½e karakterleri koruyarak yaz.\nBelge Kimliï¿½i: ${documentId || 'bilinmiyor'}`
                     },
                     {
                         inlineData: {
@@ -2473,6 +3656,28 @@ async function extractPdfTextWithGemini(base64Data, documentId = '') {
 }
 
 async function getBedestenDocumentContent(documentId) {
+    if (USE_YARGI_MCP) {
+        try {
+            const toolResponse = await callYargiMcpTool('get_bedesten_document_markdown', {
+                documentId: String(documentId || '').trim(),
+            });
+            const payload = toolResponse.parsed && typeof toolResponse.parsed === 'object'
+                ? toolResponse.parsed
+                : maybeExtractJson(toolResponse.text) || {};
+            const markdown = String(payload?.markdown_content || payload?.content || toolResponse.text || '').trim();
+            return {
+                content: markdown,
+                mimeType: 'text/markdown',
+                raw: payload,
+            };
+        } catch (mcpError) {
+            console.error('Yargi MCP document fetch failed:', mcpError);
+            if (STRICT_MCP_ONLY) {
+                throw mcpError;
+            }
+        }
+    }
+
     const payload = {
         data: { documentId },
         applicationName: 'UyapMevzuat',
@@ -2526,25 +3731,57 @@ async function getBedestenDocumentContent(documentId) {
 // Fallback: Use Gemini + Google Search for legal decisions
 async function searchEmsalFallback(keyword, sourceHint = 'all') {
     try {
+        const strictMcpOnly = process.env.LEGAL_STRICT_MCP !== '0';
+        if (strictMcpOnly) {
+            const routingPlan = await buildSearchRoutingPlan({
+                keyword,
+                requestedSource: sourceHint,
+                filters: {},
+            });
+            const queryVariants = buildBedestenQueryVariants(routingPlan.keyword, routingPlan.originalKeyword);
+
+            for (const candidateSource of routingPlan.fallbackSources) {
+                for (const variant of queryVariants) {
+                    try {
+                        const bedestenResults = await searchBedestenAPI(
+                            variant,
+                            candidateSource,
+                            routingPlan.filters
+                        );
+                        if (Array.isArray(bedestenResults) && bedestenResults.length > 0) {
+                            return {
+                                success: true,
+                                results: bedestenResults,
+                            };
+                        }
+                    } catch (mcpError) {
+                        console.error(`MCP search helper error (${candidateSource}, variant=${variant}):`, mcpError);
+                    }
+                }
+            }
+
+            return { success: false, results: [], error: 'MCP no-results' };
+        }
+
         const normalizedSourceHint = normalizeSourceValue(sourceHint, 'all');
         const sourceDirective = normalizedSourceHint === 'all'
             ? 'Yargitay ve Danistay agirlikli'
             : `${normalizedSourceHint.toUpperCase()} agirlikli`;
         const response = await generateContentWithRetry({
             model: AI_CONFIG.MODEL_NAME,
-            contents: `T�rkiye'de "${keyword}" konusunda ${sourceDirective} emsal kararlarini bul.
+            contents: `Tï¿½rkiye'de "${keyword}" konusunda ${sourceDirective} emsal kararlarini bul.
 
-Her karar i�in �u alanlar� �ret:
+Her karar iï¿½in ï¿½u alanlarï¿½ ï¿½ret:
 - mahkeme
 - daire
 - esasNo
 - kararNo
 - tarih
-- ozet (en fazla 2-3 c�mle)
+- ozet (en fazla 2-3 cï¿½mle)
 - sourceUrl (resmi karar arama linki varsa)
 - relevanceScore (0-100)
 
-Sadece JSON array d�nd�r:
+Sadece JSON array dï¿½ndï¿½r:
 [{"mahkeme":"...","daire":"...","esasNo":"...","kararNo":"...","tarih":"...","ozet":"...","sourceUrl":"https://...","relevanceScore":85}]`,
             config: {
                 tools: [{ googleSearch: {} }]
@@ -2568,6 +3805,7 @@ Sadece JSON array d�nd�r:
                     daire: r.daire || '',
                     ozet: r.ozet || r.snippet || '',
                     sourceUrl: r.sourceUrl || r.url || '',
+                    documentUrl: r.documentUrl || r.sourceUrl || r.url || '',
                     relevanceScore: Number(r.relevanceScore) || Math.max(0, 100 - (i * 8)),
                 })).sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
             };
@@ -2592,7 +3830,40 @@ Sadece JSON array d�nd�r:
     }
 }
 
-async function getDocumentViaAIFallback({ keyword = '', documentId = '', documentUrl = '', title = '', esasNo = '', kararNo = '', tarih = '', daire = '', ozet = '' }) {
+async function _getDocumentFromUrl(documentUrl = '') {
+    const url = String(documentUrl || '').trim();
+    if (!/^https?:\/\//i.test(url)) return '';
+
+    try {
+        const response = await fetchWithTimeout(url, {
+            method: 'GET',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'tr,en-US;q=0.9,en;q=0.8',
+            },
+        }, BEDESTEN_TIMEOUT_MS);
+
+        if (!response.ok) return '';
+
+        const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+        if (!contentType.includes('text/html') && !contentType.includes('text/plain')) return '';
+
+        const rawText = await response.text().catch(() => '');
+        if (!rawText) return '';
+
+        const extracted = contentType.includes('text/html')
+            ? stripHtmlToText(rawText)
+            : rawText.trim();
+
+        return extracted.length >= 500 ? extracted : '';
+    } catch (error) {
+        console.error('Document URL fetch error:', error);
+        return '';
+    }
+}
+
+async function _getDocumentViaAIFallback({ keyword = '', documentId = '', documentUrl = '', title = '', esasNo = '', kararNo = '', tarih = '', daire = '', ozet = '' }) {
     const queryParts = [
         keyword,
         title,
@@ -2608,17 +3879,61 @@ async function getDocumentViaAIFallback({ keyword = '', documentId = '', documen
     const query = queryParts.join(' ').trim();
     if (!query) return '';
 
-    try {
+    const runFallbackPrompt = async (prompt) => {
         const response = await generateContentWithRetry({
             model: AI_CONFIG.MODEL_NAME,
-            contents: `A�a��daki karar k�nyesine ait karar METN�N� resmi kaynaklardan bul:
+            contents: prompt,
+            config: {
+                tools: [{ googleSearch: {} }],
+                temperature: 0.1,
+            }
+        });
+
+        return (response.text || '').replace(/https?:\/\/\S+/gi, '').trim();
+    };
+
+    try {
+        const firstPassText = await runFallbackPrompt(`Asagidaki karar kunyesine ait karar METNINI resmi kaynaklardan bul:
 ${query}
 
 Kurallar:
 - Cevapta URL/link verme.
-- Giri�/yorum ekleme.
-- Sadece karar metnini d�z yaz� olarak d�nd�r.
-- Tam metin bulunamazsa, bulunabilen en detayl� metni d�nd�r.`,
+- Giris/yorum ekleme.
+- Sadece karar metnini duz yazi olarak dondur.
+- Ozeti degil, mumkun olan en uzun karar metnini dondur.
+- Tam metin bulunamazsa, bulunabilen en detayli metni dondur.`);
+
+        if (firstPassText.length >= 1200) {
+            return firstPassText;
+        }
+
+        const secondPassText = await runFallbackPrompt(`Asagidaki karar icin ilk deneme kisa dondu. Simdi yalnizca karar METNINI dondur:
+${query}
+
+Ek kurallar:
+- En az 1500 karakter hedefle (mumkun degilse ulasilabilen en uzun metni ver).
+- Ozet, aciklama, yorum, baslik, link verme.
+- Sadece karar metni.`);
+
+        const bestText = (secondPassText.length > firstPassText.length ? secondPassText : firstPassText).trim();
+        if (bestText.length > 0) {
+            return bestText;
+        }
+    } catch (error) {
+        console.error('AI document fallback strict-pass error:', error);
+    }
+
+    try {
+        const response = await generateContentWithRetry({
+            model: AI_CONFIG.MODEL_NAME,
+            contents: `Aï¿½aï¿½ï¿½daki karar kï¿½nyesine ait karar METNï¿½Nï¿½ resmi kaynaklardan bul:
+${query}
+
+Kurallar:
+- Cevapta URL/link verme.
+- Giriï¿½/yorum ekleme.
+- Sadece karar metnini dï¿½z yazï¿½ olarak dï¿½ndï¿½r.
+- Tam metin bulunamazsa, bulunabilen en detaylï¿½ metni dï¿½ndï¿½r.`,
             config: {
                 tools: [{ googleSearch: {} }],
                 temperature: 0.1,
@@ -2643,8 +3958,8 @@ app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
     body('keyword')
         .isString()
         .trim()
-        .isLength({ min: 2, max: 300 })
-        .withMessage('Arama kelimesi (keyword) 2-300 karakter arasinda olmalidir.'),
+        .isLength({ min: 2, max: 5000 })
+        .withMessage('Arama kelimesi (keyword) 2-5000 karakter arasinda olmalidir.'),
     body('filters')
         .optional()
         .isObject()
@@ -2653,6 +3968,7 @@ app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
     try {
         await getAuthenticatedUserFromRequest(req);
         const { source, keyword, filters = {} } = req.body;
+        const debugId = createLegalDebugId();
 
         const routingPlan = await buildSearchRoutingPlan({
             keyword,
@@ -2661,60 +3977,303 @@ app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
         });
 
         console.warn('Legal Search: "' + routingPlan.keyword + '" (requested: ' + (source || 'all') + ', resolved: ' + routingPlan.resolvedSource + ')');
+        logLegalSearchDebug(debugId, 'route-start', {
+            requestedSource: source || 'all',
+            resolvedSource: routingPlan.resolvedSource,
+            fallbackSources: routingPlan.fallbackSources,
+            keyword: routingPlan.keyword,
+            originalKeyword: routingPlan.originalKeyword,
+        });
 
         let results = [];
-        let provider = 'bedesten';
+        const provider = USE_YARGI_MCP ? 'yargi-mcp' : 'bedesten';
         let usedSource = routingPlan.resolvedSource;
         const bedestenErrors = [];
         const warningParts = [];
+        let semanticCandidates = [];
+        const queryVariants = buildBedestenQueryVariants(routingPlan.keyword, routingPlan.originalKeyword);
+        const baseKeyword = routingPlan.originalKeyword || routingPlan.keyword;
+        const normalizedBaseKeyword = normalizeForRouting(baseKeyword);
+        const denseAnchorIntent = LEGAL_QUERY_PHRASE_ANCHORS
+            .filter((phrase) => normalizedBaseKeyword.includes(phrase))
+            .length >= 3;
 
-        for (const candidateSource of routingPlan.fallbackSources) {
-            usedSource = candidateSource;
+        const requestedSourceNormalized = normalizeSourceValue(source, 'all');
+        const dominantVariantSource = requestedSourceNormalized === 'all' && Number(routingPlan.confidence || 0) >= 0.78
+            ? normalizeSourceValue(routingPlan.resolvedSource, 'all')
+            : '';
+        const variantPlans = [];
+        let aiVariantRouteAttempts = 0;
+        for (const variant of queryVariants) {
+            const variantText = normalizeForRouting(variant);
+            let explicitVariantSource = '';
+            if (variantText.includes('danistay')) explicitVariantSource = 'danistay';
+            else if (variantText.includes('yargitay')) explicitVariantSource = 'yargitay';
+            else if (variantText.includes('anayasa')) explicitVariantSource = 'anayasa';
+            else if (variantText.includes('uyap')) explicitVariantSource = 'uyap';
+
+            let variantSource = routingPlan.resolvedSource;
+            let routeMethod = 'rules';
+
+            if (requestedSourceNormalized !== 'all') {
+                variantSource = requestedSourceNormalized;
+                routeMethod = 'requested';
+            } else if (explicitVariantSource) {
+                variantSource = explicitVariantSource;
+                routeMethod = 'explicit';
+            } else if (dominantVariantSource) {
+                variantSource = dominantVariantSource;
+                routeMethod = 'dominant';
+            } else {
+                const ruleDecision = resolveSourceByRules(variant, 'all');
+                variantSource = normalizeSourceValue(ruleDecision.source, routingPlan.resolvedSource);
+                if (ruleDecision.confidence < 0.78 && aiVariantRouteAttempts < 3) {
+                    const aiDecision = await tryResolveSourceWithAI({
+                        keyword: variant,
+                        requestedSource: 'all',
+                    });
+                    aiVariantRouteAttempts += 1;
+                    if (aiDecision?.source && aiDecision.confidence >= Math.max(0.5, ruleDecision.confidence - 0.05)) {
+                        variantSource = normalizeSourceValue(aiDecision.source, variantSource);
+                        routeMethod = 'ai';
+                    }
+                }
+            }
+
+            variantPlans.push({
+                variant,
+                source: normalizeSourceValue(variantSource, routingPlan.resolvedSource),
+                routeMethod,
+            });
+        }
+        if (variantPlans.length === 0) {
+            variantPlans.push({
+                variant: baseKeyword,
+                source: routingPlan.resolvedSource,
+                routeMethod: 'fallback',
+            });
+        }
+
+        const sourceCollected = [];
+        const sourceSeen = new Set();
+        const resolvedSources = new Set();
+        let lastSourceError = null;
+        let strictVariantHitCount = 0;
+        const pushCollected = (items = []) => {
+            for (const item of (Array.isArray(items) ? items : [])) {
+                const key = getLegalDecisionDocumentId(item)
+                    || `${item?.title || ''}|${item?.esasNo || ''}|${item?.kararNo || ''}|${item?.tarih || ''}`;
+                if (!key || sourceSeen.has(key)) continue;
+                sourceSeen.add(key);
+                sourceCollected.push(item);
+            }
+        };
+
+        for (const plan of variantPlans) {
             try {
                 const bedestenResults = await searchBedestenAPI(
-                    routingPlan.keyword,
-                    candidateSource,
-                    routingPlan.filters
+                    plan.variant,
+                    plan.source,
+                    routingPlan.filters,
+                    { id: debugId }
                 );
+                logLegalSearchDebug(debugId, 'variant-result', {
+                    candidateSource: plan.source,
+                    variant: plan.variant,
+                    routeMethod: plan.routeMethod,
+                    count: Array.isArray(bedestenResults) ? bedestenResults.length : 0,
+                    sample: buildLegalResultSample(bedestenResults, 2),
+                });
 
                 if (Array.isArray(bedestenResults) && bedestenResults.length > 0) {
-                    results = bedestenResults;
-                    break;
+                    pushCollected(bedestenResults);
+                    resolvedSources.add(plan.source);
+                    if (/\band\b/i.test(plan.variant) || String(plan.variant || '').includes('"')) {
+                        strictVariantHitCount += 1;
+                    }
+                    if (plan.variant !== baseKeyword) {
+                        warningParts.push('Arama sorgusu optimize edilerek MCP sonucu bulundu.');
+                    }
+                    if (sourceCollected.length >= LEGAL_VARIANT_RESULT_CAP) break;
+                    if (denseAnchorIntent && strictVariantHitCount >= 2 && sourceCollected.length >= 12) break;
                 }
             } catch (bedestenError) {
-                bedestenErrors.push(candidateSource + ':' + (bedestenError?.message || 'unknown-error'));
+                lastSourceError = bedestenError;
                 if (bedestenError?.code === 'REQUEST_TIMEOUT') {
-                    warningParts.push('MCP/Bedesten aramasi zaman asimina ugradi, AI fallback kullaniliyor.');
+                    warningParts.push('MCP/Bedesten aramasi zaman asimina ugradi.');
                     break;
                 }
-                console.error('Bedesten search failed (' + candidateSource + '):', bedestenError);
+                console.error('Bedesten search failed (' + plan.source + ', variant=' + plan.variant + '):', bedestenError);
+            }
+        }
+
+        if (sourceCollected.length > 0) {
+            results = sourceCollected.slice(0, LEGAL_VARIANT_RESULT_CAP);
+            semanticCandidates = sourceCollected.slice(0, LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT);
+            if (resolvedSources.size === 1) {
+                usedSource = Array.from(resolvedSources)[0];
+            } else if (resolvedSources.size > 1) {
+                usedSource = 'all';
+            }
+            logLegalSearchDebug(debugId, 'source-aggregate', {
+                resolvedSources: Array.from(resolvedSources),
+                totalCollected: sourceCollected.length,
+                sample: buildLegalResultSample(results, 3),
+            });
+        }
+        if (lastSourceError) {
+            bedestenErrors.push((usedSource || routingPlan.resolvedSource) + ':' + (lastSourceError?.message || 'unknown-error'));
+        }
+
+        if (Array.isArray(results) && results.length > 0) {
+            const scoringKeyword = routingPlan.originalKeyword || routingPlan.keyword;
+            const scoring = scoreAndFilterResultsByKeyword(
+                results,
+                scoringKeyword
+            );
+            logLegalSearchDebug(debugId, 'scoring', {
+                beforeCount: Array.isArray(results) ? results.length : 0,
+                matchedCount: Array.isArray(scoring.results) ? scoring.results.length : 0,
+                rankedCount: Array.isArray(scoring.scoredResults) ? scoring.scoredResults.length : 0,
+                filteredOutCount: scoring.filteredOutCount || 0,
+                minMatchScore: LEGAL_MIN_MATCH_SCORE,
+                topRankedSample: buildLegalResultSample(scoring.scoredResults, 3),
+            });
+            const contentCandidates = [];
+            const contentCandidateSeen = new Set();
+            const pushContentCandidate = (item) => {
+                if (!item || typeof item !== 'object') return;
+                const id = getLegalDecisionDocumentId(item);
+                const fallbackKey = `${item.title || ''}|${item.esasNo || ''}|${item.kararNo || ''}`;
+                const key = id || fallbackKey;
+                if (!key || contentCandidateSeen.has(key)) return;
+                contentCandidateSeen.add(key);
+                contentCandidates.push(item);
+            };
+            for (const item of (Array.isArray(scoring.results) ? scoring.results : [])) {
+                pushContentCandidate(item);
+            }
+            for (const item of (Array.isArray(scoring.scoredResults) ? scoring.scoredResults : [])) {
+                pushContentCandidate(item);
+            }
+            semanticCandidates = contentCandidates.slice(0, LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT);
+
+            const contentRerank = await rerankResultsByDecisionContent(
+                contentCandidates,
+                scoringKeyword,
+                { id: debugId }
+            );
+
+            if (contentRerank.applied && contentRerank.fetchedCount > 0) {
+                if (Array.isArray(contentRerank.results) && contentRerank.results.length > 0) {
+                    results = contentRerank.results.slice(0, Math.min(10, contentRerank.results.length));
+                    if (contentRerank.filteredOutCount > 0) {
+                        warningParts.push(`${contentRerank.filteredOutCount} sonuc tam metinde anahtar kelime uyusmasi dusuk oldugu icin elendi.`);
+                    }
+                } else {
+                    results = [];
+                    warningParts.push('MCP tam metinlerinde anahtar kelime uyusmasi bulunamadi.');
+                }
+            } else {
+                if (Array.isArray(scoring.results) && scoring.results.length > 0) {
+                    results = scoring.results;
+                } else if (Array.isArray(scoring.scoredResults) && scoring.scoredResults.length > 0) {
+                    const thresholdMatches = scoring.scoredResults
+                        .filter((item) => Number(item?.relevanceScore || 0) >= LEGAL_MIN_MATCH_SCORE);
+                    if (thresholdMatches.length > 0) {
+                        results = thresholdMatches.slice(0, Math.min(10, thresholdMatches.length));
+                        warningParts.push(`Kati ifade filtresi nedeniyle skor >= ${LEGAL_MIN_MATCH_SCORE} olan en yakin MCP sonuclari listelendi.`);
+                    } else if (
+                        contentRerank.applied
+                        && contentRerank.fetchedCount === 0
+                        && contentRerank.fetchErrorCount > 0
+                        && contentCandidates.length > 0
+                    ) {
+                        results = contentCandidates.slice(0, Math.min(10, contentCandidates.length));
+                        warningParts.push('Karar tam metinleri cekilemedigi icin ilk bulunan MCP sonuclari listelendi.');
+                    } else {
+                        results = [];
+                    }
+                } else {
+                    if (
+                        contentRerank.applied
+                        && contentRerank.fetchedCount === 0
+                        && contentRerank.fetchErrorCount > 0
+                        && contentCandidates.length > 0
+                    ) {
+                        results = contentCandidates.slice(0, Math.min(10, contentCandidates.length));
+                        warningParts.push('Karar tam metinleri cekilemedigi icin ilk bulunan MCP sonuclari listelendi.');
+                    } else {
+                    results = [];
+                    }
+                }
+
+                if (contentRerank.applied && contentRerank.fetchErrorCount > 0) {
+                    warningParts.push('Bazi karar tam metinleri MCP uzerinden cekilemedi.');
+                }
+                if (scoring.filteredOutCount > 0 && Array.isArray(scoring.results) && scoring.results.length > 0) {
+                    warningParts.push(`${scoring.filteredOutCount} sonuc anahtar kelime uyusmasi dusuk oldugu icin elendi.`);
+                }
             }
         }
 
         if (!Array.isArray(results) || results.length === 0) {
-            provider = 'ai-fallback';
-            const fallback = await searchEmsalFallback(routingPlan.keyword, usedSource);
-            results = fallback.results || [];
-
-            if (!fallback.success && results.length === 0) {
-                return res.json({
-                    success: true,
-                    source: usedSource || routingPlan.resolvedSource || 'all',
-                    keyword: routingPlan.keyword,
-                    provider,
-                    results: [],
-                    warning: 'Emsal arama servislerine gecici olarak ulasilamiyor. Lutfen kisa bir sure sonra tekrar deneyin.',
-                    routing: {
-                        requestedSource: routingPlan.requestedSource,
-                        resolvedSource: routingPlan.resolvedSource,
-                        usedSource,
-                        fallbackSources: routingPlan.fallbackSources,
-                        router: routingPlan.router,
-                        confidence: routingPlan.confidence,
-                        compacted: routingPlan.compacted,
-                    },
-                });
+            const semanticRerank = await semanticRerankWithGemini({
+                candidates: semanticCandidates,
+                keyword: routingPlan.originalKeyword || routingPlan.keyword,
+                debugContext: { id: debugId },
+            });
+            if (semanticRerank.applied && Array.isArray(semanticRerank.results) && semanticRerank.results.length > 0) {
+                results = semanticRerank.results.slice(0, 10);
+                warningParts.push('Gemini semantik siralama fallback kullanildi.');
             }
+        }
+
+        if (!Array.isArray(results) || results.length === 0) {
+            const phraseFallback = await runPhraseFallbackSearch({
+                keyword: routingPlan.originalKeyword || routingPlan.keyword,
+                source: usedSource || routingPlan.resolvedSource || 'all',
+                filters: routingPlan.filters,
+                debugContext: { id: debugId },
+            });
+            if (phraseFallback.applied && Array.isArray(phraseFallback.results) && phraseFallback.results.length > 0) {
+                results = phraseFallback.results;
+                for (let i = warningParts.length - 1; i >= 0; i -= 1) {
+                    if (String(warningParts[i] || '').includes('MCP tam metinlerinde anahtar kelime uyusmasi bulunamadi.')) {
+                        warningParts.splice(i, 1);
+                    }
+                }
+                warningParts.push('Birlesik sorgu parcalanarak anahtar ifadelerle MCP aramasi yapildi.');
+            }
+        }
+
+        if (!Array.isArray(results) || results.length === 0) {
+            const uniqueWarnings = Array.from(new Set(warningParts));
+            logLegalSearchDebug(debugId, 'route-empty', {
+                provider,
+                usedSource,
+                warningParts: uniqueWarnings,
+                bedestenErrors,
+            });
+            return res.json({
+                success: true,
+                source: usedSource || routingPlan.resolvedSource || 'all',
+                keyword: routingPlan.keyword,
+                provider,
+                results: [],
+                warning: uniqueWarnings.length > 0
+                    ? uniqueWarnings.join(' ')
+                    : 'MCP/Bedesten kaynaginda karar bulunamadi veya servise ulasilamadi.',
+                routing: {
+                    requestedSource: routingPlan.requestedSource,
+                    resolvedSource: routingPlan.resolvedSource,
+                    usedSource,
+                    fallbackSources: routingPlan.fallbackSources,
+                    router: routingPlan.router,
+                    confidence: routingPlan.confidence,
+                    compacted: routingPlan.compacted,
+                },
+            });
         }
 
         if (routingPlan.compacted) {
@@ -2723,13 +4282,26 @@ app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
         if (bedestenErrors.length > 0) {
             warningParts.push('Bazi Bedesten denemeleri basarisiz oldu.');
         }
+        const uniqueWarnings = Array.from(new Set(warningParts));
+        logLegalSearchDebug(debugId, 'route-success', {
+            provider,
+            usedSource,
+            finalCount: Array.isArray(results) ? results.length : 0,
+            warningParts: uniqueWarnings,
+            sample: buildLegalResultSample(results, 3),
+        });
+
+        // Son savunma: 75 altındaki skorları kesinlikle döndürme
+        const filteredResults = Array.isArray(results)
+            ? results.filter(item => Number(item?.relevanceScore || 0) >= LEGAL_MIN_MATCH_SCORE)
+            : [];
 
         res.json({
             success: true,
             source: usedSource || routingPlan.resolvedSource || 'all',
             keyword: routingPlan.keyword,
             provider,
-            results,
+            results: filteredResults,
             routing: {
                 requestedSource: routingPlan.requestedSource,
                 resolvedSource: routingPlan.resolvedSource,
@@ -2739,7 +4311,7 @@ app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
                 confidence: routingPlan.confidence,
                 compacted: routingPlan.compacted,
             },
-            ...(warningParts.length > 0 ? { warning: warningParts.join(' ') } : {}),
+            ...(uniqueWarnings.length > 0 ? { warning: uniqueWarnings.join(' ') } : {}),
         });
 
     } catch (error) {
@@ -2782,51 +4354,48 @@ app.post('/api/legal/get-document', authMiddleware, validateRequest([
 ]), async (req, res) => {
     try {
         await getAuthenticatedUserFromRequest(req);
-        const { source, documentId, documentUrl, title, esasNo, kararNo, tarih, daire, ozet, snippet } = req.body;
+        const { source, documentId, documentUrl } = req.body;
 
         if (!documentId && !documentUrl) {
             return res.status(400).json({ error: 'documentId veya documentUrl gereklidir.' });
         }
 
-        console.warn(`📄 Get Document: ${documentId || documentUrl}`);
+        console.warn(`ğŸ“�? Get Document: ${documentId || documentUrl}`);
 
         let content = '';
-        let provider = 'bedesten';
+        const provider = USE_YARGI_MCP ? 'yargi-mcp' : 'bedesten';
         let mimeType = 'text/plain';
+        const safeDocumentId = String(documentId || '');
+        const safeDocumentUrl = String(documentUrl || '').trim();
+        const hasSyntheticDocumentId = /^(search-|legal-|ai-summary)/i.test(safeDocumentId);
 
         // If search came from Bedesten, documentId can directly fetch full content.
-        const looksLikeFallbackId = typeof documentId === 'string' && (documentId.startsWith('search-') || documentId === 'ai-summary');
+        const looksLikeFallbackId = hasSyntheticDocumentId;
 
-        if (documentId && !looksLikeFallbackId) {
-            try {
-                const bedestenDocument = await getBedestenDocumentContent(documentId);
-                content = bedestenDocument.content || '';
-                mimeType = bedestenDocument.mimeType || mimeType;
-            } catch (bedestenError) {
-                provider = 'ai-fallback';
-                console.error('Bedesten get-document failed, switching to AI fallback:', bedestenError);
-            }
-        } else {
-            provider = 'ai-fallback';
+        if (!safeDocumentId || looksLikeFallbackId) {
+            return res.status(400).json({
+                error: 'Sadece MCP/Bedesten documentId ile karar metni getirilebilir.',
+            });
         }
 
-        if (!content || content.trim().length < 120) {
-            provider = 'ai-fallback';
-            content = await getDocumentViaAIFallback({
-                keyword: [title, daire, esasNo, kararNo, tarih].filter(Boolean).join(' '),
-                documentId,
-                documentUrl,
-                title,
-                esasNo,
-                kararNo,
-                tarih,
-                daire,
-                ozet: [ozet, snippet].filter(Boolean).join(' '),
+        try {
+            const bedestenDocument = await getBedestenDocumentContent(safeDocumentId);
+            content = bedestenDocument.content || '';
+            mimeType = bedestenDocument.mimeType || mimeType;
+        } catch (bedestenError) {
+            console.error('Bedesten get-document failed:', bedestenError);
+            return res.status(502).json({
+                error: 'MCP/Bedesten karar metni servisine ulasilamadi.',
             });
         }
 
         if (!content || content.trim().length === 0) {
-            content = 'Karar metni getirilemedi. L�tfen farkl� bir karar se�ip tekrar deneyin.';
+            return res.status(404).json({
+                error: 'MCP/Bedesten kaynaginda karar metni bulunamadi.',
+            });
+        }
+        if ((content || '').length < 0 && (!content || content.trim().length === 0)) {
+            content = 'Karar metni getirilemedi. Lï¿½tfen farklï¿½ bir karar seï¿½ip tekrar deneyin.';
         }
 
         res.json({
@@ -2836,12 +4405,12 @@ app.post('/api/legal/get-document', authMiddleware, validateRequest([
             document: {
                 content,
                 mimeType,
-                documentId: documentId || '',
-                documentUrl: documentUrl || '',
+                documentId: safeDocumentId,
+                documentUrl: safeDocumentUrl,
             }
         });
 
-        } catch (error) {
+    } catch (error) {
         const statusCode = Number(error?.status) || 500;
         console.error('Get Document Error:', error);
         res.status(statusCode).json({
@@ -2862,11 +4431,11 @@ app.post('/api/legal/get-document', authMiddleware, validateRequest([
 app.get('/api/legal/sources', (req, res) => {
     res.json({
         sources: [
-            { id: 'yargitay', name: 'Yarg�tay', description: 'Yarg�tay Kararlar� (Bedesten API)' },
-            { id: 'danistay', name: 'Dan��tay', description: 'Dan��tay Kararlar� (Bedesten API)' },
+            { id: 'yargitay', name: 'Yargï¿½tay', description: 'Yargï¿½tay Kararlarï¿½ (Bedesten API)' },
+            { id: 'danistay', name: 'Danï¿½ï¿½tay', description: 'Danï¿½ï¿½tay Kararlarï¿½ (Bedesten API)' },
             { id: 'uyap', name: 'Emsal (UYAP)', description: 'Emsal Kararlar (UYAP Sistemi)' },
-            { id: 'anayasa', name: 'Anayasa Mahkemesi', description: 'AYM Norm Denetimi ve Bireysel Ba�vuru' },
-            { id: 'kik', name: 'Kamu �hale Kurulu', description: 'K�K Kararlar�' },
+            { id: 'anayasa', name: 'Anayasa Mahkemesi', description: 'AYM Norm Denetimi ve Bireysel Baï¿½vuru' },
+            { id: 'kik', name: 'Kamu ï¿½hale Kurulu', description: 'Kï¿½K Kararlarï¿½' },
         ]
     });
 });
@@ -2881,88 +4450,88 @@ const TEMPLATES = [
         id: '1',
         category: 'Hukuk',
         subcategory: 'Aile Hukuku',
-        title: 'Bo�anma Davas� Dilek�esi',
-        description: 'Anla�mal� veya �eki�meli bo�anma davalar� i�in temel dilek�e �ablonu',
+        title: 'Boï¿½anma Davasï¿½ Dilekï¿½esi',
+        description: 'Anlaï¿½malï¿½ veya ï¿½ekiï¿½meli boï¿½anma davalarï¿½ iï¿½in temel dilekï¿½e ï¿½ablonu',
         icon: 'HeartCrack',
         variables: [
-            { key: 'MAHKEME', label: 'Mahkeme Ad�', type: 'text', placeholder: '�rn: �stanbul Anadolu 5. Aile Mahkemesi', required: true },
-            { key: 'DAVACI_AD', label: 'Davac� Ad� Soyad�', type: 'text', placeholder: '�rn: Ay�e YILMAZ', required: true },
-            { key: 'DAVACI_TC', label: 'Davac� TC Kimlik No', type: 'text', placeholder: '�rn: 12345678901', required: true },
-            { key: 'DAVACI_ADRES', label: 'Davac� Adresi', type: 'textarea', placeholder: '�rn: Atat�rk Mah. Cumhuriyet Cad. No:15/3 Kad�k�y/�stanbul' },
-            { key: 'DAVACI_VEKIL_AD', label: 'Davac� Vekili (Avukat)', type: 'text', placeholder: '�rn: Av. Mehmet KAYA' },
-            { key: 'DAVACI_VEKIL_BARO', label: 'Baro Sicil No', type: 'text', placeholder: '�rn: �stanbul Barosu 54321' },
-            { key: 'DAVALI_AD', label: 'Daval� Ad� Soyad�', type: 'text', placeholder: '�rn: Ali YILMAZ', required: true },
-            { key: 'DAVALI_TC', label: 'Daval� TC Kimlik No', type: 'text', placeholder: '�rn: 98765432109' },
-            { key: 'DAVALI_ADRES', label: 'Daval� Adresi', type: 'textarea', placeholder: '�rn: Bah�elievler Mah. �n�n� Sok. No:7 Bak�rk�y/�stanbul' },
+            { key: 'MAHKEME', label: 'Mahkeme Adï¿½', type: 'text', placeholder: 'ï¿½rn: ï¿½stanbul Anadolu 5. Aile Mahkemesi', required: true },
+            { key: 'DAVACI_AD', label: 'Davacï¿½ Adï¿½ Soyadï¿½', type: 'text', placeholder: 'ï¿½rn: Ayï¿½e YILMAZ', required: true },
+            { key: 'DAVACI_TC', label: 'Davacï¿½ TC Kimlik No', type: 'text', placeholder: 'ï¿½rn: 12345678901', required: true },
+            { key: 'DAVACI_ADRES', label: 'Davacï¿½ Adresi', type: 'textarea', placeholder: 'ï¿½rn: Atatï¿½rk Mah. Cumhuriyet Cad. No:15/3 Kadï¿½kï¿½y/ï¿½stanbul' },
+            { key: 'DAVACI_VEKIL_AD', label: 'Davacï¿½ Vekili (Avukat)', type: 'text', placeholder: 'ï¿½rn: Av. Mehmet KAYA' },
+            { key: 'DAVACI_VEKIL_BARO', label: 'Baro Sicil No', type: 'text', placeholder: 'ï¿½rn: ï¿½stanbul Barosu 54321' },
+            { key: 'DAVALI_AD', label: 'Davalï¿½ Adï¿½ Soyadï¿½', type: 'text', placeholder: 'ï¿½rn: Ali YILMAZ', required: true },
+            { key: 'DAVALI_TC', label: 'Davalï¿½ TC Kimlik No', type: 'text', placeholder: 'ï¿½rn: 98765432109' },
+            { key: 'DAVALI_ADRES', label: 'Davalï¿½ Adresi', type: 'textarea', placeholder: 'ï¿½rn: Bahï¿½elievler Mah. ï¿½nï¿½nï¿½ Sok. No:7 Bakï¿½rkï¿½y/ï¿½stanbul' },
             { key: 'EVLILIK_TARIHI', label: 'Evlilik Tarihi', type: 'date', required: true },
-            { key: 'EVLILIK_YERI', label: 'Evlenme Yeri', type: 'text', placeholder: '�rn: Kad�k�y Evlendirme Dairesi' },
-            { key: 'COCUK_BILGI', label: 'M��terek �ocuk Bilgileri (varsa)', type: 'textarea', placeholder: '�rn: 1. Zeynep YILMAZ (D: 01.01.2015, TC: 11122233344)' },
-            { key: 'BOSANMA_SEBEPLERI', label: 'Bo�anma Sebepleri', type: 'textarea', placeholder: '�iddetli ge�imsizlik, evlilik birli�inin temelinden sars�lmas�...', required: true },
-            { key: 'NAFAKA_TALEP', label: 'Nafaka Talebi (TL/ay)', type: 'number', placeholder: '�rn: 5000' },
-            { key: 'VELAYET_TALEP', label: 'Velayet Talebi', type: 'text', placeholder: '�rn: M��terek �ocuklar�n velayetinin davac� anneye verilmesi' },
+            { key: 'EVLILIK_YERI', label: 'Evlenme Yeri', type: 'text', placeholder: 'ï¿½rn: Kadï¿½kï¿½y Evlendirme Dairesi' },
+            { key: 'COCUK_BILGI', label: 'Mï¿½ï¿½terek ï¿½ocuk Bilgileri (varsa)', type: 'textarea', placeholder: 'ï¿½rn: 1. Zeynep YILMAZ (D: 01.01.2015, TC: 11122233344)' },
+            { key: 'BOSANMA_SEBEPLERI', label: 'Boï¿½anma Sebepleri', type: 'textarea', placeholder: 'ï¿½iddetli geï¿½imsizlik, evlilik birliï¿½inin temelinden sarsï¿½lmasï¿½...', required: true },
+            { key: 'NAFAKA_TALEP', label: 'Nafaka Talebi (TL/ay)', type: 'number', placeholder: 'ï¿½rn: 5000' },
+            { key: 'VELAYET_TALEP', label: 'Velayet Talebi', type: 'text', placeholder: 'ï¿½rn: Mï¿½ï¿½terek ï¿½ocuklarï¿½n velayetinin davacï¿½ anneye verilmesi' },
         ],
-        content: `{{MAHKEME}} BA�KANLI�INA
+        content: `{{MAHKEME}} BAï¿½KANLIï¿½INA
 
 **DAVACI:** {{DAVACI_AD}}
 TC Kimlik No: {{DAVACI_TC}}
 Adres: {{DAVACI_ADRES}}
 
-**VEK�L�:** {{DAVACI_VEKIL_AD}}
+**VEKï¿½Lï¿½:** {{DAVACI_VEKIL_AD}}
 {{DAVACI_VEKIL_BARO}}
 
 **DAVALI:** {{DAVALI_AD}}
 TC Kimlik No: {{DAVALI_TC}}
 Adres: {{DAVALI_ADRES}}
 
-**KONU:** Bo�anma davas� hakk�ndad�r.
+**KONU:** Boï¿½anma davasï¿½ hakkï¿½ndadï¿½r.
 
 ---
 
-**A�IKLAMALAR:**
+**Aï¿½IKLAMALAR:**
 
-1. M�vekkilim ile daval� {{EVLILIK_TARIHI}} tarihinde {{EVLILIK_YERI}}'de evlenmi�lerdir.
+1. Mï¿½vekkilim ile davalï¿½ {{EVLILIK_TARIHI}} tarihinde {{EVLILIK_YERI}}'de evlenmiï¿½lerdir.
 
-2. Taraflar�n bu evlilikten do�an m��terek �ocuklar�:
+2. Taraflarï¿½n bu evlilikten doï¿½an mï¿½ï¿½terek ï¿½ocuklarï¿½:
 {{COCUK_BILGI}}
 
 3. {{BOSANMA_SEBEPLERI}}
 
-4. Evlilik birli�inin temelinden sars�lmas� nedeniyle taraflar aras�ndaki evlili�in devam� m�mk�n de�ildir. Ortak hayat�n yeniden kurulmas� ihtimali bulunmamaktad�r.
+4. Evlilik birliï¿½inin temelinden sarsï¿½lmasï¿½ nedeniyle taraflar arasï¿½ndaki evliliï¿½in devamï¿½ mï¿½mkï¿½n deï¿½ildir. Ortak hayatï¿½n yeniden kurulmasï¿½ ihtimali bulunmamaktadï¿½r.
 
 ---
 
-**HUKUK� SEBEPLER:**
+**HUKUKï¿½ SEBEPLER:**
 
-- 4721 say�l� T�rk Medeni Kanunu m.166 (Evlilik birli�inin sars�lmas�)
-- 4721 say�l� T�rk Medeni Kanunu m.169 (Bo�anmada velayet)
-- 4721 say�l� T�rk Medeni Kanunu m.175 (Yoksulluk nafakas�)
-- 4721 say�l� T�rk Medeni Kanunu m.182 (�ocuk nafakas�)
-
----
-
-**DEL�LLER:**
-
-1. N�fus kay�t �rne�i
-2. Vukuatl� n�fus kay�t �rne�i
-3. Evlilik c�zdan� sureti
-4. Tan�k beyanlar�
-5. Ekonomik durum ara�t�rmas�
-6. Her t�rl� yasal delil
+- 4721 sayï¿½lï¿½ Tï¿½rk Medeni Kanunu m.166 (Evlilik birliï¿½inin sarsï¿½lmasï¿½)
+- 4721 sayï¿½lï¿½ Tï¿½rk Medeni Kanunu m.169 (Boï¿½anmada velayet)
+- 4721 sayï¿½lï¿½ Tï¿½rk Medeni Kanunu m.175 (Yoksulluk nafakasï¿½)
+- 4721 sayï¿½lï¿½ Tï¿½rk Medeni Kanunu m.182 (ï¿½ocuk nafakasï¿½)
 
 ---
 
-**SONU� VE �STEM:**
+**DELï¿½LLER:**
 
-Yukar�da arz ve izah edilen sebeplerle;
+1. Nï¿½fus kayï¿½t ï¿½rneï¿½i
+2. Vukuatlï¿½ nï¿½fus kayï¿½t ï¿½rneï¿½i
+3. Evlilik cï¿½zdanï¿½ sureti
+4. Tanï¿½k beyanlarï¿½
+5. Ekonomik durum araï¿½tï¿½rmasï¿½
+6. Her tï¿½rlï¿½ yasal delil
 
-1. Taraflar�n TMK m.166 uyar�nca BO�ANMALARINA,
-2. M��terek �ocuklar�n velayetinin davac� tarafa verilmesine ({{VELAYET_TALEP}}),
-3. Daval�n�n ayl�k {{NAFAKA_TALEP}} TL i�tirak nafakas� �demesine,
-4. Yarg�lama giderlerinin daval�ya y�kletilmesine,
+---
 
-karar verilmesini vekaleten sayg�lar�mla arz ve talep ederim. {{TARIH}}
+**SONUï¿½ VE ï¿½STEM:**
 
-Davac� Vekili
+Yukarï¿½da arz ve izah edilen sebeplerle;
+
+1. Taraflarï¿½n TMK m.166 uyarï¿½nca BOï¿½ANMALARINA,
+2. Mï¿½ï¿½terek ï¿½ocuklarï¿½n velayetinin davacï¿½ tarafa verilmesine ({{VELAYET_TALEP}}),
+3. Davalï¿½nï¿½n aylï¿½k {{NAFAKA_TALEP}} TL iï¿½tirak nafakasï¿½ ï¿½demesine,
+4. Yargï¿½lama giderlerinin davalï¿½ya yï¿½kletilmesine,
+
+karar verilmesini vekaleten saygï¿½larï¿½mla arz ve talep ederim. {{TARIH}}
+
+Davacï¿½ Vekili
 {{DAVACI_VEKIL_AD}}
 `,
         isPremium: false,
@@ -2971,69 +4540,69 @@ Davac� Vekili
     {
         id: '2',
         category: 'Hukuk',
-        subcategory: 'Bor�lar Hukuku',
-        title: 'Tazminat Davas� Dilek�esi',
-        description: 'Maddi ve manevi tazminat talepli dava dilek�esi',
+        subcategory: 'Borï¿½lar Hukuku',
+        title: 'Tazminat Davasï¿½ Dilekï¿½esi',
+        description: 'Maddi ve manevi tazminat talepli dava dilekï¿½esi',
         icon: 'Banknote',
         variables: [
-            { key: 'MAHKEME', label: 'Mahkeme Ad�', type: 'text', placeholder: 'Asliye Hukuk Mahkemesi' },
-            { key: 'DAVACI_AD', label: 'Davac� Ad� Soyad�', type: 'text', required: true },
-            { key: 'DAVACI_TC', label: 'Davac� TC No', type: 'text', required: true },
-            { key: 'DAVALI_AD', label: 'Daval�/Kurum Ad�', type: 'text', required: true },
+            { key: 'MAHKEME', label: 'Mahkeme Adï¿½', type: 'text', placeholder: 'Asliye Hukuk Mahkemesi' },
+            { key: 'DAVACI_AD', label: 'Davacï¿½ Adï¿½ Soyadï¿½', type: 'text', required: true },
+            { key: 'DAVACI_TC', label: 'Davacï¿½ TC No', type: 'text', required: true },
+            { key: 'DAVALI_AD', label: 'Davalï¿½/Kurum Adï¿½', type: 'text', required: true },
             { key: 'OLAY_TARIHI', label: 'Olay Tarihi', type: 'date', required: true },
-            { key: 'OLAY_ACIKLAMASI', label: 'Olay�n A��klamas�', type: 'textarea', required: true },
-            { key: 'MADDI_TAZMINAT', label: 'Maddi Tazminat Tutar� (TL)', type: 'number' },
-            { key: 'MANEVI_TAZMINAT', label: 'Manevi Tazminat Tutar� (TL)', type: 'number' },
+            { key: 'OLAY_ACIKLAMASI', label: 'Olayï¿½n Aï¿½ï¿½klamasï¿½', type: 'textarea', required: true },
+            { key: 'MADDI_TAZMINAT', label: 'Maddi Tazminat Tutarï¿½ (TL)', type: 'number' },
+            { key: 'MANEVI_TAZMINAT', label: 'Manevi Tazminat Tutarï¿½ (TL)', type: 'number' },
         ],
-        content: `{{MAHKEME}} BA�KANLI�INA
+        content: `{{MAHKEME}} BAï¿½KANLIï¿½INA
 
 **DAVACI:** {{DAVACI_AD}}
 TC Kimlik No: {{DAVACI_TC}}
 
 **DAVALI:** {{DAVALI_AD}}
 
-**KONU:** Maddi ve manevi tazminat talepli dava dilek�esidir.
+**KONU:** Maddi ve manevi tazminat talepli dava dilekï¿½esidir.
 
-**DAVA DE�ER�:** {{MADDI_TAZMINAT}} TL (Maddi) + {{MANEVI_TAZMINAT}} TL (Manevi)
+**DAVA DEï¿½ERï¿½:** {{MADDI_TAZMINAT}} TL (Maddi) + {{MANEVI_TAZMINAT}} TL (Manevi)
 
 ---
 
-**A�IKLAMALAR:**
+**Aï¿½IKLAMALAR:**
 
-1. {{OLAY_TARIHI}} tarihinde a�a��da a��klanan olay meydana gelmi�tir.
+1. {{OLAY_TARIHI}} tarihinde aï¿½aï¿½ï¿½da aï¿½ï¿½klanan olay meydana gelmiï¿½tir.
 
 2. {{OLAY_ACIKLAMASI}}
 
-3. Bu olay nedeniyle m�vekkilim maddi ve manevi zarara u�ram��t�r. Zarar�n tazmini i�in i�bu dava a��lm��t�r.
+3. Bu olay nedeniyle mï¿½vekkilim maddi ve manevi zarara uï¿½ramï¿½ï¿½tï¿½r. Zararï¿½n tazmini iï¿½in iï¿½bu dava aï¿½ï¿½lmï¿½ï¿½tï¿½r.
 
 ---
 
-**HUKUK� SEBEPLER:**
+**HUKUKï¿½ SEBEPLER:**
 
-- 6098 say�l� T�rk Bor�lar Kanunu m.49-76 (Haks�z fiil)
-- 6098 say�l� T�rk Bor�lar Kanunu m.56 (Manevi tazminat)
+- 6098 sayï¿½lï¿½ Tï¿½rk Borï¿½lar Kanunu m.49-76 (Haksï¿½z fiil)
+- 6098 sayï¿½lï¿½ Tï¿½rk Borï¿½lar Kanunu m.56 (Manevi tazminat)
 
 ---
 
-**DEL�LLER:**
+**DELï¿½LLER:**
 
-1. Olay tutanaklar�
+1. Olay tutanaklarï¿½
 2. Fatura ve belgeler
-3. Tan�k beyanlar�
-4. Bilirki�i incelemesi
-5. Her t�rl� yasal delil
+3. Tanï¿½k beyanlarï¿½
+4. Bilirkiï¿½i incelemesi
+5. Her tï¿½rlï¿½ yasal delil
 
 ---
 
-**SONU� VE �STEM:**
+**SONUï¿½ VE ï¿½STEM:**
 
-1. {{MADDI_TAZMINAT}} TL MADD� TAZM�NATIN olay tarihinden itibaren i�leyecek yasal faiziyle birlikte daval�dan tahsiline,
-2. {{MANEVI_TAZMINAT}} TL MANEV� TAZM�NATIN daval�dan tahsiline,
-3. Yarg�lama giderlerinin daval�ya y�kletilmesine,
+1. {{MADDI_TAZMINAT}} TL MADDï¿½ TAZMï¿½NATIN olay tarihinden itibaren iï¿½leyecek yasal faiziyle birlikte davalï¿½dan tahsiline,
+2. {{MANEVI_TAZMINAT}} TL MANEVï¿½ TAZMï¿½NATIN davalï¿½dan tahsiline,
+3. Yargï¿½lama giderlerinin davalï¿½ya yï¿½kletilmesine,
 
-karar verilmesini sayg�lar�mla arz ve talep ederim. {{TARIH}}
+karar verilmesini saygï¿½larï¿½mla arz ve talep ederim. {{TARIH}}
 
-Davac�
+Davacï¿½
 {{DAVACI_AD}}
 `,
         isPremium: false,
@@ -3041,53 +4610,53 @@ Davac�
     },
     {
         id: '3',
-        category: '�cra',
-        subcategory: '�cra Takibi',
-        title: '�cra Takibine �tiraz Dilek�esi',
-        description: 'Haks�z icra takibine kar�� itiraz dilek�esi',
+        category: 'ï¿½cra',
+        subcategory: 'ï¿½cra Takibi',
+        title: 'ï¿½cra Takibine ï¿½tiraz Dilekï¿½esi',
+        description: 'Haksï¿½z icra takibine karï¿½ï¿½ itiraz dilekï¿½esi',
         icon: 'Gavel',
         variables: [
-            { key: 'ICRA_MUDURLUGU', label: '�cra M�d�rl���', type: 'text', required: true },
-            { key: 'DOSYA_NO', label: '�cra Dosya No', type: 'text', required: true },
-            { key: 'BORCLU_AD', label: 'Bor�lu Ad� Soyad�', type: 'text', required: true },
-            { key: 'ALACAKLI_AD', label: 'Alacakl� Ad�', type: 'text', required: true },
-            { key: 'ITIRAZ_SEBEPLERI', label: '�tiraz Sebepleri', type: 'textarea', required: true },
+            { key: 'ICRA_MUDURLUGU', label: 'ï¿½cra Mï¿½dï¿½rlï¿½ï¿½ï¿½', type: 'text', required: true },
+            { key: 'DOSYA_NO', label: 'ï¿½cra Dosya No', type: 'text', required: true },
+            { key: 'BORCLU_AD', label: 'Borï¿½lu Adï¿½ Soyadï¿½', type: 'text', required: true },
+            { key: 'ALACAKLI_AD', label: 'Alacaklï¿½ Adï¿½', type: 'text', required: true },
+            { key: 'ITIRAZ_SEBEPLERI', label: 'ï¿½tiraz Sebepleri', type: 'textarea', required: true },
         ],
         content: `## {{ICRA_MUDURLUGU}}'NE
 
 **DOSYA NO:** {{DOSYA_NO}}
 
-**BOR�LU (�T�RAZ EDEN):** {{BORCLU_AD}}
+**BORï¿½LU (ï¿½Tï¿½RAZ EDEN):** {{BORCLU_AD}}
 
 **ALACAKLI:** {{ALACAKLI_AD}}
 
-**KONU:** �deme emrine itiraz�m�z hakk�ndad�r.
+**KONU:** ï¿½deme emrine itirazï¿½mï¿½z hakkï¿½ndadï¿½r.
 
 ---
 
-## A�IKLAMALAR
+## Aï¿½IKLAMALAR
 
-1. M�d�rl���n�zce y�r�t�len {{DOSYA_NO}} say�l� icra takip dosyas�nda taraf�ma �deme emri tebli� edilmi�tir.
+1. Mï¿½dï¿½rlï¿½ï¿½ï¿½nï¿½zce yï¿½rï¿½tï¿½len {{DOSYA_NO}} sayï¿½lï¿½ icra takip dosyasï¿½nda tarafï¿½ma ï¿½deme emri tebliï¿½ edilmiï¿½tir.
 
 2. {{ITIRAZ_SEBEPLERI}}
 
-3. Yukar�da a��klanan nedenlerle s�z konusu borca itiraz etme zorunlulu�u do�mu�tur.
+3. Yukarï¿½da aï¿½ï¿½klanan nedenlerle sï¿½z konusu borca itiraz etme zorunluluï¿½u doï¿½muï¿½tur.
 
 ---
 
-## HUKUK� SEBEPLER
+## HUKUKï¿½ SEBEPLER
 
-- 2004 say�l� �cra ve �flas Kanunu m.62 (�tiraz)
-- 2004 say�l� �cra ve �flas Kanunu m.66 (�tiraz�n h�k�mleri)
+- 2004 sayï¿½lï¿½ ï¿½cra ve ï¿½flas Kanunu m.62 (ï¿½tiraz)
+- 2004 sayï¿½lï¿½ ï¿½cra ve ï¿½flas Kanunu m.66 (ï¿½tirazï¿½n hï¿½kï¿½mleri)
 
 ---
 
-## SONU� VE �STEM
+## SONUï¿½ VE ï¿½STEM
 
-Yukar�da a��klanan sebeplerle;
+Yukarï¿½da aï¿½ï¿½klanan sebeplerle;
 
-1. BORCA �T�RAZ ED�YORUM,
-2. Takibin durdurulmas�na,
+1. BORCA ï¿½Tï¿½RAZ EDï¿½YORUM,
+2. Takibin durdurulmasï¿½na,
 
 karar verilmesini arz ve talep ederim.
 
@@ -3101,63 +4670,63 @@ karar verilmesini arz ve talep ederim.
         id: '4',
         category: 'Hukuk',
         subcategory: 'Kira Hukuku',
-        title: 'Kira Tahliye Davas� Dilek�esi',
-        description: 'Kirac�n�n tahliyesi i�in dava dilek�esi',
+        title: 'Kira Tahliye Davasï¿½ Dilekï¿½esi',
+        description: 'Kiracï¿½nï¿½n tahliyesi iï¿½in dava dilekï¿½esi',
         icon: 'Home',
         variables: [
-            { key: 'MAHKEME', label: 'Mahkeme Ad�', type: 'text', placeholder: 'Sulh Hukuk Mahkemesi' },
-            { key: 'KIRAYA_VEREN', label: 'Kiraya Veren Ad�', type: 'text', required: true },
-            { key: 'KIRACI', label: 'Kirac� Ad�', type: 'text', required: true },
-            { key: 'TASINMAZ_ADRES', label: 'Ta��nmaz Adresi', type: 'textarea', required: true },
-            { key: 'KIRA_BEDELI', label: 'Ayl�k Kira Bedeli', type: 'number' },
+            { key: 'MAHKEME', label: 'Mahkeme Adï¿½', type: 'text', placeholder: 'Sulh Hukuk Mahkemesi' },
+            { key: 'KIRAYA_VEREN', label: 'Kiraya Veren Adï¿½', type: 'text', required: true },
+            { key: 'KIRACI', label: 'Kiracï¿½ Adï¿½', type: 'text', required: true },
+            { key: 'TASINMAZ_ADRES', label: 'Taï¿½ï¿½nmaz Adresi', type: 'textarea', required: true },
+            { key: 'KIRA_BEDELI', label: 'Aylï¿½k Kira Bedeli', type: 'number' },
             { key: 'TAHLIYE_SEBEBI', label: 'Tahliye Sebebi', type: 'textarea', required: true },
         ],
-        content: `## {{MAHKEME}} BA�KANLI�INA
+        content: `## {{MAHKEME}} BAï¿½KANLIï¿½INA
 
-**DAVACI (K�RAYA VEREN):** {{KIRAYA_VEREN}}
+**DAVACI (Kï¿½RAYA VEREN):** {{KIRAYA_VEREN}}
 
-**DAVALI (K�RACI):** {{KIRACI}}
+**DAVALI (Kï¿½RACI):** {{KIRACI}}
 
-**KONU:** Kiralanan�n tahliyesi talebimiz hakk�ndad�r.
+**KONU:** Kiralananï¿½n tahliyesi talebimiz hakkï¿½ndadï¿½r.
 
 ---
 
-## A�IKLAMALAR
+## Aï¿½IKLAMALAR
 
-1. Daval�, a�a��da adresi belirtilen ta��nmazda kirac� olarak ikamet etmektedir:
+1. Davalï¿½, aï¿½aï¿½ï¿½da adresi belirtilen taï¿½ï¿½nmazda kiracï¿½ olarak ikamet etmektedir:
    **Adres:** {{TASINMAZ_ADRES}}
 
-2. Ayl�k kira bedeli {{KIRA_BEDELI}} TL olarak belirlenmi�tir.
+2. Aylï¿½k kira bedeli {{KIRA_BEDELI}} TL olarak belirlenmiï¿½tir.
 
 3. {{TAHLIYE_SEBEBI}}
 
-4. Bu nedenlerle ta��nmaz�n tahliyesi gerekmektedir.
+4. Bu nedenlerle taï¿½ï¿½nmazï¿½n tahliyesi gerekmektedir.
 
 ---
 
-## HUKUK� SEBEPLER
+## HUKUKï¿½ SEBEPLER
 
-- 6098 say�l� T�rk Bor�lar Kanunu m.347-356 (Kira s�zle�mesi)
-- 6098 say�l� T�rk Bor�lar Kanunu m.352 (Kirac�n�n temerr�d�)
-
----
-
-## DEL�LLER
-
-1. Kira s�zle�mesi
-2. �htar belgeleri
-3. �deme kay�tlar�
-4. Tan�k beyanlar�
+- 6098 sayï¿½lï¿½ Tï¿½rk Borï¿½lar Kanunu m.347-356 (Kira sï¿½zleï¿½mesi)
+- 6098 sayï¿½lï¿½ Tï¿½rk Borï¿½lar Kanunu m.352 (Kiracï¿½nï¿½n temerrï¿½dï¿½)
 
 ---
 
-## SONU� VE �STEM
+## DELï¿½LLER
 
-1. Kiralanan�n TAHL�YES�NE,
-2. Birikmi� kira bedellerinin tahsiline,
-3. Yarg�lama giderlerinin daval�ya y�kletilmesine,
+1. Kira sï¿½zleï¿½mesi
+2. ï¿½htar belgeleri
+3. ï¿½deme kayï¿½tlarï¿½
+4. Tanï¿½k beyanlarï¿½
 
-karar verilmesini sayg�lar�mla arz ve talep ederim.
+---
+
+## SONUï¿½ VE ï¿½STEM
+
+1. Kiralananï¿½n TAHLï¿½YESï¿½NE,
+2. Birikmiï¿½ kira bedellerinin tahsiline,
+3. Yargï¿½lama giderlerinin davalï¿½ya yï¿½kletilmesine,
+
+karar verilmesini saygï¿½larï¿½mla arz ve talep ederim.
 
 {{TARIH}}
 {{KIRAYA_VEREN}}
@@ -3167,57 +4736,57 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
     },
     {
         id: '5',
-        category: '�dari',
-        subcategory: '�ptal Davas�',
-        title: '�dari ��lemin �ptali Davas�',
-        description: 'Hukuka ayk�r� idari i�lemlerin iptali i�in dava dilek�esi',
+        category: 'ï¿½dari',
+        subcategory: 'ï¿½ptal Davasï¿½',
+        title: 'ï¿½dari ï¿½ï¿½lemin ï¿½ptali Davasï¿½',
+        description: 'Hukuka aykï¿½rï¿½ idari iï¿½lemlerin iptali iï¿½in dava dilekï¿½esi',
         icon: 'Building2',
         variables: [
-            { key: 'IDARE_MAHKEMESI', label: '�dare Mahkemesi', type: 'text', placeholder: '�stanbul �dare Mahkemesi' },
-            { key: 'DAVACI_AD', label: 'Davac� Ad�', type: 'text', required: true },
-            { key: 'DAVALI_IDARE', label: 'Daval� �dare', type: 'text', required: true },
-            { key: 'ISLEM_TARIHI', label: '��lem Tarihi', type: 'date', required: true },
-            { key: 'ISLEM_KONUSU', label: '�ptali �stenen ��lem', type: 'textarea', required: true },
-            { key: 'HUKUKA_AYKIRILIK', label: 'Hukuka Ayk�r�l�k Nedenleri', type: 'textarea', required: true },
+            { key: 'IDARE_MAHKEMESI', label: 'ï¿½dare Mahkemesi', type: 'text', placeholder: 'ï¿½stanbul ï¿½dare Mahkemesi' },
+            { key: 'DAVACI_AD', label: 'Davacï¿½ Adï¿½', type: 'text', required: true },
+            { key: 'DAVALI_IDARE', label: 'Davalï¿½ ï¿½dare', type: 'text', required: true },
+            { key: 'ISLEM_TARIHI', label: 'ï¿½ï¿½lem Tarihi', type: 'date', required: true },
+            { key: 'ISLEM_KONUSU', label: 'ï¿½ptali ï¿½stenen ï¿½ï¿½lem', type: 'textarea', required: true },
+            { key: 'HUKUKA_AYKIRILIK', label: 'Hukuka Aykï¿½rï¿½lï¿½k Nedenleri', type: 'textarea', required: true },
         ],
-        content: `## {{IDARE_MAHKEMESI}} BA�KANLI�INA
+        content: `## {{IDARE_MAHKEMESI}} BAï¿½KANLIï¿½INA
 
 **DAVACI:** {{DAVACI_AD}}
 
 **DAVALI:** {{DAVALI_IDARE}}
 
-**KONU:** �dari i�lemin iptali talebimiz hakk�ndad�r.
+**KONU:** ï¿½dari iï¿½lemin iptali talebimiz hakkï¿½ndadï¿½r.
 
-**�PTAL� �STENEN ��LEM:** {{ISLEM_KONUSU}}
-**��LEM TAR�H�:** {{ISLEM_TARIHI}}
+**ï¿½PTALï¿½ ï¿½STENEN ï¿½ï¿½LEM:** {{ISLEM_KONUSU}}
+**ï¿½ï¿½LEM TARï¿½Hï¿½:** {{ISLEM_TARIHI}}
 
 ---
 
-## A�IKLAMALAR
+## Aï¿½IKLAMALAR
 
-1. Daval� idare taraf�ndan {{ISLEM_TARIHI}} tarihinde tesis edilen i�lem hukuka ayk�r�d�r.
+1. Davalï¿½ idare tarafï¿½ndan {{ISLEM_TARIHI}} tarihinde tesis edilen iï¿½lem hukuka aykï¿½rï¿½dï¿½r.
 
 2. {{HUKUKA_AYKIRILIK}}
 
-3. S�z konusu i�lem telafisi g�� zararlara neden olmaktad�r.
+3. Sï¿½z konusu iï¿½lem telafisi gï¿½ï¿½ zararlara neden olmaktadï¿½r.
 
 ---
 
-## HUKUK� SEBEPLER
+## HUKUKï¿½ SEBEPLER
 
-- 2577 say�l� �dari Yarg�lama Usul� Kanunu
-- Anayasa m.125 (Yarg� yolu)
-- �lgili mevzuat h�k�mleri
+- 2577 sayï¿½lï¿½ ï¿½dari Yargï¿½lama Usulï¿½ Kanunu
+- Anayasa m.125 (Yargï¿½ yolu)
+- ï¿½lgili mevzuat hï¿½kï¿½mleri
 
 ---
 
-## SONU� VE �STEM
+## SONUï¿½ VE ï¿½STEM
 
-1. Dava konusu idari i�lemin �PTAL�NE,
-2. Y�r�tmenin durdurulmas�na,
-3. Yarg�lama giderlerinin daval�ya y�kletilmesine,
+1. Dava konusu idari iï¿½lemin ï¿½PTALï¿½NE,
+2. Yï¿½rï¿½tmenin durdurulmasï¿½na,
+3. Yargï¿½lama giderlerinin davalï¿½ya yï¿½kletilmesine,
 
-karar verilmesini sayg�lar�mla arz ve talep ederim.
+karar verilmesini saygï¿½larï¿½mla arz ve talep ederim.
 
 {{TARIH}}
 {{DAVACI_AD}}
@@ -3228,61 +4797,61 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
     {
         id: '6',
         category: 'Ceza',
-        subcategory: '�ikayet',
-        title: 'Su� Duyurusu Dilek�esi',
-        description: 'Cumhuriyet Savc�l���na su� duyurusu dilek�esi',
+        subcategory: 'ï¿½ikayet',
+        title: 'Suï¿½ Duyurusu Dilekï¿½esi',
+        description: 'Cumhuriyet Savcï¿½lï¿½ï¿½ï¿½na suï¿½ duyurusu dilekï¿½esi',
         icon: 'Siren',
         variables: [
-            { key: 'SAVCILIK', label: 'Cumhuriyet Ba�savc�l���', type: 'text', required: true },
-            { key: 'SIKAYET_EDEN', label: '�ikayet Eden (M��teki)', type: 'text', required: true },
-            { key: 'SUPHELI', label: '��pheli', type: 'text', required: true },
-            { key: 'SUC_TARIHI', label: 'Su� Tarihi', type: 'date', required: true },
-            { key: 'SUC_KONUSU', label: 'Su� Konusu Olay', type: 'textarea', required: true },
-            { key: 'ISTENEN_CEZA', label: 'Talep Edilen ��lem', type: 'textarea' },
+            { key: 'SAVCILIK', label: 'Cumhuriyet Baï¿½savcï¿½lï¿½ï¿½ï¿½', type: 'text', required: true },
+            { key: 'SIKAYET_EDEN', label: 'ï¿½ikayet Eden (Mï¿½ï¿½teki)', type: 'text', required: true },
+            { key: 'SUPHELI', label: 'ï¿½ï¿½pheli', type: 'text', required: true },
+            { key: 'SUC_TARIHI', label: 'Suï¿½ Tarihi', type: 'date', required: true },
+            { key: 'SUC_KONUSU', label: 'Suï¿½ Konusu Olay', type: 'textarea', required: true },
+            { key: 'ISTENEN_CEZA', label: 'Talep Edilen ï¿½ï¿½lem', type: 'textarea' },
         ],
         content: `## {{SAVCILIK}}'NA
 
-**��KAYET EDEN (M��TEK�):** {{SIKAYET_EDEN}}
+**ï¿½ï¿½KAYET EDEN (Mï¿½ï¿½TEKï¿½):** {{SIKAYET_EDEN}}
 
-**��PHEL�:** {{SUPHELI}}
+**ï¿½ï¿½PHELï¿½:** {{SUPHELI}}
 
-**SU� TAR�H�:** {{SUC_TARIHI}}
+**SUï¿½ TARï¿½Hï¿½:** {{SUC_TARIHI}}
 
-**KONU:** Su� duyurusu hakk�ndad�r.
+**KONU:** Suï¿½ duyurusu hakkï¿½ndadï¿½r.
 
 ---
 
-## A�IKLAMALAR
+## Aï¿½IKLAMALAR
 
-1. {{SUC_TARIHI}} tarihinde a�a��da a��klanan olay meydana gelmi�tir:
+1. {{SUC_TARIHI}} tarihinde aï¿½aï¿½ï¿½da aï¿½ï¿½klanan olay meydana gelmiï¿½tir:
 
 2. {{SUC_KONUSU}}
 
-3. Bu eylemler T�rk Ceza Kanunu kapsam�nda su� te�kil etmektedir.
+3. Bu eylemler Tï¿½rk Ceza Kanunu kapsamï¿½nda suï¿½ teï¿½kil etmektedir.
 
 ---
 
-## SU� VE CEZA
+## SUï¿½ VE CEZA
 
-- �lgili T�rk Ceza Kanunu maddeleri
-- Cezai yapt�r�m talep edilmektedir
-
----
-
-## DEL�LLER
-
-1. Olay tutanaklar�
-2. G�r�nt�/Ses kay�tlar�
-3. Tan�k beyanlar�
-4. Di�er deliller
+- ï¿½lgili Tï¿½rk Ceza Kanunu maddeleri
+- Cezai yaptï¿½rï¿½m talep edilmektedir
 
 ---
 
-## SONU� VE �STEM
+## DELï¿½LLER
+
+1. Olay tutanaklarï¿½
+2. Gï¿½rï¿½ntï¿½/Ses kayï¿½tlarï¿½
+3. Tanï¿½k beyanlarï¿½
+4. Diï¿½er deliller
+
+---
+
+## SONUï¿½ VE ï¿½STEM
 
 1. {{ISTENEN_CEZA}}
 
-��phelinin yakalanarak cezaland�r�lmas� i�in gerekli soru�turman�n yap�lmas�n� sayg�lar�mla arz ve talep ederim.
+ï¿½ï¿½phelinin yakalanarak cezalandï¿½rï¿½lmasï¿½ iï¿½in gerekli soruï¿½turmanï¿½n yapï¿½lmasï¿½nï¿½ saygï¿½larï¿½mla arz ve talep ederim.
 
 {{TARIH}}
 {{SIKAYET_EDEN}}
@@ -3293,63 +4862,63 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
     ,
     {
         "id": "7",
-        "category": "�cra",
-        "subcategory": "�cra Takibi",
-        "title": "�lams�z �cra Takip Talebi",
-        "description": "Genel haciz yoluyla ilams�z icra takibi ba�latma talebi",
+        "category": "ï¿½cra",
+        "subcategory": "ï¿½cra Takibi",
+        "title": "ï¿½lamsï¿½z ï¿½cra Takip Talebi",
+        "description": "Genel haciz yoluyla ilamsï¿½z icra takibi baï¿½latma talebi",
         "icon": "Gavel",
         "variables": [
             {
                 "key": "ICRA_DAIRESI",
-                "label": "�cra Dairesi",
+                "label": "ï¿½cra Dairesi",
                 "type": "text",
                 "required": true,
-                "placeholder": "�stanbul 1. �cra Dairesi"
+                "placeholder": "ï¿½stanbul 1. ï¿½cra Dairesi"
             },
             {
                 "key": "ALACAKLI_AD",
-                "label": "Alacakl� Ad� Soyad�",
+                "label": "Alacaklï¿½ Adï¿½ Soyadï¿½",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "ALACAKLI_TC",
-                "label": "Alacakl� TC No",
+                "label": "Alacaklï¿½ TC No",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "ALACAKLI_ADRES",
-                "label": "Alacakl� Adresi",
+                "label": "Alacaklï¿½ Adresi",
                 "type": "textarea",
                 "required": true
             },
             {
                 "key": "BORCLU_AD",
-                "label": "Bor�lu Ad� Soyad�",
+                "label": "Borï¿½lu Adï¿½ Soyadï¿½",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "BORCLU_TC",
-                "label": "Bor�lu TC No",
+                "label": "Borï¿½lu TC No",
                 "type": "text"
             },
             {
                 "key": "BORCLU_ADRES",
-                "label": "Bor�lu Adresi",
+                "label": "Borï¿½lu Adresi",
                 "type": "textarea",
                 "required": true
             },
             {
                 "key": "ALACAK_TUTARI",
-                "label": "Alacak Tutar� (TL)",
+                "label": "Alacak Tutarï¿½ (TL)",
                 "type": "number",
                 "required": true
             },
             {
                 "key": "ALACAK_NEDENI",
-                "label": "Alaca��n Nedeni",
+                "label": "Alacaï¿½ï¿½n Nedeni",
                 "type": "textarea",
                 "required": true
             },
@@ -3359,53 +4928,53 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
                 "type": "date"
             }
         ],
-        "content": "## {{ICRA_DAIRESI}}'NE\n\n## TAK�P TALEB�\n\n**ALACAKLI:** {{ALACAKLI_AD}}\nTC Kimlik No: {{ALACAKLI_TC}}\nAdres: {{ALACAKLI_ADRES}}\n\n**BOR�LU:** {{BORCLU_AD}}\nTC Kimlik No: {{BORCLU_TC}}\nAdres: {{BORCLU_ADRES}}\n\n---\n\n**TAK�P KONUSU ALACAK:**\n\n| A��klama | Tutar |\n|----------|-------|\n| As�l Alacak | {{ALACAK_TUTARI}} TL |\n| Faiz (Vade Tarihinden �tibaren) | Hesaplanacak |\n| **TOPLAM** | {{ALACAK_TUTARI}} TL + Faiz |\n\n**ALACA�IN NEDEN�:** {{ALACAK_NEDENI}}\n\n**VADE TAR�H�:** {{VADE_TARIHI}}\n\n---\n\n## TALEP\n\nYukar�da belirtilen alaca��m�n tahsili i�in bor�lu aleyhine **genel haciz yoluyla ilams�z icra takibi** ba�lat�lmas�n� talep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
+        "content": "## {{ICRA_DAIRESI}}'NE\n\n## TAKï¿½P TALEBï¿½\n\n**ALACAKLI:** {{ALACAKLI_AD}}\nTC Kimlik No: {{ALACAKLI_TC}}\nAdres: {{ALACAKLI_ADRES}}\n\n**BORï¿½LU:** {{BORCLU_AD}}\nTC Kimlik No: {{BORCLU_TC}}\nAdres: {{BORCLU_ADRES}}\n\n---\n\n**TAKï¿½P KONUSU ALACAK:**\n\n| Aï¿½ï¿½klama | Tutar |\n|----------|-------|\n| Asï¿½l Alacak | {{ALACAK_TUTARI}} TL |\n| Faiz (Vade Tarihinden ï¿½tibaren) | Hesaplanacak |\n| **TOPLAM** | {{ALACAK_TUTARI}} TL + Faiz |\n\n**ALACAï¿½IN NEDENï¿½:** {{ALACAK_NEDENI}}\n\n**VADE TARï¿½Hï¿½:** {{VADE_TARIHI}}\n\n---\n\n## TALEP\n\nYukarï¿½da belirtilen alacaï¿½ï¿½mï¿½n tahsili iï¿½in borï¿½lu aleyhine **genel haciz yoluyla ilamsï¿½z icra takibi** baï¿½latï¿½lmasï¿½nï¿½ talep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
         "isPremium": false,
         "usageCount": 523
     },
     {
         "id": "8",
-        "category": "�cra",
-        "subcategory": "�cra Takibi",
-        "title": "Kambiyo Senedi �cra Takibi",
-        "description": "�ek, senet veya poli�e ile icra takibi ba�latma",
+        "category": "ï¿½cra",
+        "subcategory": "ï¿½cra Takibi",
+        "title": "Kambiyo Senedi ï¿½cra Takibi",
+        "description": "ï¿½ek, senet veya poliï¿½e ile icra takibi baï¿½latma",
         "icon": "Receipt",
         "variables": [
             {
                 "key": "ICRA_DAIRESI",
-                "label": "�cra Dairesi",
+                "label": "ï¿½cra Dairesi",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "ALACAKLI_AD",
-                "label": "Alacakl� Ad�",
+                "label": "Alacaklï¿½ Adï¿½",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "ALACAKLI_ADRES",
-                "label": "Alacakl� Adresi",
+                "label": "Alacaklï¿½ Adresi",
                 "type": "textarea",
                 "required": true
             },
             {
                 "key": "BORCLU_AD",
-                "label": "Bor�lu Ad�",
+                "label": "Borï¿½lu Adï¿½",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "BORCLU_ADRES",
-                "label": "Bor�lu Adresi",
+                "label": "Borï¿½lu Adresi",
                 "type": "textarea",
                 "required": true
             },
             {
                 "key": "SENET_TURU",
-                "label": "Senet T�r�",
+                "label": "Senet Tï¿½rï¿½",
                 "type": "text",
-                "placeholder": "Bono / �ek / Poli�e"
+                "placeholder": "Bono / ï¿½ek / Poliï¿½e"
             },
             {
                 "key": "SENET_TARIHI",
@@ -3415,7 +4984,7 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
             },
             {
                 "key": "SENET_TUTARI",
-                "label": "Senet Tutar� (TL)",
+                "label": "Senet Tutarï¿½ (TL)",
                 "type": "number",
                 "required": true
             },
@@ -3426,33 +4995,33 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
                 "required": true
             }
         ],
-        "content": "## {{ICRA_DAIRESI}}'NE\n\n## KAMB�YO SENETLER�NE MAHSUS HAC�Z YOLUYLA TAK�P TALEB�\n\n**ALACAKLI:** {{ALACAKLI_AD}}\nAdres: {{ALACAKLI_ADRES}}\n\n**BOR�LU:** {{BORCLU_AD}}\nAdres: {{BORCLU_ADRES}}\n\n---\n\n**TAK�BE KONU KAMB�YO SENED�:**\n\n| Bilgi | De�er |\n|-------|-------|\n| Senet T�r� | {{SENET_TURU}} |\n| D�zenleme Tarihi | {{SENET_TARIHI}} |\n| Vade Tarihi | {{VADE_TARIHI}} |\n| Senet Tutar� | {{SENET_TUTARI}} TL |\n\n---\n\n## TALEP\n\nEkte sunulan kambiyo senedine dayal� olarak, ��K m.167 ve devam� maddeleri uyar�nca bor�lu aleyhine **kambiyo senetlerine mahsus haciz yoluyla takip** ba�lat�lmas�n� talep ederim.\n\n**EKLER:**\n1. Kambiyo senedi asl�\n2. Protesto belgesi (varsa)\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
+        "content": "## {{ICRA_DAIRESI}}'NE\n\n## KAMBï¿½YO SENETLERï¿½NE MAHSUS HACï¿½Z YOLUYLA TAKï¿½P TALEBï¿½\n\n**ALACAKLI:** {{ALACAKLI_AD}}\nAdres: {{ALACAKLI_ADRES}}\n\n**BORï¿½LU:** {{BORCLU_AD}}\nAdres: {{BORCLU_ADRES}}\n\n---\n\n**TAKï¿½BE KONU KAMBï¿½YO SENEDï¿½:**\n\n| Bilgi | Deï¿½er |\n|-------|-------|\n| Senet Tï¿½rï¿½ | {{SENET_TURU}} |\n| Dï¿½zenleme Tarihi | {{SENET_TARIHI}} |\n| Vade Tarihi | {{VADE_TARIHI}} |\n| Senet Tutarï¿½ | {{SENET_TUTARI}} TL |\n\n---\n\n## TALEP\n\nEkte sunulan kambiyo senedine dayalï¿½ olarak, ï¿½ï¿½K m.167 ve devamï¿½ maddeleri uyarï¿½nca borï¿½lu aleyhine **kambiyo senetlerine mahsus haciz yoluyla takip** baï¿½latï¿½lmasï¿½nï¿½ talep ederim.\n\n**EKLER:**\n1. Kambiyo senedi aslï¿½\n2. Protesto belgesi (varsa)\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
         "isPremium": false,
         "usageCount": 412
     },
     {
         "id": "9",
-        "category": "�cra",
-        "subcategory": "�cra �tiraz",
-        "title": "Borca �tiraz Dilek�esi",
-        "description": "�cra takibine kar�� borca itiraz",
+        "category": "ï¿½cra",
+        "subcategory": "ï¿½cra ï¿½tiraz",
+        "title": "Borca ï¿½tiraz Dilekï¿½esi",
+        "description": "ï¿½cra takibine karï¿½ï¿½ borca itiraz",
         "icon": "ShieldX",
         "variables": [
             {
                 "key": "ICRA_DAIRESI",
-                "label": "�cra Dairesi",
+                "label": "ï¿½cra Dairesi",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "DOSYA_NO",
-                "label": "�cra Dosya No",
+                "label": "ï¿½cra Dosya No",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "BORCLU_AD",
-                "label": "Bor�lu (�tiraz Eden)",
+                "label": "Borï¿½lu (ï¿½tiraz Eden)",
                 "type": "text",
                 "required": true
             },
@@ -3470,44 +5039,44 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
             },
             {
                 "key": "ALACAKLI_AD",
-                "label": "Alacakl�",
+                "label": "Alacaklï¿½",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "ITIRAZ_NEDENI",
-                "label": "�tiraz Nedeni",
+                "label": "ï¿½tiraz Nedeni",
                 "type": "textarea",
                 "required": true
             }
         ],
-        "content": "## {{ICRA_DAIRESI}}'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**�T�RAZ EDEN (BOR�LU):** {{BORCLU_AD}}\nTC Kimlik No: {{BORCLU_TC}}\nAdres: {{BORCLU_ADRES}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**KONU:** �deme emrine itiraz�md�r.\n\n---\n\n## A�IKLAMALAR\n\n1. M�d�rl���n�z�n yukar�da numaras� yaz�l� dosyas�ndan taraf�ma �deme emri tebli� edilmi�tir.\n\n2. **�T�RAZ NEDEN�M:**\n{{ITIRAZ_NEDENI}}\n\n3. Bu nedenlerle s�z konusu takibe s�resinde itiraz ediyorum.\n\n---\n\n## HUKUK� DAYANAK\n\n- 2004 say�l� �cra ve �flas Kanunu m.62 (�tiraz)\n- 2004 say�l� �cra ve �flas Kanunu m.66 (�tiraz�n h�k�mleri)\n\n---\n\n## SONU� VE �STEM\n\n**BORCA �T�RAZ ED�YORUM.**\n\nTakibin durdurulmas�n� sayg�lar�mla arz ve talep ederim.\n\n{{TARIH}}\n{{BORCLU_AD}}\n",
+        "content": "## {{ICRA_DAIRESI}}'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ï¿½Tï¿½RAZ EDEN (BORï¿½LU):** {{BORCLU_AD}}\nTC Kimlik No: {{BORCLU_TC}}\nAdres: {{BORCLU_ADRES}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**KONU:** ï¿½deme emrine itirazï¿½mdï¿½r.\n\n---\n\n## Aï¿½IKLAMALAR\n\n1. Mï¿½dï¿½rlï¿½ï¿½ï¿½nï¿½zï¿½n yukarï¿½da numarasï¿½ yazï¿½lï¿½ dosyasï¿½ndan tarafï¿½ma ï¿½deme emri tebliï¿½ edilmiï¿½tir.\n\n2. **ï¿½Tï¿½RAZ NEDENï¿½M:**\n{{ITIRAZ_NEDENI}}\n\n3. Bu nedenlerle sï¿½z konusu takibe sï¿½resinde itiraz ediyorum.\n\n---\n\n## HUKUKï¿½ DAYANAK\n\n- 2004 sayï¿½lï¿½ ï¿½cra ve ï¿½flas Kanunu m.62 (ï¿½tiraz)\n- 2004 sayï¿½lï¿½ ï¿½cra ve ï¿½flas Kanunu m.66 (ï¿½tirazï¿½n hï¿½kï¿½mleri)\n\n---\n\n## SONUï¿½ VE ï¿½STEM\n\n**BORCA ï¿½Tï¿½RAZ EDï¿½YORUM.**\n\nTakibin durdurulmasï¿½nï¿½ saygï¿½larï¿½mla arz ve talep ederim.\n\n{{TARIH}}\n{{BORCLU_AD}}\n",
         "isPremium": false,
         "usageCount": 678
     },
     {
         "id": "10",
-        "category": "�cra",
-        "subcategory": "�cra �tiraz",
-        "title": "�mzaya �tiraz Dilek�esi",
+        "category": "ï¿½cra",
+        "subcategory": "ï¿½cra ï¿½tiraz",
+        "title": "ï¿½mzaya ï¿½tiraz Dilekï¿½esi",
         "description": "Kambiyo senedindeki imzaya itiraz",
         "icon": "PenOff",
         "variables": [
             {
                 "key": "ICRA_MAHKEMESI",
-                "label": "�cra Mahkemesi",
+                "label": "ï¿½cra Mahkemesi",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "DOSYA_NO",
-                "label": "�cra Dosya No",
+                "label": "ï¿½cra Dosya No",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "DAVACI_AD",
-                "label": "Davac� (Bor�lu)",
+                "label": "Davacï¿½ (Borï¿½lu)",
                 "type": "text",
                 "required": true
             },
@@ -3519,7 +5088,7 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
             },
             {
                 "key": "DAVALI_AD",
-                "label": "Daval� (Alacakl�)",
+                "label": "Davalï¿½ (Alacaklï¿½)",
                 "type": "text",
                 "required": true
             },
@@ -3530,21 +5099,21 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
                 "required": true
             }
         ],
-        "content": "## {{ICRA_MAHKEMESI}} BA�KANLI�INA\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**DAVACI (BOR�LU):** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\n\n**DAVALI (ALACAKLI):** {{DAVALI_AD}}\n\n**KONU:** Kambiyo senedindeki imzaya itiraz hakk�ndad�r.\n\n---\n\n## A�IKLAMALAR\n\n1. Daval� taraf�ndan aleyhime ba�lat�lan icra takibinde dayanak g�sterilen senedin bilgileri a�a��daki gibidir:\n{{SENET_BILGI}}\n\n2. **S�z konusu senetteki imza taraf�ma ait de�ildir.**\n\n3. Senedin alt�ndaki imza ile benim ger�ek imzam aras�nda a��k fark bulunmakta olup, bu husus bilirki�i incelemesiyle de ortaya konulacakt�r.\n\n---\n\n## HUKUK� SEBEPLER\n\n- 2004 say�l� �cra ve �flas Kanunu m.170 (�mzaya itiraz)\n- 6100 say�l� HMK m.211 (�mza incelemesi)\n\n---\n\n## DEL�LLER\n\n1. �cra dosyas�\n2. Senet asl�\n3. �mza �rnekleri\n4. Bilirki�i incelemesi\n5. N�fus kay�t �rne�i\n\n---\n\n## SONU� VE �STEM\n\n1. **Senetteki imzan�n taraf�ma ait olmad���n�n tespitine,**\n2. �cra takibinin iptaline,\n3. %20 oran�nda k�t�niyet tazminat�na h�kmedilmesine,\n4. Yarg�lama giderlerinin daval�ya y�kletilmesine,\n\nkarar verilmesini sayg�lar�mla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
+        "content": "## {{ICRA_MAHKEMESI}} BAï¿½KANLIï¿½INA\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**DAVACI (BORï¿½LU):** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\n\n**DAVALI (ALACAKLI):** {{DAVALI_AD}}\n\n**KONU:** Kambiyo senedindeki imzaya itiraz hakkï¿½ndadï¿½r.\n\n---\n\n## Aï¿½IKLAMALAR\n\n1. Davalï¿½ tarafï¿½ndan aleyhime baï¿½latï¿½lan icra takibinde dayanak gï¿½sterilen senedin bilgileri aï¿½aï¿½ï¿½daki gibidir:\n{{SENET_BILGI}}\n\n2. **Sï¿½z konusu senetteki imza tarafï¿½ma ait deï¿½ildir.**\n\n3. Senedin altï¿½ndaki imza ile benim gerï¿½ek imzam arasï¿½nda aï¿½ï¿½k fark bulunmakta olup, bu husus bilirkiï¿½i incelemesiyle de ortaya konulacaktï¿½r.\n\n---\n\n## HUKUKï¿½ SEBEPLER\n\n- 2004 sayï¿½lï¿½ ï¿½cra ve ï¿½flas Kanunu m.170 (ï¿½mzaya itiraz)\n- 6100 sayï¿½lï¿½ HMK m.211 (ï¿½mza incelemesi)\n\n---\n\n## DELï¿½LLER\n\n1. ï¿½cra dosyasï¿½\n2. Senet aslï¿½\n3. ï¿½mza ï¿½rnekleri\n4. Bilirkiï¿½i incelemesi\n5. Nï¿½fus kayï¿½t ï¿½rneï¿½i\n\n---\n\n## SONUï¿½ VE ï¿½STEM\n\n1. **Senetteki imzanï¿½n tarafï¿½ma ait olmadï¿½ï¿½ï¿½nï¿½n tespitine,**\n2. ï¿½cra takibinin iptaline,\n3. %20 oranï¿½nda kï¿½tï¿½niyet tazminatï¿½na hï¿½kmedilmesine,\n4. Yargï¿½lama giderlerinin davalï¿½ya yï¿½kletilmesine,\n\nkarar verilmesini saygï¿½larï¿½mla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
         "isPremium": false,
         "usageCount": 234
     },
     {
         "id": "11",
-        "category": "�cra",
+        "category": "ï¿½cra",
         "subcategory": "Haciz",
-        "title": "Haciz Kald�rma Talebi",
-        "description": "Haczedilen mal �zerindeki haczin kald�r�lmas� talebi",
+        "title": "Haciz Kaldï¿½rma Talebi",
+        "description": "Haczedilen mal ï¿½zerindeki haczin kaldï¿½rï¿½lmasï¿½ talebi",
         "icon": "Unlock",
         "variables": [
             {
                 "key": "ICRA_DAIRESI",
-                "label": "�cra Dairesi",
+                "label": "ï¿½cra Dairesi",
                 "type": "text",
                 "required": true
             },
@@ -3562,44 +5131,44 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
             },
             {
                 "key": "HACIZLI_MAL",
-                "label": "Haczedilen Mal/E�ya",
+                "label": "Haczedilen Mal/Eï¿½ya",
                 "type": "textarea",
                 "required": true
             },
             {
                 "key": "KALDIRMA_NEDENI",
-                "label": "Haczin Kald�r�lma Nedeni",
+                "label": "Haczin Kaldï¿½rï¿½lma Nedeni",
                 "type": "textarea",
                 "required": true
             }
         ],
-        "content": "## {{ICRA_DAIRESI}} M�D�RL���'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**TALEP EDEN:** {{TALEP_EDEN}}\n\n**KONU:** Haciz kald�rma talebimdir.\n\n---\n\n## A�IKLAMALAR\n\n1. M�d�rl���n�z�n yukar�da numaras� yaz�l� dosyas�nda a�a��da belirtilen mal/e�ya �zerine haciz konulmu�tur:\n\n**HACZED�LEN MAL/E�YA:**\n{{HACIZLI_MAL}}\n\n2. **HACZ�N KALDIRILMASI GEREK�ES�:**\n{{KALDIRMA_NEDENI}}\n\n---\n\n## HUKUK� DAYANAK\n\n- 2004 say�l� �cra ve �flas Kanunu m.82 (Haczedilemezlik)\n- 2004 say�l� �cra ve �flas Kanunu m.85 (Ta��n�r haczi)\n\n---\n\n## SONU� VE �STEM\n\nYukar�da a��klanan nedenlerle, s�z konusu mal/e�ya �zerindeki haczin kald�r�lmas�n� sayg�lar�mla talep ederim.\n\n{{TARIH}}\n{{TALEP_EDEN}}\n",
+        "content": "## {{ICRA_DAIRESI}} Mï¿½Dï¿½RLï¿½ï¿½ï¿½'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**TALEP EDEN:** {{TALEP_EDEN}}\n\n**KONU:** Haciz kaldï¿½rma talebimdir.\n\n---\n\n## Aï¿½IKLAMALAR\n\n1. Mï¿½dï¿½rlï¿½ï¿½ï¿½nï¿½zï¿½n yukarï¿½da numarasï¿½ yazï¿½lï¿½ dosyasï¿½nda aï¿½aï¿½ï¿½da belirtilen mal/eï¿½ya ï¿½zerine haciz konulmuï¿½tur:\n\n**HACZEDï¿½LEN MAL/Eï¿½YA:**\n{{HACIZLI_MAL}}\n\n2. **HACZï¿½N KALDIRILMASI GEREKï¿½ESï¿½:**\n{{KALDIRMA_NEDENI}}\n\n---\n\n## HUKUKï¿½ DAYANAK\n\n- 2004 sayï¿½lï¿½ ï¿½cra ve ï¿½flas Kanunu m.82 (Haczedilemezlik)\n- 2004 sayï¿½lï¿½ ï¿½cra ve ï¿½flas Kanunu m.85 (Taï¿½ï¿½nï¿½r haczi)\n\n---\n\n## SONUï¿½ VE ï¿½STEM\n\nYukarï¿½da aï¿½ï¿½klanan nedenlerle, sï¿½z konusu mal/eï¿½ya ï¿½zerindeki haczin kaldï¿½rï¿½lmasï¿½nï¿½ saygï¿½larï¿½mla talep ederim.\n\n{{TARIH}}\n{{TALEP_EDEN}}\n",
         "isPremium": false,
         "usageCount": 189
     },
     {
         "id": "12",
-        "category": "�cra",
+        "category": "ï¿½cra",
         "subcategory": "Haciz",
-        "title": "�stihkak Davas� Dilek�esi",
-        "description": "Haczedilen mal�n ���nc� ki�iye ait oldu�unun tespiti",
+        "title": "ï¿½stihkak Davasï¿½ Dilekï¿½esi",
+        "description": "Haczedilen malï¿½n ï¿½ï¿½ï¿½ncï¿½ kiï¿½iye ait olduï¿½unun tespiti",
         "icon": "FileWarning",
         "variables": [
             {
                 "key": "ICRA_MAHKEMESI",
-                "label": "�cra Mahkemesi",
+                "label": "ï¿½cra Mahkemesi",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "DOSYA_NO",
-                "label": "�cra Dosya No",
+                "label": "ï¿½cra Dosya No",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "DAVACI_AD",
-                "label": "Davac� (3. Ki�i)",
+                "label": "Davacï¿½ (3. Kiï¿½i)",
                 "type": "text",
                 "required": true
             },
@@ -3611,7 +5180,7 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
             },
             {
                 "key": "DAVALI_AD",
-                "label": "Daval� (Alacakl�)",
+                "label": "Davalï¿½ (Alacaklï¿½)",
                 "type": "text",
                 "required": true
             },
@@ -3623,32 +5192,32 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
             },
             {
                 "key": "MULKIYET_DELILI",
-                "label": "M�lkiyet Delilleri",
+                "label": "Mï¿½lkiyet Delilleri",
                 "type": "textarea",
                 "required": true
             }
         ],
-        "content": "## {{ICRA_MAHKEMESI}} BA�KANLI�INA\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**DAVACI (3. K���):** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\n\n**DAVALI (ALACAKLI):** {{DAVALI_AD}}\n\n**KONU:** �stihkak davas� hakk�ndad�r.\n\n---\n\n## A�IKLAMALAR\n\n1. Daval� taraf�ndan y�r�t�len icra takibinde, bor�lunun evinde/i�yerinde yap�lan haciz i�lemi s�ras�nda **bana ait olan** a�a��daki mal haczedilmi�tir:\n\n**HACZED�LEN MAL:**\n{{HACIZLI_MAL}}\n\n2. **Bu mal bana aittir ve bor�lu ile hi�bir ilgisi yoktur.**\n\n3. M�lkiyetimi ispatlayan deliller:\n{{MULKIYET_DELILI}}\n\n---\n\n## HUKUK� SEBEPLER\n\n- 2004 say�l� �cra ve �flas Kanunu m.96-99 (�stihkak davas�)\n\n---\n\n## DEL�LLER\n\n1. Fatura ve sat�� belgeleri\n2. Banka kay�tlar�\n3. Tan�k beyanlar�\n4. Bilirki�i incelemesi\n5. Di�er yasal deliller\n\n---\n\n## SONU� VE �STEM\n\n1. **Haczedilen mal�n taraf�ma ait oldu�unun tespitine,**\n2. S�z konusu mal �zerindeki haczin kald�r�lmas�na,\n3. Yarg�lama giderlerinin daval�ya y�kletilmesine,\n\nkarar verilmesini sayg�lar�mla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
+        "content": "## {{ICRA_MAHKEMESI}} BAï¿½KANLIï¿½INA\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**DAVACI (3. Kï¿½ï¿½ï¿½):** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\n\n**DAVALI (ALACAKLI):** {{DAVALI_AD}}\n\n**KONU:** ï¿½stihkak davasï¿½ hakkï¿½ndadï¿½r.\n\n---\n\n## Aï¿½IKLAMALAR\n\n1. Davalï¿½ tarafï¿½ndan yï¿½rï¿½tï¿½len icra takibinde, borï¿½lunun evinde/iï¿½yerinde yapï¿½lan haciz iï¿½lemi sï¿½rasï¿½nda **bana ait olan** aï¿½aï¿½ï¿½daki mal haczedilmiï¿½tir:\n\n**HACZEDï¿½LEN MAL:**\n{{HACIZLI_MAL}}\n\n2. **Bu mal bana aittir ve borï¿½lu ile hiï¿½bir ilgisi yoktur.**\n\n3. Mï¿½lkiyetimi ispatlayan deliller:\n{{MULKIYET_DELILI}}\n\n---\n\n## HUKUKï¿½ SEBEPLER\n\n- 2004 sayï¿½lï¿½ ï¿½cra ve ï¿½flas Kanunu m.96-99 (ï¿½stihkak davasï¿½)\n\n---\n\n## DELï¿½LLER\n\n1. Fatura ve satï¿½ï¿½ belgeleri\n2. Banka kayï¿½tlarï¿½\n3. Tanï¿½k beyanlarï¿½\n4. Bilirkiï¿½i incelemesi\n5. Diï¿½er yasal deliller\n\n---\n\n## SONUï¿½ VE ï¿½STEM\n\n1. **Haczedilen malï¿½n tarafï¿½ma ait olduï¿½unun tespitine,**\n2. Sï¿½z konusu mal ï¿½zerindeki haczin kaldï¿½rï¿½lmasï¿½na,\n3. Yargï¿½lama giderlerinin davalï¿½ya yï¿½kletilmesine,\n\nkarar verilmesini saygï¿½larï¿½mla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
         "isPremium": false,
         "usageCount": 156
     },
     {
         "id": "13",
-        "category": "�� Hukuku",
-        "subcategory": "��e �ade",
-        "title": "��e �ade Davas� Dilek�esi",
-        "description": "Haks�z fesih nedeniyle i�e iade talebi",
+        "category": "ï¿½ï¿½ Hukuku",
+        "subcategory": "ï¿½ï¿½e ï¿½ade",
+        "title": "ï¿½ï¿½e ï¿½ade Davasï¿½ Dilekï¿½esi",
+        "description": "Haksï¿½z fesih nedeniyle iï¿½e iade talebi",
         "icon": "UserCheck",
         "variables": [
             {
                 "key": "MAHKEME",
-                "label": "�� Mahkemesi",
+                "label": "ï¿½ï¿½ Mahkemesi",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "DAVACI_AD",
-                "label": "Davac� (���i)",
+                "label": "Davacï¿½ (ï¿½ï¿½ï¿½i)",
                 "type": "text",
                 "required": true
             },
@@ -3666,19 +5235,19 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
             },
             {
                 "key": "DAVALI_AD",
-                "label": "Daval� (��veren)",
+                "label": "Davalï¿½ (ï¿½ï¿½veren)",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "DAVALI_ADRES",
-                "label": "��veren Adresi",
+                "label": "ï¿½ï¿½veren Adresi",
                 "type": "textarea",
                 "required": true
             },
             {
                 "key": "ISE_GIRIS_TARIHI",
-                "label": "��e Giri� Tarihi",
+                "label": "ï¿½ï¿½e Giriï¿½ Tarihi",
                 "type": "date",
                 "required": true
             },
@@ -3690,37 +5259,37 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
             },
             {
                 "key": "GOREV",
-                "label": "G�revi/Pozisyonu",
+                "label": "Gï¿½revi/Pozisyonu",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "FESIH_GEREKCESI",
-                "label": "��verenin Fesih Gerek�esi",
+                "label": "ï¿½ï¿½verenin Fesih Gerekï¿½esi",
                 "type": "textarea"
             }
         ],
-        "content": "## {{MAHKEME}} BA�KANLI�INA\n\n**DAVACI:** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\nAdres: {{DAVACI_ADRES}}\n\n**DAVALI:** {{DAVALI_AD}}\nAdres: {{DAVALI_ADRES}}\n\n**KONU:** Feshin ge�ersizli�i ve i�e iade talebimizdir.\n\n---\n\n## A�IKLAMALAR\n\n1. M�vekkilim {{ISE_GIRIS_TARIHI}} tarihinden {{FESIH_TARIHI}} tarihine kadar daval� i�yerinde **{{GOREV}}** olarak �al��m��t�r.\n\n2. �� s�zle�mesi {{FESIH_TARIHI}} tarihinde i�veren taraf�ndan **haks�z ve ge�ersiz �ekilde** feshedilmi�tir.\n\n3. ��verenin ileri s�rd��� fesih gerek�esi:\n{{FESIH_GEREKCESI}}\n\n4. Bu gerek�e ger�e�i yans�tmamakta olup, fesih haks�z ve ge�ersizdir.\n\n---\n\n## HUKUK� SEBEPLER\n\n- 4857 say�l� �� Kanunu m.18 (Feshin ge�erli sebebe dayand�r�lmas�)\n- 4857 say�l� �� Kanunu m.20 (Fesih bildirimine itiraz)\n- 4857 say�l� �� Kanunu m.21 (Ge�ersiz sebeple feshin sonu�lar�)\n\n---\n\n## DEL�LLER\n\n1. �� s�zle�mesi\n2. Bordro ve SGK kay�tlar�\n3. Fesih bildirimi\n4. Tan�k beyanlar�\n5. ��yeri dosyas�\n\n---\n\n## SONU� VE �STEM\n\n1. **Feshin ge�ersizli�ine ve i�e iadeye,**\n2. ��e ba�latmama halinde 4-8 ayl�k br�t �cret tutar�nda tazminata,\n3. Bo�ta ge�en s�re �cretinin (4 aya kadar) �denmesine,\n4. Yarg�lama giderlerinin daval�ya y�kletilmesine,\n\nkarar verilmesini sayg�lar�mla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
+        "content": "## {{MAHKEME}} BAï¿½KANLIï¿½INA\n\n**DAVACI:** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\nAdres: {{DAVACI_ADRES}}\n\n**DAVALI:** {{DAVALI_AD}}\nAdres: {{DAVALI_ADRES}}\n\n**KONU:** Feshin geï¿½ersizliï¿½i ve iï¿½e iade talebimizdir.\n\n---\n\n## Aï¿½IKLAMALAR\n\n1. Mï¿½vekkilim {{ISE_GIRIS_TARIHI}} tarihinden {{FESIH_TARIHI}} tarihine kadar davalï¿½ iï¿½yerinde **{{GOREV}}** olarak ï¿½alï¿½ï¿½mï¿½ï¿½tï¿½r.\n\n2. ï¿½ï¿½ sï¿½zleï¿½mesi {{FESIH_TARIHI}} tarihinde iï¿½veren tarafï¿½ndan **haksï¿½z ve geï¿½ersiz ï¿½ekilde** feshedilmiï¿½tir.\n\n3. ï¿½ï¿½verenin ileri sï¿½rdï¿½ï¿½ï¿½ fesih gerekï¿½esi:\n{{FESIH_GEREKCESI}}\n\n4. Bu gerekï¿½e gerï¿½eï¿½i yansï¿½tmamakta olup, fesih haksï¿½z ve geï¿½ersizdir.\n\n---\n\n## HUKUKï¿½ SEBEPLER\n\n- 4857 sayï¿½lï¿½ ï¿½ï¿½ Kanunu m.18 (Feshin geï¿½erli sebebe dayandï¿½rï¿½lmasï¿½)\n- 4857 sayï¿½lï¿½ ï¿½ï¿½ Kanunu m.20 (Fesih bildirimine itiraz)\n- 4857 sayï¿½lï¿½ ï¿½ï¿½ Kanunu m.21 (Geï¿½ersiz sebeple feshin sonuï¿½larï¿½)\n\n---\n\n## DELï¿½LLER\n\n1. ï¿½ï¿½ sï¿½zleï¿½mesi\n2. Bordro ve SGK kayï¿½tlarï¿½\n3. Fesih bildirimi\n4. Tanï¿½k beyanlarï¿½\n5. ï¿½ï¿½yeri dosyasï¿½\n\n---\n\n## SONUï¿½ VE ï¿½STEM\n\n1. **Feshin geï¿½ersizliï¿½ine ve iï¿½e iadeye,**\n2. ï¿½ï¿½e baï¿½latmama halinde 4-8 aylï¿½k brï¿½t ï¿½cret tutarï¿½nda tazminata,\n3. Boï¿½ta geï¿½en sï¿½re ï¿½cretinin (4 aya kadar) ï¿½denmesine,\n4. Yargï¿½lama giderlerinin davalï¿½ya yï¿½kletilmesine,\n\nkarar verilmesini saygï¿½larï¿½mla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
         "isPremium": false,
         "usageCount": 445
     },
     {
         "id": "14",
-        "category": "�� Hukuku",
+        "category": "ï¿½ï¿½ Hukuku",
         "subcategory": "Tazminat",
-        "title": "K�dem ve �hbar Tazminat� Davas�",
-        "description": "�� akdi feshi sonras� tazminat talebi",
+        "title": "Kï¿½dem ve ï¿½hbar Tazminatï¿½ Davasï¿½",
+        "description": "ï¿½ï¿½ akdi feshi sonrasï¿½ tazminat talebi",
         "icon": "Banknote",
         "variables": [
             {
                 "key": "MAHKEME",
-                "label": "�� Mahkemesi",
+                "label": "ï¿½ï¿½ Mahkemesi",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "DAVACI_AD",
-                "label": "Davac� (���i)",
+                "label": "Davacï¿½ (ï¿½ï¿½ï¿½i)",
                 "type": "text",
                 "required": true
             },
@@ -3732,60 +5301,60 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
             },
             {
                 "key": "DAVALI_AD",
-                "label": "Daval� (��veren)",
+                "label": "Davalï¿½ (ï¿½ï¿½veren)",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "ISE_GIRIS",
-                "label": "��e Giri� Tarihi",
+                "label": "ï¿½ï¿½e Giriï¿½ Tarihi",
                 "type": "date",
                 "required": true
             },
             {
                 "key": "CIKIS_TARIHI",
-                "label": "��ten ��k�� Tarihi",
+                "label": "ï¿½ï¿½ten ï¿½ï¿½kï¿½ï¿½ Tarihi",
                 "type": "date",
                 "required": true
             },
             {
                 "key": "SON_UCRET",
-                "label": "Giydirilmi� Br�t �cret (TL)",
+                "label": "Giydirilmiï¿½ Brï¿½t ï¿½cret (TL)",
                 "type": "number",
                 "required": true
             },
             {
                 "key": "KIDEM_TAZMINATI",
-                "label": "K�dem Tazminat� Talebi (TL)",
+                "label": "Kï¿½dem Tazminatï¿½ Talebi (TL)",
                 "type": "number"
             },
             {
                 "key": "IHBAR_TAZMINATI",
-                "label": "�hbar Tazminat� Talebi (TL)",
+                "label": "ï¿½hbar Tazminatï¿½ Talebi (TL)",
                 "type": "number"
             }
         ],
-        "content": "## {{MAHKEME}} BA�KANLI�INA\n\n**DAVACI:** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\n\n**DAVALI:** {{DAVALI_AD}}\n\n**KONU:** K�dem ve ihbar tazminat� talebimizdir.\n\n**DAVA DE�ER�:** {{KIDEM_TAZMINATI}} TL + {{IHBAR_TAZMINATI}} TL\n\n---\n\n## A�IKLAMALAR\n\n1. M�vekkilim {{ISE_GIRIS}} - {{CIKIS_TARIHI}} tarihleri aras�nda daval� i�yerinde �al��m��t�r.\n\n2. **Son ayl�k giydirilmi� br�t �creti:** {{SON_UCRET}} TL\n\n3. �� akdi i�veren taraf�ndan haks�z olarak feshedilmi�, ancak tazminatlar� �denmemi�tir.\n\n---\n\n## TALEP ED�LEN ALACAKLAR\n\n| Alacak Kalemi | Tutar |\n|---------------|-------|\n| K�dem Tazminat� | {{KIDEM_TAZMINATI}} TL |\n| �hbar Tazminat� | {{IHBAR_TAZMINATI}} TL |\n| **TOPLAM** | Hesaplanacak |\n\n---\n\n## HUKUK� SEBEPLER\n\n- 1475 say�l� �� Kanunu m.14 (K�dem tazminat�)\n- 4857 say�l� �� Kanunu m.17 (S�reli fesih / �hbar)\n\n---\n\n## SONU� VE �STEM\n\n1. **{{KIDEM_TAZMINATI}} TL k�dem tazminat�n�n** fesih tarihinden itibaren en y�ksek mevduat faiziyle birlikte,\n2. **{{IHBAR_TAZMINATI}} TL ihbar tazminat�n�n** yasal faiziyle birlikte daval�dan tahsiline,\n3. Yarg�lama giderlerinin daval�ya y�kletilmesine,\n\nkarar verilmesini sayg�lar�mla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
+        "content": "## {{MAHKEME}} BAï¿½KANLIï¿½INA\n\n**DAVACI:** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\n\n**DAVALI:** {{DAVALI_AD}}\n\n**KONU:** Kï¿½dem ve ihbar tazminatï¿½ talebimizdir.\n\n**DAVA DEï¿½ERï¿½:** {{KIDEM_TAZMINATI}} TL + {{IHBAR_TAZMINATI}} TL\n\n---\n\n## Aï¿½IKLAMALAR\n\n1. Mï¿½vekkilim {{ISE_GIRIS}} - {{CIKIS_TARIHI}} tarihleri arasï¿½nda davalï¿½ iï¿½yerinde ï¿½alï¿½ï¿½mï¿½ï¿½tï¿½r.\n\n2. **Son aylï¿½k giydirilmiï¿½ brï¿½t ï¿½creti:** {{SON_UCRET}} TL\n\n3. ï¿½ï¿½ akdi iï¿½veren tarafï¿½ndan haksï¿½z olarak feshedilmiï¿½, ancak tazminatlarï¿½ ï¿½denmemiï¿½tir.\n\n---\n\n## TALEP EDï¿½LEN ALACAKLAR\n\n| Alacak Kalemi | Tutar |\n|---------------|-------|\n| Kï¿½dem Tazminatï¿½ | {{KIDEM_TAZMINATI}} TL |\n| ï¿½hbar Tazminatï¿½ | {{IHBAR_TAZMINATI}} TL |\n| **TOPLAM** | Hesaplanacak |\n\n---\n\n## HUKUKï¿½ SEBEPLER\n\n- 1475 sayï¿½lï¿½ ï¿½ï¿½ Kanunu m.14 (Kï¿½dem tazminatï¿½)\n- 4857 sayï¿½lï¿½ ï¿½ï¿½ Kanunu m.17 (Sï¿½reli fesih / ï¿½hbar)\n\n---\n\n## SONUï¿½ VE ï¿½STEM\n\n1. **{{KIDEM_TAZMINATI}} TL kï¿½dem tazminatï¿½nï¿½n** fesih tarihinden itibaren en yï¿½ksek mevduat faiziyle birlikte,\n2. **{{IHBAR_TAZMINATI}} TL ihbar tazminatï¿½nï¿½n** yasal faiziyle birlikte davalï¿½dan tahsiline,\n3. Yargï¿½lama giderlerinin davalï¿½ya yï¿½kletilmesine,\n\nkarar verilmesini saygï¿½larï¿½mla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
         "isPremium": false,
         "usageCount": 567
     },
     {
         "id": "15",
         "category": "Hukuk",
-        "subcategory": "T�ketici Hukuku",
-        "title": "T�ketici Hakem Heyeti Ba�vurusu",
-        "description": "Ay�pl� mal/hizmet i�in t�ketici hakem heyetine ba�vuru",
+        "subcategory": "Tï¿½ketici Hukuku",
+        "title": "Tï¿½ketici Hakem Heyeti Baï¿½vurusu",
+        "description": "Ayï¿½plï¿½ mal/hizmet iï¿½in tï¿½ketici hakem heyetine baï¿½vuru",
         "icon": "ShoppingCart",
         "variables": [
             {
                 "key": "HAKEM_HEYETI",
-                "label": "T�ketici Hakem Heyeti",
+                "label": "Tï¿½ketici Hakem Heyeti",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "BASVURAN_AD",
-                "label": "Ba�vuran Ad�",
+                "label": "Baï¿½vuran Adï¿½",
                 "type": "text",
                 "required": true
             },
@@ -3808,61 +5377,61 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
             },
             {
                 "key": "SATICI_AD",
-                "label": "Sat�c�/Firma Ad�",
+                "label": "Satï¿½cï¿½/Firma Adï¿½",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "SATICI_ADRES",
-                "label": "Sat�c� Adresi",
+                "label": "Satï¿½cï¿½ Adresi",
                 "type": "textarea"
             },
             {
                 "key": "URUN_ADI",
-                "label": "�r�n/Hizmet Ad�",
+                "label": "ï¿½rï¿½n/Hizmet Adï¿½",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "SATIN_ALMA_TARIHI",
-                "label": "Sat�n Alma Tarihi",
+                "label": "Satï¿½n Alma Tarihi",
                 "type": "date",
                 "required": true
             },
             {
                 "key": "URUN_BEDELI",
-                "label": "�r�n Bedeli (TL)",
+                "label": "ï¿½rï¿½n Bedeli (TL)",
                 "type": "number",
                 "required": true
             },
             {
                 "key": "SIKAYET_KONUSU",
-                "label": "�ikayet Konusu",
+                "label": "ï¿½ikayet Konusu",
                 "type": "textarea",
                 "required": true
             }
         ],
-        "content": "## {{HAKEM_HEYETI}}'NE\n\n## T�KET�C� ��KAYET BA�VURUSU\n\n**BA�VURAN (T�KET�C�):**\nAd Soyad: {{BASVURAN_AD}}\nTC Kimlik No: {{BASVURAN_TC}}\nAdres: {{BASVURAN_ADRES}}\nTelefon: {{BASVURAN_TEL}}\n\n**��KAYET ED�LEN (SATICI):**\nFirma Ad�: {{SATICI_AD}}\nAdres: {{SATICI_ADRES}}\n\n---\n\n**��KAYETE KONU �R�N/H�ZMET:**\n\n| Bilgi | De�er |\n|-------|-------|\n| �r�n/Hizmet | {{URUN_ADI}} |\n| Sat�n Alma Tarihi | {{SATIN_ALMA_TARIHI}} |\n| Bedel | {{URUN_BEDELI}} TL |\n\n---\n\n## ��KAYET KONUSU\n\n{{SIKAYET_KONUSU}}\n\n---\n\n## TALEP\n\n6502 say�l� T�keticinin Korunmas� Hakk�nda Kanun uyar�nca;\n\n1. Ay�pl� �r�n�n/hizmetin bedelinin iadesi,\n2. Alternatif olarak �r�n�n de�i�tirilmesi veya �cretsiz onar�m�,\n\nhususlar�nda karar verilmesini sayg�lar�mla arz ve talep ederim.\n\n**EKLER:**\n1. Fatura/fi� sureti\n2. �r�n foto�raflar�\n3. Yaz��ma �rnekleri\n\n{{TARIH}}\n{{BASVURAN_AD}}\n",
+        "content": "## {{HAKEM_HEYETI}}'NE\n\n## Tï¿½KETï¿½Cï¿½ ï¿½ï¿½KAYET BAï¿½VURUSU\n\n**BAï¿½VURAN (Tï¿½KETï¿½Cï¿½):**\nAd Soyad: {{BASVURAN_AD}}\nTC Kimlik No: {{BASVURAN_TC}}\nAdres: {{BASVURAN_ADRES}}\nTelefon: {{BASVURAN_TEL}}\n\n**ï¿½ï¿½KAYET EDï¿½LEN (SATICI):**\nFirma Adï¿½: {{SATICI_AD}}\nAdres: {{SATICI_ADRES}}\n\n---\n\n**ï¿½ï¿½KAYETE KONU ï¿½Rï¿½N/Hï¿½ZMET:**\n\n| Bilgi | Deï¿½er |\n|-------|-------|\n| ï¿½rï¿½n/Hizmet | {{URUN_ADI}} |\n| Satï¿½n Alma Tarihi | {{SATIN_ALMA_TARIHI}} |\n| Bedel | {{URUN_BEDELI}} TL |\n\n---\n\n## ï¿½ï¿½KAYET KONUSU\n\n{{SIKAYET_KONUSU}}\n\n---\n\n## TALEP\n\n6502 sayï¿½lï¿½ Tï¿½keticinin Korunmasï¿½ Hakkï¿½nda Kanun uyarï¿½nca;\n\n1. Ayï¿½plï¿½ ï¿½rï¿½nï¿½n/hizmetin bedelinin iadesi,\n2. Alternatif olarak ï¿½rï¿½nï¿½n deï¿½iï¿½tirilmesi veya ï¿½cretsiz onarï¿½mï¿½,\n\nhususlarï¿½nda karar verilmesini saygï¿½larï¿½mla arz ve talep ederim.\n\n**EKLER:**\n1. Fatura/fiï¿½ sureti\n2. ï¿½rï¿½n fotoï¿½raflarï¿½\n3. Yazï¿½ï¿½ma ï¿½rnekleri\n\n{{TARIH}}\n{{BASVURAN_AD}}\n",
         "isPremium": false,
         "usageCount": 892
     },
     {
         "id": "16",
         "category": "Hukuk",
-        "subcategory": "T�ketici Hukuku",
-        "title": "T�ketici Mahkemesi Dava Dilek�esi",
-        "description": "T�ketici uyu�mazl�klar� i�in dava dilek�esi",
+        "subcategory": "Tï¿½ketici Hukuku",
+        "title": "Tï¿½ketici Mahkemesi Dava Dilekï¿½esi",
+        "description": "Tï¿½ketici uyuï¿½mazlï¿½klarï¿½ iï¿½in dava dilekï¿½esi",
         "icon": "Scale",
         "variables": [
             {
                 "key": "MAHKEME",
-                "label": "T�ketici Mahkemesi",
+                "label": "Tï¿½ketici Mahkemesi",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "DAVACI_AD",
-                "label": "Davac� Ad�",
+                "label": "Davacï¿½ Adï¿½",
                 "type": "text",
                 "required": true
             },
@@ -3874,34 +5443,34 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
             },
             {
                 "key": "DAVACI_ADRES",
-                "label": "Davac� Adresi",
+                "label": "Davacï¿½ Adresi",
                 "type": "textarea"
             },
             {
                 "key": "DAVALI_AD",
-                "label": "Daval� Firma",
+                "label": "Davalï¿½ Firma",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "DAVALI_ADRES",
-                "label": "Daval� Adresi",
+                "label": "Davalï¿½ Adresi",
                 "type": "textarea"
             },
             {
                 "key": "DAVA_DEGERI",
-                "label": "Dava De�eri (TL)",
+                "label": "Dava Deï¿½eri (TL)",
                 "type": "number",
                 "required": true
             },
             {
                 "key": "OLAY_ACIKLAMASI",
-                "label": "Olay�n A��klamas�",
+                "label": "Olayï¿½n Aï¿½ï¿½klamasï¿½",
                 "type": "textarea",
                 "required": true
             }
         ],
-        "content": "## {{MAHKEME}} BA�KANLI�INA\n\n**DAVACI:** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\nAdres: {{DAVACI_ADRES}}\n\n**DAVALI:** {{DAVALI_AD}}\nAdres: {{DAVALI_ADRES}}\n\n**KONU:** T�ketici i�leminden kaynaklanan tazminat talebimizdir.\n\n**DAVA DE�ER�:** {{DAVA_DEGERI}} TL\n\n---\n\n## A�IKLAMALAR\n\n{{OLAY_ACIKLAMASI}}\n\n---\n\n## HUKUK� SEBEPLER\n\n- 6502 say�l� T�keticinin Korunmas� Hakk�nda Kanun\n- 6098 say�l� T�rk Bor�lar Kanunu\n\n---\n\n## DEL�LLER\n\n1. Fatura ve sat�� belgeleri\n2. S�zle�me �rnekleri\n3. Yaz��malar\n4. Tan�k beyanlar�\n5. Bilirki�i incelemesi\n\n---\n\n## SONU� VE �STEM\n\n1. {{DAVA_DEGERI}} TL'nin yasal faiziyle birlikte daval�dan tahsiline,\n2. Yarg�lama giderlerinin daval�ya y�kletilmesine,\n\nkarar verilmesini sayg�lar�mla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
+        "content": "## {{MAHKEME}} BAï¿½KANLIï¿½INA\n\n**DAVACI:** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\nAdres: {{DAVACI_ADRES}}\n\n**DAVALI:** {{DAVALI_AD}}\nAdres: {{DAVALI_ADRES}}\n\n**KONU:** Tï¿½ketici iï¿½leminden kaynaklanan tazminat talebimizdir.\n\n**DAVA DEï¿½ERï¿½:** {{DAVA_DEGERI}} TL\n\n---\n\n## Aï¿½IKLAMALAR\n\n{{OLAY_ACIKLAMASI}}\n\n---\n\n## HUKUKï¿½ SEBEPLER\n\n- 6502 sayï¿½lï¿½ Tï¿½keticinin Korunmasï¿½ Hakkï¿½nda Kanun\n- 6098 sayï¿½lï¿½ Tï¿½rk Borï¿½lar Kanunu\n\n---\n\n## DELï¿½LLER\n\n1. Fatura ve satï¿½ï¿½ belgeleri\n2. Sï¿½zleï¿½me ï¿½rnekleri\n3. Yazï¿½ï¿½malar\n4. Tanï¿½k beyanlarï¿½\n5. Bilirkiï¿½i incelemesi\n\n---\n\n## SONUï¿½ VE ï¿½STEM\n\n1. {{DAVA_DEGERI}} TL'nin yasal faiziyle birlikte davalï¿½dan tahsiline,\n2. Yargï¿½lama giderlerinin davalï¿½ya yï¿½kletilmesine,\n\nkarar verilmesini saygï¿½larï¿½mla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
         "isPremium": false,
         "usageCount": 334
     },
@@ -3909,8 +5478,8 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
         "id": "17",
         "category": "Hukuk",
         "subcategory": "Ticaret Hukuku",
-        "title": "Alacak Davas� Dilek�esi (Ticari)",
-        "description": "Ticari alacak tahsili i�in dava dilek�esi",
+        "title": "Alacak Davasï¿½ Dilekï¿½esi (Ticari)",
+        "description": "Ticari alacak tahsili iï¿½in dava dilekï¿½esi",
         "icon": "Briefcase",
         "variables": [
             {
@@ -3921,7 +5490,7 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
             },
             {
                 "key": "DAVACI_AD",
-                "label": "Davac� �irket/Ki�i",
+                "label": "Davacï¿½ ï¿½irket/Kiï¿½i",
                 "type": "text",
                 "required": true
             },
@@ -3938,24 +5507,24 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
             },
             {
                 "key": "DAVALI_AD",
-                "label": "Daval� �irket/Ki�i",
+                "label": "Davalï¿½ ï¿½irket/Kiï¿½i",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "DAVALI_ADRES",
-                "label": "Daval� Adresi",
+                "label": "Davalï¿½ Adresi",
                 "type": "textarea"
             },
             {
                 "key": "ALACAK_TUTARI",
-                "label": "Alacak Tutar� (TL)",
+                "label": "Alacak Tutarï¿½ (TL)",
                 "type": "number",
                 "required": true
             },
             {
                 "key": "ALACAK_KAYNAK",
-                "label": "Alaca��n Kayna��",
+                "label": "Alacaï¿½ï¿½n Kaynaï¿½ï¿½",
                 "type": "textarea",
                 "required": true
             },
@@ -3965,7 +5534,7 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
                 "type": "date"
             }
         ],
-        "content": "## {{MAHKEME}} BA�KANLI�INA\n\n**DAVACI:** {{DAVACI_AD}}\nVergi/TC No: {{DAVACI_VKN}}\nAdres: {{DAVACI_ADRES}}\n\n**DAVALI:** {{DAVALI_AD}}\nAdres: {{DAVALI_ADRES}}\n\n**KONU:** Alacak davas� hakk�ndad�r.\n\n**DAVA DE�ER�:** {{ALACAK_TUTARI}} TL\n\n---\n\n## A�IKLAMALAR\n\n1. M�vekkilim ile daval� aras�nda ticari ili�ki bulunmaktad�r.\n\n2. **Alaca��n Kayna��:**\n{{ALACAK_KAYNAK}}\n\n3. Vade tarihi: {{VADE_TARIHI}}\n\n4. T�m ihtarlara ra�men daval� borcunu �dememi�tir.\n\n---\n\n## HUKUK� SEBEPLER\n\n- 6102 say�l� T�rk Ticaret Kanunu\n- 6098 say�l� T�rk Bor�lar Kanunu\n\n---\n\n## DEL�LLER\n\n1. Faturalar\n2. S�zle�meler\n3. �rsaliyeler\n4. Banka kay�tlar�\n5. �htarname\n6. Ticari defterler\n\n---\n\n## SONU� VE �STEM\n\n1. {{ALACAK_TUTARI}} TL alaca��n vade tarihinden itibaren avans faiziyle birlikte daval�dan tahsiline,\n2. Yarg�lama giderlerinin daval�ya y�kletilmesine,\n\nkarar verilmesini sayg�lar�mla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
+        "content": "## {{MAHKEME}} BAï¿½KANLIï¿½INA\n\n**DAVACI:** {{DAVACI_AD}}\nVergi/TC No: {{DAVACI_VKN}}\nAdres: {{DAVACI_ADRES}}\n\n**DAVALI:** {{DAVALI_AD}}\nAdres: {{DAVALI_ADRES}}\n\n**KONU:** Alacak davasï¿½ hakkï¿½ndadï¿½r.\n\n**DAVA DEï¿½ERï¿½:** {{ALACAK_TUTARI}} TL\n\n---\n\n## Aï¿½IKLAMALAR\n\n1. Mï¿½vekkilim ile davalï¿½ arasï¿½nda ticari iliï¿½ki bulunmaktadï¿½r.\n\n2. **Alacaï¿½ï¿½n Kaynaï¿½ï¿½:**\n{{ALACAK_KAYNAK}}\n\n3. Vade tarihi: {{VADE_TARIHI}}\n\n4. Tï¿½m ihtarlara raï¿½men davalï¿½ borcunu ï¿½dememiï¿½tir.\n\n---\n\n## HUKUKï¿½ SEBEPLER\n\n- 6102 sayï¿½lï¿½ Tï¿½rk Ticaret Kanunu\n- 6098 sayï¿½lï¿½ Tï¿½rk Borï¿½lar Kanunu\n\n---\n\n## DELï¿½LLER\n\n1. Faturalar\n2. Sï¿½zleï¿½meler\n3. ï¿½rsaliyeler\n4. Banka kayï¿½tlarï¿½\n5. ï¿½htarname\n6. Ticari defterler\n\n---\n\n## SONUï¿½ VE ï¿½STEM\n\n1. {{ALACAK_TUTARI}} TL alacaï¿½ï¿½n vade tarihinden itibaren avans faiziyle birlikte davalï¿½dan tahsiline,\n2. Yargï¿½lama giderlerinin davalï¿½ya yï¿½kletilmesine,\n\nkarar verilmesini saygï¿½larï¿½mla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
         "isPremium": false,
         "usageCount": 445
     },
@@ -3973,59 +5542,59 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
         "id": "18",
         "category": "Hukuk",
         "subcategory": "Ticaret Hukuku",
-        "title": "�htarname (�deme)",
-        "description": "Ticari bor� i�in �deme ihtarnamesi",
+        "title": "ï¿½htarname (ï¿½deme)",
+        "description": "Ticari borï¿½ iï¿½in ï¿½deme ihtarnamesi",
         "icon": "Mail",
         "variables": [
             {
                 "key": "NOTER",
                 "label": "Noter",
                 "type": "text",
-                "placeholder": "�stanbul 5. Noterli�i"
+                "placeholder": "ï¿½stanbul 5. Noterliï¿½i"
             },
             {
                 "key": "GONDEREN_AD",
-                "label": "G�nderen (Alacakl�)",
+                "label": "Gï¿½nderen (Alacaklï¿½)",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "GONDEREN_ADRES",
-                "label": "Alacakl� Adresi",
+                "label": "Alacaklï¿½ Adresi",
                 "type": "textarea"
             },
             {
                 "key": "MUHATAP_AD",
-                "label": "Muhatap (Bor�lu)",
+                "label": "Muhatap (Borï¿½lu)",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "MUHATAP_ADRES",
-                "label": "Bor�lu Adresi",
+                "label": "Borï¿½lu Adresi",
                 "type": "textarea",
                 "required": true
             },
             {
                 "key": "BORC_TUTARI",
-                "label": "Bor� Tutar� (TL)",
+                "label": "Borï¿½ Tutarï¿½ (TL)",
                 "type": "number",
                 "required": true
             },
             {
                 "key": "BORC_KONUSU",
-                "label": "Bor� Konusu",
+                "label": "Borï¿½ Konusu",
                 "type": "textarea",
                 "required": true
             },
             {
                 "key": "ODEME_SURESI",
-                "label": "�deme S�resi (G�n)",
+                "label": "ï¿½deme Sï¿½resi (Gï¿½n)",
                 "type": "number",
                 "placeholder": "7"
             }
         ],
-        "content": "## �HTARNAME\n\n**Ke�ideci (�htar Eden):** {{GONDEREN_AD}}\nAdres: {{GONDEREN_ADRES}}\n\n**Muhatap (�htar Edilen):** {{MUHATAP_AD}}\nAdres: {{MUHATAP_ADRES}}\n\n---\n\n## �HTARIN KONUSU\n\nA�a��da belirtilen borcunuzun �denmesi hakk�ndad�r.\n\n---\n\n**Say�n {{MUHATAP_AD}},**\n\n**1.** Taraf�n�za a�a��da detaylar� verilen alaca��m�z bulunmaktad�r:\n\n**Bor� Konusu:** {{BORC_KONUSU}}\n\n**Bor� Tutar�:** {{BORC_TUTARI}} TL\n\n**2.** S�z konusu borcunuzu defalarca hat�rlatmam�za ra�men h�l� �demediniz.\n\n**3.** ��bu ihtarnamenin taraf�n�za tebli�inden itibaren **{{ODEME_SURESI}} g�n** i�inde yukar�da belirtilen borcunuzu �demenizi,\n\n**4.** Aksi takdirde aleyhinize yasal yollara (icra takibi ve/veya dava) ba�vurulaca��n�, bu durumda do�acak t�m masraf, faiz ve avukatl�k �cretlerinin taraf�n�zdan tahsil edilece�ini,\n\n**�HTAR EDER�M.**\n\n{{TARIH}}\n{{GONDEREN_AD}}\n\n---\n\n*Bu ihtarname noter kanal�yla tebli� edilmek �zere haz�rlanm��t�r.*\n",
+        "content": "## ï¿½HTARNAME\n\n**Keï¿½ideci (ï¿½htar Eden):** {{GONDEREN_AD}}\nAdres: {{GONDEREN_ADRES}}\n\n**Muhatap (ï¿½htar Edilen):** {{MUHATAP_AD}}\nAdres: {{MUHATAP_ADRES}}\n\n---\n\n## ï¿½HTARIN KONUSU\n\nAï¿½aï¿½ï¿½da belirtilen borcunuzun ï¿½denmesi hakkï¿½ndadï¿½r.\n\n---\n\n**Sayï¿½n {{MUHATAP_AD}},**\n\n**1.** Tarafï¿½nï¿½za aï¿½aï¿½ï¿½da detaylarï¿½ verilen alacaï¿½ï¿½mï¿½z bulunmaktadï¿½r:\n\n**Borï¿½ Konusu:** {{BORC_KONUSU}}\n\n**Borï¿½ Tutarï¿½:** {{BORC_TUTARI}} TL\n\n**2.** Sï¿½z konusu borcunuzu defalarca hatï¿½rlatmamï¿½za raï¿½men hï¿½lï¿½ ï¿½demediniz.\n\n**3.** ï¿½ï¿½bu ihtarnamenin tarafï¿½nï¿½za tebliï¿½inden itibaren **{{ODEME_SURESI}} gï¿½n** iï¿½inde yukarï¿½da belirtilen borcunuzu ï¿½demenizi,\n\n**4.** Aksi takdirde aleyhinize yasal yollara (icra takibi ve/veya dava) baï¿½vurulacaï¿½ï¿½nï¿½, bu durumda doï¿½acak tï¿½m masraf, faiz ve avukatlï¿½k ï¿½cretlerinin tarafï¿½nï¿½zdan tahsil edileceï¿½ini,\n\n**ï¿½HTAR EDERï¿½M.**\n\n{{TARIH}}\n{{GONDEREN_AD}}\n\n---\n\n*Bu ihtarname noter kanalï¿½yla tebliï¿½ edilmek ï¿½zere hazï¿½rlanmï¿½ï¿½tï¿½r.*\n",
         "isPremium": false,
         "usageCount": 723
     },
@@ -4033,8 +5602,8 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
         "id": "19",
         "category": "Hukuk",
         "subcategory": "Miras Hukuku",
-        "title": "Miras��l�k Belgesi (Veraset �lam�) Talebi",
-        "description": "Sulh hukuk mahkemesinden veraset ilam� talebi",
+        "title": "Mirasï¿½ï¿½lï¿½k Belgesi (Veraset ï¿½lamï¿½) Talebi",
+        "description": "Sulh hukuk mahkemesinden veraset ilamï¿½ talebi",
         "icon": "Users",
         "variables": [
             {
@@ -4045,7 +5614,7 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
             },
             {
                 "key": "DAVACI_AD",
-                "label": "Davac� (Miras��)",
+                "label": "Davacï¿½ (Mirasï¿½ï¿½)",
                 "type": "text",
                 "required": true
             },
@@ -4062,7 +5631,7 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
             },
             {
                 "key": "MURIS_AD",
-                "label": "Murisin (�lenin) Ad�",
+                "label": "Murisin (ï¿½lenin) Adï¿½",
                 "type": "text",
                 "required": true
             },
@@ -4073,22 +5642,22 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
             },
             {
                 "key": "OLUM_TARIHI",
-                "label": "�l�m Tarihi",
+                "label": "ï¿½lï¿½m Tarihi",
                 "type": "date",
                 "required": true
             },
             {
                 "key": "OLUM_YERI",
-                "label": "�l�m Yeri",
+                "label": "ï¿½lï¿½m Yeri",
                 "type": "text"
             },
             {
                 "key": "MIRASCILAR",
-                "label": "Di�er Miras��lar",
+                "label": "Diï¿½er Mirasï¿½ï¿½lar",
                 "type": "textarea"
             }
         ],
-        "content": "## {{MAHKEME}} BA�KANLI�INA\n\n**DAVACI:** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\nAdres: {{DAVACI_ADRES}}\n\n**KONU:** Miras��l�k belgesi (veraset ilam�) verilmesi talebimdir.\n\n---\n\n## A�IKLAMALAR\n\n1. Muris **{{MURIS_AD}}** (TC: {{MURIS_TC}}) {{OLUM_TARIHI}} tarihinde {{OLUM_YERI}}'de vefat etmi�tir.\n\n2. Ben m�teveffan�n miras��s�y�m.\n\n3. Di�er miras��lar:\n{{MIRASCILAR}}\n\n4. M�teveffan�n terekesi �zerinde i�lem yapabilmek i�in miras��l�k belgesi al�nmas� gerekmektedir.\n\n---\n\n## HUKUK� SEBEPLER\n\n- 4721 say�l� T�rk Medeni Kanunu m.598 (Miras��l�k belgesi)\n\n---\n\n## DEL�LLER\n\n1. Veraset ve intikal vergisi beyannamesi\n2. N�fus kay�t �rne�i (muris ve miras��lar)\n3. �l�m belgesi\n4. Vukuatl� n�fus kay�t �rne�i\n\n---\n\n## SONU� VE �STEM\n\nM�teveffa {{MURIS_AD}}'in miras��lar�n� ve miras paylar�n� g�steren **M�RAS�ILIK BELGES�** verilmesini sayg�lar�mla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
+        "content": "## {{MAHKEME}} BAï¿½KANLIï¿½INA\n\n**DAVACI:** {{DAVACI_AD}}\nTC Kimlik No: {{DAVACI_TC}}\nAdres: {{DAVACI_ADRES}}\n\n**KONU:** Mirasï¿½ï¿½lï¿½k belgesi (veraset ilamï¿½) verilmesi talebimdir.\n\n---\n\n## Aï¿½IKLAMALAR\n\n1. Muris **{{MURIS_AD}}** (TC: {{MURIS_TC}}) {{OLUM_TARIHI}} tarihinde {{OLUM_YERI}}'de vefat etmiï¿½tir.\n\n2. Ben mï¿½teveffanï¿½n mirasï¿½ï¿½sï¿½yï¿½m.\n\n3. Diï¿½er mirasï¿½ï¿½lar:\n{{MIRASCILAR}}\n\n4. Mï¿½teveffanï¿½n terekesi ï¿½zerinde iï¿½lem yapabilmek iï¿½in mirasï¿½ï¿½lï¿½k belgesi alï¿½nmasï¿½ gerekmektedir.\n\n---\n\n## HUKUKï¿½ SEBEPLER\n\n- 4721 sayï¿½lï¿½ Tï¿½rk Medeni Kanunu m.598 (Mirasï¿½ï¿½lï¿½k belgesi)\n\n---\n\n## DELï¿½LLER\n\n1. Veraset ve intikal vergisi beyannamesi\n2. Nï¿½fus kayï¿½t ï¿½rneï¿½i (muris ve mirasï¿½ï¿½lar)\n3. ï¿½lï¿½m belgesi\n4. Vukuatlï¿½ nï¿½fus kayï¿½t ï¿½rneï¿½i\n\n---\n\n## SONUï¿½ VE ï¿½STEM\n\nMï¿½teveffa {{MURIS_AD}}'in mirasï¿½ï¿½larï¿½nï¿½ ve miras paylarï¿½nï¿½ gï¿½steren **Mï¿½RASï¿½ILIK BELGESï¿½** verilmesini saygï¿½larï¿½mla arz ve talep ederim.\n\n{{TARIH}}\n{{DAVACI_AD}}\n",
         "isPremium": false,
         "usageCount": 567
     },
@@ -4096,8 +5665,8 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
         "id": "20",
         "category": "Hukuk",
         "subcategory": "Miras Hukuku",
-        "title": "Mirastan Feragat S�zle�mesi",
-        "description": "Noterde d�zenlenecek mirastan feragat belgesi",
+        "title": "Mirastan Feragat Sï¿½zleï¿½mesi",
+        "description": "Noterde dï¿½zenlenecek mirastan feragat belgesi",
         "icon": "FileX",
         "variables": [
             {
@@ -4119,169 +5688,169 @@ karar verilmesini sayg�lar�mla arz ve talep ederim.
             },
             {
                 "key": "MURIS_AD",
-                "label": "Muris (Miras B�rakan)",
+                "label": "Muris (Miras Bï¿½rakan)",
                 "type": "text",
                 "required": true
             },
             {
                 "key": "BEDEL",
-                "label": "Kar��l�k Bedel (varsa)",
+                "label": "Karï¿½ï¿½lï¿½k Bedel (varsa)",
                 "type": "text"
             }
         ],
-        "content": "## M�RASTAN FERAGAT S�ZLE�MES�\n\n**FERAGAT EDEN:**\nAd Soyad: {{FERAGAT_EDEN}}\nTC Kimlik No: {{FERAGAT_EDEN_TC}}\n\n**MUR�S:**\nAd Soyad: {{MURIS_AD}}\n\n---\n\n## BEYAN\n\nBen {{FERAGAT_EDEN}}, {{MURIS_AD}}'�n ileride ger�ekle�ecek �l�m� halinde terekesinden pay�ma d��ecek t�m miras haklar�ndan, TMK m.528 uyar�nca, a�a��daki �artlarla **FERAGAT ETT���M�** beyan ederim.\n\n**Kar��l�k:** {{BEDEL}}\n\n**Feragatin Kapsam�:** Tam feragat (hem kendim hem altsoyum ad�na)\n\nBu s�zle�me, murisin sa�l���nda, resmi �ekilde yap�lm�� olup, taraf�mca �zg�r iradeyle imzalanm��t�r.\n\n---\n\n## HUKUK� DAYANAK\n\n- 4721 say�l� T�rk Medeni Kanunu m.528 (Mirastan feragat s�zle�mesi)\n\n---\n\n{{TARIH}}\n\n**Feragat Eden:**\n{{FERAGAT_EDEN}}\n\n**Muris:**\n{{MURIS_AD}}\n\n---\n\n*Bu s�zle�me noter huzurunda d�zenleme �eklinde yap�lmal�d�r.*\n",
+        "content": "## Mï¿½RASTAN FERAGAT Sï¿½ZLEï¿½MESï¿½\n\n**FERAGAT EDEN:**\nAd Soyad: {{FERAGAT_EDEN}}\nTC Kimlik No: {{FERAGAT_EDEN_TC}}\n\n**MURï¿½S:**\nAd Soyad: {{MURIS_AD}}\n\n---\n\n## BEYAN\n\nBen {{FERAGAT_EDEN}}, {{MURIS_AD}}'ï¿½n ileride gerï¿½ekleï¿½ecek ï¿½lï¿½mï¿½ halinde terekesinden payï¿½ma dï¿½ï¿½ecek tï¿½m miras haklarï¿½ndan, TMK m.528 uyarï¿½nca, aï¿½aï¿½ï¿½daki ï¿½artlarla **FERAGAT ETTï¿½ï¿½ï¿½Mï¿½** beyan ederim.\n\n**Karï¿½ï¿½lï¿½k:** {{BEDEL}}\n\n**Feragatin Kapsamï¿½:** Tam feragat (hem kendim hem altsoyum adï¿½na)\n\nBu sï¿½zleï¿½me, murisin saï¿½lï¿½ï¿½ï¿½nda, resmi ï¿½ekilde yapï¿½lmï¿½ï¿½ olup, tarafï¿½mca ï¿½zgï¿½r iradeyle imzalanmï¿½ï¿½tï¿½r.\n\n---\n\n## HUKUKï¿½ DAYANAK\n\n- 4721 sayï¿½lï¿½ Tï¿½rk Medeni Kanunu m.528 (Mirastan feragat sï¿½zleï¿½mesi)\n\n---\n\n{{TARIH}}\n\n**Feragat Eden:**\n{{FERAGAT_EDEN}}\n\n**Muris:**\n{{MURIS_AD}}\n\n---\n\n*Bu sï¿½zleï¿½me noter huzurunda dï¿½zenleme ï¿½eklinde yapï¿½lmalï¿½dï¿½r.*\n",
         "isPremium": true,
         "usageCount": 123
     },
     {
         "id": "21",
-        "category": "�cra",
+        "category": "ï¿½cra",
         "subcategory": "Tahsilat",
         "title": "Haricen Tahsil Bildirimi",
-        "description": "�cra dosyas� d���nda yap�lan tahsilat�n bildirilmesi",
+        "description": "ï¿½cra dosyasï¿½ dï¿½ï¿½ï¿½nda yapï¿½lan tahsilatï¿½n bildirilmesi",
         "icon": "HandCoins",
         "variables": [
-            { "key": "ICRA_DAIRESI", "label": "�cra Dairesi", "type": "text", "required": true },
+            { "key": "ICRA_DAIRESI", "label": "ï¿½cra Dairesi", "type": "text", "required": true },
             { "key": "DOSYA_NO", "label": "Dosya No", "type": "text", "required": true },
-            { "key": "ALACAKLI_AD", "label": "Alacakl�", "type": "text", "required": true },
-            { "key": "BORCLU_AD", "label": "Bor�lu", "type": "text", "required": true },
+            { "key": "ALACAKLI_AD", "label": "Alacaklï¿½", "type": "text", "required": true },
+            { "key": "BORCLU_AD", "label": "Borï¿½lu", "type": "text", "required": true },
             { "key": "TAHSIL_TUTARI", "label": "Tahsil Edilen Tutar (TL)", "type": "number", "required": true },
             { "key": "TAHSIL_TARIHI", "label": "Tahsil Tarihi", "type": "date", "required": true },
             { "key": "KALAN_ALACAK", "label": "Kalan Alacak (varsa)", "type": "number" }
         ],
-        "content": "## {{ICRA_DAIRESI}} M�D�RL���'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BOR�LU:** {{BORCLU_AD}}\n\n**KONU:** Haricen tahsil bildirimi\n\n---\n\n## A�IKLAMA\n\nM�d�rl���n�z�n yukar�da numaras� yaz�l� dosyas�nda takip edilen alaca��m�n bir k�sm�/tamam� bor�lu taraf�ndan **haricen (icra dairesi d���nda)** taraf�ma �denmi�tir.\n\n**TAHS�LAT B�LG�LER�:**\n\n| Bilgi | De�er |\n|-------|-------|\n| Tahsil Edilen Tutar | {{TAHSIL_TUTARI}} TL |\n| Tahsil Tarihi | {{TAHSIL_TARIHI}} |\n| Kalan Alacak | {{KALAN_ALACAK}} TL |\n\n---\n\n## TALEP\n\nYukar�da belirtilen haricen tahsilat�n dosyaya i�lenmesini ve dosyan�n buna g�re g�ncellenmesini talep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
+        "content": "## {{ICRA_DAIRESI}} Mï¿½Dï¿½RLï¿½ï¿½ï¿½'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORï¿½LU:** {{BORCLU_AD}}\n\n**KONU:** Haricen tahsil bildirimi\n\n---\n\n## Aï¿½IKLAMA\n\nMï¿½dï¿½rlï¿½ï¿½ï¿½nï¿½zï¿½n yukarï¿½da numarasï¿½ yazï¿½lï¿½ dosyasï¿½nda takip edilen alacaï¿½ï¿½mï¿½n bir kï¿½smï¿½/tamamï¿½ borï¿½lu tarafï¿½ndan **haricen (icra dairesi dï¿½ï¿½ï¿½nda)** tarafï¿½ma ï¿½denmiï¿½tir.\n\n**TAHSï¿½LAT Bï¿½LGï¿½LERï¿½:**\n\n| Bilgi | Deï¿½er |\n|-------|-------|\n| Tahsil Edilen Tutar | {{TAHSIL_TUTARI}} TL |\n| Tahsil Tarihi | {{TAHSIL_TARIHI}} |\n| Kalan Alacak | {{KALAN_ALACAK}} TL |\n\n---\n\n## TALEP\n\nYukarï¿½da belirtilen haricen tahsilatï¿½n dosyaya iï¿½lenmesini ve dosyanï¿½n buna gï¿½re gï¿½ncellenmesini talep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
         "isPremium": false,
         "usageCount": 1245
     },
     {
         "id": "22",
-        "category": "�cra",
-        "subcategory": "Dosya ��lemleri",
-        "title": "Dosya Kapama (Takipten Vazge�me) Talebi",
-        "description": "Alacakl�n�n takipten vazge�erek dosyay� kapatma talebi",
+        "category": "ï¿½cra",
+        "subcategory": "Dosya ï¿½ï¿½lemleri",
+        "title": "Dosya Kapama (Takipten Vazgeï¿½me) Talebi",
+        "description": "Alacaklï¿½nï¿½n takipten vazgeï¿½erek dosyayï¿½ kapatma talebi",
         "icon": "FolderX",
         "variables": [
-            { "key": "ICRA_DAIRESI", "label": "�cra Dairesi", "type": "text", "required": true },
+            { "key": "ICRA_DAIRESI", "label": "ï¿½cra Dairesi", "type": "text", "required": true },
             { "key": "DOSYA_NO", "label": "Dosya No", "type": "text", "required": true },
-            { "key": "ALACAKLI_AD", "label": "Alacakl�", "type": "text", "required": true },
-            { "key": "BORCLU_AD", "label": "Bor�lu", "type": "text", "required": true },
-            { "key": "VAZGECME_NEDENI", "label": "Vazge�me Nedeni", "type": "textarea" }
+            { "key": "ALACAKLI_AD", "label": "Alacaklï¿½", "type": "text", "required": true },
+            { "key": "BORCLU_AD", "label": "Borï¿½lu", "type": "text", "required": true },
+            { "key": "VAZGECME_NEDENI", "label": "Vazgeï¿½me Nedeni", "type": "textarea" }
         ],
-        "content": "## {{ICRA_DAIRESI}} M�D�RL���'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BOR�LU:** {{BORCLU_AD}}\n\n**KONU:** Takipten vazge�me ve dosyan�n kapat�lmas� talebi\n\n---\n\n## A�IKLAMA\n\nM�d�rl���n�z�n yukar�da numaras� yaz�l� dosyas�nda y�r�t�len icra takibinden **VAZGE��YORUM.**\n\n**Vazge�me Nedeni:** {{VAZGECME_NEDENI}}\n\n---\n\n## TALEP\n\n��K m.129 uyar�nca takipten vazge�ti�imi beyan eder, takibin durdurularak dosyan�n kapat�lmas�n� talep ederim.\n\n**Not:** Dosyadaki t�m hacizlerin kald�r�lmas�n� da talep ediyorum.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
+        "content": "## {{ICRA_DAIRESI}} Mï¿½Dï¿½RLï¿½ï¿½ï¿½'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORï¿½LU:** {{BORCLU_AD}}\n\n**KONU:** Takipten vazgeï¿½me ve dosyanï¿½n kapatï¿½lmasï¿½ talebi\n\n---\n\n## Aï¿½IKLAMA\n\nMï¿½dï¿½rlï¿½ï¿½ï¿½nï¿½zï¿½n yukarï¿½da numarasï¿½ yazï¿½lï¿½ dosyasï¿½nda yï¿½rï¿½tï¿½len icra takibinden **VAZGEï¿½ï¿½YORUM.**\n\n**Vazgeï¿½me Nedeni:** {{VAZGECME_NEDENI}}\n\n---\n\n## TALEP\n\nï¿½ï¿½K m.129 uyarï¿½nca takipten vazgeï¿½tiï¿½imi beyan eder, takibin durdurularak dosyanï¿½n kapatï¿½lmasï¿½nï¿½ talep ederim.\n\n**Not:** Dosyadaki tï¿½m hacizlerin kaldï¿½rï¿½lmasï¿½nï¿½ da talep ediyorum.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
         "isPremium": false,
         "usageCount": 876
     },
     {
         "id": "23",
-        "category": "�cra",
+        "category": "ï¿½cra",
         "subcategory": "Haciz",
-        "title": "Maa� Haczi (Maa� Kesintisi) Talebi",
-        "description": "Bor�lunun maa��na haciz konulmas� talebi",
+        "title": "Maaï¿½ Haczi (Maaï¿½ Kesintisi) Talebi",
+        "description": "Borï¿½lunun maaï¿½ï¿½na haciz konulmasï¿½ talebi",
         "icon": "Wallet",
         "variables": [
-            { "key": "ICRA_DAIRESI", "label": "�cra Dairesi", "type": "text", "required": true },
+            { "key": "ICRA_DAIRESI", "label": "ï¿½cra Dairesi", "type": "text", "required": true },
             { "key": "DOSYA_NO", "label": "Dosya No", "type": "text", "required": true },
-            { "key": "ALACAKLI_AD", "label": "Alacakl�", "type": "text", "required": true },
-            { "key": "BORCLU_AD", "label": "Bor�lu", "type": "text", "required": true },
-            { "key": "BORCLU_TC", "label": "Bor�lu TC No", "type": "text", "required": true },
-            { "key": "ISVEREN_AD", "label": "��veren/Kurum Ad�", "type": "text", "required": true },
-            { "key": "ISVEREN_ADRES", "label": "��veren Adresi", "type": "textarea", "required": true }
+            { "key": "ALACAKLI_AD", "label": "Alacaklï¿½", "type": "text", "required": true },
+            { "key": "BORCLU_AD", "label": "Borï¿½lu", "type": "text", "required": true },
+            { "key": "BORCLU_TC", "label": "Borï¿½lu TC No", "type": "text", "required": true },
+            { "key": "ISVEREN_AD", "label": "ï¿½ï¿½veren/Kurum Adï¿½", "type": "text", "required": true },
+            { "key": "ISVEREN_ADRES", "label": "ï¿½ï¿½veren Adresi", "type": "textarea", "required": true }
         ],
-        "content": "## {{ICRA_DAIRESI}} M�D�RL���'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BOR�LU:** {{BORCLU_AD}} (TC: {{BORCLU_TC}})\n\n**KONU:** Maa� haczi (maa� kesintisi) talebi\n\n---\n\n## A�IKLAMA\n\nBor�lunun a�a��da belirtilen i�yerinde �al��t��� tespit edilmi�tir:\n\n**��VEREN B�LG�LER�:**\n- **Kurum/�irket:** {{ISVEREN_AD}}\n- **Adres:** {{ISVEREN_ADRES}}\n\n---\n\n## TALEP\n\n��K m.83 ve m.355 uyar�nca;\n\n1. Bor�lunun maa� ve �cretinin **1/4'�n�n** haciz kesintisi yap�larak dosyaya g�nderilmesi i�in ilgili i�verene **maa� haczi m�zekkeresi** yaz�lmas�n�,\n\n2. Kesinti yap�l�ncaya kadar i�verene sorumluluk bildiriminde bulunulmas�n�,\n\ntalep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
+        "content": "## {{ICRA_DAIRESI}} Mï¿½Dï¿½RLï¿½ï¿½ï¿½'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORï¿½LU:** {{BORCLU_AD}} (TC: {{BORCLU_TC}})\n\n**KONU:** Maaï¿½ haczi (maaï¿½ kesintisi) talebi\n\n---\n\n## Aï¿½IKLAMA\n\nBorï¿½lunun aï¿½aï¿½ï¿½da belirtilen iï¿½yerinde ï¿½alï¿½ï¿½tï¿½ï¿½ï¿½ tespit edilmiï¿½tir:\n\n**ï¿½ï¿½VEREN Bï¿½LGï¿½LERï¿½:**\n- **Kurum/ï¿½irket:** {{ISVEREN_AD}}\n- **Adres:** {{ISVEREN_ADRES}}\n\n---\n\n## TALEP\n\nï¿½ï¿½K m.83 ve m.355 uyarï¿½nca;\n\n1. Borï¿½lunun maaï¿½ ve ï¿½cretinin **1/4'ï¿½nï¿½n** haciz kesintisi yapï¿½larak dosyaya gï¿½nderilmesi iï¿½in ilgili iï¿½verene **maaï¿½ haczi mï¿½zekkeresi** yazï¿½lmasï¿½nï¿½,\n\n2. Kesinti yapï¿½lï¿½ncaya kadar iï¿½verene sorumluluk bildiriminde bulunulmasï¿½nï¿½,\n\ntalep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
         "isPremium": false,
         "usageCount": 1567
     },
     {
         "id": "24",
-        "category": "�cra",
+        "category": "ï¿½cra",
         "subcategory": "Haciz",
-        "title": "Ta��nmaz (Gayrimenkul) Haczi Talebi",
-        "description": "Bor�lunun ta��nmaz�na haciz �erhi konulmas� talebi",
+        "title": "Taï¿½ï¿½nmaz (Gayrimenkul) Haczi Talebi",
+        "description": "Borï¿½lunun taï¿½ï¿½nmazï¿½na haciz ï¿½erhi konulmasï¿½ talebi",
         "icon": "Home",
         "variables": [
-            { "key": "ICRA_DAIRESI", "label": "�cra Dairesi", "type": "text", "required": true },
+            { "key": "ICRA_DAIRESI", "label": "ï¿½cra Dairesi", "type": "text", "required": true },
             { "key": "DOSYA_NO", "label": "Dosya No", "type": "text", "required": true },
-            { "key": "ALACAKLI_AD", "label": "Alacakl�", "type": "text", "required": true },
-            { "key": "BORCLU_AD", "label": "Bor�lu", "type": "text", "required": true },
-            { "key": "TASINMAZ_BILGI", "label": "Ta��nmaz Bilgileri (�l/�l�e/Ada/Parsel)", "type": "textarea", "required": true },
-            { "key": "TAPU_MUDURLUGU", "label": "Tapu M�d�rl���", "type": "text", "required": true }
+            { "key": "ALACAKLI_AD", "label": "Alacaklï¿½", "type": "text", "required": true },
+            { "key": "BORCLU_AD", "label": "Borï¿½lu", "type": "text", "required": true },
+            { "key": "TASINMAZ_BILGI", "label": "Taï¿½ï¿½nmaz Bilgileri (ï¿½l/ï¿½lï¿½e/Ada/Parsel)", "type": "textarea", "required": true },
+            { "key": "TAPU_MUDURLUGU", "label": "Tapu Mï¿½dï¿½rlï¿½ï¿½ï¿½", "type": "text", "required": true }
         ],
-        "content": "## {{ICRA_DAIRESI}} M�D�RL���'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BOR�LU:** {{BORCLU_AD}}\n\n**KONU:** Ta��nmaz haczi talebi\n\n---\n\n## A�IKLAMA\n\nBor�lunun a�a��da belirtilen ta��nmaz/ta��nmazlar �zerinde m�lkiyeti bulunmaktad�r:\n\n**TA�INMAZ B�LG�LER�:**\n{{TASINMAZ_BILGI}}\n\n**�LG�L� TAPU M�D�RL���:** {{TAPU_MUDURLUGU}}\n\n---\n\n## TALEP\n\n��K m.79 ve m.91 uyar�nca;\n\n1. Yukar�da belirtilen ta��nmaz/ta��nmazlar �zerine **HAC�Z �ERH�** konulmas� i�in ilgili Tapu M�d�rl���'ne m�zekkere yaz�lmas�n�,\n\n2. Haciz �erhinin tapu kayd�na i�lenmesini,\n\ntalep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
+        "content": "## {{ICRA_DAIRESI}} Mï¿½Dï¿½RLï¿½ï¿½ï¿½'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORï¿½LU:** {{BORCLU_AD}}\n\n**KONU:** Taï¿½ï¿½nmaz haczi talebi\n\n---\n\n## Aï¿½IKLAMA\n\nBorï¿½lunun aï¿½aï¿½ï¿½da belirtilen taï¿½ï¿½nmaz/taï¿½ï¿½nmazlar ï¿½zerinde mï¿½lkiyeti bulunmaktadï¿½r:\n\n**TAï¿½INMAZ Bï¿½LGï¿½LERï¿½:**\n{{TASINMAZ_BILGI}}\n\n**ï¿½LGï¿½Lï¿½ TAPU Mï¿½Dï¿½RLï¿½ï¿½ï¿½:** {{TAPU_MUDURLUGU}}\n\n---\n\n## TALEP\n\nï¿½ï¿½K m.79 ve m.91 uyarï¿½nca;\n\n1. Yukarï¿½da belirtilen taï¿½ï¿½nmaz/taï¿½ï¿½nmazlar ï¿½zerine **HACï¿½Z ï¿½ERHï¿½** konulmasï¿½ iï¿½in ilgili Tapu Mï¿½dï¿½rlï¿½ï¿½ï¿½'ne mï¿½zekkere yazï¿½lmasï¿½nï¿½,\n\n2. Haciz ï¿½erhinin tapu kaydï¿½na iï¿½lenmesini,\n\ntalep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
         "isPremium": false,
         "usageCount": 934
     },
     {
         "id": "25",
-        "category": "�cra",
+        "category": "ï¿½cra",
         "subcategory": "Haciz",
-        "title": "Haciz Fekki (Haciz Kald�rma) Talebi - Alacakl�",
-        "description": "Alacakl�n�n haczi kald�rma talebi",
+        "title": "Haciz Fekki (Haciz Kaldï¿½rma) Talebi - Alacaklï¿½",
+        "description": "Alacaklï¿½nï¿½n haczi kaldï¿½rma talebi",
         "icon": "KeyRound",
         "variables": [
-            { "key": "ICRA_DAIRESI", "label": "�cra Dairesi", "type": "text", "required": true },
+            { "key": "ICRA_DAIRESI", "label": "ï¿½cra Dairesi", "type": "text", "required": true },
             { "key": "DOSYA_NO", "label": "Dosya No", "type": "text", "required": true },
-            { "key": "ALACAKLI_AD", "label": "Alacakl�", "type": "text", "required": true },
-            { "key": "BORCLU_AD", "label": "Bor�lu", "type": "text", "required": true },
-            { "key": "HACIZLI_MAL", "label": "Haczin Kald�r�laca�� Mal/Kay�t", "type": "textarea", "required": true },
+            { "key": "ALACAKLI_AD", "label": "Alacaklï¿½", "type": "text", "required": true },
+            { "key": "BORCLU_AD", "label": "Borï¿½lu", "type": "text", "required": true },
+            { "key": "HACIZLI_MAL", "label": "Haczin Kaldï¿½rï¿½lacaï¿½ï¿½ Mal/Kayï¿½t", "type": "textarea", "required": true },
             { "key": "FEKK_NEDENI", "label": "Haciz Fekki Nedeni", "type": "textarea" }
         ],
-        "content": "## {{ICRA_DAIRESI}} M�D�RL���'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BOR�LU:** {{BORCLU_AD}}\n\n**KONU:** Haciz fekki (haciz kald�rma) talebi\n\n---\n\n## A�IKLAMA\n\nM�d�rl���n�z�n yukar�da numaras� yaz�l� dosyas�nda bor�luya ait a�a��daki mal/kay�t �zerine haciz konulmu�tur:\n\n**HAC�ZL� MAL/KAYIT:**\n{{HACIZLI_MAL}}\n\n**HAC�Z FEKK� NEDEN�:**\n{{FEKK_NEDENI}}\n\n---\n\n## TALEP\n\nYukar�da belirtilen mal/kay�t �zerindeki haczin **FEKK�N� (KALDIRILMASINI)** ve ilgili kurumlara haciz fekki m�zekkeresi yaz�lmas�n� talep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
+        "content": "## {{ICRA_DAIRESI}} Mï¿½Dï¿½RLï¿½ï¿½ï¿½'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORï¿½LU:** {{BORCLU_AD}}\n\n**KONU:** Haciz fekki (haciz kaldï¿½rma) talebi\n\n---\n\n## Aï¿½IKLAMA\n\nMï¿½dï¿½rlï¿½ï¿½ï¿½nï¿½zï¿½n yukarï¿½da numarasï¿½ yazï¿½lï¿½ dosyasï¿½nda borï¿½luya ait aï¿½aï¿½ï¿½daki mal/kayï¿½t ï¿½zerine haciz konulmuï¿½tur:\n\n**HACï¿½ZLï¿½ MAL/KAYIT:**\n{{HACIZLI_MAL}}\n\n**HACï¿½Z FEKKï¿½ NEDENï¿½:**\n{{FEKK_NEDENI}}\n\n---\n\n## TALEP\n\nYukarï¿½da belirtilen mal/kayï¿½t ï¿½zerindeki haczin **FEKKï¿½Nï¿½ (KALDIRILMASINI)** ve ilgili kurumlara haciz fekki mï¿½zekkeresi yazï¿½lmasï¿½nï¿½ talep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
         "isPremium": false,
         "usageCount": 1123
     },
     {
         "id": "26",
-        "category": "�cra",
-        "subcategory": "Mal Beyan�",
-        "title": "Mal Beyan� Talepli �deme Emri Talebi",
-        "description": "Bor�ludan mal beyan� istenmesi talebi",
+        "category": "ï¿½cra",
+        "subcategory": "Mal Beyanï¿½",
+        "title": "Mal Beyanï¿½ Talepli ï¿½deme Emri Talebi",
+        "description": "Borï¿½ludan mal beyanï¿½ istenmesi talebi",
         "icon": "ClipboardList",
         "variables": [
-            { "key": "ICRA_DAIRESI", "label": "�cra Dairesi", "type": "text", "required": true },
+            { "key": "ICRA_DAIRESI", "label": "ï¿½cra Dairesi", "type": "text", "required": true },
             { "key": "DOSYA_NO", "label": "Dosya No", "type": "text", "required": true },
-            { "key": "ALACAKLI_AD", "label": "Alacakl�", "type": "text", "required": true },
-            { "key": "BORCLU_AD", "label": "Bor�lu", "type": "text", "required": true },
-            { "key": "BORCLU_ADRES", "label": "Bor�lu Adresi", "type": "textarea", "required": true }
+            { "key": "ALACAKLI_AD", "label": "Alacaklï¿½", "type": "text", "required": true },
+            { "key": "BORCLU_AD", "label": "Borï¿½lu", "type": "text", "required": true },
+            { "key": "BORCLU_ADRES", "label": "Borï¿½lu Adresi", "type": "textarea", "required": true }
         ],
-        "content": "## {{ICRA_DAIRESI}} M�D�RL���'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BOR�LU:** {{BORCLU_AD}}\nAdres: {{BORCLU_ADRES}}\n\n**KONU:** Mal beyan� talebinde bulunulmas�\n\n---\n\n## A�IKLAMA\n\nM�d�rl���n�z�n yukar�da numaras� yaz�l� dosyas�nda bor�luya g�nderilen �deme emri tebli� edilmi�, ancak bor�lu �deme yapmam�� ve itirazda da bulunmam��t�r.\n\n---\n\n## TALEP\n\n��K m.74 uyar�nca;\n\n1. Bor�luya **MAL BEYANI** i�in davetiye ��kar�lmas�n�,\n\n2. Bor�lunun mal beyan�nda bulunmamas� veya ger�e�e ayk�r� beyanda bulunmas� halinde ��K m.337 kapsam�nda �ikayet hakk�m�n sakl� tutulmas�n�,\n\ntalep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
+        "content": "## {{ICRA_DAIRESI}} Mï¿½Dï¿½RLï¿½ï¿½ï¿½'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORï¿½LU:** {{BORCLU_AD}}\nAdres: {{BORCLU_ADRES}}\n\n**KONU:** Mal beyanï¿½ talebinde bulunulmasï¿½\n\n---\n\n## Aï¿½IKLAMA\n\nMï¿½dï¿½rlï¿½ï¿½ï¿½nï¿½zï¿½n yukarï¿½da numarasï¿½ yazï¿½lï¿½ dosyasï¿½nda borï¿½luya gï¿½nderilen ï¿½deme emri tebliï¿½ edilmiï¿½, ancak borï¿½lu ï¿½deme yapmamï¿½ï¿½ ve itirazda da bulunmamï¿½ï¿½tï¿½r.\n\n---\n\n## TALEP\n\nï¿½ï¿½K m.74 uyarï¿½nca;\n\n1. Borï¿½luya **MAL BEYANI** iï¿½in davetiye ï¿½ï¿½karï¿½lmasï¿½nï¿½,\n\n2. Borï¿½lunun mal beyanï¿½nda bulunmamasï¿½ veya gerï¿½eï¿½e aykï¿½rï¿½ beyanda bulunmasï¿½ halinde ï¿½ï¿½K m.337 kapsamï¿½nda ï¿½ikayet hakkï¿½mï¿½n saklï¿½ tutulmasï¿½nï¿½,\n\ntalep ederim.\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
         "isPremium": false,
         "usageCount": 789
     },
     {
         "id": "27",
-        "category": "�cra",
-        "subcategory": "Ara�",
-        "title": "Ara� Haczi Talebi",
-        "description": "Bor�lunun arac�na haciz konulmas� talebi",
+        "category": "ï¿½cra",
+        "subcategory": "Araï¿½",
+        "title": "Araï¿½ Haczi Talebi",
+        "description": "Borï¿½lunun aracï¿½na haciz konulmasï¿½ talebi",
         "icon": "Car",
         "variables": [
-            { "key": "ICRA_DAIRESI", "label": "�cra Dairesi", "type": "text", "required": true },
+            { "key": "ICRA_DAIRESI", "label": "ï¿½cra Dairesi", "type": "text", "required": true },
             { "key": "DOSYA_NO", "label": "Dosya No", "type": "text", "required": true },
-            { "key": "ALACAKLI_AD", "label": "Alacakl�", "type": "text", "required": true },
-            { "key": "BORCLU_AD", "label": "Bor�lu", "type": "text", "required": true },
-            { "key": "BORCLU_TC", "label": "Bor�lu TC No", "type": "text", "required": true },
-            { "key": "ARAC_PLAKA", "label": "Ara� Plakas� (biliniyorsa)", "type": "text" }
+            { "key": "ALACAKLI_AD", "label": "Alacaklï¿½", "type": "text", "required": true },
+            { "key": "BORCLU_AD", "label": "Borï¿½lu", "type": "text", "required": true },
+            { "key": "BORCLU_TC", "label": "Borï¿½lu TC No", "type": "text", "required": true },
+            { "key": "ARAC_PLAKA", "label": "Araï¿½ Plakasï¿½ (biliniyorsa)", "type": "text" }
         ],
-        "content": "## {{ICRA_DAIRESI}} M�D�RL���'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BOR�LU:** {{BORCLU_AD}} (TC: {{BORCLU_TC}})\n\n**KONU:** Ara� haczi talebi\n\n---\n\n## TALEP\n\nBor�lunun ad�na kay�tl� ara�/ara�lar �zerine haciz konulmas� i�in;\n\n1. **Emniyet Genel M�d�rl��� Trafik Ba�kanl���'na** (EGM) haciz m�zekkeresi yaz�lmas�n�,\n\n2. Bor�lu ad�na kay�tl� t�m ara�lar�n tespit edilmesini ve haciz �erhi konulmas�n�,\n\n3. Yakalama �erhi konulmas�n�,\n\ntalep ederim.\n\n**Bilinen Ara� Plakas� (varsa):** {{ARAC_PLAKA}}\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
+        "content": "## {{ICRA_DAIRESI}} Mï¿½Dï¿½RLï¿½ï¿½ï¿½'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORï¿½LU:** {{BORCLU_AD}} (TC: {{BORCLU_TC}})\n\n**KONU:** Araï¿½ haczi talebi\n\n---\n\n## TALEP\n\nBorï¿½lunun adï¿½na kayï¿½tlï¿½ araï¿½/araï¿½lar ï¿½zerine haciz konulmasï¿½ iï¿½in;\n\n1. **Emniyet Genel Mï¿½dï¿½rlï¿½ï¿½ï¿½ Trafik Baï¿½kanlï¿½ï¿½ï¿½'na** (EGM) haciz mï¿½zekkeresi yazï¿½lmasï¿½nï¿½,\n\n2. Borï¿½lu adï¿½na kayï¿½tlï¿½ tï¿½m araï¿½larï¿½n tespit edilmesini ve haciz ï¿½erhi konulmasï¿½nï¿½,\n\n3. Yakalama ï¿½erhi konulmasï¿½nï¿½,\n\ntalep ederim.\n\n**Bilinen Araï¿½ Plakasï¿½ (varsa):** {{ARAC_PLAKA}}\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
         "isPremium": false,
         "usageCount": 1456
     },
     {
         "id": "28",
-        "category": "�cra",
+        "category": "ï¿½cra",
         "subcategory": "Banka",
-        "title": "Banka Hesab� Haczi Talebi",
-        "description": "Bor�lunun banka hesaplar�na haciz konulmas�",
+        "title": "Banka Hesabï¿½ Haczi Talebi",
+        "description": "Borï¿½lunun banka hesaplarï¿½na haciz konulmasï¿½",
         "icon": "Landmark",
         "variables": [
-            { "key": "ICRA_DAIRESI", "label": "�cra Dairesi", "type": "text", "required": true },
+            { "key": "ICRA_DAIRESI", "label": "ï¿½cra Dairesi", "type": "text", "required": true },
             { "key": "DOSYA_NO", "label": "Dosya No", "type": "text", "required": true },
-            { "key": "ALACAKLI_AD", "label": "Alacakl�", "type": "text", "required": true },
-            { "key": "BORCLU_AD", "label": "Bor�lu", "type": "text", "required": true },
-            { "key": "BORCLU_TC", "label": "Bor�lu TC/VKN", "type": "text", "required": true },
-            { "key": "BANKA_ADI", "label": "Banka Ad� (biliniyorsa)", "type": "text" }
+            { "key": "ALACAKLI_AD", "label": "Alacaklï¿½", "type": "text", "required": true },
+            { "key": "BORCLU_AD", "label": "Borï¿½lu", "type": "text", "required": true },
+            { "key": "BORCLU_TC", "label": "Borï¿½lu TC/VKN", "type": "text", "required": true },
+            { "key": "BANKA_ADI", "label": "Banka Adï¿½ (biliniyorsa)", "type": "text" }
         ],
-        "content": "## {{ICRA_DAIRESI}} M�D�RL���'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BOR�LU:** {{BORCLU_AD}} (TC/VKN: {{BORCLU_TC}})\n\n**KONU:** Banka hesaplar�na haciz talebi\n\n---\n\n## TALEP\n\nBor�lunun banka hesaplar�na haciz konulmas� i�in;\n\n1. **T�m bankalara** (UYAP �zerinden toplu) haciz m�zekkeresi g�nderilmesini,\n\n2. Bor�lunun t�m banka hesaplar�ndaki mevduat�n haczedilmesini,\n\n3. Haczedilen tutarlar�n dosyaya aktar�lmas�n�,\n\ntalep ederim.\n\n**Bilinen Banka (varsa):** {{BANKA_ADI}}\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
+        "content": "## {{ICRA_DAIRESI}} Mï¿½Dï¿½RLï¿½ï¿½ï¿½'NE\n\n**DOSYA NO:** {{DOSYA_NO}}\n\n**ALACAKLI:** {{ALACAKLI_AD}}\n\n**BORï¿½LU:** {{BORCLU_AD}} (TC/VKN: {{BORCLU_TC}})\n\n**KONU:** Banka hesaplarï¿½na haciz talebi\n\n---\n\n## TALEP\n\nBorï¿½lunun banka hesaplarï¿½na haciz konulmasï¿½ iï¿½in;\n\n1. **Tï¿½m bankalara** (UYAP ï¿½zerinden toplu) haciz mï¿½zekkeresi gï¿½nderilmesini,\n\n2. Borï¿½lunun tï¿½m banka hesaplarï¿½ndaki mevduatï¿½n haczedilmesini,\n\n3. Haczedilen tutarlarï¿½n dosyaya aktarï¿½lmasï¿½nï¿½,\n\ntalep ederim.\n\n**Bilinen Banka (varsa):** {{BANKA_ADI}}\n\n{{TARIH}}\n{{ALACAKLI_AD}}\n",
         "isPremium": false,
         "usageCount": 2134
     }
@@ -4297,7 +5866,7 @@ const CP1252_REVERSE_BYTE_MAP = new Map([
     [0x0153, 0x9C], [0x017E, 0x9E], [0x0178, 0x9F],
 ]);
 
-const MOJIBAKE_DETECTION = /[���]/;
+const MOJIBAKE_DETECTION = /[ï¿½ï¿½ï¿½]/;
 
 const decodePotentialMojibake = (value) => {
     if (typeof value !== 'string' || !MOJIBAKE_DETECTION.test(value)) return value;
@@ -4367,7 +5936,7 @@ app.get('/api/templates/:id', (req, res) => {
     const template = SANITIZED_TEMPLATES.find(t => t.id === req.params.id);
 
     if (!template) {
-        return res.status(404).json({ error: '�ablon bulunamad�' });
+        return res.status(404).json({ error: 'ï¿½ablon bulunamadï¿½' });
     }
 
     res.json({ template });
@@ -4387,7 +5956,7 @@ app.post('/api/templates/:id/use', validateRequest([
     const template = SANITIZED_TEMPLATES.find(t => t.id === req.params.id);
 
     if (!template) {
-        return res.status(404).json({ error: '�ablon bulunamad�' });
+        return res.status(404).json({ error: 'ï¿½ablon bulunamadï¿½' });
     }
 
     const { variables } = req.body;
@@ -4711,10 +6280,4 @@ app.all('/api/announcements', (req, res) => announcementsHandler(req, res));
 app.listen(PORT, () => {
     console.warn(`Server running on http://localhost:${PORT}`);
 });
-
-
-
-
-
-
 

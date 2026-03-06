@@ -8,6 +8,17 @@ export interface NormalizedLegalDecision extends LegalSearchResult {
   [key: string]: any;
 }
 
+const SYNTHETIC_LEGAL_RESULT_ID_REGEX = /^(search-|legal-|ai-summary|sem-|template-decision-)/i;
+
+const getLegalResultIdentityKey = (result: Partial<NormalizedLegalDecision>): string => {
+  const documentId = String(result.documentId || '').trim();
+  if (documentId && !SYNTHETIC_LEGAL_RESULT_ID_REGEX.test(documentId)) {
+    return `doc:${documentId}`;
+  }
+
+  return `meta:${result.title || ''}|${result.esasNo || ''}|${result.kararNo || ''}|${result.tarih || ''}`;
+};
+
 interface SearchLegalDecisionsParams {
   source: string;
   keyword: string;
@@ -29,9 +40,195 @@ interface GetLegalDocumentParams {
   apiBaseUrl?: string;
 }
 
-const REQUEST_TIMEOUT_MS = 35000;
+const REQUEST_TIMEOUT_MS = Math.max(
+  45000,
+  Math.min(
+    180000,
+    Number((import.meta as any)?.env?.VITE_LEGAL_REQUEST_TIMEOUT_MS || 90000)
+  )
+);
 const LEGAL_SEARCH_TIMEOUT_MESSAGE = `Ictihat aramasi zaman asimina ugradi (${Math.round(REQUEST_TIMEOUT_MS / 1000)} sn). Lutfen tekrar deneyin.`;
 const LEGAL_DOCUMENT_TIMEOUT_MESSAGE = `Karar metni alma islemi zaman asimina ugradi (${Math.round(REQUEST_TIMEOUT_MS / 1000)} sn). Lutfen tekrar deneyin.`;
+const LEGAL_QUERY_PRIORITY_PHRASES = [
+  'itirazin iptali',
+  'icra takibi',
+  'borca itiraz',
+  'menfi tespit',
+  'hizmet tespit',
+  'kacak elektrik',
+  'kacak elektrik tuketimi',
+  'usulsuz elektrik',
+  'tespit tutanagi',
+  'muhur kirma',
+  'muhur fekki',
+  'dagitim sirketi',
+  'dagitim sirketi alacagi',
+  'kayip kacak bedeli',
+  'kayip kacak',
+  'enerji piyasasi',
+  'elektrik piyasasi',
+  'tuketici hizmetleri',
+  'haksiz fiil sorumlulugu',
+  'haksiz fiil',
+  'ispat yuku',
+  'alacakli lehine',
+  'idari para cezasi',
+  'imar barisi',
+  'yapi kayit belgesi',
+  'sit alani',
+  'gecici 16',
+  'epdk',
+];
+
+const normalizeKeywordToken = (value: unknown): string =>
+  String(value || '')
+    .toLocaleLowerCase('tr-TR')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\u0131/g, 'i')
+    .replace(/[^a-z0-9\s./-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+export const buildLegalKeywordQuery = (
+  keywords: string[],
+  options?: { maxTerms?: number; maxLength?: number }
+): string => {
+  const maxTerms = Math.max(3, Math.min(12, Number(options?.maxTerms) || 8));
+  const maxLength = Math.max(80, Math.min(280, Number(options?.maxLength) || 240));
+  const cleaned = (Array.isArray(keywords) ? keywords : [])
+    .map(item => String(item || '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+
+  if (cleaned.length === 0) return '';
+
+  const prioritized: string[] = [];
+  const fallback: string[] = [];
+
+  for (const keyword of cleaned) {
+    const normalized = normalizeKeywordToken(keyword);
+    if (!normalized) continue;
+    const hasPriorityPhrase = LEGAL_QUERY_PRIORITY_PHRASES.some(phrase => normalized.includes(phrase));
+    if (hasPriorityPhrase) prioritized.push(keyword);
+    else fallback.push(keyword);
+  }
+
+  const ordered = [...prioritized, ...fallback];
+  const unique: string[] = [];
+  const seen = new Set<string>();
+  for (const keyword of ordered) {
+    const key = normalizeKeywordToken(keyword);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    unique.push(keyword);
+    if (unique.length >= maxTerms) break;
+  }
+
+  const merged = unique.join(' ').replace(/\s+/g, ' ').trim();
+  if (merged.length <= maxLength) return merged;
+
+  const compacted: string[] = [];
+  let currentLength = 0;
+  for (const keyword of unique) {
+    const nextValue = String(keyword || '').trim();
+    if (!nextValue) continue;
+    const nextLength = currentLength === 0
+      ? nextValue.length
+      : currentLength + 1 + nextValue.length;
+    if (nextLength > maxLength) break;
+    compacted.push(nextValue);
+    currentLength = nextLength;
+  }
+
+  return compacted.join(' ').trim() || merged.slice(0, maxLength).trim();
+};
+
+const LEGAL_SEARCH_TEXT_STOPWORDS = new Set([
+  've', 'veya', 'ile', 'icin', 'ama', 'fakat', 'gibi', 'daha', 'kadar',
+  'olan', 'olanlar', 'olarak', 'bu', 'su', 'o', 'bir', 'iki', 'uc',
+  'de', 'da', 'mi', 'mu', 'ki', 'ya', 'yada', 'hem',
+  'en', 'cok', 'az', 'sonra', 'once', 'son', 'ilk', 'her', 'tum',
+  'hakkinda', 'oldu', 'olur', 'olsun', 'uzerinde', 'suretiyle',
+  'yonelik', 'iliskin', 'dair', 'dolayi', 'nedeniyle', 'kapsaminda',
+  'aciklanan', 'hususlar', 'mevcut', 'birlikte', 'degerlendirilerek',
+  'anlasilmakla', 'kanaatine', 'varildigi', 'itibar', 'edilmedigi',
+  'yeterli', 'isiginda', 'dogrultusunda', 'yapilan', 'alinan',
+  'tespit', 'edilen', 'isimli', 'sahislardan', 'tarihli',
+]);
+
+const LEGAL_SEARCH_TEXT_PHRASE_ANCHORS = [
+  'itirazin iptali', 'zaman asimi', 'icra takibi', 'borca itiraz',
+  'menfi tespit', 'konkordato', 'iflasin ertelenmesi', 'tasarrufun iptali',
+  'kacak elektrik', 'tespit tutanagi', 'muhur fekki', 'idari islemin iptali',
+  'tam yargi davasi', 'yurutmenin durdurulmasi', 'kamulastirma bedeli',
+  'idari para cezasi', 'imar kanunu', 'imar barisi', 'yapi kayit belgesi',
+  'ruhsatsiz yapi', 'yapi tatil tutanagi', 'sit alani', 'gecici 16',
+  'encumen karari', 'muhurleme karari', 'yikim karari', 'imar mevzuatina aykirilik',
+  'kasten oldurme', 'uyusturucu madde', 'haksiz tahrik', 'gorevi kotuye kullanma',
+  'ise iade', 'fazla mesai alacagi', 'kidem tazminati', 'ihbar tazminati',
+  'is akdi feshi', 'iscilik alacagi', 'kamu davasi', 'uyusturucu madde satisi',
+  'bilirkisi raporu', 'kullanici tanik', 'materyal mukayese', 'kriminal rapor',
+  'fiziki takip', 'arama karari', 'tutuklama', 'tahliye',
+];
+
+export const compactLegalSearchQuery = (
+  rawText: string,
+  options?: { preserveKeywords?: string[]; maxLength?: number }
+): string => {
+  const trimmed = String(rawText || '').trim();
+  if (trimmed.length <= 300) return trimmed;
+
+  const normalized = normalizeKeywordToken(trimmed);
+  const matchedPhrases: string[] = [];
+  const seenPhrases = new Set<string>();
+  const addPhrase = (value: string, force = false) => {
+    const normalizedValue = normalizeKeywordToken(value);
+    if (!normalizedValue || seenPhrases.has(normalizedValue)) return;
+    if (!force && !normalized.includes(normalizedValue)) return;
+    seenPhrases.add(normalizedValue);
+    matchedPhrases.push(normalizedValue);
+  };
+
+  const preserveKeywordList = Array.isArray(options?.preserveKeywords) ? options.preserveKeywords : [];
+  const preservedKeywords = preserveKeywordList
+    .map((value) => normalizeKeywordToken(value))
+    .filter((value) => value.length >= 3)
+    .slice(0, 12);
+
+  for (const keyword of preservedKeywords) {
+    addPhrase(keyword, true);
+  }
+
+  for (const phrase of LEGAL_SEARCH_TEXT_PHRASE_ANCHORS) {
+    if (matchedPhrases.length >= 12) break;
+    if (normalized.includes(phrase)) {
+      addPhrase(phrase, true);
+    }
+  }
+
+  const tokens = normalized
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((token) => token.length >= 4 && !LEGAL_SEARCH_TEXT_STOPWORDS.has(token));
+
+  const seen = new Set(matchedPhrases.flatMap((phrase) => phrase.split(' ')));
+  const uniqueTokens: string[] = [];
+  for (const token of tokens) {
+    if (!seen.has(token) && uniqueTokens.length < 20) {
+      seen.add(token);
+      uniqueTokens.push(token);
+    }
+  }
+
+  const parts = [...matchedPhrases, ...uniqueTokens];
+  let result = parts.join(' ').trim();
+  const maxLength = Math.max(180, Math.min(700, Number(options?.maxLength) || 500));
+  if (result.length > maxLength) {
+    result = result.slice(0, maxLength).trim();
+  }
+
+  return result || trimmed.slice(0, 300);
+};
 
 const isAbortLikeError = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') return false;
@@ -166,7 +363,7 @@ export const normalizeLegalSearchResults = (payload: any): NormalizedLegalDecisi
 
   const seen = new Set<string>();
   return mapped.filter(result => {
-    const key = `${result.title}|${result.esasNo || ''}|${result.kararNo || ''}|${result.tarih || ''}`;
+    const key = getLegalResultIdentityKey(result);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -183,7 +380,7 @@ export const searchLegalDecisions = async ({
   const body = JSON.stringify(payload);
   const headers = await buildJsonHeaders();
   const endpoint = `${apiBaseUrl}/api/legal/search-decisions`;
-  const retries = [endpoint, `${endpoint}?retry=1`, `${apiBaseUrl}/api/legal?action=search-decisions`];
+  const retries = [endpoint, `${endpoint}?retry=1`, `${endpoint}?retry=2` /* Removed the action fallback as it's not handled by the new server path */];
 
   let lastErrorText = '';
   let lastStatus = 0;
@@ -217,7 +414,24 @@ export const searchLegalDecisions = async ({
     throw new Error(LEGAL_SEARCH_TIMEOUT_MESSAGE);
   }
 
-  throw new Error(lastErrorText || `Ictihat aramasi sirasinda bir hata olustu (HTTP ${lastStatus || 500}).`);
+  // Try to parse JSON error response for a cleaner message
+  let cleanError = lastErrorText;
+  try {
+    const parsed = JSON.parse(lastErrorText);
+    if (parsed?.error) {
+      cleanError = parsed.error;
+      if (parsed.details?.[0]?.message) {
+        cleanError += ': ' + parsed.details[0].message;
+      }
+    }
+  } catch {
+    // If it's HTML or non-JSON, strip tags
+    if (lastErrorText.includes('<html') || lastErrorText.includes('<!DOCTYPE')) {
+      cleanError = `Ictihat arama servisi yanit vermedi (HTTP ${lastStatus || 500}).`;
+    }
+  }
+
+  throw new Error(cleanError || `Ictihat aramasi sirasinda bir hata olustu (HTTP ${lastStatus || 500}).`);
 };
 
 export const getLegalDocument = async ({

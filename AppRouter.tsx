@@ -17,6 +17,7 @@ import Privacy from './src/pages/Privacy';
 import Terms from './src/pages/Terms';
 import Cookies from './src/pages/Cookies';
 import { TemplatesPage, type TemplateTransferContext } from './src/pages/TemplatesPage';
+import PrecedentSearch from './src/pages/PrecedentSearch';
 import ProtectedRoute from './src/components/auth/ProtectedRoute';
 
 // Admin imports
@@ -89,6 +90,7 @@ export default function App() {
       <Route path="/word-addin" element={<WordAddin />} />
       <Route path="/fiyatlandirma" element={<Pricing />} />
       <Route path="/pricing" element={<Pricing />} />
+      <Route path="/emsal-karar-arama" element={<PrecedentSearch />} />
       <Route
         path="/sablonlar"
         element={

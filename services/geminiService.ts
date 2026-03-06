@@ -240,6 +240,7 @@ export async function analyzeDocuments(
         }
 
         const caseDetails: CaseDetails = {
+            caseTitle: json.caseDetails?.caseTitle || json.caseDetails?.subject || '',
             court: json.caseDetails?.court || '',
             fileNumber: json.caseDetails?.fileNumber || '',
             decisionNumber: json.caseDetails?.decisionNumber || '',
@@ -278,7 +279,7 @@ export async function analyzeDocuments(
         return {
             summary: fallbackSummary || "Sunucudan gelen analiz sonucu islenemedi.",
             potentialParties: [],
-            caseDetails: { court: '', fileNumber: '', decisionNumber: '', decisionDate: '' }
+            caseDetails: { caseTitle: '', court: '', fileNumber: '', decisionNumber: '', decisionDate: '' }
         };
     }
 }

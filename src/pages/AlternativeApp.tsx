@@ -4,7 +4,7 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import UTIF from 'utif2';
 import mammoth from 'mammoth';
-import { PetitionType, ChatMessage, UploadedFile, WebSearchResult, AnalysisData, UserRole, CaseDetails, PetitionCategory, PetitionSubcategory, CategoryToSubcategories, SubcategoryToPetitionTypes, CategoryToRoles, LegalSearchResult, ContactInfo, LawyerInfo } from '../../types';
+import { PetitionType, ChatMessage, UploadedFile, WebSearchResult, AnalysisData, UserRole, CaseDetails, PetitionCategory, PetitionSubcategory, CategoryToSubcategories, SubcategoryToPetitionTypes, CategoryToRoles, ContactInfo, LawyerInfo } from '../../types';
 import { analyzeDocuments, generateSearchKeywords, performWebSearch, generatePetition, streamChatResponse, rewriteText, reviewPetition } from '../../services/geminiService';
 import { ToastContainer, ToastType } from '../../components/Toast';
 import { Header } from '../../components/Header';
@@ -17,8 +17,20 @@ import { VoiceInputButton } from '../../components/VoiceInputButton';
 import { Petition, supabase } from '../../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
-import { getLegalDocument, searchLegalDecisions } from '../utils/legalSearch';
+import {
+    compactLegalSearchQuery,
+    getLegalDocument,
+    normalizeLegalSearchResults as normalizeSharedLegalSearchResults,
+    searchLegalDecisions,
+    type NormalizedLegalDecision,
+} from '../utils/legalSearch';
 import { resolveLegalSourceForQuery } from '../utils/legalSource';
+import {
+    clearTransientStorageItem,
+    readTransientStorageItem,
+    TRANSIENT_STORAGE_KEYS,
+    writeTransientStorageItem,
+} from '../utils/transientStorage';
 import { File, FileCode2, FileImage, FileText } from 'lucide-react';
 import { MissingInfoChecklistPanel } from '../../components/MissingInfoChecklistPanel';
 import {
@@ -80,106 +92,21 @@ const extractGeneratedDocumentPayload = (rawArgs: unknown): { title: string; con
     };
 };
 
-const extractResultsFromText = (text: string): any[] => {
-    if (!text || typeof text !== 'string') return [];
+type AlternativeLegalSearchResult = NormalizedLegalDecision;
 
-    const cleaned = text.replace(/```json/gi, '').replace(/```/g, '').trim();
-    try {
-        const parsed = JSON.parse(cleaned);
-        if (Array.isArray(parsed)) return parsed;
-    } catch {
-        // Text may contain prose around JSON.
+const SYNTHETIC_LEGAL_RESULT_ID_REGEX = /^(search-|legal-|ai-summary|sem-|template-decision-)/i;
+
+const getLegalResultIdentityKey = (result: Partial<AlternativeLegalSearchResult>): string => {
+    const documentId = String(result.documentId || '').trim();
+    if (documentId && !SYNTHETIC_LEGAL_RESULT_ID_REGEX.test(documentId)) {
+        return `doc:${documentId}`;
     }
 
-    const jsonArrayMatch = cleaned.match(/\[[\s\S]*\]/);
-    if (jsonArrayMatch) {
-        try {
-            const parsed = JSON.parse(jsonArrayMatch[0]);
-            if (Array.isArray(parsed)) return parsed;
-        } catch {
-            return [];
-        }
-    }
-
-    return [];
+    return `meta:${result.title || ''}|${result.esasNo || ''}|${result.kararNo || ''}|${result.tarih || ''}`;
 };
 
-type AlternativeLegalSearchResult = LegalSearchResult & {
-    id?: string;
-    documentId?: string;
-    snippet?: string;
-};
-
-const normalizeLegalSearchResults = (payload: any): AlternativeLegalSearchResult[] => {
-    const raw: any[] = [];
-
-    if (Array.isArray(payload)) raw.push(...payload);
-    if (Array.isArray(payload?.results)) raw.push(...payload.results);
-    if (Array.isArray(payload?.results?.content)) raw.push(...payload.results.content);
-    if (Array.isArray(payload?.content)) raw.push(...payload.content);
-    if (Array.isArray(payload?.result?.content)) raw.push(...payload.result.content);
-
-    if (typeof payload?.results === 'string') raw.push(...extractResultsFromText(payload.results));
-    if (typeof payload?.text === 'string') raw.push(...extractResultsFromText(payload.text));
-
-    const possibleContentArrays = [payload?.results?.content, payload?.content, payload?.result?.content].filter(Array.isArray);
-    for (const contentArray of possibleContentArrays) {
-        for (const item of contentArray as any[]) {
-            if (typeof item?.text === 'string') {
-                raw.push(...extractResultsFromText(item.text));
-            }
-        }
-    }
-
-    const mapped = raw
-        .map((result: any, index: number): AlternativeLegalSearchResult | null => {
-            if (!result || typeof result !== 'object') return null;
-
-            const hasCoreFields = [
-                result.title,
-                result.mahkeme,
-                result.court,
-                result.daire,
-                result.chamber,
-                result.esasNo,
-                result.esas_no,
-                result.kararNo,
-                result.karar_no,
-                result.ozet,
-                result.snippet,
-                result.summary,
-            ].some(value => typeof value === 'string' && value.trim().length > 0);
-
-            if (!hasCoreFields) return null;
-
-            const mahkeme = result.mahkeme || result.court || '';
-            const daire = result.daire || result.chamber || '';
-            const title = (result.title || `${mahkeme || 'Yargıtay'} ${daire}`.trim() || `Karar ${index + 1}`).trim();
-            const relevanceScore = Number(result.relevanceScore);
-
-            return {
-                id: result.id || result.documentId || `search-${index}`,
-                documentId: result.documentId || result.id || undefined,
-                title,
-                esasNo: result.esasNo || result.esas_no || '',
-                kararNo: result.kararNo || result.karar_no || '',
-                tarih: result.tarih || result.date || '',
-                daire,
-                ozet: result.ozet || result.snippet || result.summary || '',
-                snippet: result.snippet || result.ozet || result.summary || '',
-                relevanceScore: Number.isFinite(relevanceScore) ? relevanceScore : undefined,
-            };
-        })
-        .filter((result): result is AlternativeLegalSearchResult => Boolean(result && (result.title || result.ozet)));
-
-    const seen = new Set<string>();
-    return mapped.filter(result => {
-        const key = `${result.title}|${result.esasNo || ''}|${result.kararNo || ''}|${result.tarih || ''}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-    });
-};
+const normalizeLegalSearchResults = (payload: any): AlternativeLegalSearchResult[] =>
+    normalizeSharedLegalSearchResults(payload) as AlternativeLegalSearchResult[];
 
 const mergeUniqueLegalResults = (
     existing: AlternativeLegalSearchResult[],
@@ -187,7 +114,7 @@ const mergeUniqueLegalResults = (
 ): AlternativeLegalSearchResult[] => {
     const seen = new Set<string>();
     return [...existing, ...incoming].filter(result => {
-        const key = `${result.title || ''}|${result.esasNo || ''}|${result.kararNo || ''}|${result.tarih || ''}`;
+        const key = getLegalResultIdentityKey(result);
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
@@ -424,32 +351,32 @@ const isLikelyPetitionRequest = (rawMessage: string): boolean => {
         && /(olustur|olutur|hazirla|hazırla|yaz)/i.test(rawMessage);
 };
 
-const isSimpleGuidanceQuestion = (rawMessage: string): boolean => {
-    if (!rawMessage) return false;
-
-    const normalized = rawMessage.toLowerCase().trim();
+const hasSearchOptOutIntent = (rawMessage: string): boolean => {
+    const normalized = normalizeKeywordText(rawMessage);
     if (!normalized) return false;
-    if (isLikelyPetitionRequest(normalized)) return false;
-
-    const tokenCount = normalized.split(/\s+/).filter(Boolean).length;
-    const hasSimpleIntent = /(nedir|ne demek|ne anlama|nasil olur|kimdir|nereye|hangi mahkeme|hangi mahkemeye|nasil|sure|kac gun|harc|gorevli|yetkili|acabilir miyim|acmaliyim|gerekli mi)/i.test(normalized);
-    const hasComplexIntent = /(emsal|ictihat|karar no|esas no|detayli analiz|madde madde|belge olustur|dilekce|taslak)/i.test(normalized);
-
-    return hasSimpleIntent && !hasComplexIntent && tokenCount <= 30;
+    return /(arama|arastirma|ictihat|emsal|yargitay|danistay|web|internet).*(yapma|istemiyorum|olmasin|gerek yok|gerekli degil|yapmayin)|\b(yapma|istemiyorum|olmasin|gerek yok|gerekli degil|yapmayin).*(arama|arastirma|ictihat|emsal|yargitay|danistay|web|internet)\b/i.test(normalized);
 };
 
-const isDefinitionQuestion = (rawMessage: string): boolean => {
-    const normalized = String(rawMessage || '').toLowerCase().trim();
-    if (!normalized) return false;
-    if (isLikelyPetitionRequest(normalized)) return false;
-    return /(nedir|ne demek|ne anlama gelir|kimdir|tanimi nedir|anlami nedir)/i.test(normalized);
+const isExplicitWebSearchRequest = (rawMessage: string): boolean => {
+    const normalized = normalizeKeywordText(rawMessage);
+    if (!normalized || hasSearchOptOutIntent(normalized)) return false;
+
+    const hasWebToken = /\b(web|internet|google|site|kaynak|link|url)\b/i.test(normalized);
+    const hasSearchVerb = /\b(ara|arama|arastir|arastirma|bul|tara|getir|incele|listele)\b/i.test(normalized);
+    const hasSourceAsk = /\b(kaynak|link|url)\b/i.test(normalized);
+
+    return hasWebToken && (hasSearchVerb || hasSourceAsk);
 };
 
-const isDisputeOrRiskQuestion = (rawMessage: string): boolean => {
-    const normalized = String(rawMessage || '').toLowerCase().trim();
-    if (!normalized) return false;
-    if (isDefinitionQuestion(normalized)) return false;
-    return /(parsel|ada|pafta|ruhsat|ruhsatsiz|imar|koruma kurulu|yikim|muhurl|iptal|tazminat|uyusmazlik|dava|risk|somut olay|strateji|ne yapmaliyim|nasil ilerlemeliyim|itiraz|savunma)/i.test(normalized);
+const isExplicitLegalSearchRequest = (rawMessage: string): boolean => {
+    const normalized = normalizeKeywordText(rawMessage);
+    if (!normalized || hasSearchOptOutIntent(normalized)) return false;
+
+    const hasLegalToken = /\b(emsal|ictihat|yargitay|danistay|karar no|esas no|karar ara)\b/i.test(normalized);
+    const hasSearchVerb = /\b(ara|arama|arastir|arastirma|bul|getir|goster|listele|paylas)\b/i.test(normalized);
+    const hasLookupQuestion = /\b(var mi|ne diyor|ornek)\b/i.test(normalized);
+
+    return hasLegalToken && (hasSearchVerb || hasLookupQuestion);
 };
 
 const hasWebEvidence = (result: WebSearchResult | null): boolean => {
@@ -535,11 +462,18 @@ const hasLegalEvidenceForGeneration = (results: AlternativeLegalSearchResult[]):
     return results.some(result => {
         const title = typeof result.title === 'string' ? result.title.trim() : '';
         const summary = typeof result.ozet === 'string' ? result.ozet.trim() : '';
-        const citation = [result.esasNo, result.kararNo, result.tarih]
+        const referenceSignal = [
+            result.esasNo,
+            result.kararNo,
+            result.tarih,
+            result.documentId,
+            result.daire,
+        ]
             .map(value => typeof value === 'string' ? value.trim() : '')
             .some(Boolean);
+        const titleLooksLikeDecision = /(?:karar|yargıtay|yargitay|danıştay|danistay)/i.test(title);
 
-        return title.length > 0 && summary.length > 0 && citation;
+        return title.length > 0 && summary.length > 0 && (referenceSignal || titleLooksLikeDecision);
     });
 };
 
@@ -872,7 +806,7 @@ export default function AlternativeApp() {
         petitionFromState?.petition_type as PetitionType || PetitionType.DavaDilekcesi
     );
     const [userRole, setUserRole] = useState<UserRole>(UserRole.Davaci);
-    const [caseDetails, setCaseDetails] = useState<CaseDetails>({ court: '', fileNumber: '', decisionNumber: '', decisionDate: '' });
+    const [caseDetails, setCaseDetails] = useState<CaseDetails>({ caseTitle: '', court: '', fileNumber: '', decisionNumber: '', decisionDate: '' });
     const [files, setFiles] = useState<File[]>([]);
     const FILE_BATCH_SIZE = 15;
     const MAX_UPLOAD_BATCHES = 3;
@@ -919,6 +853,7 @@ export default function AlternativeApp() {
 
     const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
     const [searchKeywords, setSearchKeywords] = useState<string[]>([]);
+    const [manualKeywordInput, setManualKeywordInput] = useState('');
     const [webSearchResult, setWebSearchResult] = useState<WebSearchResult | null>(null);
     const [legalSearchResults, setLegalSearchResults] = useState<AlternativeLegalSearchResult[]>([]);
     const [selectedDecision, setSelectedDecision] = useState<AlternativeLegalSearchResult | null>(null);
@@ -971,7 +906,7 @@ export default function AlternativeApp() {
         setLegalSearchResults(prev => {
             const seen = new Set<string>();
             return [...prev, ...incoming].filter(result => {
-                const key = `${result.title || ''}|${result.esasNo || ''}|${result.kararNo || ''}|${result.tarih || ''}`;
+                const key = getLegalResultIdentityKey(result);
                 if (seen.has(key)) return false;
                 seen.add(key);
                 return true;
@@ -979,9 +914,25 @@ export default function AlternativeApp() {
         });
     }, []);
 
+    const handleAddManualKeyword = useCallback(() => {
+        const cleaned = String(manualKeywordInput || '').replace(/\s+/g, ' ').trim();
+        if (!cleaned) return;
+
+        const normalized = normalizeKeywordText(cleaned);
+        const alreadyExists = searchKeywords.some(keyword => normalizeKeywordText(keyword) === normalized);
+        if (alreadyExists) {
+            addToast('Bu arama terimi zaten listede var.', 'info');
+            return;
+        }
+
+        setSearchKeywords(prev => [...prev, cleaned]);
+        setManualKeywordInput('');
+        addToast('Arama terimi eklendi.', 'success');
+    }, [addToast, manualKeywordInput, searchKeywords]);
+
     useEffect(() => {
-        const templateContent = localStorage.getItem('templateContent');
-        const rawTemplateCtx = localStorage.getItem('templateContext');
+        const templateContent = readTransientStorageItem(TRANSIENT_STORAGE_KEYS.templateContent);
+        const rawTemplateCtx = readTransientStorageItem(TRANSIENT_STORAGE_KEYS.templateContext);
         const rawBulkPackage = localStorage.getItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
         const templateCtx = parseTemplateTransferContext(rawTemplateCtx);
         const bulkPackage = parsePendingBulkTemplatePackage(rawBulkPackage);
@@ -1014,8 +965,8 @@ export default function AlternativeApp() {
                 prev,
                 `SABLON TASLAK METNI\n${initialTemplateDraft}`,
             ].filter(Boolean).join('\n\n'));
-            localStorage.removeItem('templateContent');
-            localStorage.removeItem('templateContext');
+            clearTransientStorageItem(TRANSIENT_STORAGE_KEYS.templateContent);
+            clearTransientStorageItem(TRANSIENT_STORAGE_KEYS.templateContext);
             if (!hasPendingBulkPackage) {
                 localStorage.removeItem(BULK_TEMPLATE_PACKAGE_STORAGE_KEY);
             }
@@ -1052,7 +1003,9 @@ export default function AlternativeApp() {
             setCurrentStep(4);
             const metadata = petitionFromState.metadata;
             if (metadata) {
-                if (metadata.caseDetails) setCaseDetails(metadata.caseDetails);
+                if (metadata.caseDetails) {
+                    setCaseDetails(prev => ({ ...prev, ...metadata.caseDetails }));
+                }
                 if (metadata.parties) setParties(metadata.parties);
                 if (metadata.searchKeywords) setSearchKeywords(metadata.searchKeywords);
                 if (metadata.docContent) setDocContent(metadata.docContent);
@@ -1093,25 +1046,39 @@ export default function AlternativeApp() {
     }, [pendingTemplateAutoEnhancement, generatedPetition, isLoadingChat, legalSearchResults.length]);
 
     const runLegalSearch = useCallback(async (
-        keywordsForSearch: string[],
-        options?: { silent?: boolean; suppressError?: boolean }
+        queryInput: string | string[],
+        options?: { silent?: boolean; suppressError?: boolean; replaceExisting?: boolean; preserveKeywords?: string[] }
     ): Promise<AlternativeLegalSearchResult[]> => {
-        if (keywordsForSearch.length === 0) return [];
+        const rawQuery = Array.isArray(queryInput)
+            ? queryInput.join(' ').trim()
+            : String(queryInput || '').trim();
+        const preservedKeywords = Array.isArray(options?.preserveKeywords)
+            ? options.preserveKeywords
+            : (Array.isArray(queryInput) ? queryInput : searchKeywords);
+        const keyword = compactLegalSearchQuery(rawQuery, { preserveKeywords: preservedKeywords });
+        if (!keyword) return [];
+
+        const shouldReplace = options?.replaceExisting ?? !options?.silent;
 
         setIsLegalSearching(true);
         if (!options?.silent) {
             setError(null);
         }
+        if (shouldReplace) {
+            setLegalSearchResults([]);
+        }
 
         try {
-            const keyword = keywordsForSearch.slice(0, 5).join(' ');
-            const resolvedSource = resolveLegalSourceForQuery(keyword, 'all');
             const normalizedResults = (await searchLegalDecisions({
-                source: resolvedSource,
+                source: 'all',
                 keyword,
                 apiBaseUrl: '',
             })) as AlternativeLegalSearchResult[];
-            mergeLegalResults(normalizedResults);
+            if (shouldReplace) {
+                setLegalSearchResults(normalizedResults);
+            } else {
+                mergeLegalResults(normalizedResults);
+            }
 
             if (!options?.silent) {
                 if (normalizedResults.length > 0) {
@@ -1130,7 +1097,8 @@ export default function AlternativeApp() {
         } finally {
             setIsLegalSearching(false);
         }
-    }, [addToast, mergeLegalResults]);
+    }, [addToast, mergeLegalResults, searchKeywords]);
+
 
     const handleSelectedFiles = useCallback((rawFiles: FileList | null) => {
         if (!rawFiles) return;
@@ -1499,7 +1467,12 @@ export default function AlternativeApp() {
                 return;
             }
             setSearchKeywords(finalKeywords);
-            await runLegalSearch(finalKeywords);
+
+            // Emsal karar aramasında PrecedentSearch ile aynı yaklaşım:
+            // Keyword array'i yerine analiz özetini (ham metin) direkt gönder.
+            // Sunucu kendi keyword extraction, routing ve scoring'ini yapacak.
+            const rawSearchQuery = analysisData?.summary || finalKeywords.join(' ');
+            await runLegalSearch(rawSearchQuery);
             addToast('Anahtar kelimeler oluturuldu!', 'success');
         } catch (e: any) {
             setError(`Hata: ${e.message}`);
@@ -1838,8 +1811,8 @@ export default function AlternativeApp() {
             return;
         }
 
-        localStorage.setItem('templateContent', generatedPetition);
-        localStorage.setItem('editorReturnRoute', '/alt-app');
+        writeTransientStorageItem(TRANSIENT_STORAGE_KEYS.templateContent, generatedPetition);
+        writeTransientStorageItem(TRANSIENT_STORAGE_KEYS.editorReturnRoute, '/alt-app');
         addToast('Taslak editör sayfasına gönderildi.', 'success');
         navigate('/app');
     }, [generatedPetition, addToast, navigate]);
@@ -1898,15 +1871,12 @@ export default function AlternativeApp() {
         let activeAnalysisSummary = analysisData?.summary?.trim() || '';
         const explicitKeywordAddRequest = isExplicitKeywordAddRequest(normalizedMessage);
         const userRequestedPetition = isLikelyPetitionRequest(normalizedMessage);
-        const isSimpleQuestion = isSimpleGuidanceQuestion(normalizedMessage);
-        const isDefinitionOnlyQuestion = isDefinitionQuestion(normalizedMessage);
-        const isDisputeQuestion = isDisputeOrRiskQuestion(normalizedMessage);
-        const isEmsalSearchRequest = /(emsal|ictihat|içtihat|yargitay|danistay|karar ara|karar aramasi|karar arar misin)/i.test(normalizedMessage);
-        const hasUploadedChatFiles = chatSourceFiles.length > 0 || chatFiles.length > 0;
-        const requiresEvidenceForChat = hasUploadedChatFiles
-            || (!isSimpleQuestion && !isDefinitionOnlyQuestion && (isEmsalSearchRequest || isDisputeQuestion));
-        const requiresWebEvidenceForChat = hasUploadedChatFiles || isDisputeQuestion;
-        const requiresLegalEvidenceForChat = hasUploadedChatFiles || isEmsalSearchRequest || isDisputeQuestion;
+        const userRequestedWebSearch = isExplicitWebSearchRequest(normalizedMessage);
+        const userRequestedLegalSearch = isExplicitLegalSearchRequest(normalizedMessage);
+        const shouldPersistEvidenceResults = userRequestedWebSearch || userRequestedLegalSearch || userRequestedPetition;
+        const requiresEvidenceForChat = userRequestedWebSearch || userRequestedLegalSearch;
+        const requiresWebEvidenceForChat = userRequestedWebSearch;
+        const requiresLegalEvidenceForChat = userRequestedLegalSearch;
         const requiresStrictEvidenceForDocument = userRequestedPetition;
 
         try {
@@ -2185,6 +2155,9 @@ export default function AlternativeApp() {
                     legalResultCount: mergedLegalResults.length,
                     docContent: mergedDocContent,
                     specifics: specificsWithMissingInfo,
+                    allowWebSearch: requiresStrictEvidenceForDocument || userRequestedWebSearch,
+                    allowLegalSearch: requiresStrictEvidenceForDocument || userRequestedLegalSearch,
+                    disableDocumentGeneration: requiresStrictEvidenceForDocument,
                 },
                 sanitizeChatFilesForApi(chatFiles)
             );
@@ -2197,33 +2170,13 @@ export default function AlternativeApp() {
 
             for await (const chunk of responseStream) {
                 if (chunk.functionCallResults && chunk.searchResults) {
-                    setChatProgressText('Emsal kararlar bağlama ekleniyor...');
-                    const newResults = normalizeLegalSearchResults(chunk.searchResults);
-                    if (newResults.length > 0) {
-                        mergedLegalResults = mergeUniqueLegalResults(mergedLegalResults, newResults);
-                        mergeLegalResults(newResults);
-                        addToast(`${newResults.length} adet emsal karar bulundu!`, 'success');
-
-                        const formattedSummary = newResults
-                            .slice(0, 5)
-                            .map(result => {
-                                const meta = [
-                                    result.esasNo ? `E. ${result.esasNo}` : '',
-                                    result.kararNo ? `K. ${result.kararNo}` : '',
-                                    result.tarih ? `T. ${result.tarih}` : '',
-                                ].filter(Boolean).join(' ');
-                                return `${result.title}${meta ? ` (${meta})` : ''}`;
-                            })
-                            .join('\n');
-
-                        const streamSummary = typeof chunk.text === 'string' ? chunk.text.trim() : '';
-                        const nextSearchResult: WebSearchResult = {
-                            summary: streamSummary || formattedSummary,
-                            sources: [],
-                        };
-                        mergedWebSearchResult = mergeWebSearchResults(mergedWebSearchResult, nextSearchResult);
-                        if (mergedWebSearchResult) {
-                            setWebSearchResult(mergedWebSearchResult);
+                    if (shouldPersistEvidenceResults) {
+                        setChatProgressText('Emsal kararlar bağlama ekleniyor...');
+                        const newResults = normalizeLegalSearchResults(chunk.searchResults);
+                        if (newResults.length > 0) {
+                            mergedLegalResults = mergeUniqueLegalResults(mergedLegalResults, newResults);
+                            mergeLegalResults(newResults);
+                            addToast(`${newResults.length} adet emsal karar bulundu!`, 'success');
                         }
                     }
                 }
@@ -2239,7 +2192,8 @@ export default function AlternativeApp() {
                     return '';
                 };
 
-                const chunkText = getText(chunk);
+                const suppressFunctionCallResultText = Boolean(chunk.functionCallResults && chunk.searchResults && !shouldPersistEvidenceResults);
+                const chunkText = suppressFunctionCallResultText ? '' : getText(chunk);
                 if (chunkText) {
                     assistantText += chunkText;
                     setChatMessages(prev => prev.map((msg, index) =>
@@ -2263,7 +2217,7 @@ export default function AlternativeApp() {
                 for (const fc of functionCalls) {
                     if (fc.name === 'update_search_keywords') {
                         functionCallDetected = true;
-                        const allowModelKeywordUpdates = explicitKeywordAddRequest || (hasUploadedDocumentContext && mergedKeywords.length === 0);
+                        const allowModelKeywordUpdates = explicitKeywordAddRequest || requiresStrictEvidenceForDocument;
                         if (!allowModelKeywordUpdates) {
                             continue;
                         }
@@ -2284,6 +2238,10 @@ export default function AlternativeApp() {
                     }
 
                     if (fc.name === 'search_yargitay') {
+                        const allowLegalSearchToolActions = userRequestedLegalSearch || requiresStrictEvidenceForDocument;
+                        if (!allowLegalSearchToolActions) {
+                            continue;
+                        }
                         functionCallDetected = true;
                         setChatProgressText('Emsal kararlar aranyor...');
 
@@ -2298,7 +2256,7 @@ export default function AlternativeApp() {
                             : [];
                         const mergedFromCall = Array.from(new Set([...queryKeywords, ...explicitKeywords]));
 
-                        const allowModelKeywordUpdates = explicitKeywordAddRequest || (hasUploadedDocumentContext && mergedKeywords.length === 0);
+                        const allowModelKeywordUpdates = explicitKeywordAddRequest || requiresStrictEvidenceForDocument;
                         if (allowModelKeywordUpdates && mergedFromCall.length > 0) {
                             mergedKeywords = Array.from(new Set([...mergedKeywords, ...mergedFromCall]));
                             setSearchKeywords(mergedKeywords);
@@ -2368,7 +2326,7 @@ export default function AlternativeApp() {
                 addToast('Dosya analizi dilekçe bağlamına eklendi.', 'success');
             }
 
-            if (addedKeywordsCount > 0 && mergedKeywords.length > 0 && !hasWebEvidence(mergedWebSearchResult)) {
+            if ((requiresStrictEvidenceForDocument || userRequestedWebSearch) && addedKeywordsCount > 0 && mergedKeywords.length > 0 && !hasWebEvidence(mergedWebSearchResult)) {
                 setChatProgressText('Web araştırması yapılıyor...');
                 try {
                     const autoWebSearchResult = await performWebSearch(mergedKeywords);
@@ -2418,8 +2376,11 @@ export default function AlternativeApp() {
                             petitionType,
                             caseDetails,
                             analysisSummary: activeAnalysisSummary,
+                            searchKeywords: mergedKeywords,
                             webSearchResult: mergedWebSearchResult?.summary || '',
+                            webSources: mergedWebSearchResult?.sources || [],
                             legalSearchResult: buildLegalResultsPrompt(mergedLegalResults),
+                            legalSearchResults: mergedLegalResults,
                             docContent: mergedDocContent,
                             specifics: specificsWithMissingInfo,
                             chatHistory: [...newMessages, { role: 'model', text: assistantText }],
@@ -2516,8 +2477,11 @@ export default function AlternativeApp() {
             const result = await generatePetition({
                 userRole, petitionType, caseDetails,
                 analysisSummary: analysisData.summary,
+                searchKeywords,
                 webSearchResult: webSearchResult?.summary || '',
+                webSources: webSearchResult?.sources || [],
                 legalSearchResult: legalResultsText,
+                legalSearchResults,
                 docContent, specifics: specificsWithMissingInfo, chatHistory: chatMessages, parties,
                 webSourceCount: webSearchResult?.sources?.length || 0,
                 legalResultCount: legalSearchResults.length,
@@ -2671,7 +2635,7 @@ export default function AlternativeApp() {
 
                 {/* Main Content Area */}
                 <main className="flex-1 overflow-y-auto bg-[#0A0A0B] relative">
-                    <div className="max-w-4xl mx-auto p-8 lg:p-12 pb-32">
+                    <div className="max-w-[67rem] mx-auto p-8 lg:p-12 pb-32">
 
                         {/* Main Stage based on Current Step */}
                         <div className="animate-fade-in">
@@ -2706,7 +2670,7 @@ export default function AlternativeApp() {
 
                                     {/* Subcategory Accordions */}
                                     <div className="bg-[#111113] border border-white/5 rounded-2xl p-6 sm:p-8 shadow-sm">
-                                        <label className="block text-sm font-medium text-gray-400 uppercase tracking-wider mb-6 flex items-center justify-between">
+                                        <label className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-6 flex items-center justify-between">
                                             <span>Alt Kategori ve Dilekçe Türü</span>
                                             {petitionType && <span className="text-xs font-semibold text-red-400 bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20">Seçili: {petitionType}</span>}
                                         </label>
@@ -2899,8 +2863,55 @@ export default function AlternativeApp() {
                                             <h3 className="font-semibold text-white">Analiz Özeti</h3>
                                             <span className="px-3 py-1 bg-green-500/10 text-green-400 text-xs font-bold rounded-full border border-green-500/20">Tamamlandı</span>
                                         </div>
-                                        <div className="p-6 sm:p-8 prose prose-invert max-w-none text-gray-300 whitespace-pre-wrap leading-relaxed">
-                                            {analysisData?.summary || "Henüz bir analiz bulunmuyor."}
+                                        <div className="p-6 sm:p-8 space-y-6">
+                                            <div className="prose prose-invert max-w-none text-gray-300 whitespace-pre-wrap leading-relaxed">
+                                                {analysisData?.summary || "Henüz bir analiz bulunmuyor."}
+                                            </div>
+                                            <div className="border-t border-white/5 pt-5 space-y-3">
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-400">Çıkarılan Arama Terimleri</h4>
+                                                    {searchKeywords.length > 0 && (
+                                                        <span className="text-xs text-gray-500">{searchKeywords.length} terim</span>
+                                                    )}
+                                                </div>
+                                                <div className="flex flex-col sm:flex-row gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={manualKeywordInput}
+                                                        onChange={(event) => setManualKeywordInput(event.target.value)}
+                                                        onKeyDown={(event) => {
+                                                            if (event.key === 'Enter') {
+                                                                event.preventDefault();
+                                                                handleAddManualKeyword();
+                                                            }
+                                                        }}
+                                                        placeholder="Manuel arama terimi ekleyin"
+                                                        className="flex-1 bg-[#1A1A1D] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-400 transition-all"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleAddManualKeyword}
+                                                        disabled={!manualKeywordInput.trim()}
+                                                        className="px-4 py-2.5 bg-[#1A1A1D] hover:bg-[#1C1C1F] border border-white/10 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-all"
+                                                    >
+                                                        Terim Ekle
+                                                    </button>
+                                                </div>
+                                                {searchKeywords.length > 0 ? (
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {searchKeywords.map((keyword, index) => (
+                                                            <span
+                                                                key={`${keyword}-${index}`}
+                                                                className="px-3 py-1.5 bg-[#1A1A1D] border border-white/10 rounded-lg text-xs text-gray-300"
+                                                            >
+                                                                {keyword}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-sm text-gray-500">Henüz arama terimi oluşturulmadı. Derin Araştırma kartından öneri oluşturabilirsiniz.</p>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
 
@@ -2913,8 +2924,18 @@ export default function AlternativeApp() {
 
                                             <div className="p-6 sm:p-8 space-y-8">
                                                 <div className="space-y-4">
-                                                    <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-400">Mahkeme ve Esas Bilgileri</h4>
+                                                    <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-400">Dava Basligi, Mahkeme ve Esas Bilgileri</h4>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="md:col-span-2">
+                                                            <label className="block text-xs text-gray-400 mb-2">Dava Basligi / Konu</label>
+                                                            <input
+                                                                type="text"
+                                                                value={caseDetails.caseTitle}
+                                                                onChange={(event) => handleCaseDetailChange('caseTitle', event.target.value)}
+                                                                placeholder="Orn: Itirazin Iptali Davasi"
+                                                                className="w-full bg-[#1A1A1D] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-indigo-400 transition-all"
+                                                            />
+                                                        </div>
                                                         <div>
                                                             <label className="block text-xs text-gray-400 mb-2">Mahkeme</label>
                                                             <input
@@ -3203,15 +3224,8 @@ export default function AlternativeApp() {
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="bg-[#111113] border border-white/5 rounded-2xl p-6 shadow-sm">
-                                            <h3 className="font-semibold text-white mb-4">Web Araştırması</h3>
+                                            <h3 className="font-semibold text-white mb-4">Derin Araştırma</h3>
                                             <p className="text-sm text-gray-400 mb-6">Benzer davalar veya hukuki argümanlar için internet araması yapın.</p>
-                                            {searchKeywords.length > 0 && (
-                                                <div className="flex flex-wrap gap-2 mb-6">
-                                                    {searchKeywords.map((k, i) => (
-                                                        <span key={i} className="px-3 py-1.5 bg-[#1A1A1D] border border-white/10 rounded-lg text-xs text-gray-300">{k}</span>
-                                                    ))}
-                                                </div>
-                                            )}
 
                                             <div className="flex flex-col gap-3">
                                                 <button

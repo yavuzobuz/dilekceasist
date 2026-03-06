@@ -138,6 +138,7 @@ export enum PetitionType {
   TahliyeTalebi = "Tahliye Talebi",
 
   // ========== İCRA - Genel Mahkeme ==========
+  ItirazinIptali = "İtirazın İptali Davası",
   MenfiTespit = "Menfi Tespit Davası",
   Istirdat = "İstirdat (Geri Alma) Davası",
   TasarrufunIptali = "Tasarrufun İptali Davası",
@@ -296,6 +297,7 @@ export const SubcategoryToPetitionTypes: Record<PetitionSubcategory, PetitionTyp
   ],
   // İcra - Genel Mahkeme
   [PetitionSubcategory.IcraGenelMahkeme]: [
+    PetitionType.ItirazinIptali,
     PetitionType.MenfiTespit,
     PetitionType.Istirdat,
     PetitionType.TasarrufunIptali,
@@ -387,6 +389,8 @@ export interface LegalSearchResult {
   source?: string;
   sourceUrl?: string;
   documentUrl?: string;
+  documentId?: string;
+  snippet?: string;
   relevanceScore?: number; // 0-100 relevance score
 }
 
@@ -399,6 +403,7 @@ export interface AnalysisData {
 }
 
 export interface CaseDetails {
+  caseTitle: string;
   court: string;
   fileNumber: string;
   decisionNumber: string;
@@ -432,6 +437,8 @@ export interface GeneratePetitionParams {
   docContent: string;
   specifics: string;
   searchKeywords?: string[] | string;
+  webSources?: GroundingSource[];
+  legalSearchResults?: LegalSearchResult[];
   chatHistory: ChatMessage[];
   parties: { [key: string]: string };
   webSourceCount?: number;
@@ -465,4 +472,7 @@ export interface ChatContext {
   analysisSummary?: string;
   currentDraft?: string;
   petitionType?: string;
+  allowWebSearch?: boolean;
+  allowLegalSearch?: boolean;
+  disableDocumentGeneration?: boolean;
 }

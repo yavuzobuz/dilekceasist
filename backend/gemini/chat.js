@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { consumeGenerationCredit, TRIAL_DAILY_GENERATION_LIMIT } from '../../lib/api/generationQuota.js';
+import legalApiHandler from '../../api/legal/[action].js';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 const MODEL_NAME = process.env.GEMINI_MODEL_NAME || process.env.VITE_GEMINI_MODEL_NAME || 'gemini-2.5-flash';
@@ -12,6 +13,11 @@ const getAiClient = () => {
 };
 
 const normalizeText = (value) => (typeof value === 'string' ? value.trim() : '');
+const truncateText = (value, maxLength = 180) => {
+    const safe = normalizeText(value);
+    if (!safe || safe.length <= maxLength) return safe;
+    return `${safe.slice(0, Math.max(0, maxLength - 3)).trim()}...`;
+};
 
 const normalizeKeywordText = (value = '') => String(value || '')
     .toLocaleLowerCase('tr-TR')
@@ -176,10 +182,32 @@ const isSimpleGuidanceQuestion = (text = '') => {
     return hasSimpleIntent && !hasComplexIntent && tokenCount <= 24;
 };
 
-const isEmsalSearchQuestion = (text = '') => {
-    const normalized = normalizeText(text.toLowerCase());
+const hasSearchOptOutIntent = (text = '') => {
+    const normalized = normalizeKeywordText(text);
     if (!normalized) return false;
-    return /(emsal|ictihat|içtihat|yargitay|danistay|karar ara|karar aramasi|karar arar misin)/i.test(normalized);
+    return /(arama|arastirma|ictihat|emsal|yargitay|danistay|web|internet).*(yapma|istemiyorum|olmasin|gerek yok|gerekli degil|yapmayin)|\b(yapma|istemiyorum|olmasin|gerek yok|gerekli degil|yapmayin).*(arama|arastirma|ictihat|emsal|yargitay|danistay|web|internet)\b/i.test(normalized);
+};
+
+const isExplicitWebSearchQuestion = (text = '') => {
+    const normalized = normalizeKeywordText(text);
+    if (!normalized || hasSearchOptOutIntent(normalized)) return false;
+
+    const hasWebToken = /\b(web|internet|google|site|kaynak|link|url)\b/i.test(normalized);
+    const hasSearchVerb = /\b(ara|arama|arastir|arastirma|bul|tara|getir|incele|listele)\b/i.test(normalized);
+    const hasSourceAsk = /\b(kaynak|link|url)\b/i.test(normalized);
+
+    return hasWebToken && (hasSearchVerb || hasSourceAsk);
+};
+
+const isExplicitLegalSearchQuestion = (text = '') => {
+    const normalized = normalizeKeywordText(text);
+    if (!normalized || hasSearchOptOutIntent(normalized)) return false;
+
+    const hasLegalToken = /\b(emsal|ictihat|yargitay|danistay|karar no|esas no|karar ara)\b/i.test(normalized);
+    const hasSearchVerb = /\b(ara|arama|arastir|arastirma|bul|getir|goster|listele|paylas)\b/i.test(normalized);
+    const hasLookupQuestion = /\b(var mi|ne diyor|ornek)\b/i.test(normalized);
+
+    return hasLegalToken && (hasSearchVerb || hasLookupQuestion);
 };
 
 const isDefinitionQuestion = (text = '') => {
@@ -309,55 +337,107 @@ const appendGeminiFileParts = (parts, files = []) => {
     });
 };
 
-// Fallback search function for legal decisions
-async function searchEmsalFallback(ai, keyword) {
-    try {
-        const response = await ai.models.generateContent({
-            model: MODEL_NAME,
-            contents: `Turkiye'de "${keyword}" konusunda emsal Yargitay ve Danistay kararlari bul. Her karar icin:
-            - Mahkeme, Daire, Esas No, Karar No, Tarih, Ozet, Ilgi Skoru (0-100)
+const invokeLegalSearchHandler = async ({ keyword, source = 'all', headers = {} }) => {
+    const responseState = {
+        statusCode: 200,
+        headers: {},
+        body: null,
+    };
 
-            En az 6 karar bul ve JSON formatinda dondur:
-            [{"mahkeme": "...", "daire": "...", "esasNo": "...", "kararNo": "...", "tarih": "...", "ozet": "...", "relevanceScore": 85}]
+    let resolved = false;
 
-            Sadece JSON array dondur.`,
-            config: {
-                tools: [{ googleSearch: {} }],
-                temperature: 0.1,
+    return new Promise(async (resolve) => {
+        const finalize = (payload = null) => {
+            if (resolved) return;
+            resolved = true;
+            responseState.body = payload;
+            resolve(responseState);
+        };
+
+        const mockRes = {
+            headersSent: false,
+            setHeader(name, value) {
+                responseState.headers[name] = value;
+                return this;
+            },
+            status(code) {
+                responseState.statusCode = Number(code) || 500;
+                return this;
+            },
+            json(payload) {
+                this.headersSent = true;
+                finalize(payload);
+                return this;
+            },
+            end(payload) {
+                this.headersSent = true;
+                finalize(payload);
+                return this;
+            },
+            write() {
+                return true;
+            },
+        };
+
+        const mockReq = {
+            method: 'POST',
+            query: { action: 'search-decisions' },
+            body: {
+                action: 'search-decisions',
+                source,
+                keyword,
+                filters: {},
+            },
+            headers,
+        };
+
+        try {
+            await legalApiHandler(mockReq, mockRes);
+            if (!resolved) {
+                finalize(null);
             }
+        } catch (error) {
+            responseState.statusCode = 500;
+            responseState.body = { error: error?.message || 'Internal legal search invocation failed' };
+            finalize(responseState.body);
+        }
+    });
+};
+
+// Chat uses the same legal search pipeline as the precedent search page.
+async function searchEmsalFallback(_ai, keyword, req, sourceHint = 'all') {
+    const normalizedKeyword = normalizeText(keyword);
+    if (!normalizedKeyword) {
+        return { success: true, results: [] };
+    }
+
+    try {
+        const legalResponse = await invokeLegalSearchHandler({
+            keyword: normalizedKeyword,
+            source: sourceHint,
+            headers: req?.headers || {},
         });
+        const legalResults = Array.isArray(legalResponse?.body?.results) ? legalResponse.body.results : [];
 
-        const text = response.text || '';
-        const jsonMatch = text.match(/\[[\s\S]*\]/);
-        if (jsonMatch) {
-            const parsedResults = JSON.parse(jsonMatch[0]);
-            const results = Array.isArray(parsedResults) ? parsedResults : [];
-
+        if (legalResults.length > 0) {
             return {
                 success: true,
-                results: results
-                    .map((result, index) => ({
-                        id: `search-${index}`,
-                        title: `${result.mahkeme || 'Yargitay'} ${result.daire || ''}`.trim(),
-                        esasNo: result.esasNo || '',
-                        kararNo: result.kararNo || '',
-                        tarih: result.tarih || '',
-                        daire: result.daire || '',
-                        ozet: result.ozet || '',
-                        relevanceScore: result.relevanceScore || Math.max(0, 100 - (index * 8))
-                    }))
-                    .filter((item) => item.title && (item.ozet || item.esasNo || item.kararNo))
-                    .sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
+                results: legalResults,
+                provider: legalResponse?.body?.provider || 'legal-api',
+                source: legalResponse?.body?.source || sourceHint,
+                warning: legalResponse?.body?.warning || '',
             };
         }
 
-        return { success: true, results: [] };
+        if (legalResponse?.statusCode >= 400) {
+            console.error('Verified legal search failed in chat:', legalResponse?.body?.error || legalResponse);
+        }
     } catch (error) {
-        console.error('Search error:', error);
-        return { success: false, results: [] };
+        console.error('Verified legal search invocation error in chat:', error);
     }
-}
 
+    return { success: true, results: [] };
+}
 async function runWebVerificationSearch(ai, keyword, question) {
     const query = normalizeText([keyword, question].filter(Boolean).join(' '));
     if (!query) {
@@ -386,7 +466,6 @@ async function runWebVerificationSearch(ai, keyword, question) {
         return { summary: '', sourceCount: 0 };
     }
 }
-
 export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -406,13 +485,12 @@ export default async function handler(req, res) {
 
         const lastUserMessage = getLastUserMessageText(chatHistory);
         const isDocumentRequest = isLikelyDocumentRequest(lastUserMessage);
-        const isEmsalOnlyQuery = isEmsalSearchQuestion(lastUserMessage);
-        const isDefinitionOnlyQuery = isDefinitionQuestion(lastUserMessage);
-        const isDisputeQuery = isDisputeOrRiskQuestion(lastUserMessage);
-        const hasUploadedChatFiles = Array.isArray(files) && files.length > 0;
-        const requiresEvidenceForAnswer = isDocumentRequest || isEmsalOnlyQuery || isDisputeQuery || hasUploadedChatFiles;
-        const requiresWebEvidence = isDocumentRequest || isDisputeQuery;
-        const requiresLegalEvidence = isDocumentRequest || isEmsalOnlyQuery || isDisputeQuery;
+        const requestedWebSearch = safeContext.allowWebSearch === true || isExplicitWebSearchQuestion(lastUserMessage);
+        const requestedLegalSearch = safeContext.allowLegalSearch === true || isExplicitLegalSearchQuestion(lastUserMessage);
+        const requiresEvidenceForAnswer = isDocumentRequest || requestedWebSearch || requestedLegalSearch;
+        const requiresWebEvidence = isDocumentRequest || requestedWebSearch;
+        const requiresLegalEvidence = isDocumentRequest || requestedLegalSearch;
+        const allowSearchYargitayTool = isDocumentRequest || requestedLegalSearch;
         const hasAnalysisSummary = normalizeText(analysisSummary || '').length > 0;
         const hasUploadedDocument = (Array.isArray(files) && files.length > 0) || normalizeText(safeContext.docContent || '').length > 0;
 
@@ -464,7 +542,7 @@ export default async function handler(req, res) {
 
             if (requiresLegalEvidence && !hasLegalEvidence(effectiveLegalSummary, effectiveLegalResultCount)) {
                 try {
-                    const legalEvidence = await searchEmsalFallback(ai, evidenceQuery);
+                    const legalEvidence = await searchEmsalFallback(ai, evidenceQuery, req);
                     if (Array.isArray(legalEvidence.results) && legalEvidence.results.length > 0) {
                         const legalSummaryFromResults = formatLegalResultsForContext(legalEvidence.results);
                         effectiveLegalSummary = [effectiveLegalSummary, legalSummaryFromResults].filter(Boolean).join('\n').trim();
@@ -478,7 +556,7 @@ export default async function handler(req, res) {
             // Retry legal search with raw message if first attempt didn't produce results
             if (requiresLegalEvidence && !hasLegalEvidence(effectiveLegalSummary, effectiveLegalResultCount) && lastUserMessage) {
                 try {
-                    const retryLegalEvidence = await searchEmsalFallback(ai, lastUserMessage);
+                    const retryLegalEvidence = await searchEmsalFallback(ai, lastUserMessage, req);
                     if (Array.isArray(retryLegalEvidence.results) && retryLegalEvidence.results.length > 0) {
                         const legalSummaryFromResults = formatLegalResultsForContext(retryLegalEvidence.results);
                         effectiveLegalSummary = [effectiveLegalSummary, legalSummaryFromResults].filter(Boolean).join('\n').trim();
@@ -505,6 +583,7 @@ export default async function handler(req, res) {
         const evidenceLimitedForChat = requiresEvidenceForAnswer && !isDocumentRequest && (!hasVerifiedWebEvidence || !hasVerifiedLegalEvidence);
 
         const documentGenerationAllowed = hasVerifiedWebEvidence && hasVerifiedLegalEvidence;
+        const allowDocumentGenerationTool = documentGenerationAllowed && safeContext.disableDocumentGeneration !== true;
 
         const contextPrompt = `
 **MEVCUT DURUM:**
@@ -518,7 +597,7 @@ ${Array.isArray(files) && files.length > 0 ? `- Yuklenen Belgeler: ${files.lengt
 `;
 
         const evidenceCautionNote = evidenceLimitedForChat
-            ? `\n\n**DIKKAT:** Web veya emsal karar arastirmasi kisitli sonuc verdi. Yanit verirken:\n- Dogrulanmis bilgileri acikca belirt\n- Kesin olmayan bilgiler icin "dogrulanmasi onerilen" ifadesini kullan\n- Mumkunse search_yargitay fonksiyonunu cagirarak ek karar bulmaya calis\n- Kullaniciyi asla engelleme, elindeki bilgiyle en iyi cevabi ver`
+            ? `\n\n**DIKKAT:** Web veya emsal karar arastirmasi kisitli sonuc verdi. Yanit verirken:\n- Dogrulanmis bilgileri acikca belirt\n- Kesin olmayan bilgiler icin "dogrulanmasi onerilen" ifadesini kullan${allowSearchYargitayTool ? '\n- Mumkunse search_yargitay fonksiyonunu cagirarak ek karar bulmaya calis' : ''}\n- Kullaniciyi asla engelleme, elindeki bilgiyle en iyi cevabi ver`
             : '';
 
         const systemInstruction = `Sen, Turk Hukuku uzmani bir hukuk asistanisin.
@@ -529,8 +608,10 @@ ${Array.isArray(files) && files.length > 0 ? `- Yuklenen Belgeler: ${files.lengt
 3. Belge yuklendiyse analiz et
 4. Emsal karar numarasi/kunyesi uydurma
 5. Sadece dogrulanmis bulgulara dayan
-${documentGenerationAllowed ? '6. generate_document fonksiyonunu sadece dogrulanmis kanit varken kullan' : '6. generate_document kullanma, kanit eksigini bildir'}
-7. search_yargitay fonksiyonu ile ictihat ara
+${allowDocumentGenerationTool ? '6. generate_document fonksiyonunu sadece dogrulanmis kanit varken kullan' : '6. generate_document kullanma, kullanici belge isterse mevcut kaniti ozetle ve belge uretimini istemciye birak'}
+${allowSearchYargitayTool
+                ? '7. Kullanici acikca emsal karar aradiginda search_yargitay fonksiyonu ile ictihat ara'
+                : '7. Kullanici emsal karar aramasi talep etmedikce search_yargitay fonksiyonunu cagirma'}
 8. Kullanicinin sorusunu ASLA engelleme, her zaman elindeki bilgiyle yanit ver
 
 ${contextPrompt}${evidenceCautionNote}
@@ -565,7 +646,7 @@ Ek kural: Basit sorularda (or. hangi mahkeme, sure) kisa ve net cevap ver.`;
 
         const searchYargitayFunction = {
             name: 'search_yargitay',
-            description: 'Yargitay karari ara',
+            description: 'Emsal karar veya ictihat ara',
             parameters: {
                 type: Type.OBJECT,
                 properties: {
@@ -576,9 +657,9 @@ Ek kural: Basit sorularda (or. hangi mahkeme, sure) kisa ve net cevap ver.`;
             },
         };
 
-        const functionDeclarations = documentGenerationAllowed
-            ? [updateKeywordsFunction, generateDocumentFunction, searchYargitayFunction]
-            : [updateKeywordsFunction, searchYargitayFunction];
+        const functionDeclarations = allowDocumentGenerationTool
+            ? [updateKeywordsFunction, generateDocumentFunction, ...(allowSearchYargitayTool ? [searchYargitayFunction] : [])]
+            : [updateKeywordsFunction, ...(allowSearchYargitayTool ? [searchYargitayFunction] : [])];
 
         const contents = chatHistory.map((msg) => {
             const parts = [{ text: msg?.text || '' }];
@@ -615,7 +696,7 @@ Ek kural: Basit sorularda (or. hangi mahkeme, sure) kisa ve net cevap ver.`;
             const candidate = chunk.candidates?.[0];
             if (candidate?.content?.parts) {
                 for (const part of candidate.content.parts) {
-                    if (part.functionCall?.name === 'search_yargitay') {
+                    if (part.functionCall?.name === 'search_yargitay' && allowSearchYargitayTool) {
                         pendingSearchCalls.push(part.functionCall);
                     }
 
@@ -689,18 +770,25 @@ Ek kural: Basit sorularda (or. hangi mahkeme, sure) kisa ve net cevap ver.`;
             for (const fc of pendingSearchCalls) {
                 const args = parseFunctionArgs(fc.args);
                 const searchQuery = normalizeText(args?.searchQuery || evidenceQuery || '');
-                const searchResult = await searchEmsalFallback(ai, searchQuery);
+                const searchResult = await searchEmsalFallback(ai, searchQuery, req);
+                const visibleResults = Array.isArray(searchResult.results)
+                    ? searchResult.results.slice(0, 3)
+                    : [];
+                const hiddenCount = Math.max(0, (searchResult.results?.length || 0) - visibleResults.length);
 
-                let formattedResults = '\n\n### BULUNAN YARGITAY KARARLARI\n\n';
-                if (searchResult.results?.length > 0) {
-                    searchResult.results.forEach((result, index) => {
+                let formattedResults = '\n\n### BULUNAN EMSAL KARARLAR\n\n';
+                if (visibleResults.length > 0) {
+                    visibleResults.forEach((result, index) => {
                         formattedResults += `**${index + 1}. ${result.title}**\n`;
                         if (result.esasNo) formattedResults += `E. ${result.esasNo} `;
                         if (result.kararNo) formattedResults += `K. ${result.kararNo} `;
                         if (result.tarih) formattedResults += `T. ${result.tarih}`;
                         formattedResults += '\n';
-                        if (result.ozet) formattedResults += `Ozet: ${result.ozet}\n\n`;
+                        if (result.ozet) formattedResults += `Ozet: ${truncateText(result.ozet, 160)}\n\n`;
                     });
+                    if (hiddenCount > 0) {
+                        formattedResults += `+ ${hiddenCount} ek karar bulundu. Tam liste baglama eklendi.\n`;
+                    }
                 } else {
                     formattedResults += 'Bu konuda emsal karar bulunamadi.\n';
                 }
