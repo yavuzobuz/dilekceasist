@@ -2498,6 +2498,8 @@ async function handleSearchDecisions(req, res) {
     let usedSource = routingPlan.resolvedSource;
     const bedestenErrors = [];
     let semanticCandidates = [];
+    // rawQuery referansı — scoring, rerank ve fallback'te sınırlı kullanım için
+    const rawQ = routingPlan.rawQuery || '';
     // AI mantıklı bir keyword/context oluşturduğunu varsaydığımızdan
     // saçma varyantlar ve regex silmeleri YAPMIYORUZ. Doğrudan AI sorgusunu aratıyoruz.
     const queryVariants = buildBedestenQueryVariants(
@@ -2684,9 +2686,12 @@ async function handleSearchDecisions(req, res) {
     }
 
     if (Array.isArray(results) && results.length > 0) {
-        // rawQuery varsa tam bağlamla scoring yap, yoksa originalKeyword kullan
+        // rawQuery varsa tam bağlamla scoring yap, ama çok uzun metinler (>500 char)
+        // token parsing'i boğar — bu durumda kısaltılmış keyword'e düş
         const scoringKeyword =
-            routingPlan.rawQuery || routingPlan.originalKeyword || routingPlan.keyword;
+            rawQ.length > 0 && rawQ.length <= 500
+                ? rawQ
+                : routingPlan.originalKeyword || routingPlan.keyword;
         const scoring = scoreAndFilterResultsByKeyword(results, scoringKeyword);
 
         const contentCandidates = [];
@@ -2766,9 +2771,14 @@ async function handleSearchDecisions(req, res) {
     }
 
     if (!Array.isArray(results) || results.length === 0) {
+        // Gemini rerank: rawQuery 1500 char'a kadar kullanılabilir (LLM bağlamı geniş)
+        const rerankQ =
+            rawQ.length > 0 && rawQ.length <= 1500
+                ? rawQ
+                : routingPlan.originalKeyword || routingPlan.keyword;
         const semanticRerank = await semanticRerankWithGemini({
             candidates: semanticCandidates,
-            keyword: routingPlan.rawQuery || routingPlan.originalKeyword || routingPlan.keyword,
+            keyword: rerankQ,
         });
         if (
             semanticRerank.applied &&
@@ -2781,8 +2791,13 @@ async function handleSearchDecisions(req, res) {
     }
 
     if (!Array.isArray(results) || results.length === 0) {
+        // Phrase fallback: uzun metin phrase parser'ı boğar, kısaltılmış keyword kullan
+        const fallbackQ =
+            rawQ.length > 0 && rawQ.length <= 500
+                ? rawQ
+                : routingPlan.originalKeyword || routingPlan.keyword;
         const phraseFallback = await runPhraseFallbackSearch({
-            keyword: routingPlan.rawQuery || routingPlan.originalKeyword || routingPlan.keyword,
+            keyword: fallbackQ,
             source: usedSource || routingPlan.resolvedSource || 'all',
             filters: routingPlan.filters,
         });
