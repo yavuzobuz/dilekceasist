@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { Search, Scale, FileText, X, Plus, Loader2, AlertCircle } from 'lucide-react';
-import { getLegalDocument, searchLegalDecisions } from '../utils/legalSearch';
+import { getLegalDocument, searchLegalDecisions, buildLegalKeywordQuery } from '../utils/legalSearch';
 import { resolveLegalSourceForQuery } from '../utils/legalSource';
 
 interface LegalSource {
@@ -61,18 +61,7 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
     const [selectedDecision, setSelectedDecision] = useState<SearchResult | null>(null);
     const [selectedDecisionContent, setSelectedDecisionContent] = useState('');
     const [isDecisionContentLoading, setIsDecisionContentLoading] = useState(false);
-
-    useEffect(() => {
-        if (isOpen && initialKeywords.length > 0 && !keyword) {
-            const initialQuery = initialKeywords.slice(0, 3).join(' ');
-            setKeyword(initialQuery);
-            setSelectedSource(prev => (
-                prev === 'all'
-                    ? resolveLegalSourceForQuery(initialQuery, 'all')
-                    : prev
-            ));
-        }
-    }, [isOpen, initialKeywords, keyword]);
+    const [hasAutoSearched, setHasAutoSearched] = useState(false);
 
     const getResultId = (result: SearchResult, fallback: string) => {
         return result.documentId || result.id || fallback;
@@ -80,13 +69,14 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
 
     const shouldFetchDocumentFromApi = (result: SearchResult, fallbackId: string): boolean => {
         const resolvedId = getResultId(result, fallbackId);
-        const hasSyntheticId = /^(search-|legal-|ai-summary)/i.test(String(resolvedId || ''));
+        const hasSyntheticId = /^(search-|legal-|ai-summary|sem-)/i.test(String(resolvedId || ''));
         const hasDocumentUrl = Boolean((result.documentUrl || result.sourceUrl || '').trim());
         return hasDocumentUrl || !hasSyntheticId;
     };
 
-    const handleSearch = async () => {
-        if (!keyword.trim()) return;
+    const handleSearch = async (searchKeyword?: string) => {
+        const queryToUse = (searchKeyword || keyword || '').trim();
+        if (!queryToUse) return;
 
         setIsLoading(true);
         setError(null);
@@ -95,7 +85,7 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
         try {
             const parsedResults = await searchLegalDecisions({
                 source: selectedSource,
-                keyword: keyword.trim(),
+                keyword: queryToUse,
                 apiBaseUrl: API_BASE_URL,
             });
             setResults(parsedResults);
@@ -106,6 +96,28 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
         }
     };
 
+    useEffect(() => {
+        if (isOpen && initialKeywords.length > 0 && !hasAutoSearched) {
+            // Tum anahtar kelimeleri akıllı sekilde birlestir (ilk 8 keyword, max 240 karakter)
+            const initialQuery = buildLegalKeywordQuery(initialKeywords, { maxTerms: 8, maxLength: 240 });
+            if (initialQuery) {
+                setKeyword(initialQuery);
+                const autoSource = resolveLegalSourceForQuery(initialQuery, 'all');
+                setSelectedSource(prev => prev === 'all' ? autoSource : prev);
+                setHasAutoSearched(true);
+                // Otomatik arama baslat — kullanici beklemek zorunda kalmasin
+                handleSearch(initialQuery);
+            }
+        }
+    }, [isOpen, initialKeywords, hasAutoSearched]);
+
+    // Panel kapaninca auto-search flag'ini sifirla
+    useEffect(() => {
+        if (!isOpen) {
+            setHasAutoSearched(false);
+        }
+    }, [isOpen]);
+
     const handleGetDocument = async (result: SearchResult, fallbackId: string): Promise<string> => {
         const docId = getResultId(result, fallbackId);
 
@@ -114,7 +126,7 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
         }
 
         if (!shouldFetchDocumentFromApi(result, fallbackId)) {
-            return result.ozet || result.snippet || '';
+            return 'Bu karar MCP/Bedesten kaynagindan gelmedigi icin tam metin acilamaz.';
         }
 
         setLoadingDocument(docId);
@@ -225,7 +237,7 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
                             />
                         </div>
                         <button
-                            onClick={handleSearch}
+                            onClick={() => handleSearch()}
                             disabled={isLoading || !keyword.trim()}
                             className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
                         >

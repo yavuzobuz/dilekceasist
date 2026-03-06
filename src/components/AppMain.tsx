@@ -18,8 +18,14 @@ import { SparklesIcon } from '../../components/Icon';
 import { Petition, supabase } from '../../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
-import { searchLegalDecisions } from '../utils/legalSearch';
+import { buildLegalKeywordQuery, searchLegalDecisions } from '../utils/legalSearch';
 import { resolveLegalSourceForQuery } from '../utils/legalSource';
+import {
+  clearTransientStorageItem,
+  readTransientStorageItem,
+  TRANSIENT_STORAGE_KEYS,
+  writeTransientStorageItem,
+} from '../utils/transientStorage';
 import {
   buildMissingInfoQuestions,
   getMissingInfoAnswerCounts,
@@ -153,7 +159,7 @@ export const AppMain: React.FC = () => {
     petitionFromState?.petition_type as PetitionType || PetitionType.DavaDilekcesi
   );
   const [userRole, setUserRole] = useState<UserRole>(UserRole.Davaci);
-  const [caseDetails, setCaseDetails] = useState<CaseDetails>({ court: '', fileNumber: '', decisionNumber: '', decisionDate: '' });
+  const [caseDetails, setCaseDetails] = useState<CaseDetails>({ caseTitle: '', court: '', fileNumber: '', decisionNumber: '', decisionDate: '' });
   const [files, setFiles] = useState<File[]>([]);
   const [docContent, setDocContent] = useState('');
   const [specifics, setSpecifics] = useState('');
@@ -216,16 +222,15 @@ export const AppMain: React.FC = () => {
 
   // Load petition from state if provided (only on mount or when petitionFromState changes)
   useEffect(() => {
-    // Check for template content from sessionStorage
-    const templateContent = sessionStorage.getItem('templateContent');
-    const storedEditorReturnRoute = sessionStorage.getItem('editorReturnRoute');
+    const templateContent = readTransientStorageItem(TRANSIENT_STORAGE_KEYS.templateContent);
+    const storedEditorReturnRoute = readTransientStorageItem(TRANSIENT_STORAGE_KEYS.editorReturnRoute);
     if (templateContent) {
       setGeneratedPetition(templateContent);
       setPetitionVersion(v => v + 1);
       setIsFullPageEditorMode(true);
       setEditorReturnRoute(storedEditorReturnRoute === '/alt-app' ? '/alt-app' : '/app');
-      sessionStorage.removeItem('templateContent'); // Clear after using
-      sessionStorage.removeItem('editorReturnRoute');
+      clearTransientStorageItem(TRANSIENT_STORAGE_KEYS.templateContent);
+      clearTransientStorageItem(TRANSIENT_STORAGE_KEYS.editorReturnRoute);
       addToast('Şablon yüklendi! ?', 'success');
     } else if (petitionFromState) {
       setGeneratedPetition(petitionFromState.content || '');
@@ -235,7 +240,9 @@ export const AppMain: React.FC = () => {
       // Restore all context data from metadata
       const metadata = petitionFromState.metadata;
       if (metadata) {
-        if (metadata.caseDetails) setCaseDetails(metadata.caseDetails);
+        if (metadata.caseDetails) {
+          setCaseDetails(prevDetails => ({ ...prevDetails, ...metadata.caseDetails }));
+        }
         if (metadata.parties) setParties(metadata.parties);
         if (metadata.searchKeywords) setSearchKeywords(metadata.searchKeywords);
         if (metadata.docContent) setDocContent(metadata.docContent);
@@ -255,7 +262,7 @@ export const AppMain: React.FC = () => {
   const handleExitFullPageEditor = useCallback(() => {
     if (editorReturnRoute === '/alt-app') {
       if (generatedPetition?.trim()) {
-        sessionStorage.setItem('templateContent', generatedPetition);
+        writeTransientStorageItem(TRANSIENT_STORAGE_KEYS.templateContent, generatedPetition);
       }
       navigate('/alt-app');
       return;
@@ -485,7 +492,7 @@ export const AppMain: React.FC = () => {
 
       addToast('Ictihat aramasi baslatiliyor...', 'info');
       try {
-        const searchQuery = keywords.slice(0, 5).join(' ');
+        const searchQuery = buildLegalKeywordQuery(keywords, { maxTerms: 8, maxLength: 220 }) || keywords.slice(0, 5).join(' ');
         const resolvedSource = resolveLegalSourceForQuery(searchQuery, 'all');
         const newResults = await searchLegalDecisions({
           source: resolvedSource,
@@ -918,7 +925,7 @@ export const AppMain: React.FC = () => {
     // Reset all state
     setPetitionType(PetitionType.DavaDilekcesi);
     setUserRole(UserRole.Davaci);
-    setCaseDetails({ court: '', fileNumber: '', decisionNumber: '', decisionDate: '' });
+    setCaseDetails({ caseTitle: '', court: '', fileNumber: '', decisionNumber: '', decisionDate: '' });
     setFiles([]);
     setDocContent('');
     setSpecifics('');

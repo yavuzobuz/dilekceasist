@@ -38,7 +38,7 @@ import mammoth from 'mammoth';
 import { ClientManager } from '../components/ClientManager';
 import { Client } from '../types';
 import { searchLegalDecisions, type NormalizedLegalDecision } from '../utils/legalSearch';
-import { resolveLegalSourceForQuery } from '../utils/legalSource';
+
 import { useAuth } from '../contexts/AuthContext';
 import {
     fetchUserTemplates,
@@ -1138,9 +1138,9 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
         setMcpSearchError(null);
 
         try {
-            const resolvedSource = resolveLegalSourceForQuery(keyword, 'all');
+            // Kaynak seçimini server AI router'a bırak (PrecedentSearch ile aynı yaklaşım)
             const results = await searchLegalDecisions({
-                source: resolvedSource,
+                source: 'all',
                 keyword,
                 apiBaseUrl: API_BASE_URL,
             });
@@ -2275,8 +2275,8 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                             key={opt.value}
                                             onClick={() => handleCustomTemplateTypeChange(opt.value)}
                                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${customForm.template_type === opt.value
-                                                    ? 'bg-blue-600 text-white'
-                                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                                ? 'bg-blue-600 text-white'
+                                                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                                                 }`}
                                         >
                                             {opt.label}
@@ -2294,8 +2294,8 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                                 key={opt.value}
                                                 onClick={() => setCustomForm(prev => ({ ...prev, petition_category: opt.value }))}
                                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${customForm.petition_category === opt.value
-                                                        ? 'bg-blue-600 text-white'
-                                                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                                    ? 'bg-blue-600 text-white'
+                                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                                                     }`}
                                             >
                                                 {opt.label}

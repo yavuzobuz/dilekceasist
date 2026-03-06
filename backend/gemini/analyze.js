@@ -35,6 +35,7 @@ TÜM METİN BLOKLARINI birleştir ve analizi şu JSON formatında döndür:
   "summary": "Belgenin özeti - paragraflar halinde yaz",
   "potentialParties": ["Taraf1", "Taraf2", ...],
   "caseDetails": {
+    "caseTitle": "Dava başlığı veya konu",
     "court": "Mahkeme adı",
     "fileNumber": "Dosya numarası",
     "decisionNumber": "Karar numarası",

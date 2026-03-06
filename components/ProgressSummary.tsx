@@ -86,6 +86,7 @@ export const ProgressSummary: React.FC<ProgressSummaryProps> = ({
 
     const getCaseDetailsDisplay = () => {
         const details = [
+            caseDetails.caseTitle,
             caseDetails.court,
             caseDetails.fileNumber
         ].filter(Boolean).join(' - ');

@@ -8,18 +8,18 @@ const SUPPORTED_SOURCES: ReadonlySet<LegalSource> = new Set([
   'anayasa',
 ]);
 
-const normalizeText = (value: unknown): string =>
+const normalizeForMatch = (value: unknown): string =>
   String(value ?? '')
     .toLocaleLowerCase('tr-TR')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\u0131/g, 'i')
     .trim();
 
-const normalizeForMatch = (value: unknown): string =>
-  normalizeText(value)
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-
-const includesAny = (text: string, probes: string[]): boolean =>
-  probes.some((probe) => text.includes(probe));
+const mergeQueryInput = (input: string | string[]): string =>
+  Array.isArray(input)
+    ? input.map(item => String(item || '').trim()).filter(Boolean).join(' ')
+    : String(input || '');
 
 export const normalizeLegalSource = (value: unknown): LegalSource | null => {
   const normalized = normalizeForMatch(value);
@@ -30,54 +30,46 @@ export const normalizeLegalSource = (value: unknown): LegalSource | null => {
   return null;
 };
 
-const mergeQueryInput = (input: string | string[]): string =>
-  Array.isArray(input)
-    ? input.map(item => String(item || '').trim()).filter(Boolean).join(' ')
-    : String(input || '');
-
+/**
+ * Sorgu metninden hukuki kaynak (mahkeme) belirler.
+ *
+ * Strateji: Client tarafında sadece açıkça belirtilen mahkeme adları
+ * tanınır. Belirsiz durumlarda 'all' döndürülür ve server tarafındaki
+ * AI router doğru mahkemeyi seçer.
+ *
+ * Bu sayede "itirazın iptali → Danıştay" gibi hatalı kural eşleşmeleri
+ * yaşanmaz; routing kararı bağlamı anlayan AI'a bırakılır.
+ */
 export const resolveLegalSourceForQuery = (
   input: string | string[],
   fallback: LegalSource = 'all'
 ): LegalSource => {
   const merged = mergeQueryInput(input);
+
+  // Önce doğrudan kaynak adı olarak parse etmeyi dene
   const directSource = normalizeLegalSource(merged);
   if (directSource) return directSource;
 
   const text = normalizeForMatch(merged);
   if (!text) return fallback;
 
-  if (includesAny(text, ['anayasa mahkemesi', 'aym', 'bireysel basvuru'])) {
+  // Anayasa Mahkemesi – kesin sinyal
+  if (
+    text.includes('anayasa mahkemesi') ||
+    text.includes('aym') ||
+    text.includes('bireysel basvuru')
+  ) {
     return 'anayasa';
   }
 
-  const explicitDanistay = includesAny(text, ['danistay']);
-  const explicitYargitay = includesAny(text, ['yargitay']);
+  // Açık mahkeme isimleri içeriyorsa doğrudan yönlendir
+  const hasDanistay = text.includes('danistay');
+  const hasYargitay = text.includes('yargitay');
+  if (hasDanistay && hasYargitay) return 'all';
+  if (hasDanistay) return 'danistay';
+  if (hasYargitay) return 'yargitay';
 
-  if (explicitDanistay && explicitYargitay) return 'all';
-  if (explicitDanistay) return 'danistay';
-  if (explicitYargitay) return 'yargitay';
-
-  if (includesAny(text, ['uyap', 'emsal', 'yerel mahkeme', 'bolge adliye', 'istinaf'])) {
-    return 'uyap';
-  }
-
-  if (
-    includesAny(text, [
-      'idari yargi',
-      'idari',
-      'idare mahkemesi',
-      'tam yargi',
-      'iptal davasi',
-      'vergi mahkemesi',
-      'imar',
-      'ruhsat',
-      'belediye',
-      'encumen',
-      'kamu ihale',
-    ])
-  ) {
-    return 'danistay';
-  }
-
+  // Geri kalan her şey için Server-side AI router karar verir.
+  // Client-side kural tabanlı tahmin yapılmaz → fallback 'all'
   return fallback;
 };

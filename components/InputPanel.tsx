@@ -380,6 +380,10 @@ export const InputPanel: React.FC<InputPanelProps> = ({
         <div className="bg-[#111113]/70 p-4 rounded-lg border border-white/10 space-y-4">
           <h4 className="text-md font-semibold text-gray-200">Dava Künyesi Bilgileri (Varsa)</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2 transform transition-all duration-200 hover:scale-[1.01]">
+              <label htmlFor="caseTitle" className="block text-sm font-medium text-gray-300 mb-1">Dava Basligi / Konu</label>
+              <input id="caseTitle" type="text" value={caseDetails.caseTitle} onChange={e => handleCaseDetailsChange('caseTitle', e.target.value)} className="w-full p-2 bg-[#1A1A1D] border border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 hover:border-blue-400 transition-all duration-200 text-gray-200" placeholder="Orn: Itirazin Iptali Davasi" />
+            </div>
             <div className="transform transition-all duration-200 hover:scale-[1.01]">
               <label htmlFor="court" className="block text-sm font-medium text-gray-300 mb-1">Mahkeme Adı</label>
               <input id="court" type="text" value={caseDetails.court} onChange={e => handleCaseDetailsChange('court', e.target.value)} className="w-full p-2 bg-[#1A1A1D] border border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 hover:border-blue-400 transition-all duration-200 text-gray-200" placeholder="Örn: Ankara 3. İş Mahkemesi" />

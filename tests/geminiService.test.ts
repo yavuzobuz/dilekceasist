@@ -29,7 +29,7 @@ describe('geminiService', () => {
                     text: JSON.stringify({
                         summary: 'Test ozeti',
                         potentialParties: ['Davaci', 'Davali'],
-                        caseDetails: { court: 'Ankara Mahkemesi' },
+                        caseDetails: { caseTitle: '', court: 'Ankara Mahkemesi' },
                     }),
                 }),
             });
@@ -118,7 +118,7 @@ describe('geminiService', () => {
             const params = {
                 userRole: UserRole.Davaci,
                 petitionType: PetitionType.DavaDilekcesi,
-                caseDetails: { court: 'Test', fileNumber: '', decisionNumber: '', decisionDate: '' },
+                caseDetails: { caseTitle: '', court: 'Test', fileNumber: '', decisionNumber: '', decisionDate: '' },
                 analysisSummary: 'Ozet',
                 webSearchResult: '',
                 specifics: '',
@@ -154,7 +154,7 @@ describe('geminiService', () => {
             const params = {
                 userRole: UserRole.Davaci,
                 petitionType: PetitionType.DavaDilekcesi,
-                caseDetails: { court: 'Test Mahkemesi', fileNumber: '', decisionNumber: '', decisionDate: '' },
+                caseDetails: { caseTitle: '', court: 'Test Mahkemesi', fileNumber: '', decisionNumber: '', decisionDate: '' },
                 analysisSummary: 'Analiz',
                 webSearchResult: '',
                 specifics: '',
