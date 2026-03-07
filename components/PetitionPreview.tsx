@@ -7,6 +7,7 @@ import html2canvas from 'html2canvas';
 import { saveAs } from 'file-saver';
 import { marked } from 'marked';
 import { sanitizeHtml } from '../src/utils/sanitizeHtml';
+import { supabase } from '../lib/supabase';
 
 marked.setOptions({ breaks: true, gfm: true });
 
@@ -33,6 +34,21 @@ const convertMarkdownToHtml = (text: string): string => {
         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
         .replace(/\*([^*]+)\*/g, '<em>$1</em>');
     return sanitizeHtml(marked.parse(processed) as string);
+};
+
+const buildAuthorizedJsonHeaders = async (): Promise<Record<string, string>> => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+            headers.Authorization = `Bearer ${session.access_token}`;
+        }
+    } catch (error) {
+        console.error('Could not load auth session for DOCX download:', error);
+    }
+
+    return headers;
 };
 
 // ── Floating AI Toolbar ───────────────────────────────
@@ -204,7 +220,7 @@ export const PetitionPreview: React.FC<PetitionPreviewProps> = ({
             const htmlString = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${contentHtml}</body></html>`;
             const response = await fetch('/api/html-to-docx', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: await buildAuthorizedJsonHeaders(),
                 body: JSON.stringify({ html: htmlString, options: { font: 'Calibri', fontSize: '22' } }),
             });
             if (!response.ok) throw new Error('Failed to generate DOCX');

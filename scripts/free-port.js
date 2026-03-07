@@ -1,6 +1,11 @@
 import { execSync } from 'node:child_process';
 
-const port = Number(process.argv[2] || 3001);
+const rawPorts = process.argv.slice(2);
+const ports = rawPorts.length > 0
+    ? rawPorts
+        .map(value => Number(value))
+        .filter(value => Number.isInteger(value) && value > 0)
+    : [3001];
 
 function run(cmd) {
     return execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
@@ -33,24 +38,26 @@ function main() {
         return;
     }
 
-    let pids = [];
-    try {
-        pids = getListeningPidsWindows(port);
-    } catch {
-        pids = [];
-    }
-
-    if (pids.length === 0) {
-        return;
-    }
-
-    for (const pid of pids) {
+    for (const port of ports) {
+        let pids = [];
         try {
-            killWindowsPid(pid);
-            console.log(`[free-port] Freed port ${port} by terminating PID ${pid}`);
-        } catch (error) {
-            console.error(`[free-port] Failed to kill PID ${pid}: ${error.message}`);
-            process.exit(1);
+            pids = getListeningPidsWindows(port);
+        } catch {
+            pids = [];
+        }
+
+        if (pids.length === 0) {
+            continue;
+        }
+
+        for (const pid of pids) {
+            try {
+                killWindowsPid(pid);
+                console.log(`[free-port] Freed port ${port} by terminating PID ${pid}`);
+            } catch (error) {
+                console.error(`[free-port] Failed to kill PID ${pid} on port ${port}: ${error.message}`);
+                process.exit(1);
+            }
         }
     }
 }

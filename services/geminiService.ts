@@ -2,7 +2,8 @@
 import { supabase } from '../lib/supabase';
 
 const API_BASE_URL = '/api/gemini';
-const MAX_API_BODY_BYTES = 15 * 1024 * 1024;
+const MAX_CHAT_API_BODY_BYTES = 15 * 1024 * 1024;
+const MAX_ANALYZE_API_BODY_BYTES = 40 * 1024 * 1024;
 
 async function buildJsonHeaders(): Promise<Record<string, string>> {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -41,11 +42,11 @@ async function handleResponse(response: Response) {
     return response.json();
 }
 
-function stringifyPayloadWithLimit(payload: unknown, contextLabel: string): string {
+function stringifyPayloadWithLimit(payload: unknown, contextLabel: string, maxBytes = MAX_CHAT_API_BODY_BYTES): string {
     const body = JSON.stringify(payload);
     const bytes = new TextEncoder().encode(body).length;
 
-    if (bytes > MAX_API_BODY_BYTES) {
+    if (bytes > maxBytes) {
         const mb = (bytes / (1024 * 1024)).toFixed(2);
         throw new Error(`${contextLabel} icin gonderilen veri cok buyuk (${mb} MB). Lutfen dosyalari/parcalari kucultun.`);
     }
@@ -227,7 +228,7 @@ export async function analyzeDocuments(
     const data = await handleResponse(await fetch(`${API_BASE_URL}/analyze`, {
         method: 'POST',
         headers: await buildJsonHeaders(),
-        body: stringifyPayloadWithLimit(payload, 'Analiz')
+        body: stringifyPayloadWithLimit(payload, 'Analiz', MAX_ANALYZE_API_BODY_BYTES)
     }));
 
     const rawResponseText = typeof data?.text === 'string' ? data.text : '';
@@ -343,10 +344,13 @@ export async function* streamChatResponse(
     files?: { name: string; mimeType: string; data: string }[]
 ): AsyncGenerator<any> { // Using 'any' for the chunk type as we don't import specific SDK types
     try {
+        const compactChatHistory = Array.isArray(chatHistory)
+            ? chatHistory.map(({ files: _files, ...message }) => message)
+            : [];
         const response = await fetch(`${API_BASE_URL}/chat`, {
             method: 'POST',
             headers: await buildJsonHeaders(),
-            body: stringifyPayloadWithLimit({ chatHistory, analysisSummary, context, files }, 'Sohbet')
+            body: stringifyPayloadWithLimit({ chatHistory: compactChatHistory, analysisSummary, context, files }, 'Sohbet')
         });
 
         if (!response.ok) {

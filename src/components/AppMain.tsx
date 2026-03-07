@@ -26,6 +26,7 @@ import {
   TRANSIENT_STORAGE_KEYS,
   writeTransientStorageItem,
 } from '../utils/transientStorage';
+import { mergeAnalysisData, prepareChatAttachmentsForAnalysis } from '../utils/chatAttachmentProcessing';
 import {
   buildMissingInfoQuestions,
   getMissingInfoAnswerCounts,
@@ -46,45 +47,6 @@ const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
-const CHAT_INLINE_SUPPORTED_MIME_TYPES = new Set([
-  'application/pdf',
-  'image/png',
-  'image/jpeg',
-  'image/webp',
-  'image/heic',
-  'image/heif',
-  'image/gif',
-]);
-
-const normalizeChatMimeType = (value: string): string => String(value || '')
-  .split(';')[0]
-  .trim()
-  .toLowerCase();
-
-const isChatMimeTypeSupported = (mimeType: string): boolean => {
-  const normalized = normalizeChatMimeType(mimeType);
-  if (!normalized) return false;
-  return CHAT_INLINE_SUPPORTED_MIME_TYPES.has(normalized) || normalized.startsWith('text/');
-};
-
-const resolveChatMimeType = (file: File): string => {
-  const directType = typeof file.type === 'string' ? file.type.trim() : '';
-  if (directType) return normalizeChatMimeType(directType);
-
-  const lowerName = String(file.name || '').toLowerCase();
-  if (lowerName.endsWith('.pdf')) return 'application/pdf';
-  if (lowerName.endsWith('.udf')) return 'application/zip';
-  if (lowerName.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-  if (lowerName.endsWith('.doc')) return 'application/msword';
-  if (lowerName.endsWith('.txt')) return 'text/plain';
-  if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) return 'image/jpeg';
-  if (lowerName.endsWith('.png')) return 'image/png';
-  if (lowerName.endsWith('.webp')) return 'image/webp';
-  if (lowerName.endsWith('.tif') || lowerName.endsWith('.tiff')) return 'image/tiff';
-
-  return 'application/octet-stream';
-};
-
 let toastIdCounter = 0;
 const createToastId = (): string => {
   toastIdCounter += 1;
@@ -92,21 +54,6 @@ const createToastId = (): string => {
     ? crypto.randomUUID()
     : Math.random().toString(36).slice(2, 10);
   return `${Date.now()}-${toastIdCounter}-${randomPart}`;
-};
-
-const sanitizeChatFilesForApi = (
-  files?: { name: string; mimeType: string; data: string }[]
-): { name: string; mimeType: string; data: string }[] | undefined => {
-  if (!Array.isArray(files) || files.length === 0) return undefined;
-  const sanitized = files
-    .map(file => ({
-      name: String(file?.name || '').trim(),
-      mimeType: normalizeChatMimeType(file?.mimeType || ''),
-      data: typeof file?.data === 'string' ? file.data.trim() : '',
-    }))
-    .filter(file => Boolean(file.name) && Boolean(file.data) && isChatMimeTypeSupported(file.mimeType));
-
-  return sanitized.length > 0 ? sanitized : undefined;
 };
 
 const parseFunctionCallArgs = (rawArgs: unknown): Record<string, any> => {
@@ -300,6 +247,7 @@ export const AppMain: React.FC = () => {
         const extension = file.name.split('.').pop()?.toLowerCase();
         if (extension === 'pdf') {
           allUploadedFiles.push({
+            name: file.name,
             mimeType: 'application/pdf',
             data: await fileToBase64(file),
           });
@@ -328,6 +276,7 @@ export const AppMain: React.FC = () => {
             const base64Data = dataUrl.split(',')[1];
 
             allUploadedFiles.push({
+              name: file.name,
               mimeType: 'image/png',
               data: base64Data,
             });
@@ -337,6 +286,7 @@ export const AppMain: React.FC = () => {
           }
         } else if (file.type.startsWith('image/')) {
           allUploadedFiles.push({
+            name: file.name,
             mimeType: file.type,
             data: await fileToBase64(file),
           });
@@ -614,7 +564,18 @@ export const AppMain: React.FC = () => {
     }
   }, [userRole, petitionType, caseDetails, analysisData, webSearchResult, legalSearchResults, docContent, specificsWithMissingInfo, searchKeywords, chatMessages, parties, user, missingInfoBlockingUnansweredCount]);
 
-  const savePetitionToSupabase = async (content: string, specificsOverride?: string) => {
+  const savePetitionToSupabase = async (
+    content: string,
+    specificsOverride?: string,
+    metadataOverrides?: Partial<{
+      chatHistory: ChatMessage[];
+      searchKeywords: string[];
+      docContent: string;
+      analysisData: AnalysisData | null;
+      webSearchResult: WebSearchResult | null;
+      legalSearchResults: LegalSearchResult[];
+    }>
+  ) => {
     if (!user) return;
 
     try {
@@ -626,18 +587,18 @@ export const AppMain: React.FC = () => {
           content: content,
           status: 'completed', // Mark as completed so it appears in the pool
           metadata: {
-            chatHistory: chatMessages,
+            chatHistory: metadataOverrides?.chatHistory ?? chatMessages,
             caseDetails,
             parties,
-            searchKeywords,
-            docContent,
+            searchKeywords: metadataOverrides?.searchKeywords ?? searchKeywords,
+            docContent: metadataOverrides?.docContent ?? docContent,
             specifics: specificsOverride ?? specifics,
             userRole,
-            analysisData,
-            webSearchResult,
-            legalSearchResults,
-            lawyerInfo: analysisData?.lawyerInfo,
-            contactInfo: analysisData?.contactInfo,
+            analysisData: metadataOverrides?.analysisData ?? analysisData,
+            webSearchResult: metadataOverrides?.webSearchResult ?? webSearchResult,
+            legalSearchResults: metadataOverrides?.legalSearchResults ?? legalSearchResults,
+            lawyerInfo: metadataOverrides?.analysisData?.lawyerInfo ?? analysisData?.lawyerInfo,
+            contactInfo: metadataOverrides?.analysisData?.contactInfo ?? analysisData?.contactInfo,
           },
         },
       ]);
@@ -651,41 +612,14 @@ export const AppMain: React.FC = () => {
   };
 
   const handleSendChatMessage = useCallback(async (message: string, files?: File[]) => {
-    // Convert files to base64 if provided
     const chatSourceFiles = Array.isArray(files) ? files : [];
-    let chatFiles: { name: string; mimeType: string; data: string }[] = [];
-    const skippedChatFileNames: string[] = [];
-    if (chatSourceFiles.length > 0) {
-      const preparedFiles = await Promise.all(
-        chatSourceFiles.map(async (file) => {
-          const resolvedMimeType = normalizeChatMimeType(resolveChatMimeType(file));
-          if (!isChatMimeTypeSupported(resolvedMimeType)) {
-            skippedChatFileNames.push(file.name || 'isimsiz dosya');
-            return null;
-          }
-
-          return {
-            name: file.name,
-            mimeType: resolvedMimeType,
-            data: await fileToBase64(file),
-          };
-        })
-      );
-
-      chatFiles = preparedFiles.filter((file): file is { name: string; mimeType: string; data: string } => Boolean(file));
-    }
-
-    if (skippedChatFileNames.length > 0) {
-      const previewNames = skippedChatFileNames.slice(0, 3).join(', ');
-      const remainingCount = skippedChatFileNames.length - 3;
-      const remainingSuffix = remainingCount > 0 ? ` +${remainingCount} dosya` : '';
-      addToast(`Bazı dosyalar sohbet ekine eklenemedi: ${previewNames}${remainingSuffix}.`, 'warning');
-    }
+    let mergedAnalysisData = analysisData;
+    let mergedAnalysisSummary = analysisData?.summary || '';
+    let mergedDocContent = docContent;
 
     const userMessage: ChatMessage = {
       role: 'user',
       text: message || (chatSourceFiles.length > 0 ? `${chatSourceFiles.length} dosya yüklendi${message ? ': ' + message : ''}` : ''),
-      files: chatFiles.length > 0 ? chatFiles : undefined
     };
     const newMessages: ChatMessage[] = [...chatMessages, userMessage];
     setChatMessages(newMessages);
@@ -693,14 +627,82 @@ export const AppMain: React.FC = () => {
     setError(null);
 
     try {
-      const chatHistoryForApi = newMessages.map(msg => ({
-        ...msg,
-        files: sanitizeChatFilesForApi(msg.files),
-      }));
+      let chatAnalyzeFailureMessage = '';
+      if (chatSourceFiles.length > 0) {
+        const preparedAttachments = await prepareChatAttachmentsForAnalysis(chatSourceFiles);
+
+        if (preparedAttachments.skippedFileNames.length > 0) {
+          const previewNames = preparedAttachments.skippedFileNames.slice(0, 3).join(', ');
+          const remainingCount = preparedAttachments.skippedFileNames.length - 3;
+          const remainingSuffix = remainingCount > 0 ? ` +${remainingCount} dosya` : '';
+          addToast(`Bazı dosyalar sohbet analizine eklenemedi: ${previewNames}${remainingSuffix}.`, 'warning');
+        }
+
+        const hasPreparedContent = preparedAttachments.uploadedFiles.length > 0
+          || Boolean(preparedAttachments.udfTextContent)
+          || Boolean(preparedAttachments.wordTextContent);
+
+        if (hasPreparedContent) {
+          const chatAnalysis = await analyzeDocuments(
+            preparedAttachments.uploadedFiles,
+            preparedAttachments.udfTextContent,
+            preparedAttachments.wordTextContent
+          );
+          mergedAnalysisData = mergeAnalysisData(analysisData, chatAnalysis);
+          mergedAnalysisSummary = mergedAnalysisData?.summary || '';
+
+          setAnalysisData(mergedAnalysisData);
+          const mergedCaseDetails = mergedAnalysisData?.caseDetails;
+          if (mergedCaseDetails) {
+            setCaseDetails(prev => ({ ...prev, ...mergedCaseDetails }));
+          }
+
+          const extractedContextText = [
+            preparedAttachments.udfTextContent,
+            preparedAttachments.wordTextContent,
+          ].filter(Boolean).join('\n\n').trim();
+
+          const chatAnalysisSummary = String(chatAnalysis?.summary || '').trim();
+          const processedFileLabel = preparedAttachments.processedFileNames.join(', ') || chatSourceFiles.map(file => file.name).join(', ');
+          const analysisContextBlock = chatAnalysisSummary
+            ? [
+              '--- Sohbet Belge Analizi ---',
+              processedFileLabel ? `Dosyalar: ${processedFileLabel}` : '',
+              chatAnalysisSummary,
+            ].filter(Boolean).join('\n')
+            : '';
+
+          const nextContextBlocks = [mergedDocContent];
+          if (analysisContextBlock && !mergedDocContent.includes(analysisContextBlock)) {
+            nextContextBlocks.push(analysisContextBlock);
+          }
+          if (extractedContextText && !mergedDocContent.includes(extractedContextText)) {
+            nextContextBlocks.push(extractedContextText);
+          }
+          const nextMergedDocContent = nextContextBlocks.filter(Boolean).join('\n\n').trim();
+          if (nextMergedDocContent !== mergedDocContent) {
+            mergedDocContent = nextMergedDocContent;
+            setDocContent(mergedDocContent);
+          }
+
+          addToast('Yuklenen sohbet belgeleri OCR ve belge analizi ile baglama eklendi.', 'info');
+        }
+        if (!mergedAnalysisSummary.trim()) {
+          chatAnalyzeFailureMessage = 'Yuklenen belge analizi tamamlanamadi veya baglama eklenemedi. Lutfen belgeyi tekrar deneyin ya da once Belgeleri Analiz Et adimini calistirin.';
+        }
+      }
+
+      if (chatAnalyzeFailureMessage) {
+        setChatMessages(prev => [...prev, { role: 'model', text: chatAnalyzeFailureMessage }]);
+        setError(chatAnalyzeFailureMessage);
+        return;
+      }
+
+      const chatHistoryForApi = newMessages.map(({ files: _files, ...msg }) => msg);
 
       const responseStream = streamChatResponse(
         chatHistoryForApi,
-        analysisData?.summary || '',
+        mergedAnalysisSummary,
         {
           keywords: searchKeywords.join(', '),
           searchSummary: webSearchResult?.summary || '',
@@ -711,13 +713,13 @@ export const AppMain: React.FC = () => {
             : '',
           webSourceCount: webSearchResult?.sources?.length || 0,
           legalResultCount: legalSearchResults.length,
-          docContent: docContent,
+          docContent: mergedDocContent,
           specifics: specificsWithMissingInfo,
-          analysisSummary: analysisData?.summary || '',
+          analysisSummary: mergedAnalysisSummary,
           currentDraft: generatedPetition || '',
           petitionType,
         },
-        sanitizeChatFilesForApi(chatFiles)
+        undefined
       );
       const modelMessage: ChatMessage = { role: 'model', text: '' };
       setChatMessages(prev => [...prev, modelMessage]);
@@ -837,7 +839,14 @@ export const AppMain: React.FC = () => {
 
               // Persist chat-generated petition for profile history
               if (user) {
-                await savePetitionToSupabase(payload.content, specificsWithMissingInfo);
+                await savePetitionToSupabase(payload.content, specificsWithMissingInfo, {
+                  chatHistory: [...newMessages, { role: 'model', text: assistantText }],
+                  searchKeywords,
+                  docContent: mergedDocContent,
+                  analysisData: mergedAnalysisData,
+                  webSearchResult,
+                  legalSearchResults,
+                });
               }
 
               // Show success message in chat

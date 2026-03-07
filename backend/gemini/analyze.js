@@ -22,8 +22,9 @@ export default async function handler(req, res) {
     try {
         const ai = getGeminiClient();
         const { uploadedFiles, udfTextContent, wordTextContent } = req.body;
+        const safeUploadedFiles = Array.isArray(uploadedFiles) ? uploadedFiles : [];
 
-        if ((!uploadedFiles || uploadedFiles.length === 0) && !udfTextContent && !wordTextContent) {
+        if (safeUploadedFiles.length === 0 && !udfTextContent && !wordTextContent) {
             return res.status(400).json({ error: "Analiz edilecek hiçbir belge sağlanmadı." });
         }
 
@@ -55,7 +56,22 @@ TÜM METİN BLOKLARINI birleştir ve analizi şu JSON formatında döndür:
   ]
 }
 
-SADECE JSON döndür, başka açıklama ekleme.`;
+SADECE JSON döndür, başka açıklama ekleme.
+
+EK KURAL: Eğer yüklenen dosya taranmış, görüntü tabanlı veya resimden oluşmuş bir PDF ise görünen metni OCR mantığı ile okuyup analiz et. Metin seçilemiyor olsa bile yazılar, mühürler, imzalar, tablo başlıkları ve sayfa üstbilgilerini dikkate al.`;
+
+        const fileSummaries = safeUploadedFiles
+            .map((file, index) => {
+                const fileName = String(file?.name || `Belge ${index + 1}`).trim() || `Belge ${index + 1}`;
+                const mimeType = String(file?.mimeType || 'bilinmeyen').trim() || 'bilinmeyen';
+                const scannedHint = /pdf/i.test(mimeType)
+                    ? 'Taranmış/görüntü tabanlı PDF olabilir; OCR ile oku.'
+                    : /^image\//i.test(mimeType)
+                        ? 'Görsel belge; görünen metni ve düzeni incele.'
+                        : '';
+                return `- ${fileName} (${mimeType})${scannedHint ? ` - ${scannedHint}` : ''}`;
+            })
+            .join('\n');
 
         // Build content parts for Gemini
         const parts = [];
@@ -68,9 +84,13 @@ SADECE JSON döndür, başka açıklama ekleme.`;
             parts.push({ text: `Word İçeriği:\n${wordTextContent}\n\n---\n` });
         }
 
+        if (fileSummaries) {
+            parts.push({ text: `Yüklenen dosyalar:\n${fileSummaries}\n` });
+        }
+
         // Add uploaded files as inline data
-        if (uploadedFiles && uploadedFiles.length > 0) {
-            for (const file of uploadedFiles) {
+        if (safeUploadedFiles.length > 0) {
+            for (const file of safeUploadedFiles) {
                 if (file.mimeType && file.data) {
                     parts.push({
                         inlineData: {

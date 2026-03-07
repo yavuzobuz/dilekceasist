@@ -124,7 +124,11 @@ const Profile: React.FC = () => {
       };
 
       const parseSummaryResponse = async (response: Response): Promise<UserPlanSummary | null | undefined> => {
-        if (!response.ok) return undefined;
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => '');
+          console.warn('Plan summary request failed:', response.status, errorText || response.statusText);
+          return undefined;
+        }
 
         const contentType = String(response.headers.get('content-type') || '').toLowerCase();
         if (!contentType.includes('application/json')) return undefined;
@@ -135,20 +139,13 @@ const Profile: React.FC = () => {
         return (data as { summary?: UserPlanSummary | null }).summary ?? null;
       };
 
-      // Vercel rewrite fallback can return index.html for missing API routes.
-      // Start with the known existing endpoint and then try legacy path.
-      let summary = await parseSummaryResponse(
-        await fetch('/api/admin-users?action=plan-summary', { headers: authHeaders })
+      const summary = await parseSummaryResponse(
+        await fetch('/api/user-plan-summary', { headers: authHeaders })
       );
 
       if (summary === undefined) {
-        summary = await parseSummaryResponse(
-          await fetch('/api/user-plan-summary', { headers: authHeaders })
-        );
-      }
-
-      if (summary === undefined) {
-        throw new Error('Plan bilgisi alinamadi');
+        setPlanSummary(null);
+        return null;
       }
       setPlanSummary(summary);
       return summary;

@@ -16,7 +16,6 @@ import { ChatView } from '../../components/ChatView';
 import { VoiceInputButton } from '../../components/VoiceInputButton';
 import { Petition, supabase } from '../../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { toast } from 'react-hot-toast';
 import {
     compactLegalSearchQuery,
     getLegalDocument,
@@ -31,6 +30,7 @@ import {
     TRANSIENT_STORAGE_KEYS,
     writeTransientStorageItem,
 } from '../utils/transientStorage';
+import { mergeAnalysisData, prepareChatAttachmentsForAnalysis } from '../utils/chatAttachmentProcessing';
 import { File, FileCode2, FileImage, FileText } from 'lucide-react';
 import { MissingInfoChecklistPanel } from '../../components/MissingInfoChecklistPanel';
 import {
@@ -64,6 +64,21 @@ const parseFunctionCallArgs = (rawArgs: unknown): Record<string, any> => {
         }
     }
     return typeof rawArgs === 'object' ? rawArgs as Record<string, any> : {};
+};
+
+const buildAuthorizedJsonHeaders = async (): Promise<Record<string, string>> => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+            headers.Authorization = `Bearer ${session.access_token}`;
+        }
+    } catch (error) {
+        console.error('Could not load auth session for DOCX request:', error);
+    }
+
+    return headers;
 };
 
 const extractGeneratedDocumentPayload = (rawArgs: unknown): { title: string; content: string } | null => {
@@ -395,45 +410,6 @@ const hasLegalEvidenceForChat = (results: AlternativeLegalSearchResult[]): boole
     });
 };
 
-const CHAT_INLINE_SUPPORTED_MIME_TYPES = new Set([
-    'application/pdf',
-    'image/png',
-    'image/jpeg',
-    'image/webp',
-    'image/heic',
-    'image/heif',
-    'image/gif',
-]);
-
-const normalizeChatMimeType = (value: string): string => String(value || '')
-    .split(';')[0]
-    .trim()
-    .toLowerCase();
-
-const isChatMimeTypeSupported = (mimeType: string): boolean => {
-    const normalized = normalizeChatMimeType(mimeType);
-    if (!normalized) return false;
-    return CHAT_INLINE_SUPPORTED_MIME_TYPES.has(normalized) || normalized.startsWith('text/');
-};
-
-const resolveChatMimeType = (file: File): string => {
-    const directType = typeof file.type === 'string' ? file.type.trim() : '';
-    if (directType) return normalizeChatMimeType(directType);
-
-    const lowerName = String(file.name || '').toLowerCase();
-    if (lowerName.endsWith('.pdf')) return 'application/pdf';
-    if (lowerName.endsWith('.udf')) return 'application/zip';
-    if (lowerName.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-    if (lowerName.endsWith('.doc')) return 'application/msword';
-    if (lowerName.endsWith('.txt')) return 'text/plain';
-    if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) return 'image/jpeg';
-    if (lowerName.endsWith('.png')) return 'image/png';
-    if (lowerName.endsWith('.webp')) return 'image/webp';
-    if (lowerName.endsWith('.tif') || lowerName.endsWith('.tiff')) return 'image/tiff';
-
-    return 'application/octet-stream';
-};
-
 let toastIdCounter = 0;
 const createToastId = (): string => {
     toastIdCounter += 1;
@@ -441,21 +417,6 @@ const createToastId = (): string => {
         ? crypto.randomUUID()
         : Math.random().toString(36).slice(2, 10);
     return `${Date.now()}-${toastIdCounter}-${randomPart}`;
-};
-
-const sanitizeChatFilesForApi = (
-    files?: { name: string; mimeType: string; data: string }[]
-): { name: string; mimeType: string; data: string }[] | undefined => {
-    if (!Array.isArray(files) || files.length === 0) return undefined;
-    const sanitized = files
-        .map(file => ({
-            name: String(file?.name || '').trim(),
-            mimeType: normalizeChatMimeType(file?.mimeType || ''),
-            data: typeof file?.data === 'string' ? file.data.trim() : '',
-        }))
-        .filter(file => Boolean(file.name) && Boolean(file.data) && isChatMimeTypeSupported(file.mimeType));
-
-    return sanitized.length > 0 ? sanitized : undefined;
 };
 
 const hasLegalEvidenceForGeneration = (results: AlternativeLegalSearchResult[]): boolean => {
@@ -1182,7 +1143,7 @@ export default function AlternativeApp() {
                     try {
                         const response = await fetch('/api/html-to-docx', {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: await buildAuthorizedJsonHeaders(),
                             body: JSON.stringify({
                                 html: plainTextToHtml(content),
                                 options: {
@@ -1285,7 +1246,7 @@ export default function AlternativeApp() {
             for (const file of files) {
                 const extension = file.name.split('.').pop()?.toLowerCase();
                 if (extension === 'pdf') {
-                    allUploadedFiles.push({ mimeType: 'application/pdf', data: await fileToBase64(file) });
+                    allUploadedFiles.push({ name: file.name, mimeType: 'application/pdf', data: await fileToBase64(file) });
                 } else if (extension === 'tif' || extension === 'tiff') {
                     try {
                         const arrayBuffer = await file.arrayBuffer();
@@ -1315,6 +1276,7 @@ export default function AlternativeApp() {
                         const base64Data = dataUrl.split(',')[1];
 
                         allUploadedFiles.push({
+                            name: file.name,
                             mimeType: 'image/png',
                             data: base64Data,
                         });
@@ -1323,7 +1285,7 @@ export default function AlternativeApp() {
                         setError(`TIFF dosyasi islenirken hata: ${file.name}`);
                     }
                 } else if (file.type.startsWith('image/')) {
-                    allUploadedFiles.push({ mimeType: file.type, data: await fileToBase64(file) });
+                    allUploadedFiles.push({ name: file.name, mimeType: file.type, data: await fileToBase64(file) });
                 } else if (extension === 'udf') {
                     try {
                         const loadedZip = await zip.loadAsync(file);
@@ -1702,6 +1664,7 @@ export default function AlternativeApp() {
             searchKeywords: string[];
             docContent: string;
             specifics: string;
+            analysisData: AnalysisData | null;
             webSearchResult: WebSearchResult | null;
             legalSearchResults: AlternativeLegalSearchResult[];
         }>
@@ -1724,11 +1687,11 @@ export default function AlternativeApp() {
                         docContent: metadataOverrides?.docContent ?? docContent,
                         specifics: metadataOverrides?.specifics ?? specifics,
                         userRole,
-                        analysisData,
+                        analysisData: metadataOverrides?.analysisData ?? analysisData,
                         webSearchResult: metadataOverrides?.webSearchResult ?? webSearchResult,
                         legalSearchResults: metadataOverrides?.legalSearchResults ?? legalSearchResults,
-                        lawyerInfo: analysisData?.lawyerInfo,
-                        contactInfo: analysisData?.contactInfo,
+                        lawyerInfo: metadataOverrides?.analysisData?.lawyerInfo ?? analysisData?.lawyerInfo,
+                        contactInfo: metadataOverrides?.analysisData?.contactInfo ?? analysisData?.contactInfo,
                     },
                 },
             ]);
@@ -1820,39 +1783,12 @@ export default function AlternativeApp() {
     const handleSendChatMessage = useCallback(async (message: string, files?: File[]) => {
         const normalizedMessage = (message || '').trim();
         const chatSourceFiles = Array.isArray(files) ? files : [];
-        let chatFiles: { name: string; mimeType: string; data: string }[] = [];
-        const skippedChatFileNames: string[] = [];
-        if (chatSourceFiles.length > 0) {
-            const preparedFiles = await Promise.all(
-                chatSourceFiles.map(async (file) => {
-                    const resolvedMimeType = normalizeChatMimeType(resolveChatMimeType(file));
-                    if (!isChatMimeTypeSupported(resolvedMimeType)) {
-                        skippedChatFileNames.push(file.name || 'isimsiz dosya');
-                        return null;
-                    }
-
-                    return {
-                        name: file.name,
-                        mimeType: resolvedMimeType,
-                        data: await fileToBase64(file),
-                    };
-                })
-            );
-
-            chatFiles = preparedFiles.filter((file): file is { name: string; mimeType: string; data: string } => Boolean(file));
-        }
-
-        if (skippedChatFileNames.length > 0) {
-            const previewNames = skippedChatFileNames.slice(0, 3).join(', ');
-            const remainingCount = skippedChatFileNames.length - 3;
-            const remainingSuffix = remainingCount > 0 ? ` +${remainingCount} dosya` : '';
-            addToast(`Bazı dosyalar sohbet ekine eklenemedi: ${previewNames}${remainingSuffix}.`, 'warning');
-        }
+        let mergedAnalysisData: AnalysisData | null = analysisData;
+        let mergedAnalysisSummary = analysisData?.summary?.trim() || '';
 
         const userMessage: ChatMessage = {
             role: 'user',
             text: normalizedMessage || (chatSourceFiles.length > 0 ? `[Dosya] ${chatSourceFiles.length} dosya yüklendi` : ''),
-            files: chatFiles.length > 0 ? chatFiles : undefined,
         };
         const newMessages: ChatMessage[] = [...chatMessages, userMessage];
         setChatMessages(newMessages);
@@ -1867,8 +1803,6 @@ export default function AlternativeApp() {
         let assistantText = '';
         let addedKeywordsCount = 0;
         let transientEvidenceKeywords: string[] = [];
-        let activeAnalysisData: AnalysisData | null = analysisData;
-        let activeAnalysisSummary = analysisData?.summary?.trim() || '';
         const explicitKeywordAddRequest = isExplicitKeywordAddRequest(normalizedMessage);
         const userRequestedPetition = isLikelyPetitionRequest(normalizedMessage);
         const userRequestedWebSearch = isExplicitWebSearchRequest(normalizedMessage);
@@ -1880,106 +1814,85 @@ export default function AlternativeApp() {
         const requiresStrictEvidenceForDocument = userRequestedPetition;
 
         try {
-            const hasUploadedDocumentContext = chatSourceFiles.length > 0 || chatFiles.length > 0 || Boolean(mergedDocContent?.trim());
+            let chatAnalyzeFailureMessage = '';
+            const hasUploadedDocumentContext = chatSourceFiles.length > 0 || Boolean(mergedDocContent?.trim());
 
-            if (hasUploadedDocumentContext && !activeAnalysisSummary && chatSourceFiles.length > 0) {
+            if (chatSourceFiles.length > 0) {
                 setChatProgressText('Yuklenen belgeler analiz ediliyor...');
                 try {
-                    const analysisUploadedFiles: UploadedFile[] = [];
-                    let udfContent = '';
-                    let wordContent = '';
-                    const zip = new JSZip();
-
-                    for (const srcFile of chatSourceFiles) {
-                        const extension = srcFile.name.split('.').pop()?.toLowerCase();
-                        if (extension === 'pdf') {
-                            analysisUploadedFiles.push({ mimeType: 'application/pdf', data: await fileToBase64(srcFile) });
-                        } else if (extension === 'tif' || extension === 'tiff') {
-                            try {
-                                const arrayBuffer = await srcFile.arrayBuffer();
-                                const ifds = UTIF.decode(arrayBuffer);
-                                const firstPage = ifds[0];
-                                if (!firstPage) continue;
-                                UTIF.decodeImage(arrayBuffer, firstPage);
-                                const rgba = UTIF.toRGBA8(firstPage);
-                                const canvas = document.createElement('canvas');
-                                canvas.width = firstPage.width;
-                                canvas.height = firstPage.height;
-                                const ctx = canvas.getContext('2d');
-                                if (!ctx) continue;
-                                const imageData = ctx.createImageData(firstPage.width, firstPage.height);
-                                imageData.data.set(rgba);
-                                ctx.putImageData(imageData, 0, 0);
-                                const base64Data = canvas.toDataURL('image/png').split(',')[1];
-                                analysisUploadedFiles.push({ mimeType: 'image/png', data: base64Data });
-                            } catch (tiffError) {
-                                console.error(`Error processing TIFF file ${srcFile.name}:`, tiffError);
-                            }
-                        } else if (srcFile.type.startsWith('image/')) {
-                            analysisUploadedFiles.push({ mimeType: srcFile.type, data: await fileToBase64(srcFile) });
-                        } else if (extension === 'udf') {
-                            try {
-                                const loadedZip = await zip.loadAsync(srcFile);
-                                let xmlContent = '';
-                                let xmlFile = null;
-                                for (const fileName in loadedZip.files) {
-                                    if (Object.prototype.hasOwnProperty.call(loadedZip.files, fileName)) {
-                                        const fileObject = loadedZip.files[fileName];
-                                        if (!fileObject.dir && fileObject.name.toLowerCase().endsWith('.xml')) {
-                                            xmlFile = fileObject;
-                                            break;
-                                        }
-                                    }
-                                }
-                                if (xmlFile) {
-                                    xmlContent = await xmlFile.async('string');
-                                }
-                                if (xmlContent) {
-                                    udfContent += `\n\n--- UDF Belgesi: ${srcFile.name} ---\n${xmlContent}`;
-                                }
-                            } catch (zipError) {
-                                console.error(`Error processing UDF file ${srcFile.name}:`, zipError);
-                            }
-                        } else if (extension === 'doc' || extension === 'docx') {
-                            try {
-                                const arrayBuffer = await srcFile.arrayBuffer();
-                                const extracted = await mammoth.extractRawText({ arrayBuffer });
-                                wordContent += `\n\n--- Word Belgesi: ${srcFile.name} ---\n${extracted.value}`;
-                            } catch (wordError) {
-                                console.error(`Error processing Word file ${srcFile.name}:`, wordError);
-                            }
-                        } else if (extension === 'txt') {
-                            try {
-                                const textContent = await srcFile.text();
-                                wordContent += `\n\n--- Metin Belgesi: ${srcFile.name} ---\n${textContent}`;
-                            } catch (txtError) {
-                                console.error(`Error processing text file ${srcFile.name}:`, txtError);
-                            }
-                        }
+                    const preparedAttachments = await prepareChatAttachmentsForAnalysis(chatSourceFiles);
+                    if (preparedAttachments.skippedFileNames.length > 0) {
+                        const previewNames = preparedAttachments.skippedFileNames.slice(0, 3).join(', ');
+                        const remainingCount = preparedAttachments.skippedFileNames.length - 3;
+                        const remainingSuffix = remainingCount > 0 ? ` +${remainingCount} dosya` : '';
+                        addToast(`Bazı dosyalar sohbet analizine eklenemedi: ${previewNames}${remainingSuffix}.`, 'warning');
                     }
 
-                    if (analysisUploadedFiles.length > 0 || udfContent.trim() || wordContent.trim()) {
-                        const chatAnalysis = await analyzeDocuments(analysisUploadedFiles, udfContent.trim(), wordContent.trim());
-                        activeAnalysisData = chatAnalysis;
-                        activeAnalysisSummary = chatAnalysis?.summary?.trim() || '';
-                        setAnalysisData(chatAnalysis);
-                        if (chatAnalysis.caseDetails) {
-                            setCaseDetails(prev => ({ ...prev, ...chatAnalysis.caseDetails }));
+                    if (
+                        preparedAttachments.uploadedFiles.length > 0
+                        || preparedAttachments.udfTextContent
+                        || preparedAttachments.wordTextContent
+                    ) {
+                        const chatAnalysis = await analyzeDocuments(
+                            preparedAttachments.uploadedFiles,
+                            preparedAttachments.udfTextContent,
+                            preparedAttachments.wordTextContent
+                        );
+                        mergedAnalysisData = mergeAnalysisData(mergedAnalysisData, chatAnalysis);
+                        mergedAnalysisSummary = mergedAnalysisData?.summary?.trim() || '';
+                        setAnalysisData(mergedAnalysisData);
+                        const mergedCaseDetails = mergedAnalysisData?.caseDetails;
+                        if (mergedCaseDetails) {
+                            setCaseDetails(prev => ({ ...prev, ...mergedCaseDetails }));
                         }
 
-                        const extractedContextText = [udfContent.trim(), wordContent.trim()].filter(Boolean).join('\n\n').trim();
-                        if (extractedContextText) {
-                            mergedDocContent = [mergedDocContent, extractedContextText].filter(Boolean).join('\n\n').trim();
+                        const extractedContextText = [
+                            preparedAttachments.udfTextContent,
+                            preparedAttachments.wordTextContent,
+                        ].filter(Boolean).join('\n\n').trim();
+                        const chatAnalysisSummary = String(chatAnalysis?.summary || '').trim();
+                        const processedFileLabel = preparedAttachments.processedFileNames.join(', ') || chatSourceFiles.map(file => file.name).join(', ');
+                        const analysisContextBlock = chatAnalysisSummary
+                            ? [
+                                '--- Sohbet Belge Analizi ---',
+                                processedFileLabel ? `Dosyalar: ${processedFileLabel}` : '',
+                                chatAnalysisSummary,
+                            ].filter(Boolean).join('\n')
+                            : '';
+
+                        const nextContextBlocks = [mergedDocContent];
+                        if (analysisContextBlock && !mergedDocContent.includes(analysisContextBlock)) {
+                            nextContextBlocks.push(analysisContextBlock);
+                        }
+                        if (extractedContextText && !mergedDocContent.includes(extractedContextText)) {
+                            nextContextBlocks.push(extractedContextText);
+                        }
+                        const nextMergedDocContent = nextContextBlocks.filter(Boolean).join('\n\n').trim();
+                        if (nextMergedDocContent !== mergedDocContent) {
+                            mergedDocContent = nextMergedDocContent;
                             setDocContent(mergedDocContent);
                         }
+
+                        addToast('Yuklenen sohbet belgeleri OCR ve belge analizi ile baglama eklendi.', 'info');
                     }
                 } catch (chatAnalyzeError) {
                     console.error('Pre-chat document analysis failed:', chatAnalyzeError);
+                    chatAnalyzeFailureMessage = 'Yuklenen belge analizi tamamlanamadi. Lutfen belgeyi tekrar deneyin ya da once Belgeleri Analiz Et adimini calistirin.';
+                }
+
+                if (!chatAnalyzeFailureMessage && !mergedAnalysisSummary.trim()) {
+                    chatAnalyzeFailureMessage = 'Yuklenen belge analizi tamamlanamadi veya baglama eklenemedi. Lutfen belgeyi tekrar deneyin ya da once Belgeleri Analiz Et adimini calistirin.';
                 }
             }
 
-            if (requiresStrictEvidenceForDocument && !activeAnalysisSummary) {
-                const hasUploadedDocument = (files?.length || 0) > 0 || chatFiles.length > 0;
+            if (chatAnalyzeFailureMessage) {
+                setChatMessages(prev => [...prev, { role: 'model', text: chatAnalyzeFailureMessage }]);
+                setError(chatAnalyzeFailureMessage);
+                return;
+            }
+
+            if (requiresStrictEvidenceForDocument && !mergedAnalysisSummary) {
+                const hasUploadedDocument = (files?.length || 0) > 0;
                 const blockedText = hasUploadedDocument
                     ? DOCUMENT_UPLOADED_BUT_ANALYSIS_MISSING_TEXT
                     : DIRECT_DOCUMENT_WITHOUT_ANALYSIS_TEXT;
@@ -1988,7 +1901,7 @@ export default function AlternativeApp() {
                 return;
             }
 
-            if (requiresStrictEvidenceForDocument && hasUploadedDocumentContext && !activeAnalysisSummary) {
+            if (requiresStrictEvidenceForDocument && hasUploadedDocumentContext && !mergedAnalysisSummary) {
                 setChatMessages(prev => [...prev, { role: 'model', text: DOCUMENT_UPLOADED_BUT_ANALYSIS_MISSING_TEXT }]);
                 setError(DOCUMENT_UPLOADED_BUT_ANALYSIS_MISSING_TEXT);
                 return;
@@ -2004,9 +1917,9 @@ export default function AlternativeApp() {
                 }
             }
 
-            if ((requiresEvidenceForChat || requiresStrictEvidenceForDocument) && mergedKeywords.length === 0 && activeAnalysisSummary) {
+            if ((requiresEvidenceForChat || requiresStrictEvidenceForDocument) && mergedKeywords.length === 0 && mergedAnalysisSummary) {
                 try {
-                    const autoKeywords = await generateSearchKeywords(activeAnalysisSummary, userRole);
+                    const autoKeywords = await generateSearchKeywords(mergedAnalysisSummary, userRole);
                     if (autoKeywords.length > 0) {
                         mergedKeywords = autoKeywords.slice(0, 8);
                         setSearchKeywords(mergedKeywords);
@@ -2016,7 +1929,7 @@ export default function AlternativeApp() {
                 }
 
                 if (mergedKeywords.length === 0) {
-                    const fallbackFromSummary = extractKeywordCandidates(activeAnalysisSummary).slice(0, 8);
+                    const fallbackFromSummary = extractKeywordCandidates(mergedAnalysisSummary).slice(0, 8);
                     if (fallbackFromSummary.length > 0) {
                         mergedKeywords = fallbackFromSummary;
                         setSearchKeywords(mergedKeywords);
@@ -2026,9 +1939,9 @@ export default function AlternativeApp() {
 
             if ((requiresEvidenceForChat || requiresStrictEvidenceForDocument) && mergedKeywords.length === 0) {
                 const evidenceSeed = [
-                    activeAnalysisSummary || '',
+                    mergedAnalysisSummary || '',
                     mergedDocContent || '',
-                    chatFiles.map(file => file.name).join(' '),
+                    chatSourceFiles.map(file => file.name).join(' '),
                     normalizedMessage || '',
                 ].filter(Boolean).join('\n');
                 transientEvidenceKeywords = extractKeywordCandidates(evidenceSeed).slice(0, 8);
@@ -2125,7 +2038,7 @@ export default function AlternativeApp() {
                 }
             }
 
-            if (requiresStrictEvidenceForDocument && (!activeAnalysisSummary || !hasWebEvidence(mergedWebSearchResult) || !hasLegalEvidenceForGeneration(mergedLegalResults))) {
+            if (requiresStrictEvidenceForDocument && (!mergedAnalysisSummary || !hasWebEvidence(mergedWebSearchResult) || !hasLegalEvidenceForGeneration(mergedLegalResults))) {
                 const blockedText = `Belge oluşturma engellendi.\n\n${DOCUMENT_REQUIREMENTS_HELP_TEXT}`;
                 setChatMessages(prev => [...prev, { role: 'model', text: blockedText }]);
                 setError(blockedText);
@@ -2139,14 +2052,11 @@ export default function AlternativeApp() {
                 return;
             }
 
-            const chatHistoryForApi = newMessages.map(msg => ({
-                ...msg,
-                files: sanitizeChatFilesForApi(msg.files),
-            }));
+            const chatHistoryForApi = newMessages.map(({ files: _files, ...msg }) => msg);
 
             const responseStream = streamChatResponse(
                 chatHistoryForApi,
-                activeAnalysisSummary || '',
+                mergedAnalysisSummary || '',
                 {
                     keywords: evidenceKeywords.join(', '),
                     searchSummary: mergedWebSearchResult?.summary || '',
@@ -2159,7 +2069,7 @@ export default function AlternativeApp() {
                     allowLegalSearch: requiresStrictEvidenceForDocument || userRequestedLegalSearch,
                     disableDocumentGeneration: requiresStrictEvidenceForDocument,
                 },
-                sanitizeChatFilesForApi(chatFiles)
+                undefined
             );
             const modelMessage: ChatMessage = { role: 'model', text: '' };
             setChatMessages(prev => [...prev, modelMessage]);
@@ -2266,7 +2176,7 @@ export default function AlternativeApp() {
                     if (fc.name === 'generate_document') {
                         setChatProgressText('Dilekçe oluşturuluyor...');
                         const canGenerateDocument = Boolean(
-                            activeAnalysisSummary
+                            mergedAnalysisSummary
                             && hasWebEvidence(mergedWebSearchResult)
                             && hasLegalEvidenceForGeneration(mergedLegalResults)
                             && missingInfoBlockingUnansweredCount === 0
@@ -2311,21 +2221,6 @@ export default function AlternativeApp() {
                 }
             }
 
-            if (chatFiles.length > 0 && assistantText.trim()) {
-                setChatProgressText('Dosya analizi bağlama kaydediliyor...');
-                const fileNames = chatFiles.map(file => file.name).join(', ');
-                const analysisSnippet = assistantText.trim().slice(0, 1600);
-                const contextEntry = [
-                    'Sohbet dosya analizi:',
-                    `Dosyalar: ${fileNames}`,
-                    analysisSnippet,
-                ].join('\n');
-
-                mergedDocContent = [mergedDocContent, contextEntry].filter(Boolean).join('\n\n').trim();
-                setDocContent(mergedDocContent);
-                addToast('Dosya analizi dilekçe bağlamına eklendi.', 'success');
-            }
-
             if ((requiresStrictEvidenceForDocument || userRequestedWebSearch) && addedKeywordsCount > 0 && mergedKeywords.length > 0 && !hasWebEvidence(mergedWebSearchResult)) {
                 setChatProgressText('Web araştırması yapılıyor...');
                 try {
@@ -2352,7 +2247,7 @@ export default function AlternativeApp() {
                 setChatProgressText('Dileke oluturma adm tamamlanyor...');
                 let fallbackPetition = '';
                 const canGeneratePetition = Boolean(
-                    activeAnalysisSummary
+                    mergedAnalysisSummary
                     && hasWebEvidence(mergedWebSearchResult)
                     && hasLegalEvidenceForGeneration(mergedLegalResults)
                     && missingInfoBlockingUnansweredCount === 0
@@ -2375,7 +2270,7 @@ export default function AlternativeApp() {
                             userRole,
                             petitionType,
                             caseDetails,
-                            analysisSummary: activeAnalysisSummary,
+                            analysisSummary: mergedAnalysisSummary,
                             searchKeywords: mergedKeywords,
                             webSearchResult: mergedWebSearchResult?.summary || '',
                             webSources: mergedWebSearchResult?.sources || [],
@@ -2387,8 +2282,8 @@ export default function AlternativeApp() {
                             parties,
                             webSourceCount: mergedWebSearchResult?.sources?.length || 0,
                             legalResultCount: mergedLegalResults.length,
-                            lawyerInfo: activeAnalysisData?.lawyerInfo,
-                            contactInfo: activeAnalysisData?.contactInfo,
+                            lawyerInfo: mergedAnalysisData?.lawyerInfo,
+                            contactInfo: mergedAnalysisData?.contactInfo,
                         });
                     } catch (fallbackError) {
                         console.error('Fallback petition generation failed:', fallbackError);
@@ -2407,6 +2302,7 @@ export default function AlternativeApp() {
                             searchKeywords: mergedKeywords,
                             docContent: mergedDocContent,
                             specifics: specificsWithMissingInfo,
+                            analysisData: mergedAnalysisData,
                             webSearchResult: mergedWebSearchResult,
                             legalSearchResults: mergedLegalResults,
                         });
@@ -2420,6 +2316,7 @@ export default function AlternativeApp() {
                     searchKeywords: mergedKeywords,
                     docContent: mergedDocContent,
                     specifics: specificsWithMissingInfo,
+                    analysisData: mergedAnalysisData,
                     webSearchResult: mergedWebSearchResult,
                     legalSearchResults: mergedLegalResults,
                 });

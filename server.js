@@ -328,7 +328,7 @@ app.post('/webhook', express.raw({ type: 'application/json', limit: '1mb' }), ha
 app.post('/api/billing/webhook', express.raw({ type: 'application/json', limit: '1mb' }), handleStripeWebhook);
 
 // Route-level body limits for heavier payload endpoints
-app.use('/api/gemini/analyze', express.json({ limit: process.env.UPLOAD_JSON_BODY_LIMIT || '15mb' }));
+app.use('/api/gemini/analyze', express.json({ limit: process.env.ANALYZE_JSON_BODY_LIMIT || process.env.UPLOAD_JSON_BODY_LIMIT || '40mb' }));
 app.use('/api/gemini/chat', express.json({ limit: process.env.UPLOAD_JSON_BODY_LIMIT || '15mb' }));
 app.use('/api/html-to-docx', express.json({ limit: process.env.DOC_JSON_BODY_LIMIT || '1mb' }));
 
@@ -643,6 +643,7 @@ app.all('/api/templates', (req, res) => templatesHandler(req, res));
 app.post('/api/gemini/analyze', async (req, res) => {
     try {
         const { uploadedFiles, udfTextContent, wordTextContent } = req.body;
+        const safeUploadedFiles = Array.isArray(uploadedFiles) ? uploadedFiles : [];
         console.warn('Analyze Request Received');
 
         const model = AI_CONFIG.MODEL_NAME;
@@ -672,11 +673,29 @@ ${wordTextContent || "Word belgesi y�klenmedi."}
 
 **�IKTI FORMATI:**
 Sonucu 'summary', 'potentialParties', 'caseDetails', 'lawyerInfo' ve 'contactInfo' anahtarlar�na sahip bir JSON nesnesi olarak d�nd�r.
+ 
+**EK KURAL:**
+- Yuklenen PDF taranmis/goruntu tabanli ise gorunen metni OCR mantigi ile oku.
+- Metin secilemiyor olsa bile yazilari, muhurlari, imzalari, tablo basliklarini ve sayfa ustbilgilerini dikkate al.
 `;
+
+        const fileSummaries = safeUploadedFiles
+            .map((file, index) => {
+                const fileName = String(file?.name || `Belge ${index + 1}`).trim() || `Belge ${index + 1}`;
+                const mimeType = String(file?.mimeType || 'bilinmeyen').trim() || 'bilinmeyen';
+                const scannedHint = /pdf/i.test(mimeType)
+                    ? 'Taranmis/goruntu tabanli PDF olabilir; OCR ile oku.'
+                    : /^image\//i.test(mimeType)
+                        ? 'Gorsel belge; gorunen metni ve duzeni incele.'
+                        : '';
+                return `- ${fileName} (${mimeType})${scannedHint ? ` - ${scannedHint}` : ''}`;
+            })
+            .join('\n');
 
         const contentParts = [
             { text: promptText },
-            ...(uploadedFiles || []).map(file => ({
+            ...(fileSummaries ? [{ text: `Yuklenen dosyalar:\n${fileSummaries}\n` }] : []),
+            ...safeUploadedFiles.map(file => ({
                 inlineData: {
                     mimeType: file.mimeType,
                     data: file.data
@@ -741,6 +760,12 @@ Sonucu 'summary', 'potentialParties', 'caseDetails', 'lawyerInfo' ve 'contactInf
 
         // The logic for parsing/retrying can be simplified here as the SDK handles basic errors.
         // We just return the text which contains the JSON.
+        console.warn('Analyze Response Ready', {
+            uploadedFileCount: safeUploadedFiles.length,
+            udfLength: String(udfTextContent || '').length,
+            wordLength: String(wordTextContent || '').length,
+            responseTextLength: String(response.text || '').length,
+        });
         res.json({ text: response.text });
 
     } catch (error) {
@@ -1405,12 +1430,16 @@ T�rk�e yan�t ver. Soruyu once analiz et; tanim/genel sorularda aramayi zor
 
         const pendingFunctionCalls = [];
         let streamBlockedByQuota = false;
+        let stopStreamAfterFunctionCall = false;
 
         for await (const chunk of responseStream) {
             // Check for function calls
             const candidate = chunk.candidates?.[0];
             if (candidate?.content?.parts) {
                 for (const part of candidate.content.parts) {
+                    if (part.functionCall) {
+                        stopStreamAfterFunctionCall = true;
+                    }
                     if (part.functionCall && part.functionCall.name === 'search_yargitay' && allowSearchYargitayTool) {
                         pendingFunctionCalls.push(part.functionCall);
                     }
@@ -1445,6 +1474,13 @@ T�rk�e yan�t ver. Soruyu once analiz et; tanim/genel sorularda aramayi zor
             // Send chunk as JSON string to handle both text and function calls
             const data = JSON.stringify(chunk);
             res.write(data + '\n'); // Newline delimited JSON
+
+            // Gemini may leave the stream open after emitting a function call while
+            // waiting for tool results we do not provide in this route. End the turn
+            // as soon as the function call is delivered so the client can continue.
+            if (stopStreamAfterFunctionCall) {
+                break;
+            }
         }
 
         if (streamBlockedByQuota) {
@@ -1764,6 +1800,22 @@ const buildPlanUsageSummary = async (serviceClient, userId) => {
     };
 };
 
+const buildDefaultPlanUsageSummary = (userId) => {
+    const now = new Date();
+    const trialEndsAt = new Date(now.getTime() + TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
+    return {
+        user_id: userId,
+        plan_code: 'trial',
+        status: 'active',
+        daily_limit: TRIAL_DAILY_GENERATION_LIMIT,
+        used_today: 0,
+        remaining_today: TRIAL_DAILY_GENERATION_LIMIT,
+        trial_starts_at: now.toISOString(),
+        trial_ends_at: trialEndsAt,
+    };
+};
+
 const consumeGenerationCredit = async (req, actionType = 'document_generation') => {
     const user = await getAuthenticatedUserFromRequest(req);
     const serviceClient = createServiceRoleClient();
@@ -1980,8 +2032,10 @@ const BEDESTEN_DOCUMENT_URL = `${BEDESTEN_BASE_URL}/emsal-karar/getDocumentConte
 const YARGI_MCP_URL = String(process.env.YARGI_MCP_URL || 'https://yargimcp.fastmcp.app/mcp/').trim();
 const YARGI_MCP_PROTOCOL_VERSION = process.env.YARGI_MCP_PROTOCOL_VERSION || '2024-11-05';
 const YARGI_MCP_TIMEOUT_MS = Number(process.env.YARGI_MCP_TIMEOUT_MS || 25000);
+const YARGI_MCP_RATE_LIMIT_COOLDOWN_MS = Number(process.env.YARGI_MCP_RATE_LIMIT_COOLDOWN_MS || 45000);
 const USE_YARGI_MCP = process.env.LEGAL_USE_YARGI_MCP !== '0';
 const STRICT_MCP_ONLY = process.env.LEGAL_STRICT_MCP !== '0';
+let yargiMcpCooldownUntil = 0;
 
 const YARGI_MCP_COURT_TYPES_BY_SOURCE = {
     yargitay: ['YARGITAYKARARI'],
@@ -1990,6 +2044,30 @@ const YARGI_MCP_COURT_TYPES_BY_SOURCE = {
     anayasa: ['YARGITAYKARARI', 'DANISTAYKARAR', 'YERELHUKUK', 'ISTINAFHUKUK', 'KYB'],
     all: ['YARGITAYKARARI', 'DANISTAYKARAR', 'YERELHUKUK', 'ISTINAFHUKUK', 'KYB'],
 };
+
+const isYargiMcpCoolingDown = () => Date.now() < yargiMcpCooldownUntil;
+const getYargiMcpCooldownRemainingMs = () => Math.max(0, yargiMcpCooldownUntil - Date.now());
+const isUpstreamRateLimitError = (error) => {
+    const haystack = [
+        error?.message || '',
+        error?.cause?.message || '',
+        error?.code || '',
+        error?.status || '',
+    ].join(' ').toLowerCase();
+
+    return haystack.includes('rate limited')
+        || haystack.includes('too many requests')
+        || haystack.includes('retry later')
+        || haystack.includes('http 429')
+        || haystack.includes('status 429')
+        || haystack.includes(' 429');
+};
+const activateYargiMcpCooldown = (reason = '') => {
+    yargiMcpCooldownUntil = Math.max(yargiMcpCooldownUntil, Date.now() + YARGI_MCP_RATE_LIMIT_COOLDOWN_MS);
+    const safeReason = String(reason || '').trim();
+    console.warn(`[YARGI_MCP] Cooling down for ${Math.round(YARGI_MCP_RATE_LIMIT_COOLDOWN_MS / 1000)}s${safeReason ? ` after: ${safeReason}` : ''}`);
+};
+const shouldBypassStrictMcp = (error) => isUpstreamRateLimitError(error);
 const BEDESTEN_TIMEOUT_MS = Number(process.env.BEDESTEN_TIMEOUT_MS || 15000);
 const LEGAL_ROUTER_TIMEOUT_MS = Number(process.env.LEGAL_ROUTER_TIMEOUT_MS || 8000);
 const LEGAL_RESULT_RETURN_LIMIT = Math.max(10, Math.min(100, Number(process.env.LEGAL_RESULT_RETURN_LIMIT || 50)));
@@ -1998,6 +2076,13 @@ const LEGAL_QUERY_VARIANT_LIMIT = Math.max(6, Math.min(20, Number(process.env.LE
 const LEGAL_VARIANT_RESULT_CAP = Math.max(LEGAL_RESULT_RETURN_LIMIT, Math.min(150, Number(process.env.LEGAL_VARIANT_RESULT_CAP || 50)));
 const USE_GEMINI_SEMANTIC_RERANK = process.env.LEGAL_USE_GEMINI_SEMANTIC !== '0';
 const LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT = Math.max(LEGAL_RESULT_RETURN_LIMIT, Math.min(100, Number(process.env.LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT || 50)));
+const LEGAL_RELATED_RESULT_TARGET = Math.max(
+    5,
+    Math.min(
+        LEGAL_RESULT_RETURN_LIMIT,
+        Number(process.env.LEGAL_RELATED_RESULT_TARGET || LEGAL_RESULT_RETURN_LIMIT)
+    )
+);
 const LEGAL_DEBUG_SEARCH = process.env.LEGAL_DEBUG_SEARCH !== '0';
 
 const createLegalDebugId = () => `ls-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -2153,14 +2238,24 @@ const postYargiMcp = async (payload, sessionId = '') => {
 
     const responseText = await response.text().catch(() => '');
     if (!response.ok) {
-        throw new Error(`Yargi MCP HTTP ${response.status}: ${responseText.slice(0, 500)}`);
+        const error = new Error(`Yargi MCP HTTP ${response.status}: ${responseText.slice(0, 500)}`);
+        error.status = response.status;
+        if (response.status === 429) {
+            error.code = 'UPSTREAM_RATE_LIMIT';
+        }
+        throw error;
     }
 
     const eventPayload = parseMcpEventPayload(responseText);
     const nextSessionId = response.headers.get('mcp-session-id') || sessionId;
 
     if (eventPayload?.error) {
-        throw new Error(`Yargi MCP error: ${eventPayload.error?.message || 'unknown-error'}`);
+        const error = new Error(`Yargi MCP error: ${eventPayload.error?.message || 'unknown-error'}`);
+        if (isUpstreamRateLimitError(error)) {
+            error.code = 'UPSTREAM_RATE_LIMIT';
+            error.status = 429;
+        }
+        throw error;
     }
 
     return { eventPayload, responseText, sessionId: nextSessionId };
@@ -2232,7 +2327,12 @@ const callYargiMcpTool = async (name, args = {}) => {
             : '';
 
         if (toolResult.isError) {
-            throw new Error(textPayload || `Yargi MCP tool hatasi (${name})`);
+            const error = new Error(textPayload || `Yargi MCP tool hatasi (${name})`);
+            if (isUpstreamRateLimitError(error)) {
+                error.code = 'UPSTREAM_RATE_LIMIT';
+                error.status = 429;
+            }
+            throw error;
         }
 
         return {
@@ -2700,7 +2800,20 @@ const LEGAL_GENERIC_MATCH_TOKENS = new Set([
 ]);
 
 const clampScore = (value) => Math.max(0, Math.min(100, Math.round(value)));
-const LEGAL_MIN_MATCH_SCORE = 75;
+const LEGAL_MIN_MATCH_SCORE = Math.max(
+    35,
+    Math.min(90, Number(process.env.LEGAL_MIN_MATCH_SCORE || 50))
+);
+const LEGAL_RELAXED_MATCH_SCORE = Math.max(
+    30,
+    Math.min(
+        LEGAL_MIN_MATCH_SCORE,
+        Number(
+            process.env.LEGAL_RELAXED_MATCH_SCORE
+            || Math.max(35, LEGAL_MIN_MATCH_SCORE - 15)
+        )
+    )
+);
 const escapeRegex = (value = '') => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const containsWholeTerm = (haystack = '', term = '') => {
     const token = String(term || '').trim();
@@ -2866,6 +2979,49 @@ const scoreAndFilterResultsByKeyword = (results = [], keyword = '') => {
 const getLegalDecisionDocumentId = (result = {}) =>
     String(result?.documentId || result?.id || '').trim();
 
+const dedupeLegalResults = (items = []) => {
+    const deduped = [];
+    const seen = new Set();
+    for (const item of (Array.isArray(items) ? items : [])) {
+        if (!item || typeof item !== 'object') continue;
+        const key = getLegalDecisionDocumentId(item)
+            || `${item?.title || ''}|${item?.esasNo || ''}|${item?.kararNo || ''}|${item?.tarih || ''}`;
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        deduped.push(item);
+    }
+    return deduped;
+};
+
+const buildLegalResultBuckets = ({
+    strongResults = [],
+    candidateResults = [],
+    targetCount = LEGAL_RELATED_RESULT_TARGET,
+}) => {
+    const strong = dedupeLegalResults(strongResults).map((item) => ({
+        ...item,
+        matchTier: item?.matchTier || 'strong',
+    }));
+    const strongIds = new Set(strong.map((item) => getLegalDecisionDocumentId(item) || `${item?.title || ''}|${item?.esasNo || ''}|${item?.kararNo || ''}|${item?.tarih || ''}`));
+    const relatedPool = dedupeLegalResults(candidateResults)
+        .filter((item) => {
+            const key = getLegalDecisionDocumentId(item)
+                || `${item?.title || ''}|${item?.esasNo || ''}|${item?.kararNo || ''}|${item?.tarih || ''}`;
+            return key && !strongIds.has(key);
+        })
+        .sort((a, b) => Number(b?.relevanceScore || 0) - Number(a?.relevanceScore || 0));
+    const needed = Math.max(0, Number(targetCount) - strong.length);
+    const related = relatedPool.slice(0, needed).map((item) => ({
+        ...item,
+        matchTier: item?.matchTier || 'related',
+    }));
+    return {
+        strong,
+        related,
+        combined: [...strong, ...related],
+    };
+};
+
 const rerankResultsByDecisionContent = async (results = [], keyword = '', debugContext = null) => {
     if (!Array.isArray(results) || results.length === 0) {
         return {
@@ -2925,42 +3081,66 @@ const rerankResultsByDecisionContent = async (results = [], keyword = '', debugC
     const minAnchorTokenHits = signals.anchorTokens.length >= 4 ? 2 : (signals.anchorTokens.length > 0 ? 1 : 0);
     const minScore = LEGAL_MIN_MATCH_SCORE;
 
-    const settled = await Promise.all(uniqueCandidates.map(async (result) => {
-        const documentId = getLegalDecisionDocumentId(result);
-        if (!documentId) {
-            return {
-                ok: false,
-                documentId,
-                result,
-                reason: 'missing-document-id',
-            };
-        }
-        try {
-            const bedestenDoc = await getBedestenDocumentContent(documentId);
-            const content = String(bedestenDoc?.content || '').trim();
-            if (!content) {
+    const BATCH_SIZE = 5;
+    const settled = [];
+    let stoppedByRateLimit = false;
+
+    for (let i = 0; i < uniqueCandidates.length; i += BATCH_SIZE) {
+        const batch = uniqueCandidates.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.all(batch.map(async (result) => {
+            const documentId = getLegalDecisionDocumentId(result);
+            if (!documentId) {
+                return {
+                    ok: false,
+                    documentId,
+                    result,
+                    reason: 'missing-document-id',
+                };
+            }
+            try {
+                const bedestenDoc = await getBedestenDocumentContent(documentId);
+                const content = String(bedestenDoc?.content || '').trim();
+                if (!content) {
+                    return {
+                        ok: true,
+                        documentId,
+                        result,
+                        content: '',
+                    };
+                }
                 return {
                     ok: true,
                     documentId,
                     result,
-                    content: '',
+                    content,
+                };
+            } catch (error) {
+                return {
+                    ok: false,
+                    documentId,
+                    result,
+                    reason: error?.message || 'content-fetch-failed',
                 };
             }
-            return {
-                ok: true,
-                documentId,
-                result,
-                content,
-            };
-        } catch (error) {
-            return {
-                ok: false,
-                documentId,
-                result,
-                reason: error?.message || 'content-fetch-failed',
-            };
+        }));
+
+        settled.push(...batchResults);
+        if (batchResults.some((item) => !item?.ok && isUpstreamRateLimitError({ message: item?.reason || '' }))) {
+            stoppedByRateLimit = true;
+            markLegalSearchSignal(debugContext, 'contentRateLimited');
+            if (debugContext?.id) {
+                logLegalSearchDebug(debugContext.id, 'content-rerank-rate-limit', {
+                    processedCount: settled.length,
+                    candidateCount: uniqueCandidates.length,
+                });
+            }
+            break;
         }
-    }));
+
+        if (i + BATCH_SIZE < uniqueCandidates.length) {
+            await new Promise((resolve) => setTimeout(resolve, 800));
+        }
+    }
 
     let fetchedCount = 0;
     let matchedCount = 0;
@@ -3020,9 +3200,24 @@ const rerankResultsByDecisionContent = async (results = [], keyword = '', debugC
             ? (anchorPhraseHitCount > 0 || anchorTokenFallbackSatisfied)
             : (!hasAnchorSignals || anchorTokenHitCount >= minAnchorTokenHits);
         const hasContentHit = phraseHitCount > 0 || tokenHitCount >= minTokenHits;
+        let fusionScore = normalizedContentScore;
+        if (tokenCoverage >= 0.7) fusionScore += 15;
+        else if (tokenCoverage >= 0.5) fusionScore += 8;
+        else if (tokenCoverage >= 0.3) fusionScore += 3;
+        if (phraseHitCount >= 2) fusionScore += 10;
+        else if (phraseHitCount >= 1) fusionScore += 5;
+        if (corePhraseHitCount >= 2) fusionScore += 12;
+        else if (corePhraseHitCount >= 1) fusionScore += 6;
+        const normalizedFusionScore = clampScore(fusionScore);
+        const softSignalMatch = (
+            normalizedFusionScore >= 25
+            || corePhraseHitCount > 0
+            || anchorPhraseHitCount > 0
+            || (anchorTokenHitCount >= 2 && tokenHitCount >= 2)
+        );
         const isMatch = corePhraseRequirementSatisfied
             && anchorRequirementSatisfied
-            && (hasContentHit || normalizedContentScore >= minScore);
+            && (hasContentHit || normalizedContentScore >= minScore || softSignalMatch);
 
         if (!isMatch) continue;
 
@@ -3038,10 +3233,10 @@ const rerankResultsByDecisionContent = async (results = [], keyword = '', debugC
 
         matched.push({
             ...item.result,
-            relevanceScore: clampScore(Math.max(baseRelevanceScore, normalizedContentScore)),
-            ozet: snippetText || `Anahtar kelime eslesmesi bulundu (metin skoru: ${normalizedContentScore}).`,
+            relevanceScore: clampScore(Math.max(baseRelevanceScore, normalizedFusionScore)),
+            ozet: snippetText || `Anahtar kelime eslesmesi bulundu (metin skoru: ${normalizedFusionScore}).`,
             // Also pass full content so the user can copy the full text if needed
-            snippet: item.content || snippetText || `Anahtar kelime eslesmesi bulundu (metin skoru: ${normalizedContentScore}).`,
+            snippet: item.content || snippetText || `Anahtar kelime eslesmesi bulundu (metin skoru: ${normalizedFusionScore}).`,
         });
     }
 
@@ -3055,6 +3250,7 @@ const rerankResultsByDecisionContent = async (results = [], keyword = '', debugC
             filteredOutCount: Math.max(0, uniqueCandidates.length - matchedCount),
             fetchErrorCount,
             emptyContentCount,
+            stoppedByRateLimit,
             sample: buildLegalResultSample(matched, 3),
         });
     }
@@ -3068,6 +3264,61 @@ const rerankResultsByDecisionContent = async (results = [], keyword = '', debugC
         filteredOutCount: Math.max(0, uniqueCandidates.length - matchedCount),
         fetchErrorCount,
         emptyContentCount,
+        stoppedByRateLimit,
+    };
+};
+
+const pickLegalFallbackResults = ({
+    scoring = null,
+    contentCandidates = [],
+    contentRerank = null,
+    limit = LEGAL_RESULT_RETURN_LIMIT,
+}) => {
+    const safeLimit = Math.max(1, Number(limit) || LEGAL_RESULT_RETURN_LIMIT);
+    const strictMatches = Array.isArray(scoring?.results) ? scoring.results : [];
+    if (strictMatches.length > 0) {
+        return {
+            results: strictMatches.slice(0, safeLimit),
+            mode: 'strict-scoring',
+        };
+    }
+
+    const scoredResults = Array.isArray(scoring?.scoredResults) ? scoring.scoredResults : [];
+    const strictThresholdMatches = scoredResults.filter(
+        (item) => Number(item?.relevanceScore || 0) >= LEGAL_MIN_MATCH_SCORE
+    );
+    if (strictThresholdMatches.length > 0) {
+        return {
+            results: strictThresholdMatches.slice(0, safeLimit),
+            mode: 'strict-threshold',
+        };
+    }
+
+    const relaxedThresholdMatches = scoredResults.filter(
+        (item) => Number(item?.relevanceScore || 0) >= LEGAL_RELAXED_MATCH_SCORE
+    );
+    if (relaxedThresholdMatches.length > 0) {
+        return {
+            results: relaxedThresholdMatches.slice(0, safeLimit),
+            mode: 'relaxed-threshold',
+        };
+    }
+
+    const safeCandidates = Array.isArray(contentCandidates) ? contentCandidates.filter(Boolean) : [];
+    const hasFetchProblems = Boolean(contentRerank?.applied) && (
+        Number(contentRerank?.fetchErrorCount || 0) > 0
+        || Boolean(contentRerank?.stoppedByRateLimit)
+    );
+    if (hasFetchProblems && safeCandidates.length > 0) {
+        return {
+            results: safeCandidates.slice(0, safeLimit),
+            mode: 'content-candidates',
+        };
+    }
+
+    return {
+        results: [],
+        mode: 'empty',
     };
 };
 
@@ -3151,8 +3402,10 @@ const runPhraseFallbackSearch = async ({ keyword = '', source = 'all', filters =
         if (Array.isArray(fullKeywordScoring.results) && fullKeywordScoring.results.length > 0) {
             finalResults = fullKeywordScoring.results;
         } else if (Array.isArray(fullKeywordScoring.scoredResults) && fullKeywordScoring.scoredResults.length > 0) {
-            // Include anything that has at least some relevance to the full context.
-            finalResults = fullKeywordScoring.scoredResults.filter(item => Number(item?.relevanceScore || 0) >= LEGAL_MIN_MATCH_SCORE);
+            const relaxedMatches = fullKeywordScoring.scoredResults.filter(
+                (item) => Number(item?.relevanceScore || 0) >= LEGAL_RELAXED_MATCH_SCORE
+            );
+            finalResults = relaxedMatches;
         }
     } catch (e) {
         console.error('Fallback rescoring error:', e);
@@ -3579,21 +3832,57 @@ async function searchBedestenViaMcp(keyword, source, filters = {}, debugContext 
     }, index));
 }
 
-async function searchBedestenAPI(keyword, source, filters = {}, debugContext = null) {
+function ensureLegalSearchSignals(debugContext = null) {
+    if (!debugContext || typeof debugContext !== 'object') return null;
+    if (!debugContext.signals || typeof debugContext.signals !== 'object') {
+        debugContext.signals = {
+            mcpCooldownSkipped: false,
+            mcpRateLimited: false,
+            bedestenRateLimited: false,
+            contentRateLimited: false,
+        };
+    }
+    return debugContext.signals;
+}
+
+function markLegalSearchSignal(debugContext = null, signalName = '') {
+    const signals = ensureLegalSearchSignals(debugContext);
+    if (signals && signalName) {
+        signals[signalName] = true;
+    }
+}
+
+async function searchBedestenAPI(keyword, source, filters = {}, debugContext = null, options = {}) {
+    const allowSourceFallback = options?.allowSourceFallback !== false;
     if (USE_YARGI_MCP) {
-        try {
-            return await searchBedestenViaMcp(keyword, source, filters, debugContext);
-        } catch (mcpError) {
+        if (isYargiMcpCoolingDown()) {
+            markLegalSearchSignal(debugContext, 'mcpCooldownSkipped');
             if (debugContext?.id) {
-                logLegalSearchDebug(debugContext.id, 'mcp-search-error', {
+                logLegalSearchDebug(debugContext.id, 'mcp-search-skip-cooldown', {
                     source,
                     phrase: String(keyword || ''),
-                    message: mcpError?.message || 'unknown-error',
+                    cooldownRemainingMs: getYargiMcpCooldownRemainingMs(),
                 });
             }
-            console.error('Yargi MCP search failed:', mcpError);
-            if (STRICT_MCP_ONLY) {
-                throw mcpError;
+        } else {
+            try {
+                return await searchBedestenViaMcp(keyword, source, filters, debugContext);
+            } catch (mcpError) {
+                if (debugContext?.id) {
+                    logLegalSearchDebug(debugContext.id, 'mcp-search-error', {
+                        source,
+                        phrase: String(keyword || ''),
+                        message: mcpError?.message || 'unknown-error',
+                    });
+                }
+                if (isUpstreamRateLimitError(mcpError)) {
+                    markLegalSearchSignal(debugContext, 'mcpRateLimited');
+                    activateYargiMcpCooldown(mcpError?.message || 'rate-limit');
+                }
+                console.error('Yargi MCP search failed:', mcpError);
+                if (STRICT_MCP_ONLY && !shouldBypassStrictMcp(mcpError)) {
+                    throw mcpError;
+                }
             }
         }
     }
@@ -3630,6 +3919,9 @@ async function searchBedestenAPI(keyword, source, filters = {}, debugContext = n
 
     if (!response.ok) {
         const errorText = await response.text().catch(() => '');
+        if (response.status === 429) {
+            markLegalSearchSignal(debugContext, 'bedestenRateLimited');
+        }
         throw new Error(`Bedesten search failed (${response.status}): ${errorText}`);
     }
 
@@ -3647,6 +3939,18 @@ async function searchBedestenAPI(keyword, source, filters = {}, debugContext = n
             rawDecisionCount: rawList.length,
             formattedCount: formatted.length,
             sample: buildLegalResultSample(formatted, 2),
+        });
+    }
+    if (formatted.length === 0 && allowSourceFallback && normalizeSourceValue(source, 'all') !== 'all') {
+        if (debugContext?.id) {
+            logLegalSearchDebug(debugContext.id, 'direct-bedesten-source-fallback', {
+                originalSource: source,
+                fallbackSource: 'all',
+                phrase: String(keyword || ''),
+            });
+        }
+        return await searchBedestenAPI(keyword, 'all', filters, debugContext, {
+            allowSourceFallback: false,
         });
     }
     return formatted;
@@ -3683,23 +3987,28 @@ async function extractPdfTextWithGemini(base64Data, documentId = '') {
 
 async function getBedestenDocumentContent(documentId) {
     if (USE_YARGI_MCP) {
-        try {
-            const toolResponse = await callYargiMcpTool('get_bedesten_document_markdown', {
-                documentId: String(documentId || '').trim(),
-            });
-            const payload = toolResponse.parsed && typeof toolResponse.parsed === 'object'
-                ? toolResponse.parsed
-                : maybeExtractJson(toolResponse.text) || {};
-            const markdown = String(payload?.markdown_content || payload?.content || toolResponse.text || '').trim();
-            return {
-                content: markdown,
-                mimeType: 'text/markdown',
-                raw: payload,
-            };
-        } catch (mcpError) {
-            console.error('Yargi MCP document fetch failed:', mcpError);
-            if (STRICT_MCP_ONLY) {
-                throw mcpError;
+        if (!isYargiMcpCoolingDown()) {
+            try {
+                const toolResponse = await callYargiMcpTool('get_bedesten_document_markdown', {
+                    documentId: String(documentId || '').trim(),
+                });
+                const payload = toolResponse.parsed && typeof toolResponse.parsed === 'object'
+                    ? toolResponse.parsed
+                    : maybeExtractJson(toolResponse.text) || {};
+                const markdown = String(payload?.markdown_content || payload?.content || toolResponse.text || '').trim();
+                return {
+                    content: markdown,
+                    mimeType: 'text/markdown',
+                    raw: payload,
+                };
+            } catch (mcpError) {
+                if (isUpstreamRateLimitError(mcpError)) {
+                    activateYargiMcpCooldown(mcpError?.message || 'rate-limit');
+                }
+                console.error('Yargi MCP document fetch failed:', mcpError);
+                if (STRICT_MCP_ONLY && !shouldBypassStrictMcp(mcpError)) {
+                    throw mcpError;
+                }
             }
         }
     }
@@ -3995,6 +4304,7 @@ app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
         await getAuthenticatedUserFromRequest(req);
         const { source, keyword, filters = {} } = req.body;
         const debugId = createLegalDebugId();
+        const legalDebugContext = { id: debugId };
 
         const routingPlan = await buildSearchRoutingPlan({
             keyword,
@@ -4017,6 +4327,7 @@ app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
         const bedestenErrors = [];
         const warningParts = [];
         let semanticCandidates = [];
+        let relatedResultCandidates = [];
         const queryVariants = buildBedestenQueryVariants(routingPlan.keyword, routingPlan.originalKeyword);
         const baseKeyword = routingPlan.originalKeyword || routingPlan.keyword;
         const normalizedBaseKeyword = normalizeForRouting(baseKeyword);
@@ -4101,7 +4412,7 @@ app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
                     plan.variant,
                     plan.source,
                     routingPlan.filters,
-                    { id: debugId }
+                    legalDebugContext
                 );
                 logLegalSearchDebug(debugId, 'variant-result', {
                     candidateSource: plan.source,
@@ -4136,6 +4447,7 @@ app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
         if (sourceCollected.length > 0) {
             results = sourceCollected.slice(0, LEGAL_VARIANT_RESULT_CAP);
             semanticCandidates = sourceCollected.slice(0, LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT);
+            relatedResultCandidates = sourceCollected.slice(0, LEGAL_VARIANT_RESULT_CAP);
             if (resolvedSources.size === 1) {
                 usedSource = Array.from(resolvedSources)[0];
             } else if (resolvedSources.size > 1) {
@@ -4183,12 +4495,19 @@ app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
                 pushContentCandidate(item);
             }
             semanticCandidates = contentCandidates.slice(0, LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT);
+            relatedResultCandidates = contentCandidates.slice(0, LEGAL_VARIANT_RESULT_CAP);
 
             const contentRerank = await rerankResultsByDecisionContent(
                 contentCandidates,
                 scoringKeyword,
-                { id: debugId }
+                legalDebugContext
             );
+            const scoringFallback = pickLegalFallbackResults({
+                scoring,
+                contentCandidates,
+                contentRerank,
+                limit: LEGAL_RESULT_RETURN_LIMIT,
+            });
 
             if (contentRerank.applied && contentRerank.fetchedCount > 0) {
                 if (Array.isArray(contentRerank.results) && contentRerank.results.length > 0) {
@@ -4197,41 +4516,27 @@ app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
                         warningParts.push(`${contentRerank.filteredOutCount} sonuc tam metinde anahtar kelime uyusmasi dusuk oldugu icin elendi.`);
                     }
                 } else {
-                    results = [];
-                    warningParts.push('MCP tam metinlerinde anahtar kelime uyusmasi bulunamadi.');
+                    results = scoringFallback.results;
+                    if (scoringFallback.mode === 'strict-scoring') {
+                        warningParts.push('Tam metin filtresi sonuc vermedigi icin metadata eslesmeleri listelendi.');
+                    } else if (scoringFallback.mode === 'strict-threshold') {
+                        warningParts.push(`Tam metin filtresi sonuc vermedigi icin skor >= ${LEGAL_MIN_MATCH_SCORE} olan en yakin sonuclar listelendi.`);
+                    } else if (scoringFallback.mode === 'relaxed-threshold') {
+                        warningParts.push(`Tam metin filtresi sonuc vermedigi icin skor >= ${LEGAL_RELAXED_MATCH_SCORE} olan en yakin sonuclar listelendi.`);
+                    } else if (scoringFallback.mode === 'content-candidates') {
+                        warningParts.push('Karar tam metinleri kismen dogrulanamadigi icin ilk bulunan MCP sonuclari listelendi.');
+                    } else {
+                        warningParts.push('MCP tam metinlerinde anahtar kelime uyusmasi bulunamadi.');
+                    }
                 }
             } else {
-                if (Array.isArray(scoring.results) && scoring.results.length > 0) {
-                    results = scoring.results;
-                } else if (Array.isArray(scoring.scoredResults) && scoring.scoredResults.length > 0) {
-                    const thresholdMatches = scoring.scoredResults
-                        .filter((item) => Number(item?.relevanceScore || 0) >= LEGAL_MIN_MATCH_SCORE);
-                    if (thresholdMatches.length > 0) {
-                        results = thresholdMatches.slice(0, Math.min(LEGAL_RESULT_RETURN_LIMIT, thresholdMatches.length));
-                        warningParts.push(`Kati ifade filtresi nedeniyle skor >= ${LEGAL_MIN_MATCH_SCORE} olan en yakin MCP sonuclari listelendi.`);
-                    } else if (
-                        contentRerank.applied
-                        && contentRerank.fetchedCount === 0
-                        && contentRerank.fetchErrorCount > 0
-                        && contentCandidates.length > 0
-                    ) {
-                        results = contentCandidates.slice(0, Math.min(LEGAL_RESULT_RETURN_LIMIT, contentCandidates.length));
-                        warningParts.push('Karar tam metinleri cekilemedigi icin ilk bulunan MCP sonuclari listelendi.');
-                    } else {
-                        results = [];
-                    }
-                } else {
-                    if (
-                        contentRerank.applied
-                        && contentRerank.fetchedCount === 0
-                        && contentRerank.fetchErrorCount > 0
-                        && contentCandidates.length > 0
-                    ) {
-                        results = contentCandidates.slice(0, Math.min(LEGAL_RESULT_RETURN_LIMIT, contentCandidates.length));
-                        warningParts.push('Karar tam metinleri cekilemedigi icin ilk bulunan MCP sonuclari listelendi.');
-                    } else {
-                    results = [];
-                    }
+                results = scoringFallback.results;
+                if (scoringFallback.mode === 'strict-threshold') {
+                    warningParts.push(`Kati ifade filtresi nedeniyle skor >= ${LEGAL_MIN_MATCH_SCORE} olan en yakin MCP sonuclari listelendi.`);
+                } else if (scoringFallback.mode === 'relaxed-threshold') {
+                    warningParts.push(`Kati ifade filtresi nedeniyle skor >= ${LEGAL_RELAXED_MATCH_SCORE} olan en yakin MCP sonuclari listelendi.`);
+                } else if (scoringFallback.mode === 'content-candidates') {
+                    warningParts.push('Karar tam metinleri cekilemedigi icin ilk bulunan MCP sonuclari listelendi.');
                 }
 
                 if (contentRerank.applied && contentRerank.fetchErrorCount > 0) {
@@ -4260,7 +4565,7 @@ app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
                 keyword: routingPlan.originalKeyword || routingPlan.keyword,
                 source: usedSource || routingPlan.resolvedSource || 'all',
                 filters: routingPlan.filters,
-                debugContext: { id: debugId },
+                debugContext: legalDebugContext,
             });
             if (phraseFallback.applied && Array.isArray(phraseFallback.results) && phraseFallback.results.length > 0) {
                 results = phraseFallback.results;
@@ -4271,6 +4576,25 @@ app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
                 }
                 warningParts.push('Birlesik sorgu parcalanarak anahtar ifadelerle MCP aramasi yapildi.');
             }
+        }
+
+        if ((!Array.isArray(results) || results.length === 0) && sourceCollected.length > 0) {
+            results = sourceCollected
+                .slice()
+                .sort((a, b) => Number(b?.relevanceScore || 0) - Number(a?.relevanceScore || 0))
+                .slice(0, LEGAL_RESULT_RETURN_LIMIT);
+            warningParts.push('Tam metin ve ifade filtreleri sonuc vermedigi icin en yakin ham karar adaylari listelendi.');
+        }
+
+        const upstreamSignals = ensureLegalSearchSignals(legalDebugContext);
+        if (upstreamSignals?.mcpRateLimited || upstreamSignals?.mcpCooldownSkipped) {
+            warningParts.push('Yargi MCP upstream rate-limit/cooldown nedeniyle Bedesten fallback kullanildi.');
+        }
+        if (upstreamSignals?.bedestenRateLimited) {
+            warningParts.push('Bedesten upstream rate-limit nedeniyle bazi sorgu varyantlari atlandi.');
+        }
+        if (upstreamSignals?.contentRateLimited) {
+            warningParts.push('MCP tam metin cekimi rate-limit nedeniyle erken durduruldu.');
         }
 
         if (!Array.isArray(results) || results.length === 0) {
@@ -4287,6 +4611,8 @@ app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
                 keyword: routingPlan.keyword,
                 provider,
                 results: [],
+                warningParts: uniqueWarnings,
+                bedestenErrors,
                 warning: uniqueWarnings.length > 0
                     ? uniqueWarnings.join(' ')
                     : 'MCP/Bedesten kaynaginda karar bulunamadi veya servise ulasilamadi.',
@@ -4308,26 +4634,53 @@ app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
         if (bedestenErrors.length > 0) {
             warningParts.push('Bazi Bedesten denemeleri basarisiz oldu.');
         }
-        const uniqueWarnings = Array.from(new Set(warningParts));
+        let responseResults = Array.isArray(results) ? results : [];
+        let uniqueWarnings = Array.from(new Set(warningParts));
+        const strictFilteredResults = responseResults.filter(
+            (item) => Number(item?.relevanceScore || 0) >= LEGAL_MIN_MATCH_SCORE
+        );
+        if (responseResults.length > 0 && strictFilteredResults.length === 0) {
+            const relaxedFilteredResults = responseResults.filter(
+                (item) => Number(item?.relevanceScore || 0) >= LEGAL_RELAXED_MATCH_SCORE
+            );
+            if (relaxedFilteredResults.length > 0) {
+                responseResults = relaxedFilteredResults.slice(0, LEGAL_RESULT_RETURN_LIMIT);
+                warningParts.push(`Son skor filtresi listeyi bosalttigi icin skor >= ${LEGAL_RELAXED_MATCH_SCORE} olan en yakin sonuclar gosterildi.`);
+            } else {
+                responseResults = responseResults.slice(0, LEGAL_RESULT_RETURN_LIMIT);
+                warningParts.push('Son skor filtresi listeyi bosalttigi icin en yakin sonuclar gosterildi.');
+            }
+            uniqueWarnings = Array.from(new Set(warningParts));
+        } else {
+            responseResults = strictFilteredResults;
+        }
+        const resultBuckets = buildLegalResultBuckets({
+            strongResults: responseResults,
+            candidateResults: relatedResultCandidates.length > 0 ? relatedResultCandidates : sourceCollected,
+            targetCount: Math.max(LEGAL_RELATED_RESULT_TARGET, responseResults.length),
+        });
+        if (resultBuckets.related.length > 0) {
+            responseResults = resultBuckets.combined;
+            warningParts.push(`${resultBuckets.related.length} ilgili karar adayi da listeye eklendi.`);
+            uniqueWarnings = Array.from(new Set(warningParts));
+        }
         logLegalSearchDebug(debugId, 'route-success', {
             provider,
             usedSource,
-            finalCount: Array.isArray(results) ? results.length : 0,
+            finalCount: Array.isArray(responseResults) ? responseResults.length : 0,
             warningParts: uniqueWarnings,
-            sample: buildLegalResultSample(results, 3),
+            sample: buildLegalResultSample(responseResults, 3),
         });
-
-        // Son savunma: 75 altındaki skorları kesinlikle döndürme
-        const filteredResults = Array.isArray(results)
-            ? results.filter(item => Number(item?.relevanceScore || 0) >= LEGAL_MIN_MATCH_SCORE)
-            : [];
 
         res.json({
             success: true,
             source: usedSource || routingPlan.resolvedSource || 'all',
             keyword: routingPlan.keyword,
             provider,
-            results: filteredResults,
+            results: responseResults,
+            resultBuckets,
+            warningParts: uniqueWarnings,
+            bedestenErrors,
             routing: {
                 requestedSource: routingPlan.requestedSource,
                 resolvedSource: routingPlan.resolvedSource,
@@ -6063,8 +6416,14 @@ const normalizePlanStatus = (planStatus) => {
 app.get('/api/user-plan-summary', async (req, res) => {
     try {
         const user = await getAuthenticatedUserFromRequest(req);
-        const serviceClient = createServiceRoleClient();
-        const summary = await buildPlanUsageSummary(serviceClient, user.id);
+        let summary;
+        try {
+            const serviceClient = createServiceRoleClient();
+            summary = await buildPlanUsageSummary(serviceClient, user.id);
+        } catch (summaryError) {
+            console.error('User plan summary data fallback:', summaryError);
+            summary = buildDefaultPlanUsageSummary(user.id);
+        }
         res.json({ summary });
     } catch (error) {
         console.error('User plan summary error:', error);

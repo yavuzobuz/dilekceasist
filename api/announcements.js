@@ -2,14 +2,16 @@
 import { createClient } from '@supabase/supabase-js';
 import { applyCors, getSafeErrorMessage } from '../lib/api/cors.js';
 
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
+const ANNOUNCEMENT_TYPES = new Set(['info', 'warning', 'success', 'error']);
+
+const getSupabaseUrl = () => process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+const getSupabaseAnonKey = () => process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+const getSupabaseServiceRoleKey = () =>
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || '';
+const getAdminEmails = () => (process.env.ADMIN_EMAILS || '')
     .split(',')
     .map(email => email.trim().toLowerCase())
     .filter(Boolean);
-const ANNOUNCEMENT_TYPES = new Set(['info', 'warning', 'success', 'error']);
 
 const httpError = (status, message) => {
     const error = new Error(message);
@@ -31,7 +33,7 @@ const isAdminUser = (user) => {
     const role = String(user?.app_metadata?.role || '').toLowerCase();
     const hasAdminClaim = user?.app_metadata?.is_admin === true;
 
-    return hasAdminClaim || role === 'admin' || role === 'super_admin' || ADMIN_EMAILS.includes(email);
+    return hasAdminClaim || role === 'admin' || role === 'super_admin' || getAdminEmails().includes(email);
 };
 
 const parseBooleanInput = (value, defaultValue = false) => {
@@ -131,31 +133,38 @@ const sanitizeAnnouncementDeletePayload = (payload = {}) => {
 };
 
 const createServiceRoleClient = () => {
-    if (!SUPABASE_URL) {
+    const supabaseUrl = getSupabaseUrl();
+    const serviceRoleKey = getSupabaseServiceRoleKey();
+
+    if (!supabaseUrl) {
         throw httpError(500, 'Supabase URL not configured');
     }
 
-    if (!SUPABASE_SERVICE_ROLE_KEY) {
+    if (!serviceRoleKey) {
         throw httpError(500, 'SUPABASE_SERVICE_ROLE_KEY not configured');
     }
 
-    return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    return createClient(supabaseUrl, serviceRoleKey, {
         auth: { autoRefreshToken: false, persistSession: false }
     });
 };
 
 const createReadOnlyClient = () => {
-    if (!SUPABASE_URL) {
+    const supabaseUrl = getSupabaseUrl();
+    const anonKey = getSupabaseAnonKey();
+    const serviceRoleKey = getSupabaseServiceRoleKey();
+
+    if (!supabaseUrl) {
         throw httpError(500, 'Supabase URL not configured');
     }
 
-    if (SUPABASE_ANON_KEY) {
-        return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    if (anonKey) {
+        return createClient(supabaseUrl, anonKey, {
             auth: { autoRefreshToken: false, persistSession: false }
         });
     }
 
-    if (SUPABASE_SERVICE_ROLE_KEY) {
+    if (serviceRoleKey) {
         return createServiceRoleClient();
     }
 
@@ -163,7 +172,10 @@ const createReadOnlyClient = () => {
 };
 
 const requireAdminAuth = async (req) => {
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    const supabaseUrl = getSupabaseUrl();
+    const anonKey = getSupabaseAnonKey();
+
+    if (!supabaseUrl || !anonKey) {
         throw httpError(500, 'Supabase auth config missing on server');
     }
 
@@ -172,7 +184,7 @@ const requireAdminAuth = async (req) => {
         throw httpError(401, 'Unauthorized: Bearer token required');
     }
 
-    const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    const supabaseAuth = createClient(supabaseUrl, anonKey, {
         auth: { autoRefreshToken: false, persistSession: false }
     });
 

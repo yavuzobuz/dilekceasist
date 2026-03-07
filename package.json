@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/free-port.js 3000 && vite --strictPort",
     "preserver": "node scripts/free-port.js 3001",
-    "server": "node server.js",
-    "dev:all": "concurrently \"npm run server\" \"npm run dev\"",
+    "server": "node scripts/free-port.js 3001 && node server.js",
+    "dev:all": "node scripts/free-port.js 3000 3001 && concurrently \"npm run server\" \"npm run dev\"",
     "build": "vite build",
     "preview": "vite preview",
     "encoding:normalize": "node scripts/encoding-normalize.mjs",

@@ -370,6 +370,7 @@ export interface GroundingSource {
 }
 
 export interface UploadedFile {
+  name?: string;
   mimeType: string;
   data: string; // base64 encoded string
 }

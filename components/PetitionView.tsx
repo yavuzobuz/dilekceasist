@@ -7,6 +7,7 @@ import html2canvas from 'html2canvas';
 import { saveAs } from 'file-saver';
 import { marked } from 'marked';
 import { sanitizeHtml } from '../src/utils/sanitizeHtml';
+import { supabase } from '../lib/supabase';
 
 // Configure marked for proper line breaks and formatting
 marked.setOptions({
@@ -36,6 +37,21 @@ const convertMarkdownToHtml = (text: string): string => {
   const html = sanitizeHtml(marked.parse(processed) as string);
 
   return html;
+};
+
+const buildAuthorizedJsonHeaders = async (): Promise<Record<string, string>> => {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      headers.Authorization = `Bearer ${session.access_token}`;
+    }
+  } catch (error) {
+    console.error('Could not load auth session for DOCX download:', error);
+  }
+
+  return headers;
 };
 
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -224,9 +240,7 @@ export const PetitionView: React.FC<PetitionViewProps> = ({ petition, setGenerat
       // Call API endpoint to generate DOCX
       const response = await fetch('/api/html-to-docx', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: await buildAuthorizedJsonHeaders(),
         body: JSON.stringify({
           html: htmlString,
           options: {

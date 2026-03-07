@@ -31,6 +31,13 @@ const LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT = Math.max(
     LEGAL_RESULT_RETURN_LIMIT,
     Math.min(100, Number(process.env.LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT || 50))
 );
+const LEGAL_RELATED_RESULT_TARGET = Math.max(
+    5,
+    Math.min(
+        LEGAL_RESULT_RETURN_LIMIT,
+        Number(process.env.LEGAL_RELATED_RESULT_TARGET || LEGAL_RESULT_RETURN_LIMIT)
+    )
+);
 const USE_MCP_SEMANTIC_SEARCH = process.env.LEGAL_USE_MCP_SEMANTIC !== '0';
 const YARGI_MCP_SEMANTIC_TIMEOUT_MS = Number(process.env.YARGI_MCP_SEMANTIC_TIMEOUT_MS || 90000);
 
@@ -882,7 +889,20 @@ const LEGAL_GENERIC_MATCH_TOKENS = new Set([
 ]);
 
 const clampScore = (value) => Math.max(0, Math.min(100, Math.round(value)));
-const LEGAL_MIN_MATCH_SCORE = 50;
+const LEGAL_MIN_MATCH_SCORE = Math.max(
+    35,
+    Math.min(90, Number(process.env.LEGAL_MIN_MATCH_SCORE || 50))
+);
+const LEGAL_RELAXED_MATCH_SCORE = Math.max(
+    30,
+    Math.min(
+        LEGAL_MIN_MATCH_SCORE,
+        Number(
+            process.env.LEGAL_RELAXED_MATCH_SCORE ||
+                Math.max(35, LEGAL_MIN_MATCH_SCORE - 15)
+        )
+    )
+);
 
 // ─── Faz C: Query Parser — Hukuki Varlık Çıkarımı ──────────────────────────
 // Sorgudan yapılandırılmış hukuki bilgi çıkarır: mahkeme, kanun, dava tipi, tarih, esas/karar no
@@ -1377,6 +1397,57 @@ const scoreAndFilterResultsByKeyword = (results = [], keyword = '') => {
 const getLegalDecisionDocumentId = (result = {}) =>
     String(result?.documentId || result?.id || '').trim();
 
+const dedupeLegalResults = (items = []) => {
+    const deduped = [];
+    const seen = new Set();
+    for (const item of Array.isArray(items) ? items : []) {
+        if (!item || typeof item !== 'object') continue;
+        const key =
+            getLegalDecisionDocumentId(item) ||
+            `${item?.title || ''}|${item?.esasNo || ''}|${item?.kararNo || ''}|${item?.tarih || ''}`;
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        deduped.push(item);
+    }
+    return deduped;
+};
+
+const buildLegalResultBuckets = ({
+    strongResults = [],
+    candidateResults = [],
+    targetCount = LEGAL_RELATED_RESULT_TARGET,
+}) => {
+    const strong = dedupeLegalResults(strongResults).map((item) => ({
+        ...item,
+        matchTier: item?.matchTier || 'strong',
+    }));
+    const strongIds = new Set(
+        strong.map(
+            (item) =>
+                getLegalDecisionDocumentId(item) ||
+                `${item?.title || ''}|${item?.esasNo || ''}|${item?.kararNo || ''}|${item?.tarih || ''}`
+        )
+    );
+    const relatedPool = dedupeLegalResults(candidateResults)
+        .filter((item) => {
+            const key =
+                getLegalDecisionDocumentId(item) ||
+                `${item?.title || ''}|${item?.esasNo || ''}|${item?.kararNo || ''}|${item?.tarih || ''}`;
+            return key && !strongIds.has(key);
+        })
+        .sort((a, b) => Number(b?.relevanceScore || 0) - Number(a?.relevanceScore || 0));
+    const needed = Math.max(0, Number(targetCount) - strong.length);
+    const related = relatedPool.slice(0, needed).map((item) => ({
+        ...item,
+        matchTier: item?.matchTier || 'related',
+    }));
+    return {
+        strong,
+        related,
+        combined: [...strong, ...related],
+    };
+};
+
 const rerankResultsByDecisionContent = async (results = [], keyword = '') => {
     if (!Array.isArray(results) || results.length === 0) {
         return {
@@ -1640,6 +1711,58 @@ const rerankResultsByDecisionContent = async (results = [], keyword = '') => {
     };
 };
 
+const pickLegalFallbackResults = ({
+    scoring = null,
+    contentCandidates = [],
+    contentRerank = null,
+    limit = LEGAL_RESULT_RETURN_LIMIT,
+}) => {
+    const safeLimit = Math.max(1, Number(limit) || LEGAL_RESULT_RETURN_LIMIT);
+    const strictMatches = Array.isArray(scoring?.results) ? scoring.results : [];
+    if (strictMatches.length > 0) {
+        return {
+            results: strictMatches.slice(0, safeLimit),
+            mode: 'strict-scoring',
+        };
+    }
+
+    const scoredResults = Array.isArray(scoring?.scoredResults) ? scoring.scoredResults : [];
+    const strictThresholdMatches = scoredResults.filter(
+        (item) => Number(item?.relevanceScore || 0) >= LEGAL_MIN_MATCH_SCORE
+    );
+    if (strictThresholdMatches.length > 0) {
+        return {
+            results: strictThresholdMatches.slice(0, safeLimit),
+            mode: 'strict-threshold',
+        };
+    }
+
+    const relaxedThresholdMatches = scoredResults.filter(
+        (item) => Number(item?.relevanceScore || 0) >= LEGAL_RELAXED_MATCH_SCORE
+    );
+    if (relaxedThresholdMatches.length > 0) {
+        return {
+            results: relaxedThresholdMatches.slice(0, safeLimit),
+            mode: 'relaxed-threshold',
+        };
+    }
+
+    const safeCandidates = Array.isArray(contentCandidates) ? contentCandidates.filter(Boolean) : [];
+    const hasFetchProblems =
+        Boolean(contentRerank?.applied) && Number(contentRerank?.fetchErrorCount || 0) > 0;
+    if (hasFetchProblems && safeCandidates.length > 0) {
+        return {
+            results: safeCandidates.slice(0, safeLimit),
+            mode: 'content-candidates',
+        };
+    }
+
+    return {
+        results: [],
+        mode: 'empty',
+    };
+};
+
 const runPhraseFallbackSearch = async ({ keyword = '', source = 'all', filters = {} }) => {
     const normalizedKeyword = normalizeForRouting(keyword);
     const signals = extractKeywordSignals(keyword);
@@ -1730,9 +1853,8 @@ const runPhraseFallbackSearch = async ({ keyword = '', source = 'all', filters =
             Array.isArray(fullKeywordScoring.scoredResults) &&
             fullKeywordScoring.scoredResults.length > 0
         ) {
-            // Include anything that has at least some relevance to the full context.
             finalResults = fullKeywordScoring.scoredResults.filter(
-                (item) => Number(item?.relevanceScore || 0) >= 75
+                (item) => Number(item?.relevanceScore || 0) >= LEGAL_RELAXED_MATCH_SCORE
             );
         }
     } catch (e) {
@@ -2349,7 +2471,15 @@ async function searchEmsalViaMcp(keyword, filters = {}) {
         const emsalData = payload?.data?.data || payload?.data || [];
         const decisions = Array.isArray(emsalData) ? emsalData : [];
 
-        return decisions.map((item, index) => {
+        // Yerel mahkeme kararlarını filtrele — sadece üst mahkeme kararlarını kabul et
+        const UPPER_COURT_REGEX =
+            /yargıtay|danıştay|bölge\s*adliye|bölge\s*idare|hukuk\s*genel\s*kurul|ceza\s*genel\s*kurul|idari\s*dava\s*daireleri|vergi\s*dava\s*daireleri/i;
+        const upperCourtDecisions = decisions.filter((item) => {
+            const daire = String(item?.daire || '');
+            return UPPER_COURT_REGEX.test(daire);
+        });
+
+        return upperCourtDecisions.map((item, index) => {
             const safe = item || {};
             return {
                 id: safe.id || `emsal-${index + 1}`,
@@ -2394,7 +2524,8 @@ async function getEmsalDocumentViaMcp(documentId) {
     }
 }
 
-async function searchBedestenAPI(keyword, source, filters = {}) {
+async function searchBedestenAPI(keyword, source, filters = {}, options = {}) {
+    const allowSourceFallback = options?.allowSourceFallback !== false;
     // Always search Bedesten directly to avoid rate limiting.
     // MCP is used for semantic search, not keyword search variants.
 
@@ -2450,7 +2581,14 @@ async function searchBedestenAPI(keyword, source, filters = {}) {
     const list =
         [data?.data?.emsalKararList, data?.emsalKararList, data?.results].find(Array.isArray) || [];
 
-    return list.map((item, index) => toBedestenFormattedDecision(item, index));
+    const formatted = list.map((item, index) => toBedestenFormattedDecision(item, index));
+    if (formatted.length === 0 && allowSourceFallback && normalizeSourceValue(source, 'all') !== 'all') {
+        return await searchBedestenAPI(keyword, 'all', filters, {
+            allowSourceFallback: false,
+        });
+    }
+
+    return formatted;
 }
 
 async function searchSemanticViaMcp(initialKeyword, semanticQuery, source = 'all', topK = 15) {
@@ -2817,6 +2955,7 @@ async function handleSearchDecisions(req, res) {
     let usedSource = routingPlan.resolvedSource;
     const bedestenErrors = [];
     let semanticCandidates = [];
+    let relatedResultCandidates = [];
     // rawQuery referansı — scoring, rerank ve fallback'te sınırlı kullanım için
     const rawQ = routingPlan.rawQuery || '';
     // AI mantıklı bir keyword/context oluşturduğunu varsaydığımızdan
@@ -3013,6 +3152,7 @@ async function handleSearchDecisions(req, res) {
     if (sourceCollected.length > 0) {
         results = sourceCollected.slice(0, LEGAL_VARIANT_RESULT_CAP);
         semanticCandidates = sourceCollected.slice(0, LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT);
+        relatedResultCandidates = sourceCollected.slice(0, LEGAL_VARIANT_RESULT_CAP);
         if (resolvedSources.size === 1) {
             usedSource = Array.from(resolvedSources)[0];
         } else if (resolvedSources.size > 1) {
@@ -3052,11 +3192,18 @@ async function handleSearchDecisions(req, res) {
             pushContentCandidate(item);
         }
         semanticCandidates = contentCandidates.slice(0, LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT);
+        relatedResultCandidates = contentCandidates.slice(0, LEGAL_VARIANT_RESULT_CAP);
 
         const contentRerank = await rerankResultsByDecisionContent(
             contentCandidates,
             scoringKeyword
         );
+        const scoringFallback = pickLegalFallbackResults({
+            scoring,
+            contentCandidates,
+            contentRerank,
+            limit: LEGAL_RESULT_RETURN_LIMIT,
+        });
 
         if (contentRerank.applied && contentRerank.fetchedCount > 0) {
             if (Array.isArray(contentRerank.results) && contentRerank.results.length > 0) {
@@ -3070,29 +3217,41 @@ async function handleSearchDecisions(req, res) {
                     );
                 }
             } else {
-                results = [];
-                warningParts.push('MCP tam metinlerinde anahtar kelime uyusmasi bulunamadi.');
-            }
-        } else {
-            if (Array.isArray(scoring.results) && scoring.results.length > 0) {
-                results = scoring.results;
-            } else if (Array.isArray(scoring.scoredResults) && scoring.scoredResults.length > 0) {
-                const thresholdMatches = scoring.scoredResults.filter(
-                    (item) => Number(item?.relevanceScore || 0) >= LEGAL_MIN_MATCH_SCORE
-                );
-                if (thresholdMatches.length > 0) {
-                    results = thresholdMatches.slice(
-                        0,
-                        Math.min(LEGAL_RESULT_RETURN_LIMIT, thresholdMatches.length)
-                    );
+                results = scoringFallback.results;
+                if (scoringFallback.mode === 'strict-scoring') {
                     warningParts.push(
-                        `Kati ifade filtresi nedeniyle skor >= ${LEGAL_MIN_MATCH_SCORE} olan en yakin MCP sonuclari listelendi.`
+                        'Tam metin filtresi sonuc vermedigi icin metadata eslesmeleri listelendi.'
+                    );
+                } else if (scoringFallback.mode === 'strict-threshold') {
+                    warningParts.push(
+                        `Tam metin filtresi sonuc vermedigi icin skor >= ${LEGAL_MIN_MATCH_SCORE} olan en yakin sonuclar listelendi.`
+                    );
+                } else if (scoringFallback.mode === 'relaxed-threshold') {
+                    warningParts.push(
+                        `Tam metin filtresi sonuc vermedigi icin skor >= ${LEGAL_RELAXED_MATCH_SCORE} olan en yakin sonuclar listelendi.`
+                    );
+                } else if (scoringFallback.mode === 'content-candidates') {
+                    warningParts.push(
+                        'Karar tam metinleri kismen dogrulanamadigi icin ilk bulunan MCP sonuclari listelendi.'
                     );
                 } else {
-                    results = [];
+                    warningParts.push('MCP tam metinlerinde anahtar kelime uyusmasi bulunamadi.');
                 }
-            } else {
-                results = [];
+            }
+        } else {
+            results = scoringFallback.results;
+            if (scoringFallback.mode === 'strict-threshold') {
+                warningParts.push(
+                    `Kati ifade filtresi nedeniyle skor >= ${LEGAL_MIN_MATCH_SCORE} olan en yakin MCP sonuclari listelendi.`
+                );
+            } else if (scoringFallback.mode === 'relaxed-threshold') {
+                warningParts.push(
+                    `Kati ifade filtresi nedeniyle skor >= ${LEGAL_RELAXED_MATCH_SCORE} olan en yakin MCP sonuclari listelendi.`
+                );
+            } else if (scoringFallback.mode === 'content-candidates') {
+                warningParts.push(
+                    'Karar tam metinleri cekilemedigi icin ilk bulunan MCP sonuclari listelendi.'
+                );
             }
 
             if (contentRerank.applied && contentRerank.fetchErrorCount > 0) {
@@ -3174,6 +3333,16 @@ async function handleSearchDecisions(req, res) {
         }
     }
 
+    if ((!Array.isArray(results) || results.length === 0) && sourceCollected.length > 0) {
+        results = sourceCollected
+            .slice()
+            .sort((a, b) => Number(b?.relevanceScore || 0) - Number(a?.relevanceScore || 0))
+            .slice(0, LEGAL_RESULT_RETURN_LIMIT);
+        warningParts.push(
+            'Tam metin ve ifade filtreleri sonuc vermedigi icin en yakin ham karar adaylari listelendi.'
+        );
+    }
+
     if (!Array.isArray(results) || results.length === 0) {
         const uniqueWarnings = Array.from(new Set(warningParts));
         return res.json({
@@ -3204,7 +3373,21 @@ async function handleSearchDecisions(req, res) {
     if (bedestenErrors.length > 0) {
         warningParts.push('Bazi Bedesten denemeleri basarisiz oldu.');
     }
-    const uniqueWarnings = Array.from(new Set(warningParts));
+    let uniqueWarnings = Array.from(new Set(warningParts));
+    const resultBuckets = buildLegalResultBuckets({
+        strongResults: results,
+        candidateResults:
+            relatedResultCandidates.length > 0 ? relatedResultCandidates : sourceCollected,
+        targetCount: Math.max(
+            LEGAL_RELATED_RESULT_TARGET,
+            Array.isArray(results) ? results.length : 0
+        ),
+    });
+    if (resultBuckets.related.length > 0) {
+        results = resultBuckets.combined;
+        warningParts.push(`${resultBuckets.related.length} ilgili karar adayi da listeye eklendi.`);
+        uniqueWarnings = Array.from(new Set(warningParts));
+    }
 
     // ─── Faz C: Field-aware boost + diversification + matchReason ───
     if (Array.isArray(results) && results.length > 0) {
@@ -3237,6 +3420,7 @@ async function handleSearchDecisions(req, res) {
         provider,
         keyword: routingPlan.keyword,
         results,
+        resultBuckets,
         // Faz C: parsedQuery bilgisini response'a ekle (debugging ve frontend için)
         queryAnalysis: {
             courts: parsedQuery.courts,
