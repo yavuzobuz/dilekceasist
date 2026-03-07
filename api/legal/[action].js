@@ -883,6 +883,275 @@ const LEGAL_GENERIC_MATCH_TOKENS = new Set([
 
 const clampScore = (value) => Math.max(0, Math.min(100, Math.round(value)));
 const LEGAL_MIN_MATCH_SCORE = 50;
+
+// ─── Faz C: Query Parser — Hukuki Varlık Çıkarımı ──────────────────────────
+// Sorgudan yapılandırılmış hukuki bilgi çıkarır: mahkeme, kanun, dava tipi, tarih, esas/karar no
+const LEGAL_SYNONYM_MAP = {
+    // C4: Eş anlamlı terim sözlüğü
+    fesih: ['sozlesmenin sona ermesi', 'is akdinin feshi', 'feshin gecersizligi'],
+    tahliye: ['kiralinanin bosaltilmasi', 'mecurun tahliyesi'],
+    bosanma: ['evlilik birliginin sona ermesi', 'evliligin bitmesi'],
+    tazminat: ['zarar tazmini', 'maddi tazminat', 'manevi tazminat'],
+    'itirazin iptali': ['itirazin kaldirilmasi', 'borca itirazin iptali'],
+    'ise iade': ['ise iade davasi', 'feshin gecersizligi'],
+    'kidem tazminati': ['kidem ihbar tazminati', 'iscilik alacagi'],
+    kamulaştirma: ['kamulaştirma bedeli', 'istimlak'],
+    miras: ['miras taksimi', 'terekenin taksimi', 'veraset'],
+    nafaka: ['yoksulluk nafakasi', 'istirak nafakasi', 'tedbir nafakasi'],
+    uyusturucu: ['uyusturucu madde', 'uyusturucu ticareti', 'kullanmak amaciyla bulundurma'],
+    hakaret: ['hakaret sucu', 'kisilik haklarina saldiri'],
+    zimmet: ['zimmet sucu', 'gorevi kotuye kullanma'],
+    imar: ['imar plani', 'imar barisi', 'yapi ruhsati'],
+    'kacak yapi': ['ruhsatsiz yapi', 'imara aykiri yapi'],
+    'idari islem': ['idari islemin iptali', 'idari yargi'],
+};
+
+const LEGAL_COURT_PATTERNS = [
+    { pattern: /yarg[ıi]tay/i, type: 'yargitay', label: 'Yargıtay' },
+    { pattern: /dan[ıi][sş]tay/i, type: 'danistay', label: 'Danıştay' },
+    { pattern: /anayasa\s*mahkemesi/i, type: 'anayasa', label: 'Anayasa Mahkemesi' },
+    { pattern: /b[oö]lge\s*adliye/i, type: 'istinaf', label: 'İstinaf (Bölge Adliye)' },
+    { pattern: /b[oö]lge\s*idare/i, type: 'bolge-idare', label: 'Bölge İdare Mahkemesi' },
+    { pattern: /asliye\s*hukuk/i, type: 'yerel-hukuk', label: 'Asliye Hukuk' },
+    { pattern: /asliye\s*ceza/i, type: 'yerel-ceza', label: 'Asliye Ceza' },
+    { pattern: /a[gğ][ıi]r\s*ceza/i, type: 'agir-ceza', label: 'Ağır Ceza' },
+    { pattern: /[iİ]dare\s*mahkemesi/i, type: 'idare', label: 'İdare Mahkemesi' },
+    { pattern: /i[sş]\s*mahkemesi/i, type: 'is-mahkemesi', label: 'İş Mahkemesi' },
+    { pattern: /icra\s*hukuk/i, type: 'icra-hukuk', label: 'İcra Hukuk' },
+    { pattern: /t[uü]ketici\s*mahkemesi/i, type: 'tuketici', label: 'Tüketici Mahkemesi' },
+];
+
+const LEGAL_CASE_TYPE_PATTERNS = [
+    { pattern: /ise iade|i[sş]e iade/i, type: 'ise-iade', label: 'İşe İade' },
+    { pattern: /itiraz[ıi]n iptali/i, type: 'itirazin-iptali', label: 'İtirazın İptali' },
+    { pattern: /bosanma|bo[sş]anma/i, type: 'bosanma', label: 'Boşanma' },
+    { pattern: /tahliye/i, type: 'tahliye', label: 'Tahliye' },
+    { pattern: /kira.*tespit|tespit.*kira/i, type: 'kira-tespit', label: 'Kira Tespiti' },
+    { pattern: /kamulaştırma|kamulastirma/i, type: 'kamulastirma', label: 'Kamulaştırma' },
+    { pattern: /miras|veraset|tereke/i, type: 'miras', label: 'Miras' },
+    { pattern: /uyusturucu|uyuşturucu/i, type: 'uyusturucu', label: 'Uyuşturucu' },
+    { pattern: /dolandırıcılık|dolandiricilik/i, type: 'dolandiricilik', label: 'Dolandırıcılık' },
+    { pattern: /tazminat/i, type: 'tazminat', label: 'Tazminat' },
+    { pattern: /alacak/i, type: 'alacak', label: 'Alacak' },
+    {
+        pattern: /idari islem.*iptal|iptal.*idari/i,
+        type: 'idari-iptal',
+        label: 'İdari İşlem İptali',
+    },
+    { pattern: /kacak yapi|kaçak yapı|yikim|yıkım/i, type: 'imar-yikim', label: 'İmar/Yıkım' },
+    { pattern: /nafaka/i, type: 'nafaka', label: 'Nafaka' },
+    { pattern: /hakaret/i, type: 'hakaret', label: 'Hakaret' },
+    { pattern: /hirsizlik|hırsızlık/i, type: 'hirsizlik', label: 'Hırsızlık' },
+    { pattern: /yaralama/i, type: 'yaralama', label: 'Yaralama' },
+    { pattern: /zimmet/i, type: 'zimmet', label: 'Zimmet' },
+    { pattern: /icra.*takib|takib.*icra/i, type: 'icra-takip', label: 'İcra Takibi' },
+    { pattern: /menfi tespit/i, type: 'menfi-tespit', label: 'Menfi Tespit' },
+    { pattern: /istirdat/i, type: 'istirdat', label: 'İstirdat' },
+    { pattern: /rekabet/i, type: 'rekabet', label: 'Rekabet' },
+    { pattern: /is kazasi|iş kazası/i, type: 'is-kazasi', label: 'İş Kazası' },
+];
+
+// Kanun maddesi regex: "TCK 188", "TBK m.352", "İİK 67", "6098 sayılı kanun", "4857 s.K. m.20"
+const KANUN_MADDESI_REGEX =
+    /(?:TCK|TBK|TMK|HMK|CMK|İİK|IIK|BK|MK|AYM|KMK|TTK|İK|SVK|FSEK|KHK|KVKK)\s*(?:m(?:adde)?\.?\s*)?(\d+(?:\/\d+)?)/gi;
+const KANUN_SAYILI_REGEX = /(\d{3,5})\s*say[ıi]l[ıi]\s*(?:kanun|yasa|k\.)/gi;
+const ESAS_NO_REGEX = /(?:esas\s*(?:no|numaras[ıi])?\s*[:\s]*)?(\d{4})\s*[\/\-]\s*(\d+)/gi;
+const KARAR_NO_REGEX = /karar\s*(?:no|numaras[ıi])?\s*[:\s]*(\d{4})\s*[\/\-]\s*(\d+)/gi;
+const TARIH_REGEX = /(\d{1,2})[\.\/\-](\d{1,2})[\.\/\-](\d{4})/g;
+const DAIRE_REGEX = /(\d{1,2})\.\s*(?:hukuk|ceza|idare|daire)/gi;
+
+const parseLegalQuery = (query) => {
+    const text = String(query || '');
+    const normalized = normalizeForRouting(text);
+    const result = {
+        courts: [], // Tespit edilen mahkeme türleri
+        caseTypes: [], // Tespit edilen dava tipleri
+        kanunMaddeleri: [], // Kanun maddeleri (TCK 188, TBK m.352 vb.)
+        kanunSayili: [], // Sayılı kanunlar (6098 sayılı kanun)
+        esasNo: [], // Esas numaraları
+        kararNo: [], // Karar numaraları
+        tarihler: [], // Tarihler
+        daireler: [], // Daire numaraları (1. Hukuk Dairesi vb.)
+        synonymExpansions: [], // C4: Eş anlamlı genişletmeler
+    };
+
+    // Mahkeme türü tespiti
+    for (const cp of LEGAL_COURT_PATTERNS) {
+        if (cp.pattern.test(text)) {
+            result.courts.push({ type: cp.type, label: cp.label });
+        }
+    }
+
+    // Dava tipi tespiti
+    for (const ct of LEGAL_CASE_TYPE_PATTERNS) {
+        if (ct.pattern.test(text)) {
+            result.caseTypes.push({ type: ct.type, label: ct.label });
+        }
+    }
+
+    // Kanun maddeleri
+    let match;
+    while ((match = KANUN_MADDESI_REGEX.exec(text)) !== null) {
+        result.kanunMaddeleri.push(match[0].trim());
+    }
+    while ((match = KANUN_SAYILI_REGEX.exec(text)) !== null) {
+        result.kanunSayili.push(match[0].trim());
+    }
+
+    // Esas/Karar no
+    while ((match = ESAS_NO_REGEX.exec(text)) !== null) {
+        result.esasNo.push(`${match[1]}/${match[2]}`);
+    }
+    while ((match = KARAR_NO_REGEX.exec(text)) !== null) {
+        result.kararNo.push(`${match[1]}/${match[2]}`);
+    }
+
+    // Tarihler
+    while ((match = TARIH_REGEX.exec(text)) !== null) {
+        result.tarihler.push(`${match[1]}.${match[2]}.${match[3]}`);
+    }
+
+    // Daireler
+    while ((match = DAIRE_REGEX.exec(text)) !== null) {
+        result.daireler.push(match[0].trim());
+    }
+
+    // C4: Eş anlamlı genişletme
+    for (const [term, synonyms] of Object.entries(LEGAL_SYNONYM_MAP)) {
+        if (normalized.includes(term)) {
+            result.synonymExpansions.push({ term, synonyms });
+        }
+    }
+
+    return result;
+};
+
+// ─── Faz C: Sonuç çeşitlendirme (diversification) ──────────────────────────
+// Aynı daireden max N karar, farklı daire/mahkemelerden daha fazla temsil
+const diversifyResults = (results, maxPerDaire = 3) => {
+    if (!Array.isArray(results) || results.length <= maxPerDaire) return results;
+
+    const daireCount = new Map(); // daire -> count
+    const diversified = [];
+    const deferred = [];
+
+    for (const item of results) {
+        const daire = String(item?.daire || item?.title || 'bilinmeyen')
+            .trim()
+            .toLowerCase();
+        const count = daireCount.get(daire) || 0;
+
+        if (count < maxPerDaire) {
+            diversified.push(item);
+            daireCount.set(daire, count + 1);
+        } else {
+            deferred.push(item);
+        }
+    }
+
+    // Ertelenen sonuçları sona ekle (aynı daireden fazla olanlar)
+    return [...diversified, ...deferred];
+};
+
+// ─── Faz C: Field-aware scoring ─────────────────────────────────────────────
+// Başlık/daire eşleşmesi > tam metin eşleşmesi, kanun maddesi eşleşmesi güçlü sinyal
+const computeFieldAwareBoost = (item, parsedQuery) => {
+    let boost = 0;
+    const daire = normalizeForRouting(item?.daire || '');
+    const title = normalizeForRouting(item?.title || '');
+    const esasNo = String(item?.esasNo || '');
+    const kararNo = String(item?.kararNo || '');
+    const ozet = normalizeForRouting(item?.ozet || item?.snippet || '');
+
+    // Daire eşleşmesi: sorguda belirtilen daire ile sonucun dairesi uyuşuyorsa
+    for (const d of parsedQuery.daireler) {
+        const normalizedD = normalizeForRouting(d);
+        if (daire.includes(normalizedD)) boost += 12;
+    }
+
+    // Mahkeme türü eşleşmesi
+    for (const court of parsedQuery.courts) {
+        const courtNorm = normalizeForRouting(court.label);
+        if (daire.includes(courtNorm) || title.includes(courtNorm)) boost += 8;
+    }
+
+    // Kanun maddesi eşleşmesi — güçlü sinyal
+    for (const kanun of parsedQuery.kanunMaddeleri) {
+        const kanunNorm = normalizeForRouting(kanun);
+        if (ozet.includes(kanunNorm) || title.includes(kanunNorm)) boost += 15;
+    }
+    for (const sayili of parsedQuery.kanunSayili) {
+        const sayiliNorm = normalizeForRouting(sayili);
+        if (ozet.includes(sayiliNorm)) boost += 10;
+    }
+
+    // Esas/Karar no tam eşleşmesi — çok güçlü sinyal
+    for (const esas of parsedQuery.esasNo) {
+        if (esasNo.includes(esas)) boost += 25;
+    }
+    for (const karar of parsedQuery.kararNo) {
+        if (kararNo.includes(karar)) boost += 25;
+    }
+
+    // Dava tipi eşleşmesi: başlık veya özetle
+    for (const ct of parsedQuery.caseTypes) {
+        const ctNorm = normalizeForRouting(ct.label);
+        if (title.includes(ctNorm)) boost += 10;
+        else if (ozet.includes(ctNorm)) boost += 5;
+    }
+
+    return Math.min(30, boost); // Max 30 puan boost
+};
+
+// ─── Faz C: Açıklanabilir sonuç — matchReason ──────────────────────────────
+const buildMatchReason = (item, parsedQuery, scoringSignals = {}) => {
+    const reasons = [];
+    const daire = normalizeForRouting(item?.daire || '');
+    const title = normalizeForRouting(item?.title || '');
+    const ozet = normalizeForRouting(item?.ozet || item?.snippet || '');
+
+    // Hangi dava tipi eşleşti
+    for (const ct of parsedQuery.caseTypes) {
+        const ctNorm = normalizeForRouting(ct.label);
+        if (title.includes(ctNorm) || ozet.includes(ctNorm)) {
+            reasons.push(`Dava tipi: ${ct.label}`);
+        }
+    }
+
+    // Hangi kanun maddesi eşleşti
+    for (const kanun of parsedQuery.kanunMaddeleri) {
+        if (
+            ozet.includes(normalizeForRouting(kanun)) ||
+            title.includes(normalizeForRouting(kanun))
+        ) {
+            reasons.push(`Kanun maddesi: ${kanun}`);
+        }
+    }
+
+    // Hangi mahkeme eşleşti
+    for (const court of parsedQuery.courts) {
+        if (daire.includes(normalizeForRouting(court.label))) {
+            reasons.push(`Mahkeme: ${court.label}`);
+        }
+    }
+
+    // Eş anlamlı terim eşleşmesi
+    for (const syn of parsedQuery.synonymExpansions) {
+        for (const s of syn.synonyms) {
+            if (ozet.includes(normalizeForRouting(s))) {
+                reasons.push(`Eş anlamlı: "${syn.term}" → "${s}"`);
+                break;
+            }
+        }
+    }
+
+    // Genel skor açıklaması
+    const score = Number(item?.relevanceScore || 0);
+    if (score >= 80) reasons.push('Yüksek uyum skoru');
+    else if (score >= 60) reasons.push('Orta uyum skoru');
+
+    return reasons.length > 0 ? reasons.join('; ') : 'Anahtar kelime eşleşmesi';
+};
 const escapeRegex = (value = '') => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const containsWholeTerm = (haystack = '', term = '') => {
     const token = String(term || '').trim();
@@ -2532,6 +2801,9 @@ async function handleSearchDecisions(req, res) {
         return res.json({ ...cachedResponse, _cached: true });
     }
 
+    // Faz C: Query parser — sorgudan hukuki varlıkları çıkar
+    const parsedQuery = parseLegalQuery(effectiveRawQuery || keyword);
+
     const routingPlan = await buildSearchRoutingPlan({
         keyword,
         rawQuery: effectiveRawQuery,
@@ -2553,6 +2825,27 @@ async function handleSearchDecisions(req, res) {
         routingPlan.keyword,
         routingPlan.originalKeyword
     );
+
+    // Faz C4: Eş anlamlı terimlerden ek varyantlar üret
+    if (
+        parsedQuery.synonymExpansions.length > 0 &&
+        queryVariants.length < LEGAL_QUERY_VARIANT_LIMIT
+    ) {
+        for (const { term, synonyms } of parsedQuery.synonymExpansions) {
+            for (const syn of synonyms.slice(0, 2)) {
+                // her terim için max 2 eş anlamlı
+                if (queryVariants.length >= LEGAL_QUERY_VARIANT_LIMIT) break;
+                const synVariant = routingPlan.keyword.replace(
+                    new RegExp(escapeRegex(term), 'gi'),
+                    syn
+                );
+                if (synVariant !== routingPlan.keyword && !queryVariants.includes(synVariant)) {
+                    queryVariants.push(synVariant);
+                }
+            }
+        }
+    }
+
     const baseKeyword = routingPlan.originalKeyword || routingPlan.keyword;
     const normalizedBaseKeyword = normalizeForRouting(baseKeyword);
     const denseAnchorIntent =
@@ -2913,12 +3206,44 @@ async function handleSearchDecisions(req, res) {
     }
     const uniqueWarnings = Array.from(new Set(warningParts));
 
+    // ─── Faz C: Field-aware boost + diversification + matchReason ───
+    if (Array.isArray(results) && results.length > 0) {
+        // C2: Field-aware scoring boost uygula
+        results = results.map((item) => {
+            const boost = computeFieldAwareBoost(item, parsedQuery);
+            const currentScore = Number(item?.relevanceScore || 0);
+            return {
+                ...item,
+                relevanceScore: clampScore(currentScore + boost),
+            };
+        });
+
+        // Boost sonrası yeniden sırala
+        results.sort((a, b) => Number(b.relevanceScore || 0) - Number(a.relevanceScore || 0));
+
+        // C3: Sonuç çeşitlendirme — aynı daireden max 3
+        results = diversifyResults(results, 3);
+
+        // C5: Açıklanabilir sonuç — her karar için matchReason ekle
+        results = results.map((item) => ({
+            ...item,
+            matchReason: buildMatchReason(item, parsedQuery),
+        }));
+    }
+
     const responsePayload = {
         success: true,
         source: usedSource || routingPlan.resolvedSource || 'all',
         provider,
         keyword: routingPlan.keyword,
         results,
+        // Faz C: parsedQuery bilgisini response'a ekle (debugging ve frontend için)
+        queryAnalysis: {
+            courts: parsedQuery.courts,
+            caseTypes: parsedQuery.caseTypes,
+            kanunMaddeleri: parsedQuery.kanunMaddeleri,
+            synonymsUsed: parsedQuery.synonymExpansions.map((s) => s.term),
+        },
         routing: {
             requestedSource: routingPlan.requestedSource,
             resolvedSource: routingPlan.resolvedSource,
