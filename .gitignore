@@ -35,5 +35,27 @@ coverage
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
 .vercel
+
+# Test dosyaları
+test_*.js
+test_*.json
+test_*.html
+mcp_keyword_test_result.json
+
+# Ekran görüntüleri
+ekranresmi/
+
+# Eski yedek dosyalar
+old_*.js
+old_*.ts
+old_*.tsx
+*_old.js
+*_old.tsx
+action_old.js
+alternative_old.tsx
+
+# Geçici dosyalar
+.codex_tmp_*/
+nul
+doc/CODEX_SKILL_CHEATSHEET.md
