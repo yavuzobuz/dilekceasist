@@ -1597,12 +1597,13 @@ const rerankResultsByDecisionContent = async (results = [], keyword = '') => {
         signals.anchorTokens.length >= 4 ? 2 : signals.anchorTokens.length > 0 ? 1 : 0;
     const minScore = LEGAL_MIN_MATCH_SCORE;
 
-    // Progressive fetch: batch boyutu artırıldı, cache'li belgeler anında döner.
-    // Yeterli iyi sonuç bulunduğunda erken durdurma.
-    const BATCH_SIZE = 8;
+    // Progressive fetch: batch boyutu (Bedesten rate limit 429'ı aşmamak için 4 ile sınırlandırıldı)
+    // Cache'de veri yoksa hepsi çekilir. Yeterli iyi sonuç bulunduğunda erken durdurulur.
+    const BATCH_SIZE = 4;
     const PROGRESSIVE_GOOD_RESULT_TARGET = 10;
     const settled = [];
     let progressiveGoodCount = 0;
+    let stoppedByRateLimit = false;
 
     for (let i = 0; i < uniqueCandidates.length; i += BATCH_SIZE) {
         const batch = uniqueCandidates.slice(i, i + BATCH_SIZE);
@@ -1654,6 +1655,14 @@ const rerankResultsByDecisionContent = async (results = [], keyword = '') => {
         );
 
         settled.push(...batchResults);
+
+        // Hata alanları say, eger son batch'teki hatalarin cogu 429 (rate limit) ise erken çık (devamı da muhtemelen 429 verecek)
+        const fetchErrors = batchResults.filter((r) => !r.ok);
+        if (fetchErrors.length > 0 && fetchErrors.some(r => r.reason.includes('429'))) {
+            stoppedByRateLimit = true;
+            break; // Too many requests yediksek daha fazla saldırma!
+        }
+
         // Progressive good count — erken durdurma için
         progressiveGoodCount += batchResults.filter(
             (r) => r?.ok && String(r.content || '').length >= 100
@@ -1663,8 +1672,8 @@ const rerankResultsByDecisionContent = async (results = [], keyword = '') => {
         if (i >= BATCH_SIZE && progressiveGoodCount >= PROGRESSIVE_GOOD_RESULT_TARGET) break;
 
         if (i + BATCH_SIZE < uniqueCandidates.length) {
-            // Cache hit oranı yüksekse delay gereksiz — kısa tut
-            await new Promise((resolve) => setTimeout(resolve, 400));
+            // Bedesten rate-limit koruması (429) için: Pacing'i güvenli (800ms) tut
+            await new Promise((resolve) => setTimeout(resolve, 800));
         }
     }
 
