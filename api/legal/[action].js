@@ -45,6 +45,27 @@ const YARGI_MCP_TIMEOUT_MS = Number(process.env.YARGI_MCP_TIMEOUT_MS || 90000);
 const USE_YARGI_MCP = process.env.LEGAL_USE_YARGI_MCP !== '0';
 const STRICT_MCP_ONLY = process.env.LEGAL_STRICT_MCP !== '0';
 
+// ─── Faz B: In-memory search results cache (60s TTL) ────────────────────
+const SEARCH_CACHE_TTL_MS = 60_000; // 60 saniye
+const searchCache = new Map(); // key -> { timestamp, data }
+const getCachedResult = (cacheKey) => {
+    const entry = searchCache.get(cacheKey);
+    if (!entry) return null;
+    if (Date.now() - entry.timestamp > SEARCH_CACHE_TTL_MS) {
+        searchCache.delete(cacheKey);
+        return null;
+    }
+    return entry.data;
+};
+const setCachedResult = (cacheKey, data) => {
+    // Basit eviction: 200'den fazla entry varsa en eskiyi sil
+    if (searchCache.size > 200) {
+        const firstKey = searchCache.keys().next().value;
+        searchCache.delete(firstKey);
+    }
+    searchCache.set(cacheKey, { timestamp: Date.now(), data });
+};
+
 const YARGI_MCP_COURT_TYPES_BY_SOURCE = {
     yargitay: ['YARGITAYKARARI'],
     danistay: ['DANISTAYKARAR'],
@@ -1168,15 +1189,22 @@ const rerankResultsByDecisionContent = async (results = [], keyword = '') => {
                     };
                 }
                 try {
-                    const bedestenDoc = await getBedestenDocumentContent(documentId);
-                    const content = String(bedestenDoc?.content || '').trim();
-                    if (!content) {
-                        return {
-                            ok: true,
-                            documentId,
-                            result,
-                            content: '',
-                        };
+                    // Faz B: UYAP Emsal kararları için MCP'den tam metin çek
+                    // Bedesten kararları için mevcut Bedesten API'yi kullan
+                    const isEmsalSource = result?._source === 'emsal-uyap';
+                    let content = '';
+                    if (isEmsalSource && documentId) {
+                        try {
+                            const emsalDoc = await getEmsalDocumentViaMcp(documentId);
+                            content = String(emsalDoc?.content || '').trim();
+                        } catch {
+                            // UYAP tam metin çekilemezse Bedesten'den de dene
+                            const bedestenDoc = await getBedestenDocumentContent(documentId);
+                            content = String(bedestenDoc?.content || '').trim();
+                        }
+                    } else {
+                        const bedestenDoc = await getBedestenDocumentContent(documentId);
+                        content = String(bedestenDoc?.content || '').trim();
                     }
                     return {
                         ok: true,
@@ -1525,21 +1553,33 @@ const semanticRerankWithGemini = async ({ candidates = [], keyword = '' }) => {
             scoreMap.set(id, clampScore(scoreRaw));
         }
 
+        // Faz B: Weighted fusion — lexical (mevcut skor) + semantic (Gemini) birleşimi
+        // Ağırlıklar: semantic %60, lexical %40 — semantic rerank en büyük kalite sıçramasını sağlar
+        const SEMANTIC_WEIGHT = 0.6;
+        const LEXICAL_WEIGHT = 0.4;
+
         const ranked = uniq
             .map((item, index) => {
                 const id = getLegalDecisionDocumentId(item) || `cand-${index + 1}`;
                 const semanticScore = Number(scoreMap.get(id) || 0);
+                const lexicalScore = Number(item?.relevanceScore || 0);
+                // Weighted fusion: her iki sinyali birleştir
+                const fusedScore = clampScore(
+                    semanticScore * SEMANTIC_WEIGHT + lexicalScore * LEXICAL_WEIGHT
+                );
                 return {
                     ...item,
-                    relevanceScore: clampScore(
-                        Math.max(Number(item?.relevanceScore || 0), semanticScore)
-                    ),
+                    relevanceScore: fusedScore,
                     _semanticScore: semanticScore,
+                    _lexicalScore: lexicalScore,
                 };
             })
-            .filter((item) => Number(item._semanticScore || 0) >= 40)
-            .sort((a, b) => Number(b._semanticScore || 0) - Number(a._semanticScore || 0))
-            .map(({ _semanticScore, ...rest }) => rest);
+            .filter(
+                (item) =>
+                    Number(item._semanticScore || 0) >= 30 || Number(item._lexicalScore || 0) >= 50
+            )
+            .sort((a, b) => Number(b.relevanceScore || 0) - Number(a.relevanceScore || 0))
+            .map(({ _semanticScore, _lexicalScore, ...rest }) => rest);
 
         return {
             applied: true,
@@ -2485,6 +2525,13 @@ async function handleSearchDecisions(req, res) {
     const effectiveRawQuery =
         typeof rawQuery === 'string' && rawQuery.trim() ? rawQuery.trim() : keyword;
 
+    // Faz B: Cache kontrolü — aynı sorgu 60s içinde tekrar gelirse cache'den dön
+    const cacheKey = `${source || 'all'}|${keyword}|${JSON.stringify(filters)}`;
+    const cachedResponse = getCachedResult(cacheKey);
+    if (cachedResponse) {
+        return res.json({ ...cachedResponse, _cached: true });
+    }
+
     const routingPlan = await buildSearchRoutingPlan({
         keyword,
         rawQuery: effectiveRawQuery,
@@ -2770,23 +2817,35 @@ async function handleSearchDecisions(req, res) {
         }
     }
 
-    if (!Array.isArray(results) || results.length === 0) {
-        // Gemini rerank: rawQuery 1500 char'a kadar kullanılabilir (LLM bağlamı geniş)
+    // === Faz B: Gemini semantic rerank — artık fallback değil, ana akış ===
+    // Hem sonuç varken (kaliteyi artır) hem yokken (kurtarma) çalışır
+    {
         const rerankQ =
             rawQ.length > 0 && rawQ.length <= 1500
                 ? rawQ
                 : routingPlan.originalKeyword || routingPlan.keyword;
-        const semanticRerank = await semanticRerankWithGemini({
-            candidates: semanticCandidates,
-            keyword: rerankQ,
-        });
-        if (
-            semanticRerank.applied &&
-            Array.isArray(semanticRerank.results) &&
-            semanticRerank.results.length > 0
-        ) {
-            results = semanticRerank.results.slice(0, LEGAL_RESULT_RETURN_LIMIT);
-            warningParts.push('Gemini semantik siralama fallback kullanildi.');
+        // Rerank adayları: sonuç varsa onları, yoksa tüm semantik adayları kullan
+        const rerankCandidates =
+            Array.isArray(results) && results.length > 0 ? results : semanticCandidates;
+
+        if (rerankCandidates.length > 0) {
+            const semanticRerank = await semanticRerankWithGemini({
+                candidates: rerankCandidates,
+                keyword: rerankQ,
+            });
+            if (
+                semanticRerank.applied &&
+                Array.isArray(semanticRerank.results) &&
+                semanticRerank.results.length > 0
+            ) {
+                const hadResults = Array.isArray(results) && results.length > 0;
+                results = semanticRerank.results.slice(0, LEGAL_RESULT_RETURN_LIMIT);
+                if (!hadResults) {
+                    warningParts.push('Gemini semantik siralama fallback kullanildi.');
+                } else {
+                    warningParts.push('Sonuclar Gemini ile semantik olarak yeniden siralandi.');
+                }
+            }
         }
     }
 
@@ -2854,7 +2913,7 @@ async function handleSearchDecisions(req, res) {
     }
     const uniqueWarnings = Array.from(new Set(warningParts));
 
-    return res.json({
+    const responsePayload = {
         success: true,
         source: usedSource || routingPlan.resolvedSource || 'all',
         provider,
@@ -2870,7 +2929,14 @@ async function handleSearchDecisions(req, res) {
             compacted: routingPlan.compacted,
         },
         ...(uniqueWarnings.length > 0 ? { warning: uniqueWarnings.join(' ') } : {}),
-    });
+    };
+
+    // Faz B: Başarılı sonuçları cache'e yaz
+    if (Array.isArray(results) && results.length > 0) {
+        setCachedResult(cacheKey, responsePayload);
+    }
+
+    return res.json(responsePayload);
 }
 
 async function handleGetDocument(req, res) {
