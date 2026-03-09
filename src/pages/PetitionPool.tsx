@@ -144,7 +144,7 @@ export default function PetitionPool() {
 
   const handleToggleFavorite = async (petitionId: string) => {
     if (!user) {
-      toast.error('Favorilere eklemek iÃ§in giriÅŸ yapmalÄ±sÄ±nÄ±z');
+      toast.error('Favorilere eklemek için giriş yapmalısınız');
       navigate('/login');
       return;
     }
@@ -177,10 +177,10 @@ export default function PetitionPool() {
         p.id === petitionId ? { ...p, favorite_count: newCount } : p
       ));
 
-      toast.success(isFavorited ? 'Favorilere eklendi! â­' : 'Favorilerden Ã§Ä±karÄ±ldÄ±');
+      toast.success(isFavorited ? 'Favorilere eklendi! ⭐' : 'Favorilerden çıkarıldı');
     } catch (error: any) {
       console.error('Error toggling favorite:', error);
-      toast.error('Bir hata oluÅŸtu');
+      toast.error('Bir hata oluştu');
     }
   };
 
@@ -197,7 +197,7 @@ export default function PetitionPool() {
 
   const handleUsePetition = async (petition: PublicPetition) => {
     if (!user) {
-      toast.error('DilekÃ§eyi kullanmak iÃ§in giriÅŸ yapmalÄ±sÄ±nÄ±z');
+      toast.error('Dilekçeyi kullanmak için giriş yapmalısınız');
       navigate('/login');
       return;
     }
@@ -208,7 +208,7 @@ export default function PetitionPool() {
         .from('petitions')
         .insert({
           user_id: user.id,
-          title: `${petition.title} (KopyalandÄ±)`,
+          title: `${petition.title} (Kopyalandı)`,
           petition_type: petition.petition_type,
           content: petition.content,
           metadata: {
@@ -222,11 +222,11 @@ export default function PetitionPool() {
       // Increment downloads count using RPC function
       await supabase.rpc('increment_petition_downloads', { petition_id: petition.id });
 
-      toast.success('DilekÃ§e hesabÄ±nÄ±za kopyalandÄ±!');
+      toast.success('Dilekçe hesabınıza kopyalandı!');
       navigate('/profile');
     } catch (error: any) {
       console.error('Error copying petition:', error);
-      toast.error('DilekÃ§e kopyalanamadÄ±');
+      toast.error('Dilekçe kopyalanamadı');
     }
   };
 
@@ -237,7 +237,7 @@ export default function PetitionPool() {
       <div className="min-h-screen bg-[#0A0A0B] flex flex-col">
         <Header onShowLanding={() => navigate('/')} />
         <div className="flex-grow flex items-center justify-center">
-          <div className="text-white text-xl">YÃ¼kleniyor...</div>
+          <div className="text-white text-xl">Yükleniyor...</div>
         </div>
       </div>
     );
@@ -252,9 +252,9 @@ export default function PetitionPool() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
             <BookOpenIcon className="w-8 h-8 text-red-500" />
-            DilekÃ§e Havuzu
+            Dilekçe Havuzu
           </h1>
-          <p className="text-gray-400">Topluluk tarafÄ±ndan paylaÅŸÄ±lan dilekÃ§elere gÃ¶z atÄ±n ve kullanÄ±n</p>
+          <p className="text-gray-400">Topluluk tarafından paylaşılan dilekçelere göz atın ve kullanın</p>
         </div>
 
         {/* Filters */}
@@ -267,20 +267,20 @@ export default function PetitionPool() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="DilekÃ§e adÄ±, aÃ§Ä±klama veya etiket ara..."
+                placeholder="Dilekçe adı, açıklama veya etiket ara..."
                 className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-200 placeholder-gray-400 focus:ring-2 focus:ring-red-500 focus:border-red-500"
               />
             </div>
 
             {/* Type Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">DilekÃ§e TÃ¼rÃ¼</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Dilekçe Türü</label>
               <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
                 className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-200 focus:ring-2 focus:ring-red-500 focus:border-red-500"
               >
-                <option value="all">TÃ¼mÃ¼</option>
+                <option value="all">Tümü</option>
                 {petitionTypes.map(type => (
                   <option key={type} value={type}>{type}</option>
                 ))}
@@ -291,13 +291,13 @@ export default function PetitionPool() {
 
         {/* Results Count */}
         <div className="mb-4 text-gray-400">
-          {filteredPetitions.length} dilekÃ§e bulundu
+          {filteredPetitions.length} dilekçe bulundu
         </div>
 
         {/* Petitions Grid */}
         {filteredPetitions.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-400 text-lg">HenÃ¼z paylaÅŸÄ±lmÄ±ÅŸ dilekÃ§e yok</p>
+            <p className="text-gray-400 text-lg">Henüz paylaşılmış dilekçe yok</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -314,7 +314,7 @@ export default function PetitionPool() {
                     </span>
                     {petition.is_premium && (
                       <span className="px-3 py-1 bg-yellow-500 text-gray-900 text-xs font-bold rounded-full">
-                        â­ Premium
+                        ⭐ Premium
                       </span>
                     )}
                   </div>
@@ -324,7 +324,7 @@ export default function PetitionPool() {
                   </h3>
 
                   <p className="text-gray-400 text-sm mb-4 line-clamp-2">
-                    {petition.description || 'AÃ§Ä±klama yok'}
+                    {petition.description || 'Açıklama yok'}
                   </p>
 
                   {/* Tags */}
@@ -353,7 +353,7 @@ export default function PetitionPool() {
 
                   {/* Author */}
                   <p className="text-xs text-gray-500">
-                    {petition.profiles?.full_name || 'Anonim'} â€¢ {new Date(petition.created_at).toLocaleDateString('tr-TR')}
+                    {petition.profiles?.full_name || 'Anonim'} • {new Date(petition.created_at).toLocaleDateString('tr-TR')}
                   </p>
                 </div>
 
@@ -363,7 +363,7 @@ export default function PetitionPool() {
                     onClick={() => handleViewPetition(petition)}
                     className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm font-medium flex items-center justify-center gap-2"
                   >
-                    <EyeIcon className="w-4 h-4" /> Ã–nizle
+                    <EyeIcon className="w-4 h-4" /> Önizle
                   </button>
                   <button
                     onClick={() => handleToggleFavorite(petition.id)}
@@ -371,7 +371,7 @@ export default function PetitionPool() {
                       ? 'bg-yellow-500 hover:bg-yellow-600 text-gray-900'
                       : 'bg-gray-700 hover:bg-yellow-500 hover:text-gray-900 text-white'
                       }`}
-                    title={favoritedPetitions.has(petition.id) ? 'Favorilerden Ã§Ä±kar' : 'Favorilere ekle'}
+                    title={favoritedPetitions.has(petition.id) ? 'Favorilerden çıkar' : 'Favorilere ekle'}
                   >
                     {favoritedPetitions.has(petition.id) ? <StarSolidIcon className="w-5 h-5" /> : <StarIcon className="w-5 h-5" />}
                   </button>
@@ -408,7 +408,7 @@ export default function PetitionPool() {
                 onClick={() => handleUsePetition(selectedPetition)}
                 className="w-full sm:flex-1 px-4 sm:px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors font-semibold flex items-center justify-center gap-2"
               >
-                <ArrowDownCircleIcon className="w-5 h-5" /> Bu DilekÃ§eyi Kullan
+                <ArrowDownCircleIcon className="w-5 h-5" /> Bu Dilekçeyi Kullan
               </button>
               <button
                 onClick={() => setSelectedPetition(null)}

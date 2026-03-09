@@ -20,7 +20,8 @@
     "format:check": "prettier --check .",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:legal-regression": "node scripts/legal-regression.mjs"
   },
   "dependencies": {
     "@google/genai": "1.11.0",

@@ -1476,15 +1476,17 @@ export default function AlternativeApp() {
         setIsDecisionContentLoading(true);
 
         try {
-            const resolvedSource = resolveLegalSourceForQuery(
-                [
-                    result.source || '',
-                    result.title || '',
-                    result.daire || '',
-                    result.ozet || '',
-                ],
-                'all'
-            );
+            const resolvedSource =
+                String(result.source || '').trim() ||
+                resolveLegalSourceForQuery(
+                    [
+                        result.source || '',
+                        result.title || '',
+                        result.daire || '',
+                        result.ozet || '',
+                    ],
+                    'all'
+                );
             const content = await getLegalDocument({
                 source: resolvedSource,
                 documentId: result.documentId || result.id || `${result.title || 'karar'}-${index}`,

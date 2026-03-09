@@ -41,6 +41,22 @@ interface GetLegalDocumentParams {
     apiBaseUrl?: string;
 }
 
+export interface LegalSearchDebugResult {
+    endpoint: string;
+    request: Record<string, any>;
+    response: any;
+    normalizedResults: NormalizedLegalDecision[];
+    durationMs: number;
+}
+
+export interface LegalDocumentDebugResult {
+    endpoint: string;
+    request: Record<string, any>;
+    response: any;
+    documentText: string;
+    durationMs: number;
+}
+
 const REQUEST_TIMEOUT_MS = Math.max(
     45000,
     Math.min(180000, Number((import.meta as any)?.env?.VITE_LEGAL_REQUEST_TIMEOUT_MS || 90000))
@@ -271,7 +287,7 @@ export const compactLegalSearchQuery = (
     options?: { preserveKeywords?: string[]; maxLength?: number }
 ): string => {
     const trimmed = String(rawText || '').trim();
-    if (trimmed.length <= 300) return trimmed;
+    if (trimmed.length <= 600) return trimmed;
 
     const normalized = normalizeKeywordToken(trimmed);
     const matchedPhrases: string[] = [];
@@ -319,7 +335,7 @@ export const compactLegalSearchQuery = (
 
     const parts = [...matchedPhrases, ...uniqueTokens];
     let result = parts.join(' ').trim();
-    const maxLength = Math.max(180, Math.min(700, Number(options?.maxLength) || 500));
+    const maxLength = Math.max(300, Math.min(1000, Number(options?.maxLength) || 800));
     if (result.length > maxLength) {
         result = result.slice(0, maxLength).trim();
     }
@@ -460,6 +476,8 @@ export const normalizeLegalSearchResults = (payload: any): NormalizedLegalDecisi
             return {
                 id: result.id || result.documentId || `legal-${index + 1}`,
                 documentId: result.documentId || result.id || undefined,
+                documentUrl: result.documentUrl || result.sourceUrl || result.url || undefined,
+                sourceUrl: result.sourceUrl || result.documentUrl || result.url || undefined,
                 title,
                 esasNo: result.esasNo || result.esas_no || '',
                 kararNo: result.kararNo || result.karar_no || '',
@@ -468,6 +486,11 @@ export const normalizeLegalSearchResults = (payload: any): NormalizedLegalDecisi
                 ozet,
                 source: normalizeLegalSource(result.source) || payloadSource || undefined,
                 snippet: result.snippet || ozet,
+                matchTier: result.matchTier,
+                matchReason: result.matchReason,
+                matchHighlights: Array.isArray(result.matchHighlights)
+                    ? result.matchHighlights.filter((item: unknown) => typeof item === 'string')
+                    : undefined,
                 relevanceScore: Number.isFinite(relevanceScore) ? relevanceScore : undefined,
             };
         })
@@ -653,4 +676,186 @@ export const getLegalDocument = async ({
     }
 
     return JSON.stringify(data.document, null, 2);
+};
+
+export const searchLegalDecisionsDebug = async ({
+    source,
+    keyword,
+    rawQuery,
+    filters = {},
+    apiBaseUrl = '',
+}: SearchLegalDecisionsParams): Promise<LegalSearchDebugResult> => {
+    const payload: Record<string, any> = { source, keyword, filters };
+    if (rawQuery && rawQuery !== keyword) {
+        payload.rawQuery = rawQuery;
+    }
+
+    const body = JSON.stringify(payload);
+    const headers = await buildJsonHeaders();
+    const endpoint = `${apiBaseUrl}/api/legal/search-decisions`;
+    const retries = [endpoint, `${endpoint}?retry=1`, `${endpoint}?retry=2`];
+
+    let lastErrorText = '';
+    let lastStatus = 0;
+    let timedOut = false;
+
+    for (const url of retries) {
+        try {
+            const startedAt = performance.now();
+            const response = await fetchWithTimeout(url, {
+                method: 'POST',
+                headers,
+                body,
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                return {
+                    endpoint: url,
+                    request: payload,
+                    response: data,
+                    normalizedResults: normalizeLegalSearchResults(data),
+                    durationMs: Math.round(performance.now() - startedAt),
+                };
+            }
+
+            lastStatus = response.status;
+            lastErrorText = await response.text().catch(() => '');
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error || '');
+            if (message.startsWith('REQUEST_TIMEOUT:')) {
+                timedOut = true;
+            }
+            lastErrorText = message || lastErrorText;
+        }
+    }
+
+    if (timedOut) {
+        throw new Error(LEGAL_SEARCH_TIMEOUT_MESSAGE);
+    }
+
+    let cleanError = lastErrorText;
+    try {
+        const parsed = JSON.parse(lastErrorText);
+        if (parsed?.error) {
+            cleanError = parsed.error;
+            if (parsed.details?.[0]?.message) {
+                cleanError += ': ' + parsed.details[0].message;
+            }
+        }
+    } catch {
+        if (lastErrorText.includes('<html') || lastErrorText.includes('<!DOCTYPE')) {
+            cleanError = `Ictihat arama servisi yanit vermedi (HTTP ${lastStatus || 500}).`;
+        }
+    }
+
+    throw new Error(
+        cleanError || `Ictihat aramasi sirasinda bir hata olustu (HTTP ${lastStatus || 500}).`
+    );
+};
+
+export const getLegalDocumentDebug = async ({
+    source,
+    documentId,
+    documentUrl,
+    title,
+    esasNo,
+    kararNo,
+    tarih,
+    daire,
+    ozet,
+    snippet,
+    apiBaseUrl = '',
+}: GetLegalDocumentParams): Promise<LegalDocumentDebugResult> => {
+    if (!documentId && !documentUrl) {
+        throw new Error('Belge kimligi bulunamadi.');
+    }
+
+    const payload: Record<string, any> = {
+        source,
+        documentId,
+        documentUrl,
+        title,
+        esasNo,
+        kararNo,
+        tarih,
+        daire,
+        ozet,
+        snippet,
+    };
+    const body = JSON.stringify(payload);
+    const headers = await buildJsonHeaders();
+    const endpoint = `${apiBaseUrl}/api/legal/get-document`;
+    const retries = [endpoint, `${endpoint}?retry=1`, `${apiBaseUrl}/api/legal?action=get-document`];
+
+    let response: Response | null = null;
+    let lastErrorText = '';
+    let lastStatus = 0;
+    let timedOut = false;
+
+    for (const url of retries) {
+        try {
+            const startedAt = performance.now();
+            response = await fetchWithTimeout(url, {
+                method: 'POST',
+                headers,
+                body,
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                let documentText = '';
+
+                if (typeof data?.document === 'string') {
+                    documentText = data.document;
+                } else if (data?.document) {
+                    const directContentCandidates = [
+                        data.document.content,
+                        data.document.markdown_content,
+                        data.document.markdown,
+                        data.document.text,
+                        data.document.documentContent,
+                        data.document.fullText,
+                    ];
+
+                    for (const candidate of directContentCandidates) {
+                        if (typeof candidate === 'string' && candidate.trim().length > 0) {
+                            documentText = candidate;
+                            break;
+                        }
+                    }
+
+                    if (!documentText) {
+                        documentText = JSON.stringify(data.document, null, 2);
+                    }
+                }
+
+                return {
+                    endpoint: url,
+                    request: payload,
+                    response: data,
+                    documentText,
+                    durationMs: Math.round(performance.now() - startedAt),
+                };
+            }
+
+            lastStatus = response.status;
+            lastErrorText = await response.text().catch(() => '');
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error || '');
+            if (message.startsWith('REQUEST_TIMEOUT:')) {
+                timedOut = true;
+            }
+            lastErrorText = message || lastErrorText;
+        }
+    }
+
+    if (!response || !response.ok) {
+        if (timedOut) {
+            throw new Error(LEGAL_DOCUMENT_TIMEOUT_MESSAGE);
+        }
+        throw new Error(lastErrorText || `Belge alinamadi (HTTP ${lastStatus || 500}).`);
+    }
+
+    throw new Error(lastErrorText || 'Belge alinamadi.');
 };

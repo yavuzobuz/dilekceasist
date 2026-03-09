@@ -393,6 +393,7 @@ export interface LegalSearchResult {
   documentId?: string;
   snippet?: string;
   relevanceScore?: number; // 0-100 relevance score
+  matchHighlights?: string[];
 }
 
 export interface AnalysisData {

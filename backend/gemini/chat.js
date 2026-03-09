@@ -19,6 +19,9 @@ const truncateText = (value, maxLength = 180) => {
     return `${safe.slice(0, Math.max(0, maxLength - 3)).trim()}...`;
 };
 
+const CHAT_VISIBLE_LEGAL_RESULT_LIMIT = 5;
+const CHAT_LEGAL_SUMMARY_PREVIEW_CHARS = 480;
+
 const normalizeKeywordText = (value = '') => String(value || '')
     .toLocaleLowerCase('tr-TR')
     .normalize('NFD')
@@ -346,7 +349,7 @@ const invokeLegalSearchHandler = async ({ keyword, source = 'all', headers = {} 
 
     let resolved = false;
 
-    return new Promise(async (resolve) => {
+    return new Promise((resolve) => {
         const finalize = (payload = null) => {
             if (resolved) return;
             resolved = true;
@@ -391,16 +394,18 @@ const invokeLegalSearchHandler = async ({ keyword, source = 'all', headers = {} 
             headers,
         };
 
-        try {
-            await legalApiHandler(mockReq, mockRes);
-            if (!resolved) {
-                finalize(null);
+        void (async () => {
+            try {
+                await legalApiHandler(mockReq, mockRes);
+                if (!resolved) {
+                    finalize(null);
+                }
+            } catch (error) {
+                responseState.statusCode = 500;
+                responseState.body = { error: error?.message || 'Internal legal search invocation failed' };
+                finalize(responseState.body);
             }
-        } catch (error) {
-            responseState.statusCode = 500;
-            responseState.body = { error: error?.message || 'Internal legal search invocation failed' };
-            finalize(responseState.body);
-        }
+        })();
     });
 };
 
@@ -772,7 +777,7 @@ Ek kural: Basit sorularda (or. hangi mahkeme, sure) kisa ve net cevap ver.`;
                 const searchQuery = normalizeText(args?.searchQuery || evidenceQuery || '');
                 const searchResult = await searchEmsalFallback(ai, searchQuery, req);
                 const visibleResults = Array.isArray(searchResult.results)
-                    ? searchResult.results.slice(0, 3)
+                    ? searchResult.results.slice(0, CHAT_VISIBLE_LEGAL_RESULT_LIMIT)
                     : [];
                 const hiddenCount = Math.max(0, (searchResult.results?.length || 0) - visibleResults.length);
 
@@ -784,7 +789,7 @@ Ek kural: Basit sorularda (or. hangi mahkeme, sure) kisa ve net cevap ver.`;
                         if (result.kararNo) formattedResults += `K. ${result.kararNo} `;
                         if (result.tarih) formattedResults += `T. ${result.tarih}`;
                         formattedResults += '\n';
-                        if (result.ozet) formattedResults += `Ozet: ${truncateText(result.ozet, 160)}\n\n`;
+                        if (result.ozet) formattedResults += `Ozet: ${truncateText(result.ozet, CHAT_LEGAL_SUMMARY_PREVIEW_CHARS)}\n\n`;
                     });
                     if (hiddenCount > 0) {
                         formattedResults += `+ ${hiddenCount} ek karar bulundu. Tam liste baglama eklendi.\n`;

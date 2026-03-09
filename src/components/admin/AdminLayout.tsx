@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { PageEntrance } from '../PageEntrance';
 import {
     LayoutDashboard, FileText, Users, Calculator, BarChart3,
     Globe, Settings, LogOut, Menu, X, ChevronRight, Shield,
@@ -143,7 +144,9 @@ export const AdminLayout: React.FC = () => {
 
                 {/* Page content */}
                 <main className="flex-1 p-4 lg:p-6 overflow-auto">
-                    <Outlet />
+                    <PageEntrance key={location.pathname}>
+                        <Outlet />
+                    </PageEntrance>
                 </main>
             </div>
         </div>

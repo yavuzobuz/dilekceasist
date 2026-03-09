@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { Search, Scale, FileText, X, Plus, Loader2, AlertCircle } from 'lucide-react';
+import { useCallback } from 'react';
 import { getLegalDocument, searchLegalDecisions, buildLegalKeywordQuery } from '../utils/legalSearch';
 import { resolveLegalSourceForQuery } from '../utils/legalSource';
 
@@ -38,7 +39,6 @@ const LEGAL_SOURCES: LegalSource[] = [
     { id: 'danistay', name: 'Danistay', description: 'Danistay Kararlari' },
     { id: 'uyap', name: 'Emsal (UYAP)', description: 'UYAP Emsal Kararlari' },
     { id: 'anayasa', name: 'Anayasa Mahkemesi', description: 'AYM Kararlari' },
-    { id: 'kik', name: 'KIK', description: 'Kamu Ihale Kurulu Kararlari' },
 ];
 
 const API_BASE_URL = '';
@@ -74,7 +74,7 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
         return hasDocumentUrl || !hasSyntheticId;
     };
 
-    const handleSearch = async (searchKeyword?: string) => {
+    const handleSearch = useCallback(async (searchKeyword?: string) => {
         const queryToUse = (searchKeyword || keyword || '').trim();
         if (!queryToUse) return;
 
@@ -94,7 +94,7 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [keyword, selectedSource]);
 
     useEffect(() => {
         if (isOpen && initialKeywords.length > 0 && !hasAutoSearched) {
@@ -109,7 +109,7 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
                 handleSearch(initialQuery);
             }
         }
-    }, [isOpen, initialKeywords, hasAutoSearched]);
+    }, [isOpen, initialKeywords, hasAutoSearched, handleSearch]);
 
     // Panel kapaninca auto-search flag'ini sifirla
     useEffect(() => {
@@ -132,10 +132,18 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
         setLoadingDocument(docId);
 
         try {
-            const documentSource = resolveLegalSourceForQuery(
-                [selectedSource, keyword, result.title || '', result.daire || '', result.ozet || result.snippet || ''],
-                'all'
-            );
+            const documentSource =
+                String(result.source || '').trim() ||
+                resolveLegalSourceForQuery(
+                    [
+                        selectedSource,
+                        keyword,
+                        result.title || '',
+                        result.daire || '',
+                        result.ozet || result.snippet || '',
+                    ],
+                    'all'
+                );
             const content = await getLegalDocument({
                 source: documentSource,
                 documentId: docId,

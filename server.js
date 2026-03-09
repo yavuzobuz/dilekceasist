@@ -1,8 +1,8 @@
 ﻿import express from 'express';
+import 'dotenv/config';
 import htmlToDocx from 'html-to-docx';
 import cors from 'cors';
 import { GoogleGenAI, Type } from '@google/genai';
-import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
 import helmet from 'helmet';
@@ -16,6 +16,11 @@ import { AI_CONFIG, SERVER_CONFIG } from './config.js';
 import templatesHandler from './api/templates.js';
 import announcementsHandler from './api/announcements.js';
 import {
+    getLegalDocumentViaMcp,
+    getLegalSources,
+    searchLegalDecisionsViaMcp,
+} from './lib/legal/mcpLegalSearch.js';
+import {
     cancelStripeSubscriptionForUser,
     constructStripeWebhookEvent,
     createStripeCheckoutSession,
@@ -23,9 +28,6 @@ import {
     parseRequestBody,
     processStripeWebhookEvent
 } from './lib/api/stripeCheckout.js';
-
-// Load environment variables
-dotenv.config();
 
 const app = express();
 const PORT = SERVER_CONFIG.PORT;
@@ -51,6 +53,30 @@ const TRIAL_DAILY_GENERATION_LIMIT = Math.max(1, Number.parseInt(process.env.TRI
 
 // CORS configuration
 const normalizeOrigin = (origin = '') => origin.trim().replace(/\/+$/, '').toLowerCase();
+
+const compactLegalKeywordQuery = (keyword = '', maxLen = 180) => {
+    const normalized = String(keyword || '').replace(/\s+/g, ' ').trim();
+    if (!normalized) return '';
+    return normalized.length > maxLen ? normalized.slice(0, maxLen).trim() : normalized;
+};
+
+const buildStrictBedestenQuery = (keyword = '') => {
+    const compacted = compactLegalKeywordQuery(keyword, 180);
+    return compacted.split(/\s+/).length >= 2 ? compacted : '';
+};
+
+const searchEmsalFallback = async (keyword = '') => {
+    const payload = await searchLegalDecisionsViaMcp({
+        source: 'all',
+        keyword,
+        rawQuery: keyword,
+        filters: {},
+    });
+
+    return {
+        results: Array.isArray(payload?.results) ? payload.results : [],
+    };
+};
 
 const parseOriginList = (...values) => values
     .filter(Boolean)
@@ -269,6 +295,7 @@ const apiLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Too many requests' },
+    skip: (req) => req.method === 'GET' && String(req.path || '').startsWith('/api/templates'),
 });
 
 const speedLimiter = slowDown({
@@ -281,7 +308,7 @@ const aiRateLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 30,
     message: {
-        error: '�ok fazla istek g�nderdiniz. L�tfen bir dakika bekleyip tekrar deneyin.',
+        error: 'Çok fazla istek gönderdiniz. Lütfen bir dakika bekleyip tekrar deneyin.',
         retryAfter: 60
     },
     standardHeaders: true,
@@ -345,22 +372,22 @@ app.use(hpp());
 // --- Helper Functions (Copied from geminiService.ts) ---
 
 const formatChatHistoryForPrompt = (history) => {
-    if (!history || history.length === 0) return "Sohbet ge�mi�i yok.";
-    return history.map(msg => `${msg.role === 'user' ? 'Kullan�c�' : 'Asistan'}: ${msg.text}`).join('\n');
+    if (!history || history.length === 0) return "Sohbet geçmişi yok.";
+    return history.map(msg => `${msg.role === 'user' ? 'Kullanıcı' : 'Asistan'}: ${msg.text}`).join('\n');
 };
 
 const formatPartiesForPrompt = (parties) => {
-    if (!parties) return "Taraf bilgisi sa�lanmad�.";
+    if (!parties) return "Taraf bilgisi sağlanmadı.";
     const partyEntries = Object.entries(parties).filter(([, value]) => value && value.trim() !== '');
-    if (partyEntries.length === 0) return "Taraf bilgisi sa�lanmad�.";
+    if (partyEntries.length === 0) return "Taraf bilgisi sağlanmadı.";
 
     const labelMap = {
-        plaintiff: 'Davac�',
-        defendant: 'Daval�',
-        appellant: 'Ba�vuran / �tiraz Eden',
-        counterparty: 'Kar�� Taraf',
-        complainant: 'M��teki / �ikayet�i',
-        suspect: '��pheli',
+        plaintiff: 'Davacı',
+        defendant: 'Davalı',
+        appellant: 'Başvuran / İtiraz Eden',
+        counterparty: 'Karşı Taraf',
+        complainant: 'Müşteki / Şikayetçi',
+        suspect: 'Şüpheli',
         party1: 'Taraf 1',
         party2: 'Taraf 2',
     };
@@ -371,21 +398,21 @@ const formatPartiesForPrompt = (parties) => {
 };
 
 const formatCaseDetailsForPrompt = (details) => {
-    if (!details) return "Dava k�nye bilgisi sa�lanmad�.";
+    if (!details) return "Dava künye bilgisi sağlanmadı.";
     const detailEntries = [
-        details.caseTitle && `Dava Basligi / Konu: ${details.caseTitle}`,
+        details.caseTitle && `Dava Başlığı / Konu: ${details.caseTitle}`,
         details.court && `Mahkeme: ${details.court}`,
-        details.fileNumber && `Dosya Numaras� (Esas No): ${details.fileNumber}`,
-        details.decisionNumber && `Karar Numaras�: ${details.decisionNumber}`,
+        details.fileNumber && `Dosya Numarası (Esas No): ${details.fileNumber}`,
+        details.decisionNumber && `Karar Numarası: ${details.decisionNumber}`,
         details.decisionDate && `Karar Tarihi: ${details.decisionDate}`,
     ].filter(Boolean);
 
-    if (detailEntries.length === 0) return "Dava k�nye bilgisi sa�lanmad�.";
+    if (detailEntries.length === 0) return "Dava künye bilgisi sağlanmadı.";
     return detailEntries.join('\n');
 }
 
 const formatLawyerInfoForPrompt = (lawyerInfo) => {
-    if (!lawyerInfo || !lawyerInfo.name) return "Vekil bilgisi sa�lanmad�.";
+    if (!lawyerInfo || !lawyerInfo.name) return "Vekil bilgisi sağlanmadı.";
 
     const entries = [
         `Ad Soyad: ${lawyerInfo.name}`,
@@ -402,11 +429,11 @@ const formatLawyerInfoForPrompt = (lawyerInfo) => {
 }
 
 const formatContactInfoForPrompt = (contactInfo) => {
-    if (!contactInfo || contactInfo.length === 0) return "�leti�im bilgisi sa�lanmad�.";
+    if (!contactInfo || contactInfo.length === 0) return "İletişim bilgisi sağlanmadı.";
 
     return contactInfo.map((contact, index) => {
         const entries = [
-            `--- Ki�i/Kurum ${index + 1} ---`,
+            `--- Kişi/Kurum ${index + 1} ---`,
             contact.name && `Ad: ${contact.name}`,
             contact.address && `Adres: ${contact.address}`,
             contact.phone && `Telefon: ${contact.phone}`,
@@ -425,18 +452,18 @@ const RAG_TEMPLATE_TOP_K = Math.max(1, Number.parseInt(process.env.RAG_TEMPLATE_
 const RAG_MAX_QUERY_TOKENS = Math.max(6, Number.parseInt(process.env.RAG_MAX_QUERY_TOKENS || '22', 10));
 
 const RAG_STOPWORDS = new Set([
-    've', 'veya', 'ile', 'icin', 'i�in', 'ama', 'fakat', 'gibi', 'daha', 'kadar',
-    'olan', 'olanlar', 'olarak', 'bu', 'su', '�u', 'o', 'bir', 'iki', 'uc', '��',
-    'de', 'da', 'mi', 'mu', 'm�', 'm�', 'ki', 'ya', 'yada', 'hem',
-    'en', 'cok', '�ok', 'az', 'sonra', 'once', '�nce', 'son', 'ilk', 'her', 'tum',
-    't�m', 'hakkinda', 'hakk�nda', 'oldu', 'olur', 'olsun'
+    've', 'veya', 'ile', 'icin', 'için', 'ama', 'fakat', 'gibi', 'daha', 'kadar',
+    'olan', 'olanlar', 'olarak', 'bu', 'su', 'şu', 'o', 'bir', 'iki', 'uc', 'üç',
+    'de', 'da', 'mi', 'mu', 'mı', 'mü', 'ki', 'ya', 'yada', 'hem',
+    'en', 'cok', 'çok', 'az', 'sonra', 'once', 'önce', 'son', 'ilk', 'her', 'tum',
+    'tüm', 'hakkinda', 'hakkında', 'oldu', 'olur', 'olsun'
 ]);
 
 const normalizeRagText = (value = '') => String(value || '')
     .toLocaleLowerCase('tr-TR')
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9������\s]/gi, ' ')
+    .replace(/[^a-z0-9çğıöşü\s]/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -647,32 +674,32 @@ app.post('/api/gemini/analyze', async (req, res) => {
         console.warn('Analyze Request Received');
 
         const model = AI_CONFIG.MODEL_NAME;
-        const systemInstruction = `Sen T�rk hukukunda uzmanla�m�� bir hukuk asistan�s�n. G�revin, sa�lanan belgeleri, resimleri ve metinleri titizlikle analiz etmektir. Temel bilgileri ��kar, t�m potansiyel taraflar� (�ah�slar, �irketler) belirle ve e�er varsa dava k�nyesi bilgilerini (mahkeme ad�, dosya/esas no, karar no, karar tarihi) tespit et. Ayr�ca belgelerden avukat/vekil bilgilerini (isim, baro, baro sicil no, adres, telefon, email) ve di�er ileti�im bilgilerini ��kar. ��kt�n� JSON nesnesi olarak yap�land�r. Analiz �zetinin HER ZAMAN T�rk�e olmas�n� sa�la.`;
+        const systemInstruction = `Sen Türk hukukunda uzmanlaşmış bir hukuk asistanısın. Görevin, sağlanan belgeleri, resimleri ve metinleri titizlikle analiz etmektir. Temel bilgileri çıkar, tüm potansiyel tarafları (şahıslar, şirketler) belirle ve eğer varsa dava künye bilgilerini (mahkeme adı, dosya/esas no, karar no, karar tarihi) tespit et. Ayrıca belgelerden avukat/vekil bilgilerini (isim, baro, baro sicil no, adres, telefon, email) ve diğer iletişim bilgilerini çıkar. Çıktını JSON nesnesi olarak yapılandır. Analiz özetinin her zaman Türkçe olmasını sağla.`;
 
         const promptText = `
-L�tfen SANA G�NDER�LEN PDF belgelerini, resim dosyalar�n� ve a�a��daki metin olarak sa�lanan UDF ve Word belgelerinin i�eri�ini titizlikle analiz et.
+Lütfen sana gönderilen PDF belgelerini, resim dosyalarını ve aşağıdaki metin olarak sağlanan UDF ve Word belgelerinin içeriğini titizlikle analiz et.
 
-**ANA G�REVLER:**
-1. Olay�n detayl� ve T�rk�e bir �zetini olu�tur. **�ZET� MUTLAKA PARAGRAFLARA B�LEREK YAZ (paragraflar aras�nda '\\n\\n' bo�luklar� b�rak)**, tek par�a blok yaz� KES�NL�KLE kullanma.
-2. Metinde ad� ge�en t�m potansiyel taraflar� listele
-3. Dava k�nyesi bilgilerini ��kar (mahkeme, dosya numaras�, karar numaras�, karar tarihi)
-4. **�NEML�:** Avukat/vekil bilgilerini bul ve ��kar:
-   - Avukat ad� soyad� (genellikle "Av." veya "Avukat" ile ba�lar)
-   - Baro ad� ("... Barosu" format�nda)
-   - Baro sicil numaras�
-   - �� adresi
-   - Telefon numaras�
+**ANA GÖREVLER:**
+1. Olayın detaylı ve Türkçe bir özetini oluştur. **ÖZETİ MUTLAKA PARAGRAFLARA BÖLEREK YAZ (paragraflar arasında '\\n\\n' boşlukları bırak)**, tek parça blok yazı kesinlikle kullanma.
+2. Metinde adı geçen tüm potansiyel tarafları listele.
+3. Dava künye bilgilerini çıkar (mahkeme, dosya numarası, karar numarası, karar tarihi).
+4. **ÖNEMLİ:** Avukat/vekil bilgilerini bul ve çıkar:
+   - Avukat adı soyadı (genellikle "Av." veya "Avukat" ile başlar)
+   - Baro adı ("... Barosu" formatında)
+   - Baro sicil numarası
+   - İş adresi
+   - Telefon numarası
    - Email adresi
-5. Di�er ileti�im bilgilerini ��kar (taraflar�n adres, telefon, email bilgileri)
+5. Diğer iletişim bilgilerini çıkar (tarafların adres, telefon, email bilgileri).
 
-**UDF Belge ��erikleri:**
-${udfTextContent || "UDF belgesi y�klenmedi."}
+**UDF Belge İçerikleri:**
+${udfTextContent || "UDF belgesi yüklenmedi."}
 
-**Word Belge ��erikleri:**
-${wordTextContent || "Word belgesi y�klenmedi."}
+**Word Belge İçerikleri:**
+${wordTextContent || "Word belgesi yüklenmedi."}
 
-**�IKTI FORMATI:**
-Sonucu 'summary', 'potentialParties', 'caseDetails', 'lawyerInfo' ve 'contactInfo' anahtarlar�na sahip bir JSON nesnesi olarak d�nd�r.
+**ÇIKTI FORMATI:**
+Sonucu 'summary', 'potentialParties', 'caseDetails', 'lawyerInfo' ve 'contactInfo' anahtarlarına sahip bir JSON nesnesi olarak döndür.
  
 **EK KURAL:**
 - Yuklenen PDF taranmis/goruntu tabanli ise gorunen metni OCR mantigi ile oku.
@@ -684,9 +711,9 @@ Sonucu 'summary', 'potentialParties', 'caseDetails', 'lawyerInfo' ve 'contactInf
                 const fileName = String(file?.name || `Belge ${index + 1}`).trim() || `Belge ${index + 1}`;
                 const mimeType = String(file?.mimeType || 'bilinmeyen').trim() || 'bilinmeyen';
                 const scannedHint = /pdf/i.test(mimeType)
-                    ? 'Taranmis/goruntu tabanli PDF olabilir; OCR ile oku.'
+                    ? 'Taranmış/görüntü tabanlı PDF olabilir; OCR ile oku.'
                     : /^image\//i.test(mimeType)
-                        ? 'Gorsel belge; gorunen metni ve duzeni incele.'
+                        ? 'Görsel belge; görünen metni ve düzeni incele.'
                         : '';
                 return `- ${fileName} (${mimeType})${scannedHint ? ` - ${scannedHint}` : ''}`;
             })
@@ -694,7 +721,7 @@ Sonucu 'summary', 'potentialParties', 'caseDetails', 'lawyerInfo' ve 'contactInf
 
         const contentParts = [
             { text: promptText },
-            ...(fileSummaries ? [{ text: `Yuklenen dosyalar:\n${fileSummaries}\n` }] : []),
+            ...(fileSummaries ? [{ text: `Yüklenen dosyalar:\n${fileSummaries}\n` }] : []),
             ...safeUploadedFiles.map(file => ({
                 inlineData: {
                     mimeType: file.mimeType,
@@ -712,7 +739,7 @@ Sonucu 'summary', 'potentialParties', 'caseDetails', 'lawyerInfo' ve 'contactInf
                 responseSchema: {
                     type: Type.OBJECT,
                     properties: {
-                        summary: { type: Type.STRING, description: 'Documentslar�n detayl� T�rk�e �zeti.' },
+                        summary: { type: Type.STRING, description: 'Belgelerin detaylı Türkçe özeti.' },
                         potentialParties: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'Benzersiz potansiyel taraf isimlerinin listesi.' },
                         caseDetails: {
                             type: Type.OBJECT,
@@ -726,29 +753,29 @@ Sonucu 'summary', 'potentialParties', 'caseDetails', 'lawyerInfo' ve 'contactInf
                         },
                         lawyerInfo: {
                             type: Type.OBJECT,
-                            description: 'Avukat/vekil bilgileri (e�er belgede varsa)',
+                            description: 'Avukat/vekil bilgileri (eğer belgede varsa)',
                             properties: {
-                                name: { type: Type.STRING, description: 'Avukat�n tam ad�' },
-                                address: { type: Type.STRING, description: 'Avukat�n i� adresi' },
-                                phone: { type: Type.STRING, description: 'Telefon numaras�' },
+                                name: { type: Type.STRING, description: 'Avukatın tam adı' },
+                                address: { type: Type.STRING, description: 'Avukatın iş adresi' },
+                                phone: { type: Type.STRING, description: 'Telefon numarası' },
                                 email: { type: Type.STRING, description: 'Email adresi' },
-                                barNumber: { type: Type.STRING, description: 'Baro sicil numaras�' },
-                                bar: { type: Type.STRING, description: 'Baro ad� (�rn: Ankara Barosu)' },
-                                title: { type: Type.STRING, description: 'Unvan (�rn: Avukat)' },
-                                tcNo: { type: Type.STRING, description: 'TC Kimlik No (e�er varsa)' }
+                                barNumber: { type: Type.STRING, description: 'Baro sicil numarası' },
+                                bar: { type: Type.STRING, description: 'Baro adı (örn: Ankara Barosu)' },
+                                title: { type: Type.STRING, description: 'Unvan (örn: Avukat)' },
+                                tcNo: { type: Type.STRING, description: 'TC Kimlik No (eğer varsa)' }
                             }
                         },
                         contactInfo: {
                             type: Type.ARRAY,
-                            description: 'Di�er ileti�im bilgileri (taraflar�n adresleri, telefonlar�)',
+                            description: 'Diğer iletişim bilgileri (tarafların adresleri, telefonları)',
                             items: {
                                 type: Type.OBJECT,
                                 properties: {
-                                    name: { type: Type.STRING, description: 'Ki�i/Kurum ad�' },
+                                    name: { type: Type.STRING, description: 'Kişi/Kurum adı' },
                                     address: { type: Type.STRING, description: 'Adres' },
                                     phone: { type: Type.STRING, description: 'Telefon' },
                                     email: { type: Type.STRING, description: 'Email' },
-                                    tcNo: { type: Type.STRING, description: 'TC Kimlik No (e�er varsa)' }
+                                    tcNo: { type: Type.STRING, description: 'TC Kimlik No (eğer varsa)' }
                                 }
                             }
                         }
@@ -779,8 +806,8 @@ app.post('/api/gemini/keywords', async (req, res) => {
     try {
         const { analysisText, userRole } = req.body;
         const model = AI_CONFIG.MODEL_NAME;
-        const systemInstruction = `Sen T�rk Hukuku alan�nda uzman, stratejik bir ara�t�rma asistan�s�n. G�revin, verilen vaka �zetini analiz ederek, kullan�c�n�n '${userRole}' olan rol�n� hukuki olarak en g��l� konuma getirecek anahtar kelimeleri belirlemektir. Olu�turaca��n anahtar kelimeler, kullan�c�n�n lehine olan Yarg�tay kararlar�n�, mevzuat� ve hukuki arg�manlar� bulmaya odaklanmal�d�r. ��kt� olarak SADECE 'keywords' anahtar�n� i�eren ve bu anahtar�n de�erinin bir string dizisi oldu�u bir JSON nesnesi d�nd�r.`;
-        const promptText = `Sa�lanan vaka �zeti:\n\n"${analysisText}"\n\nBu �zete dayanarak... (k�salt�ld�)`; // Simplified prompt for brevity in this file context
+        const systemInstruction = `Sen Türk Hukuku alanında uzman, stratejik bir araştırma asistanısın. Görevin, verilen vaka özetini analiz ederek, kullanıcının '${userRole}' olan rolünü hukuki olarak en güçlü konuma getirecek anahtar kelimeleri belirlemektir. Oluşturacağın anahtar kelimeler, kullanıcının lehine olan Yargıtay kararlarını, mevzuatı ve hukuki argümanları bulmaya odaklanmalıdır. Çıktı olarak sadece 'keywords' anahtarını içeren ve bu anahtarın değerinin bir string dizisi olduğu bir JSON nesnesi döndür.`;
+        const promptText = `Sağlanan vaka özeti:\n\n"${analysisText}"\n\nBu özete dayanarak... (kısaltıldı)`; // Simplified prompt for brevity in this file context
 
         const response = await ai.models.generateContent({
             model,
@@ -807,7 +834,7 @@ app.post('/api/gemini/keywords', async (req, res) => {
     }
 });
 
-// 3. Web Search - Enhanced for Yarg�tay Decisions
+// 3. Web Search - Enhanced for Yargitay Decisions
 app.post('/api/gemini/web-search', async (req, res) => {
     try {
         const { keywords, query } = req.body;
@@ -821,73 +848,73 @@ app.post('/api/gemini/web-search', async (req, res) => {
 
         const model = AI_CONFIG.MODEL_NAME;
 
-        const systemInstruction = `Sen, T�rk hukuku alan�nda uzman bir ara�t�rma asistan�s�n. 
-G�revin �zellikle YARGITAY KARARLARI bulmak ve bunlar� dilek�ede kullan�labilir formatta sunmakt�r.
+        const systemInstruction = `Sen, Türk hukuku alanında uzman bir araştırma asistanısın.
+Görevin özellikle Yargıtay kararları bulmak ve bunları dilekçede kullanılabilir formatta sunmaktır.
 
-## KR�T�K G�REV: YARGITAY KARARLARI BULMA
+## KRİTİK GÖREV: YARGITAY KARARLARI BULMA
 
-Her aramada �unlar� tespit etmeye �al��:
-1. **Karar K�nyesi:** Daire, Esas No, Karar No, Tarih (�rn: "Yarg�tay 9. HD., E. 2023/1234, K. 2023/5678, T. 15.03.2023")
-2. **Karar �zeti:** 1-2 c�mlelik �zet
-3. **�lgili Kanun Maddesi:** Kararda at�f yap�lan mevzuat
+Her aramada şunları tespit etmeye çalış:
+1. **Karar Künyesi:** Daire, Esas No, Karar No, Tarih (örn: "Yargıtay 9. HD., E. 2023/1234, K. 2023/5678, T. 15.03.2023")
+2. **Karar Özeti:** 1-2 cümlelik özet
+3. **İlgili Kanun Maddesi:** Kararda atıf yapılan mevzuat
 
-## �IKTI FORMATI
+## ÇIKTI FORMATI
 
-��kt�n� �u �ekilde yap�land�r:
+Çıktını şu şekilde yapılandır:
 
 ### EMSAL YARGITAY KARARLARI
 
-**1. [Yarg�tay X. HD., E. XXXX/XXXX, K. XXXX/XXXX, T. XX.XX.XXXX]**
-�zet: [Karar�n �zeti]
-�lgili Mevzuat: [Kanun maddesi]
+**1. [Yargıtay X. HD., E. XXXX/XXXX, K. XXXX/XXXX, T. XX.XX.XXXX]**
+Özet: [Kararın özeti]
+İlgili Mevzuat: [Kanun maddesi]
 
-**2. [Di�er karar]**
+**2. [Diğer karar]**
 ...
 
-### �LG�L� MEVZUAT
+### İLGİLİ MEVZUAT
 
-- [Kanun Ad�] m. [madde no]: [madde �zeti]
+- [Kanun Adı] m. [madde no]: [madde özeti]
 
-### ARA�TIRMA �ZET�
+### ARAŞTIRMA ÖZETİ
 
-[Bulunan karar ve mevzuata dayal� genel hukuki de�erlendirme]
+[Bulunan karar ve mevzuata dayalı genel hukuki değerlendirme]
 
-NOT: En az 3-5 emsal karar bulmaya �al��. Bulamazsan "Bu konuda emsal karar bulunamad�" yaz.`;
+NOT: En az 3-5 emsal karar bulmaya çalış. Bulamazsan "Bu konuda emsal karar bulunamadı" yaz.`;
 
-        // Generate search queries for Yarg�tay and legislation
-        const yargitayQueries = searchTerms.map(kw => `"${kw}" Yarg�tay karar emsal`);
-        const mevzuatQueries = searchTerms.map(kw => `"${kw}" kanun maddesi h�k�m`);
+        // Generate search queries for Yargitay and legislation
+        const yargitayQueries = searchTerms.map(kw => `"${kw}" Yargıtay karar emsal`);
+        const mevzuatQueries = searchTerms.map(kw => `"${kw}" kanun maddesi hüküm`);
         const uyapQueries = searchTerms.map(kw => `"${kw}" site:karararama.yargitay.gov.tr`);
 
         const promptText = `
-## ARAMA G�REV�: YARGITAY KARARLARI VE MEVZUAT
+## ARAMA GÖREVİ: YARGITAY KARARLARI VE MEVZUAT
 
-A�a��daki konularda kapsaml� bir hukuki ara�t�rma yap:
+Aşağıdaki konularda kapsamlı bir hukuki araştırma yap:
 
-### ANAHTAR KEL�MELER
+### ANAHTAR KELİMELER
 ${searchTerms.join(', ')}
 
-### ARAMA STRATEJ�S�
+### ARAMA STRATEJİSİ
 
-**1. Yarg�tay Kararlar� (�ncelikli)**
+**1. Yargıtay Kararları (öncelikli)**
 ${yargitayQueries.map(q => `- ${q}`).join('\n')}
 
 **2. UYAP Karar Arama**
 ${uyapQueries.map(q => `- ${q}`).join('\n')}
 
-**3. Mevzuat Aramas�**
+**3. Mevzuat Araması**
 ${mevzuatQueries.map(q => `- ${q}`).join('\n')}
 
 ---
 
-## BEKLENT�LER
+## BEKLENTİLER
 
-1. **En az 3-5 Yarg�tay karar�** bul (m�mk�nse)
-2. Her karar i�in TAM K�NYES�N� yaz (Daire, E., K., Tarih)
-3. �lgili kanun maddelerini listele
-4. Ara�t�rma �zetini haz�rla
+1. **En az 3-5 Yargıtay kararı** bul (mümkünse)
+2. Her karar için tam künyesini yaz (Daire, E., K., Tarih)
+3. İlgili kanun maddelerini listele
+4. Araştırma özetini hazırla
 
-⚠️ �NEML�: Karar k�nyelerini do�ru ve eksiksiz yaz. Bu bilgiler dilek�ede referans olarak kullan�lacak.
+⚠️ ÖNEMLİ: Karar künyelerini doğru ve eksiksiz yaz. Bu bilgiler dilekçede referans olarak kullanılacak.
 `;
 
         const response = await ai.models.generateContent({
@@ -941,132 +968,132 @@ app.post('/api/gemini/generate-petition', async (req, res) => {
             petitionPayload: params,
         });
 
-        const systemInstruction = `Sen, T�rk hukuk sisteminde 20+ y�l deneyime sahip, �st d�zey bir hukuk dan��man� ve dilek�e yaz�m uzman�s�n.
+        const systemInstruction = `Sen, Türk hukuk sisteminde 20+ yıl deneyime sahip, üst düzey bir hukuk danışmanı ve dilekçe yazım uzmanısın.
 
-## SEN�N G�REV�N
-Sa�lanan ham verileri, profesyonel ve ikna edici bir hukuki anlat�ya d�n��t�rmek. Ham bilgileri oldu�u gibi kopyalamak DE��L, bunlar� hukuki bir dil ve mant�ksal ak�� i�inde sentezlemek.
+## SENİN GÖREVİN
+Sağlanan ham verileri, profesyonel ve ikna edici bir hukuki anlatıya dönüştürmek. Ham bilgileri olduğu gibi kopyalamak değil, bunları hukuki bir dil ve mantıksal akış içinde sentezlemek.
 
-## KR�T�K YAZIM KURALLARI
+## KRİTİK YAZIM KURALLARI
 
-### 1. A�IKLAMALAR B�L�M� NASIL YAZILMALI
-❌ YANLI� (Ham veri d�k�m�):
-"Daval� kurum taraf�ndan m�vekkil H�SEY�N �EL�K ad�na 'ka�ak elektrik tahakkuk hesap detay�' d�zenlenmi� olup, bu belge m�vekkilime tebli� edilmi�tir. ��bu tahakkukta, m�vekkilimin Tesisat No (4004311180), M��teri No (205539133), TC Kimlik No (41038011064)..."
+### 1. AÇIKLAMALAR BÖLÜMÜ NASIL YAZILMALI
+❌ YANLIŞ (Ham veri dökümü):
+"Davalı kurum tarafından müvekkil HÜSEYİN ÇELİK adına 'kaçak elektrik tahakkuk hesap detayı' düzenlenmiş olup, bu belge müvekkilime tebliğ edilmiştir. İşbu tahakkukta, müvekkilimin Tesisat No (4004311180), Müşteri No (205539133), TC Kimlik No (41038011064)..."
 
-✅ DO�RU (Profesyonel hukuki anlat�):
-"1. M�vekkilim, daval� kurumun abonesi olup, s�z konusu ta��nmazda ikamet etmektedir.
+✅ DOĞRU (Profesyonel hukuki anlatı):
+"1. Müvekkilim, davalı kurumun abonesi olup, söz konusu taşınmazda ikamet etmektedir.
 
-2. Daval� kurum, m�vekkilim aleyhine "ka�ak elektrik kullan�m�" iddias�yla tahakkuk i�lemi ba�latm�� ve 25.275,55 TL tutar�nda bor� ��karm��t�r.
+2. Davalı kurum, müvekkilim aleyhine "kaçak elektrik kullanımı" iddiasıyla tahakkuk işlemi başlatmış ve 25.275,55 TL tutarında borç çıkarmıştır.
 
-3. Yap�lan incelemede, m�vekkilimin sayac�n�n (Seri No: CE000624281) herhangi bir m�dahale izine rastlanmam�� olup, iddia edilen ka�ak kullan�m tespiti usuls�z bir �ekilde ger�ekle�tirilmi�tir.
+3. Yapılan incelemede, müvekkilimin sayacının (Seri No: CE000624281) herhangi bir müdahale izine rastlanmamış olup, iddia edilen kaçak kullanım tespiti usulsüz bir şekilde gerçekleştirilmiştir.
 
-4. ��yle ki; [olay detaylar� kronolojik s�rayla anlat�lmal�]..."
+4. Şöyle ki; [olay detayları kronolojik sırayla anlatılmalı]..."
 
-### 2. ⚠️ EMSAL KARARLARIN KULLANIMI (�OK �NEML�)
-Yarg�tay/Dan��tay kararlar� SADECE "HUKUK� SEBEPLER" b�l�m�ne listelenmemeli!
+### 2. ⚠️ EMSAL KARARLARIN KULLANIMI (ÇOK ÖNEMLİ)
+Yargıtay/Danıştay kararları sadece "HUKUKİ SEBEPLER" bölümüne listelenmemeli.
 
-❌ YANLI� (Sadece listeleme):
-"## HUKUK� SEBEPLER
-- Yarg�tay 9. HD., E. 2023/1234, K. 2023/5678
-- Yarg�tay 3. HD., E. 2022/5678, K. 2022/9999"
+❌ YANLIŞ (Sadece listeleme):
+"## HUKUKİ SEBEPLER
+- Yargıtay 9. HD., E. 2023/1234, K. 2023/5678
+- Yargıtay 3. HD., E. 2022/5678, K. 2022/9999"
 
-✅ DO�RU (�lgili arg�manla entegre):
-"## A�IKLAMALAR
+✅ DOĞRU (İlgili argümanla entegre):
+"## AÇIKLAMALAR
 ...
-4. Daval� kurumun iddia etti�i ka�ak elektrik kullan�m�n�n somut delilleri bulunmamaktad�r. Nitekim Yarg�tay 3. Hukuk Dairesi'nin E. 2022/5678, K. 2022/9999, T. 15.03.2023 tarihli karar�nda: 'Ka�ak elektrik kullan�m� iddias�n�n ispat� daval�ya aittir. Saya� m�hr� �zerinde herhangi bir m�dahale izi tespit edilememi�se ka�ak elektrik kullan�m�ndan s�z edilemez' �eklinde h�kmedilmi�tir. Somut olayda da saya�ta herhangi bir m�dahale izi tespit edilememi�tir.
+4. Davalı kurumun iddia ettiği kaçak elektrik kullanımının somut delilleri bulunmamaktadır. Nitekim Yargıtay 3. Hukuk Dairesi'nin E. 2022/5678, K. 2022/9999, T. 15.03.2023 tarihli kararında: 'Kaçak elektrik kullanımı iddiasının ispatı davalıya aittir. Sayaç mührü üzerinde herhangi bir müdahale izi tespit edilememişse kaçak elektrik kullanımından söz edilemez' şeklinde hükmedilmiştir. Somut olayda da sayaçta herhangi bir müdahale izi tespit edilememiştir.
 
-5. Ayr�ca tahakkuk edilen miktar da fahi�tir. Yarg�tay 3. HD., E. 2021/4567 karar�nda da belirtildi�i �zere, 'T�ketim miktar�n�n belirlenmesinde ger�ek t�ketim de�erleri esas al�nmal�d�r.'
+5. Ayrıca tahakkuk edilen miktar da fahiştir. Yargıtay 3. HD., E. 2021/4567 kararında da belirtildiği üzere, 'Tüketim miktarının belirlenmesinde gerçek tüketim değerleri esas alınmalıdır.'
 ..."
 
-### 3. B�L�M YAPISI (Kesin s�ra)
-Her dilek�ede �u b�l�mler MUTLAKA bulunmal� ve bu s�rayla yaz�lmal�:
+### 3. BÖLÜM YAPISI (Kesin sıra)
+Her dilekçede şu bölümler mutlaka bulunmalı ve bu sırayla yazılmalı:
 
-## [MAHKEME/MAKAM ADI - B�Y�K HARFLERLE, ORTALI]
+## [MAHKEME/MAKAM ADI - BÜYÜK HARFLERLE, ORTALI]
 
 **DOSYA NO:** [varsa]
 
 ---
 
-**DAVACI/BA�VURAN:**
+**DAVACI/BAŞVURAN:**
 [Ad Soyad]
 TC: [Kimlik No]
 Adres: [Adres]
 
-**VEK�L�:** [varsa]
+**VEKİLİ:** [varsa]
 [Avukat bilgileri]
 
-**DAVALI/KAR�I TARAF:**
-[Kurum/Ki�i ad�]
+**DAVALI/KARŞI TARAF:**
+[Kurum/Kişi adı]
 Adres: [Adres]
 
 ---
 
-**KONU:** [Tek c�mlelik �zet - �rn: "Ka�ak elektrik tahakkuku iddias�na itiraz hakk�ndad�r."]
+**KONU:** [Tek cümlelik özet - örn: "Kaçak elektrik tahakkuku iddiasına itiraz hakkındadır."]
 
 ---
 
-## A�IKLAMALAR
+## AÇIKLAMALAR
 
-[Numaral� maddeler halinde, her madde ayr� paragraf]
+[Numaralı maddeler halinde, her madde ayrı paragraf]
 
-1. [Giri�: Taraflar�n tan�t�m� ve temel ili�ki]
+1. [Giriş: Tarafların tanıtımı ve temel ilişki]
 
-2. [Olay: Ne oldu, kronolojik anlat�m]
+2. [Olay: Ne oldu, kronolojik anlatım]
 
-3. [Sorun: Neden haks�z/hukuka ayk�r� + DESTEKLEY�C� EMSAL KARAR]
+3. [Sorun: Neden haksız/hukuka aykırı + DESTEKLEYİCİ EMSAL KARAR]
 
-4. [Deliller ve destekleyici arg�manlar + �LG�L� YARGITAY KARARI]
+4. [Deliller ve destekleyici argümanlar + İLGİLİ YARGITAY KARARI]
 
-5. [Sonu� ��kar�m�]
-
----
-
-## HUKUK� SEBEPLER
-
-- [�lgili Kanun maddesi ve a��klamas�]
-- [Yukar�da at�f yap�lan emsal kararlar�n �zet listesi]
+5. [Sonuç çıkarımı]
 
 ---
 
-## DEL�LLER
+## HUKUKİ SEBEPLER
+
+- [İlgili Kanun maddesi ve açıklaması]
+- [Yukarıda atıf yapılan emsal kararların özet listesi]
+
+---
+
+## DELİLLER
 
 1. [Delil listesi]
 
 ---
 
-## SONU� VE �STEM
+## SONUÇ VE İSTEM
 
-Yukar�da arz ve izah edilen sebeplerle;
+Yukarıda arz ve izah edilen sebeplerle;
 - [Talep 1]
 - [Talep 2]
-... karar� verilmesini sayg�lar�mla arz ve talep ederim.
+... kararı verilmesini saygılarımla arz ve talep ederim.
 
 [Tarih]
 [Ad Soyad / Vekil]
 
-### 4. D�L VE �SLUP KURALLARI
-- "M�vekkil" kelimesini tutarl� kullan
-- Resmi hitap formu kullan: "Say�n Mahkemeniz", "arz ve talep ederim"
-- Teknik verileri (TC No, dosya no) ak�c� c�mle i�inde yerle�tir, liste olarak de�il
-- Hukuki terimler kullan: "haks�z fiil", "usuls�z i�lem", "hukuka ayk�r�l�k" vb.
-- Her paragraf bir ana fikir i�ermeli
-- Gereksiz tekrarlardan ka��n
-- EMSAL KARARLARI ilgili arg�mana entegre et, ayr� liste yapma`;
+### 4. DİL VE ÜSLUP KURALLARI
+- "Müvekkil" kelimesini tutarlı kullan
+- Resmi hitap formu kullan: "Sayın Mahkemeniz", "arz ve talep ederim"
+- Teknik verileri (TC No, dosya no) akıcı cümle içinde yerleştir, liste olarak değil
+- Hukuki terimler kullan: "haksız fiil", "usulsüz işlem", "hukuka aykırılık" vb.
+- Her paragraf bir ana fikir içermeli
+- Gereksiz tekrarlardan kaçın
+- EMSAL KARARLARI ilgili argümana entegre et, ayrı liste yapma`;
 
         const promptText = `
-## D�LEK�E OLU�TURMA TAL�MATI
+## DİLEKÇE OLUŞTURMA TALİMATI
 
-A�a��daki HAM VER�LER� kullanarak PROFESYONEL bir T�rk hukuk dilek�esi haz�rla.
+Aşağıdaki ham verileri kullanarak profesyonel bir Türk hukuk dilekçesi hazırla.
 
-⚠️ �NEML�: Ham verileri oldu�u gibi kopyalama! Bunlar� hukuki bir anlat�ya d�n��t�r.
+⚠️ ÖNEMLİ: Ham verileri olduğu gibi kopyalama. Bunları hukuki bir anlatıya dönüştür.
 
 ---
 
-### G�RD� VER�LER�
+### GİRDİ VERİLERİ
 
-**Dilek�e T�r�:** ${params.petitionType}
-**Kullan�c�n�n Rol�:** ${params.userRole}
+**Dilekçe Türü:** ${params.petitionType}
+**Kullanıcının Rolü:** ${params.userRole}
 
-**Dava K�nyesi:**
+**Dava Künyesi:**
 ${formatCaseDetailsForPrompt(params.caseDetails)}
 
 **Vekil Bilgileri:**
@@ -1075,22 +1102,22 @@ ${formatLawyerInfoForPrompt(params.lawyerInfo)}
 **Taraflar:**
 ${formatPartiesForPrompt(params.parties)}
 
-**Olay �zeti (Ham):**
-${params.analysisSummary || "Olay �zeti sa�lanmad�."}
+**Olay Özeti (Ham):**
+${params.analysisSummary || "Olay özeti sağlanmadı."}
 
-**Hukuki Ara�t�rma:**
-${params.webSearchResult || "Web ara�t�rmas� sonucu sa�lanmad�."}
+**Hukuki Araştırma:**
+${params.webSearchResult || "Web araştırması sonucu sağlanmadı."}
 
-**Emsal Yarg�tay/Dan��tay Kararlar�:**
-${params.legalSearchResult || "Emsal karar ara�t�rmas� yap�lmad�."}
+**Emsal Yargıtay/Danıştay Kararları:**
+${params.legalSearchResult || "Emsal karar araştırması yapılmadı."}
 
 **Ek Notlar:**
-${params.docContent || "Ek metin sa�lanmad�."}
+${params.docContent || "Ek metin sağlanmadı."}
 
-**�zel Talimatlar:**
-${params.specifics || "�zel talimat sa�lanmad�."}
+**Özel Talimatlar:**
+${params.specifics || "Özel talimat sağlanmadı."}
 
-**Sohbet Ge�mi�i:**
+**Sohbet Geçmişi:**
 ${formatChatHistoryForPrompt(params.chatHistory)}
 
 **RAG Destek Baglami (ilgili parcalar):**
@@ -1098,15 +1125,15 @@ ${ragContext || "RAG baglami bulunamadi."}
 
 ---
 
-## BEKLENEN �IKTI
+## BEKLENEN ÇIKTI
 
-Yukar�daki ham verileri kullanarak:
-1. Profesyonel, ikna edici bir hukuki anlat� olu�tur
-2. Her b�l�m� (A�IKLAMALAR, HUKUK� SEBEPLER, DEL�LLER, SONU� VE �STEM) ayr� ayr� formatla
-3. Numaral� maddelerde ak�c� paragraflar kullan, ham veri listesi de�il
-4. Mahkemeye sunulmaya haz�r, resmi bir dilek�e format�nda yaz
-5. Markdown format�n� kullan (## ba�l�klar, **kal�n**, 1. 2. 3. listeler)
-6. ⚠️ EMSAL KARARLARI: Yarg�tay kararlar�n� ilgili arg�manla birlikte A�IKLAMALAR b�l�m�nde kullan. "Nitekim Yarg�tay X. HD., E. .../..., K. .../... karar�nda '...' �eklinde h�kmedilmi�tir" format�nda entegre et.
+Yukarıdaki ham verileri kullanarak:
+1. Profesyonel, ikna edici bir hukuki anlatı oluştur.
+2. Her bölümü (AÇIKLAMALAR, HUKUKİ SEBEPLER, DELİLLER, SONUÇ VE İSTEM) ayrı ayrı formatla.
+3. Numaralı maddelerde akıcı paragraflar kullan, ham veri listesi yazma.
+4. Mahkemeye sunulmaya hazır, resmi bir dilekçe formatında yaz.
+5. Markdown formatını kullan (## başlıklar, **kalın**, 1. 2. 3. listeler).
+6. ⚠️ EMSAL KARARLARI: Yargıtay kararlarını ilgili argümanla birlikte AÇIKLAMALAR bölümünde kullan. "Nitekim Yargıtay X. HD., E. .../..., K. .../... kararında '...' şeklinde hükmedilmiştir" formatında entegre et.
 `;
 
         const response = await ai.models.generateContent({
@@ -1151,7 +1178,10 @@ const decodeBase64Utf8 = (base64Value = '') => {
     }
 };
 
-const truncateChatSearchText = (value = '', maxLen = 160) => {
+const CHAT_VISIBLE_LEGAL_RESULT_LIMIT = 5;
+const CHAT_LEGAL_SUMMARY_PREVIEW_CHARS = 480;
+
+const truncateChatSearchText = (value = '', maxLen = CHAT_LEGAL_SUMMARY_PREVIEW_CHARS) => {
     const raw = String(value || '').replace(/\s+/g, ' ').trim();
     if (!raw || raw.length <= maxLen) return raw;
     return `${raw.slice(0, Math.max(0, maxLen - 3)).trim()}...`;
@@ -1243,93 +1273,93 @@ app.post('/api/gemini/chat', async (req, res) => {
         const systemUtcIso = now.toISOString();
 
         const contextPrompt = `
-**MEVCUT DURUM VE BA�LAM:**
-- **Vaka �zeti:** ${analysisSummary || "Hen�z analiz yap�lmad�."}
-- **Mevcut Arama Anahtar Kelimeleri:** ${safeContext.keywords || "Hen�z anahtar kelime olu�turulmad�."}
-- **Web Ara�t�rma �zeti:** ${safeContext.searchSummary || "Hen�z web ara�t�rmas� yap�lmad�."}
-- **Emsal Karar �zeti:** ${safeContext.legalSummary || "Hen�z emsal karar �zeti sa�lanmad�."}
-- **Kullan�c�n�n Ek Metinleri:** ${safeContext.docContent || "Ek metin sa�lanmad�."}
-- **Kullan�c�n�n �zel Talimatlar�:** ${safeContext.specifics || "�zel talimat sa�lanmad�."}
+**MEVCUT DURUM VE BAĞLAM:**
+- **Vaka Özeti:** ${analysisSummary || "Henüz analiz yapılmadı."}
+- **Mevcut Arama Anahtar Kelimeleri:** ${safeContext.keywords || "Henüz anahtar kelime oluşturulmadı."}
+- **Web Araştırma Özeti:** ${safeContext.searchSummary || "Henüz web araştırması yapılmadı."}
+- **Emsal Karar Özeti:** ${safeContext.legalSummary || "Henüz emsal karar özeti sağlanmadı."}
+- **Kullanıcının Ek Metinleri:** ${safeContext.docContent || "Ek metin sağlanmadı."}
+- **Kullanıcının Özel Talimatları:** ${safeContext.specifics || "Özel talimat sağlanmadı."}
 - **RAG Destek Baglami:** ${ragContext || "RAG baglami bulunamadi."}
 - **Sistem Tarihi (Europe/Istanbul):** ${systemDateIstanbul}
 - **Sistem Saati (Europe/Istanbul):** ${systemTimeIstanbul}
 - **UTC Zaman Damgasi:** ${systemUtcIso}
-${requestFiles.length > 0 ? `- **Y�klenen Belgeler:** ${requestFiles.length} adet dosya y�klendi (${requestFiles.map(f => f.name).join(', ')})` : ''}
+${requestFiles.length > 0 ? `- **Yüklenen Belgeler:** ${requestFiles.length} adet dosya yüklendi (${requestFiles.map(f => f.name).join(', ')})` : ''}
 `;
 
-        const systemInstruction = `Sen, T�rk Hukuku konusunda uzman, yard�msever ve proaktif bir hukuk asistan�s�n.
+        const systemInstruction = `Sen, Türk Hukuku konusunda uzman, yardımsever ve proaktif bir hukuk asistanısın.
 
-**SEN�N G�REVLER�N:**
-1. Kullan�c�n�n hukuki sorular�n� yan�tlamak
-2. Dava stratejisi konusunda beyin f�rt�nas� yapmak
-3. Hukuki terimleri a��klamak
-4. **BELGE ANAL�Z�: Kullan�c� dosya y�kledi�inde, bu dosyalar� analiz et ve sorular�n� yan�tla**
-5. **�NEML�: Kullan�c� belge/dilek�e/talep haz�rlaman� istedi�inde, generate_document fonksiyonunu kullan**
-6. **KR�T�K: Kullan�c� Yarg�tay karar�/emsal karar aramas� istedi�inde, GER�EK bir Google aramas� yap**
+**SENİN GÖREVLERİN:**
+1. Kullanıcının hukuki sorularını yanıtlamak
+2. Dava stratejisi konusunda beyin fırtınası yapmak
+3. Hukuki terimleri açıklamak
+4. **BELGE ANALİZİ:** Kullanıcı dosya yüklediğinde, bu dosyaları analiz et ve sorularını yanıtla
+5. **ÖNEMLİ:** Kullanıcı belge/dilekçe/talep hazırlamanı istediğinde, generate_document fonksiyonunu kullan
+6. **KRİTİK:** Kullanıcı Yargıtay kararı/emsal karar araması istediğinde, gerçek bir web araması yap
 
-**BELGE ANAL�Z� KURALLARI:**
-Kullan�c� dosya y�kledi�inde:
-- PDF veya resim dosyalar�n� dikkatlice incele
-- ��eri�i �zetle ve anahtar bilgileri ��kar
-- Hukuki a��dan �nemli noktalar� vurgula
-- Kullan�c�n�n sorular�n� belge i�eri�ine g�re yan�tla
+**BELGE ANALİZİ KURALLARI:**
+Kullanıcı dosya yüklediğinde:
+- PDF veya resim dosyalarını dikkatlice incele
+- İçeriği özetle ve anahtar bilgileri çıkar
+- Hukuki açıdan önemli noktaları vurgula
+- Kullanıcının sorularını belge içeriğine göre yanıtla
 
 **YARGITAY KARARI ARAMA KURALLARI:**
-Kullan�c� sorusunu once analiz et; sadece gerekliyse GERCEK bir web aramasi yap:
-- "Yarg�tay karar� ara", "emsal karar bul", "i�tihat ara�t�r"
-- "Bu konuda Yarg�tay ne diyor?", "Yarg�tay kararlar�n� bul"
-- "Karar k�nyesi ver", "emsal karar listele"
+Kullanıcı sorusunu önce analiz et; sadece gerekliyse gerçek bir web araması yap:
+- "Yargıtay kararı ara", "emsal karar bul", "içtihat araştır"
+- "Bu konuda Yargıtay ne diyor?", "Yargıtay kararlarını bul"
+- "Karar künyesi ver", "emsal karar listele"
 
 Arama yaparken:
-1. Mevcut ba�lamdaki anahtar kelimeleri kullan
-2. "site:karararama.yargitay.gov.tr" veya "Yarg�tay" anahtar kelimesi ekle
-3. Bulunan kararlar�n TAM K�NYES�N� ver (Daire, Esas No, Karar No, Tarih)
-4. Her karar i�in k�sa bir �zet yaz
+1. Mevcut bağlamdaki anahtar kelimeleri kullan
+2. "site:karararama.yargitay.gov.tr" veya "Yargıtay" anahtar kelimesi ekle
+3. Bulunan kararların tam künyesini ver (Daire, Esas No, Karar No, Tarih)
+4. Her karar için kısa bir özet yaz
 
-**�IKTI FORMATI (Yarg�tay Aramas�):**
+**ÇIKTI FORMATI (Yargıtay Araması):**
 ### BULUNAN YARGITAY KARARLARI
 
-**1. Yarg�tay X. HD., E. XXXX/XXXX, K. XXXX/XXXX, T. XX.XX.XXXX**
-�zet: [Karar �zeti]
+**1. Yargıtay X. HD., E. XXXX/XXXX, K. XXXX/XXXX, T. XX.XX.XXXX**
+Özet: [Karar özeti]
 Kaynak: [URL varsa]
 
 **2. ...**
 
-**BELGE TALEB� TESP�T KURALLARI:**
-Kullan�c� �unlar� s�yledi�inde generate_document fonksiyonunu MUTLAKA �a��r:
-- "... haz�rla", "... olu�tur", "... yaz" (dilek�e, talep, itiraz vb. ile birlikte)
-- "haricen tahsil talebi", "ihtarname", "feragat dilek�esi" vb. belge isimleri
-- "bana bir ... haz�rla"
-- "... i�in dilek�e laz�m"
+**BELGE TALEBİ TESPİT KURALLARI:**
+Kullanıcı şunları söylediğinde generate_document fonksiyonunu mutlaka çağır:
+- "... hazırla", "... oluştur", "... yaz" (dilekçe, talep, itiraz vb. ile birlikte)
+- "haricen tahsil talebi", "ihtarname", "feragat dilekçesi" vb. belge isimleri
+- "bana bir ... hazırla"
+- "... için dilekçe lazım"
 
-**BELGE T�R� �RNEKLER�:**
-- harici_tahsil_talebi: Haricen tahsil talebi/yaz�s�
-- ihtarname: �htarname
-- dava_dilek�esi: Dava dilek�esi
-- itiraz_dilek�esi: �tiraz dilek�esi
-- feragat_dilek�esi: Feragat dilek�esi
-- cevap_dilek�esi: Cevap dilek�esi
-- temyiz_dilek�esi: Temyiz dilek�esi
-- icra_takip_talebi: �cra takip talebi
-- genel_dilek�e: Genel dilek�e/belge
+**BELGE TÜRÜ ÖRNEKLERİ:**
+- harici_tahsil_talebi: Haricen tahsil talebi/yazısı
+- ihtarname: İhtarname
+- dava_dilekçesi: Dava dilekçesi
+- itiraz_dilekçesi: İtiraz dilekçesi
+- feragat_dilekçesi: Feragat dilekçesi
+- cevap_dilekçesi: Cevap dilekçesi
+- temyiz_dilekçesi: Temyiz dilekçesi
+- icra_takip_talebi: İcra takip talebi
+- genel_dilekçe: Genel dilekçe/belge
 
 **LIMIT KURALI:**
 - Belge olustururken mutlaka generate_document fonksiyonunu kullan.
 - generate_document fonksiyonu cagirmadan tam belge metni verme.
 
-��te mevcut davan�n ba�lam�:
+İşte mevcut davanın bağlamı:
 ${contextPrompt}
 ${allowSearchYargitayTool
-                ? 'Kullanici acikca emsal/ictihat talep ettiginde search_yargitay fonksiyonunu kullan.'
-                : 'Kullanici talep etmedikce search_yargitay fonksiyonunu cagirma.'}
+                ? 'Kullanıcı açıkça emsal/içtihat talep ettiğinde search_yargitay fonksiyonunu kullan.'
+                : 'Kullanıcı talep etmedikçe search_yargitay fonksiyonunu çağırma.'}
 
 
-T�rk�e yan�t ver. Soruyu once analiz et; tanim/genel sorularda aramayi zorunlu tutma ve kisa mevzuat cevabi ver. Uygulama/uyusmazlik sorularinda gerekli gordugunde arama yap. Tarih/saat sorularinda, baglamdaki sistem tarih-saat bilgisini esas al.`;
+Türkçe yanıt ver. Soruyu önce analiz et; tanım/genel sorularda aramayı zorunlu tutma ve kısa mevzuat cevabı ver. Uygulama/uyuşmazlık sorularında gerekli gördüğünde arama yap. Tarih/saat sorularında, bağlamdaki sistem tarih-saat bilgisini esas al.`;
 
         // Function for updating keywords
         const updateKeywordsFunction = {
             name: 'update_search_keywords',
-            description: 'Kullan�c� anahtar kelime eklenmesini istedi�inde bu fonksiyonu kullan.',
+            description: 'Kullanıcı anahtar kelime eklenmesini istediğinde bu fonksiyonu kullan.',
             parameters: {
                 type: Type.OBJECT,
                 properties: {
@@ -1346,41 +1376,41 @@ T�rk�e yan�t ver. Soruyu once analiz et; tanim/genel sorularda aramayi zor
         // Function for generating documents directly in chat
         const generateDocumentFunction = {
             name: 'generate_document',
-            description: 'Kullan�c� bir belge, dilek�e veya resmi yaz� haz�rlanmas�n� istedi�inde bu fonksiyonu kullan. �rnek: "harici tahsil talebi haz�rla", "ihtarname yaz", "feragat dilek�esi olu�tur".',
+            description: 'Kullanıcı bir belge, dilekçe veya resmi yazı hazırlanmasını istediğinde bu fonksiyonu kullan. Örnek: "harici tahsil talebi hazırla", "ihtarname yaz", "feragat dilekçesi oluştur".',
             parameters: {
                 type: Type.OBJECT,
                 properties: {
                     documentType: {
                         type: Type.STRING,
-                        description: 'Belge t�r�: harici_tahsil_talebi, ihtarname, dava_dilek�esi, itiraz_dilek�esi, feragat_dilek�esi, cevap_dilek�esi, temyiz_dilek�esi, icra_takip_talebi, genel_dilek�e'
+                        description: 'Belge türü: harici_tahsil_talebi, ihtarname, dava_dilekçesi, itiraz_dilekçesi, feragat_dilekçesi, cevap_dilekçesi, temyiz_dilekçesi, icra_takip_talebi, genel_dilekçe'
                     },
                     documentTitle: {
                         type: Type.STRING,
-                        description: 'Belgenin ba�l��� (�rn: "HAR�CEN TAHS�L TALEB�", "�HTARNAME")'
+                        description: 'Belgenin başlığı (örn: "HARİCEN TAHSİL TALEBİ", "İHTARNAME")'
                     },
                     documentContent: {
                         type: Type.STRING,
-                        description: 'Belgenin tam i�eri�i - T�rk hukuk format�na uygun, markdown format�nda, b�l�mlere ayr�lm��. Mevcut ba�lam bilgilerini kullan.'
+                        description: 'Belgenin tam içeriği - Türk hukuk formatına uygun, markdown formatında, bölümlere ayrılmış. Mevcut bağlam bilgilerini kullan.'
                     }
                 },
                 required: ['documentType', 'documentTitle', 'documentContent'],
             },
         };
-        // Function for searching Yarg�tay decisions
+        // Function for searching Yargitay decisions
         const searchYargitayFunction = {
             name: 'search_yargitay',
-            description: 'Kullan�c� Yarg�tay karar� aramas� istedi�inde bu fonksiyonu kullan. �rnek: "Yarg�tay karar� ara", "emsal karar bul", "i�tihat ara�t�r".',
+            description: 'Kullanıcı Yargıtay kararı araması istediğinde bu fonksiyonu kullan. Örnek: "Yargıtay kararı ara", "emsal karar bul", "içtihat araştır".',
             parameters: {
                 type: Type.OBJECT,
                 properties: {
                     searchQuery: {
                         type: Type.STRING,
-                        description: 'Aranacak konu. Mevcut ba�lamdaki anahtar kelimeleri ve konuyu i�ermeli.'
+                        description: 'Aranacak konu. Mevcut bağlamdaki anahtar kelimeleri ve konuyu içermeli.'
                     },
                     keywords: {
                         type: Type.ARRAY,
                         items: { type: Type.STRING },
-                        description: 'Arama i�in kullan�lacak anahtar kelimeler listesi'
+                        description: 'Arama için kullanılacak anahtar kelimeler listesi'
                     }
                 },
                 required: ['searchQuery'],
@@ -1515,7 +1545,7 @@ T�rk�e yan�t ver. Soruyu once analiz et; tanim/genel sorularda aramayi zor
 
                 const searchResult = await searchEmsalFallback(searchQuery);
                 const visibleResults = Array.isArray(searchResult.results)
-                    ? searchResult.results.slice(0, 3)
+                    ? searchResult.results.slice(0, CHAT_VISIBLE_LEGAL_RESULT_LIMIT)
                     : [];
                 const hiddenCount = Math.max(0, (searchResult.results?.length || 0) - visibleResults.length);
 
@@ -1527,7 +1557,7 @@ T�rk�e yan�t ver. Soruyu once analiz et; tanim/genel sorularda aramayi zor
                         if (result.kararNo) formattedResults += `K. ${result.kararNo} `;
                         if (result.tarih) formattedResults += `T. ${result.tarih}`;
                         formattedResults += '\n';
-                        if (result.ozet) formattedResults += `Ozet: ${truncateChatSearchText(result.ozet, 160)}\n\n`;
+                        if (result.ozet) formattedResults += `Ozet: ${truncateChatSearchText(result.ozet)}\n\n`;
                     });
                     if (hiddenCount > 0) {
                         formattedResults += `+ ${hiddenCount} ek karar bulundu. Tam liste baglama eklendi.\n`;
@@ -1984,28 +2014,28 @@ app.post('/api/gemini/review', async (req, res) => {
         const systemInstruction = `You are a senior Turkish legal editor...`;
 
         const promptText = `
-**Gï¿½REV: Aï¿½Aï¿½IDAKï¿½ MEVCUT Dï¿½LEKï¿½E TASLAï¿½INI, SAï¿½LANAN BAï¿½LAM Bï¿½LGï¿½LERï¿½Nï¿½ KULLANARAK Gï¿½ZDEN GEï¿½ï¿½R VE ï¿½Yï¿½LEï¿½Tï¿½R.**
+**GÖREV: AŞAĞIDAKİ MEVCUT DİLEKÇE TASLAĞINI, SAĞLANAN BAĞLAM BİLGİLERİNİ KULLANARAK GÖZDEN GEÇİR VE İYİLEŞTİR.**
 
-**1. ï¿½Yï¿½LEï¿½Tï¿½Rï¿½LECEK MEVCUT Dï¿½LEKï¿½E TASLAï¿½I:**
+**1. İYİLEŞTİRİLECEK MEVCUT DİLEKÇE TASLAĞI:**
 ---
 ${params.currentPetition}
 ---
 
-**2. Dï¿½LEKï¿½ENï¿½N HAZIRLANMASINDA KULLANILAN ORï¿½Jï¿½NAL BAï¿½LAM Bï¿½LGï¿½LERï¿½:**
-- **KULLANICININ ROLï¿½:** ${params.userRole}
-- **Dï¿½LEKï¿½E Tï¿½Rï¿½:** ${params.petitionType}
-- **DAVA Kï¿½NYESï¿½:** ${formatCaseDetailsForPrompt(params.caseDetails)}
-- **VEKï¿½L Bï¿½LGï¿½LERï¿½:** ${formatLawyerInfoForPrompt(params.lawyerInfo)}
-- **ï¿½LETï¿½ï¿½ï¿½M Bï¿½LGï¿½LERï¿½:** ${formatContactInfoForPrompt(params.contactInfo)}
-- **OLAYIN ï¿½ZETï¿½:** ${params.analysisSummary}
+**2. DİLEKÇENİN HAZIRLANMASINDA KULLANILAN ORİJİNAL BAĞLAM BİLGİLERİ:**
+- **KULLANICININ ROLÜ:** ${params.userRole}
+- **DİLEKÇE TÜRÜ:** ${params.petitionType}
+- **DAVA KÜNYESİ:** ${formatCaseDetailsForPrompt(params.caseDetails)}
+- **VEKİL BİLGİLERİ:** ${formatLawyerInfoForPrompt(params.lawyerInfo)}
+- **İLETİŞİM BİLGİLERİ:** ${formatContactInfoForPrompt(params.contactInfo)}
+- **OLAYIN ÖZETİ:** ${params.analysisSummary}
 - **TARAFLAR:** ${formatPartiesForPrompt(params.parties)}
-- **ï¿½LGï¿½Lï¿½ HUKUKï¿½ ARAï¿½TIRMA:** ${params.webSearchResult}
-- **EK METï¿½N VE NOTLAR:** ${params.docContent}
-- **ï¿½ZEL TALï¿½MATLAR:** ${params.specifics}
-- **ï¿½NCEKï¿½ SOHBET GEï¿½Mï¿½ï¿½ï¿½:** ${formatChatHistoryForPrompt(params.chatHistory)}
+- **İLGİLİ HUKUKİ ARAŞTIRMA:** ${params.webSearchResult}
+- **EK METİN VE NOTLAR:** ${params.docContent}
+- **ÖZEL TALİMATLAR:** ${params.specifics}
+- **ÖNCEKİ SOHBET GEÇMİŞİ:** ${formatChatHistoryForPrompt(params.chatHistory)}
 
-**ï¿½Yï¿½LEï¿½Tï¿½Rï¿½LMï¿½ï¿½ Nï¿½HAï¿½ Dï¿½LEKï¿½E METNï¿½:**
-[Buraya, yukarï¿½daki taslaï¿½ï¿½ tï¿½m baï¿½lamï¿½ dikkate alarak daha gï¿½ï¿½lï¿½, ikna edici ve hukuken saï¿½lam hale getirilmiï¿½ tam dilekï¿½e metnini yaz.]
+**İYİLEŞTİRİLMİŞ NİHAİ DİLEKÇE METNİ:**
+[Buraya, yukarıdaki taslağı tüm bağlamı dikkate alarak daha güçlü, ikna edici ve hukuken sağlam hale getirilmiş tam dilekçe metnini yaz.]
 `;
 
         const response = await ai.models.generateContent({
@@ -2022,2266 +2052,6 @@ ${params.currentPetition}
 });
 
 // ============================================
-// YARGI MCP - LEGAL DECISION SEARCH ENDPOINTS
-// ============================================
-
-// Direct API endpoints (Bedesten)
-const BEDESTEN_BASE_URL = 'https://bedesten.adalet.gov.tr';
-const BEDESTEN_SEARCH_URL = `${BEDESTEN_BASE_URL}/emsal-karar/searchDocuments`;
-const BEDESTEN_DOCUMENT_URL = `${BEDESTEN_BASE_URL}/emsal-karar/getDocumentContent`;
-const YARGI_MCP_URL = String(process.env.YARGI_MCP_URL || 'https://yargimcp.fastmcp.app/mcp/').trim();
-const YARGI_MCP_PROTOCOL_VERSION = process.env.YARGI_MCP_PROTOCOL_VERSION || '2024-11-05';
-const YARGI_MCP_TIMEOUT_MS = Number(process.env.YARGI_MCP_TIMEOUT_MS || 25000);
-const YARGI_MCP_RATE_LIMIT_COOLDOWN_MS = Number(process.env.YARGI_MCP_RATE_LIMIT_COOLDOWN_MS || 45000);
-const USE_YARGI_MCP = process.env.LEGAL_USE_YARGI_MCP !== '0';
-const STRICT_MCP_ONLY = process.env.LEGAL_STRICT_MCP !== '0';
-let yargiMcpCooldownUntil = 0;
-
-const YARGI_MCP_COURT_TYPES_BY_SOURCE = {
-    yargitay: ['YARGITAYKARARI'],
-    danistay: ['DANISTAYKARAR'],
-    uyap: ['YERELHUKUK', 'ISTINAFHUKUK', 'KYB'],
-    anayasa: ['YARGITAYKARARI', 'DANISTAYKARAR', 'YERELHUKUK', 'ISTINAFHUKUK', 'KYB'],
-    all: ['YARGITAYKARARI', 'DANISTAYKARAR', 'YERELHUKUK', 'ISTINAFHUKUK', 'KYB'],
-};
-
-const isYargiMcpCoolingDown = () => Date.now() < yargiMcpCooldownUntil;
-const getYargiMcpCooldownRemainingMs = () => Math.max(0, yargiMcpCooldownUntil - Date.now());
-const isUpstreamRateLimitError = (error) => {
-    const haystack = [
-        error?.message || '',
-        error?.cause?.message || '',
-        error?.code || '',
-        error?.status || '',
-    ].join(' ').toLowerCase();
-
-    return haystack.includes('rate limited')
-        || haystack.includes('too many requests')
-        || haystack.includes('retry later')
-        || haystack.includes('http 429')
-        || haystack.includes('status 429')
-        || haystack.includes(' 429');
-};
-const activateYargiMcpCooldown = (reason = '') => {
-    yargiMcpCooldownUntil = Math.max(yargiMcpCooldownUntil, Date.now() + YARGI_MCP_RATE_LIMIT_COOLDOWN_MS);
-    const safeReason = String(reason || '').trim();
-    console.warn(`[YARGI_MCP] Cooling down for ${Math.round(YARGI_MCP_RATE_LIMIT_COOLDOWN_MS / 1000)}s${safeReason ? ` after: ${safeReason}` : ''}`);
-};
-const shouldBypassStrictMcp = (error) => isUpstreamRateLimitError(error);
-const BEDESTEN_TIMEOUT_MS = Number(process.env.BEDESTEN_TIMEOUT_MS || 15000);
-const LEGAL_ROUTER_TIMEOUT_MS = Number(process.env.LEGAL_ROUTER_TIMEOUT_MS || 8000);
-const LEGAL_RESULT_RETURN_LIMIT = Math.max(10, Math.min(100, Number(process.env.LEGAL_RESULT_RETURN_LIMIT || 50)));
-const LEGAL_CONTENT_RERANK_LIMIT = Math.max(LEGAL_RESULT_RETURN_LIMIT, Math.min(100, Number(process.env.LEGAL_CONTENT_RERANK_LIMIT || 50)));
-const LEGAL_QUERY_VARIANT_LIMIT = Math.max(6, Math.min(20, Number(process.env.LEGAL_QUERY_VARIANT_LIMIT || 10)));
-const LEGAL_VARIANT_RESULT_CAP = Math.max(LEGAL_RESULT_RETURN_LIMIT, Math.min(150, Number(process.env.LEGAL_VARIANT_RESULT_CAP || 50)));
-const USE_GEMINI_SEMANTIC_RERANK = process.env.LEGAL_USE_GEMINI_SEMANTIC !== '0';
-const LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT = Math.max(LEGAL_RESULT_RETURN_LIMIT, Math.min(100, Number(process.env.LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT || 50)));
-const LEGAL_RELATED_RESULT_TARGET = Math.max(
-    5,
-    Math.min(
-        LEGAL_RESULT_RETURN_LIMIT,
-        Number(process.env.LEGAL_RELATED_RESULT_TARGET || LEGAL_RESULT_RETURN_LIMIT)
-    )
-);
-const LEGAL_DEBUG_SEARCH = process.env.LEGAL_DEBUG_SEARCH !== '0';
-
-const createLegalDebugId = () => `ls-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-
-const buildLegalResultSample = (results = [], max = 3) => {
-    if (!Array.isArray(results) || results.length === 0) return [];
-    return results.slice(0, max).map((item) => ({
-        documentId: item?.documentId || item?.id || '',
-        title: item?.title || '',
-        daire: item?.daire || item?.birimAdi || '',
-        relevanceScore: Number(item?.relevanceScore || 0),
-    }));
-};
-
-const logLegalSearchDebug = (debugId, stage, payload = {}) => {
-    if (!LEGAL_DEBUG_SEARCH) return;
-    try {
-        console.warn(`[LEGAL_DEBUG][${debugId}] ${stage}: ${JSON.stringify(payload)}`);
-    } catch {
-        console.warn(`[LEGAL_DEBUG][${debugId}] ${stage}`);
-    }
-};
-
-const stripHtmlToText = (html = '') => {
-    if (!html || typeof html !== 'string') return '';
-    return html
-        .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-        .replace(/<br\s*\/?>/gi, '\n')
-        .replace(/<\/(p|div|tr|li|h1|h2|h3|h4|h5|h6)>/gi, '\n')
-        .replace(/<li[^>]*>/gi, '- ')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/&nbsp;/gi, ' ')
-        .replace(/&amp;/gi, '&')
-        .replace(/&quot;/gi, '"')
-        .replace(/&#39;/gi, "'")
-        .replace(/\r/g, '')
-        .replace(/[ \t]+\n/g, '\n')
-        .replace(/\n{3,}/g, '\n\n')
-        .replace(/[ \t]{2,}/g, ' ')
-        .trim();
-};
-
-const maybeExtractJson = (text = '') => {
-    if (!text || typeof text !== 'string') return null;
-    const cleaned = text.replace(/```json/gi, '').replace(/```/g, '').trim();
-    try {
-        return JSON.parse(cleaned);
-    } catch {
-        // ignore
-    }
-
-    const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
-    if (arrayMatch) {
-        try {
-            return JSON.parse(arrayMatch[0]);
-        } catch {
-            // ignore
-        }
-    }
-
-    const objectMatch = cleaned.match(/\{[\s\S]*\}/);
-    if (objectMatch) {
-        try {
-            return JSON.parse(objectMatch[0]);
-        } catch {
-            // ignore
-        }
-    }
-
-    return null;
-};
-
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-const withTimeout = async (promise, timeoutMs, timeoutMessage = `Timeout after ${timeoutMs}ms`) => {
-    let timer = null;
-    try {
-        const timeoutPromise = new Promise((_, reject) => {
-            timer = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
-        });
-        return await Promise.race([promise, timeoutPromise]);
-    } finally {
-        if (timer) clearTimeout(timer);
-    }
-};
-
-const fetchWithTimeout = async (url, init = {}, timeoutMs = BEDESTEN_TIMEOUT_MS) => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-        return await fetch(url, { ...init, signal: controller.signal });
-    } catch (error) {
-        if (error?.name === 'AbortError') {
-            const timeoutError = new Error(`Timeout after ${timeoutMs}ms`);
-            timeoutError.code = 'REQUEST_TIMEOUT';
-            throw timeoutError;
-        }
-        throw error;
-    } finally {
-        clearTimeout(timer);
-    }
-};
-
-const normalizeYargiMcpUrl = () => {
-    const raw = String(YARGI_MCP_URL || '').trim();
-    if (!raw) {
-        throw new Error('YARGI_MCP_URL tanimli degil.');
-    }
-    return raw.endsWith('/') ? raw : `${raw}/`;
-};
-
-const normalizeYargiMcpBirimAdi = (value = 'ALL') => {
-    const raw = String(value || '').trim().toUpperCase();
-    if (!raw || raw === 'ALL') return 'ALL';
-    if (/^(H([1-9]|1\d|2[0-3])|C([1-9]|1\d|2[0-3])|D([1-9]|1[0-7])|HGK|CGK|BGK|HBK|CBK|DBGK|IDDK|VDDK|IBK|IIK|DBK|AYIM|AYIMDK|AYIMB|AYIM1|AYIM2|AYIM3)$/.test(raw)) {
-        return raw;
-    }
-    return 'ALL';
-};
-
-const parseMcpEventPayload = (rawText = '') => {
-    const text = String(rawText || '').trim();
-    if (!text) return null;
-
-    const dataLines = text
-        .split(/\r?\n/)
-        .filter((line) => line.startsWith('data:'))
-        .map((line) => line.slice(5).trim())
-        .filter(Boolean);
-
-    if (dataLines.length === 0) {
-        return maybeExtractJson(text);
-    }
-    return maybeExtractJson(dataLines.join('\n'));
-};
-
-const postYargiMcp = async (payload, sessionId = '') => {
-    const endpoint = normalizeYargiMcpUrl();
-    const headers = {
-        'Content-Type': 'application/json',
-        Accept: 'application/json, text/event-stream',
-    };
-    if (sessionId) {
-        headers['mcp-session-id'] = sessionId;
-    }
-
-    const response = await fetchWithTimeout(endpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-    }, YARGI_MCP_TIMEOUT_MS);
-
-    const responseText = await response.text().catch(() => '');
-    if (!response.ok) {
-        const error = new Error(`Yargi MCP HTTP ${response.status}: ${responseText.slice(0, 500)}`);
-        error.status = response.status;
-        if (response.status === 429) {
-            error.code = 'UPSTREAM_RATE_LIMIT';
-        }
-        throw error;
-    }
-
-    const eventPayload = parseMcpEventPayload(responseText);
-    const nextSessionId = response.headers.get('mcp-session-id') || sessionId;
-
-    if (eventPayload?.error) {
-        const error = new Error(`Yargi MCP error: ${eventPayload.error?.message || 'unknown-error'}`);
-        if (isUpstreamRateLimitError(error)) {
-            error.code = 'UPSTREAM_RATE_LIMIT';
-            error.status = 429;
-        }
-        throw error;
-    }
-
-    return { eventPayload, responseText, sessionId: nextSessionId };
-};
-
-const initYargiMcpSession = async () => {
-    const initPayload = {
-        jsonrpc: '2.0',
-        id: `init-${Date.now()}`,
-        method: 'initialize',
-        params: {
-            protocolVersion: YARGI_MCP_PROTOCOL_VERSION,
-            capabilities: {},
-            clientInfo: {
-                name: 'dilekceasist',
-                version: '1.0.0',
-            },
-        },
-    };
-
-    const initResponse = await postYargiMcp(initPayload);
-    const sessionId = initResponse.sessionId;
-    if (!sessionId) {
-        throw new Error('Yargi MCP session id alinamadi.');
-    }
-
-    await postYargiMcp({
-        jsonrpc: '2.0',
-        method: 'notifications/initialized',
-        params: {},
-    }, sessionId);
-
-    return sessionId;
-};
-
-const closeYargiMcpSession = async (sessionId = '') => {
-    if (!sessionId) return;
-    try {
-        await fetchWithTimeout(normalizeYargiMcpUrl(), {
-            method: 'DELETE',
-            headers: { 'mcp-session-id': sessionId },
-        }, 5000);
-    } catch {
-        // session cleanup best effort
-    }
-};
-
-const callYargiMcpTool = async (name, args = {}) => {
-    let sessionId = '';
-    try {
-        sessionId = await initYargiMcpSession();
-        const callPayload = {
-            jsonrpc: '2.0',
-            id: `call-${Date.now()}`,
-            method: 'tools/call',
-            params: {
-                name,
-                arguments: args,
-            },
-        };
-        const callResult = await postYargiMcp(callPayload, sessionId);
-        const toolResult = callResult.eventPayload?.result || {};
-        const textPayload = Array.isArray(toolResult.content)
-            ? toolResult.content
-                .filter((item) => item && item.type === 'text')
-                .map((item) => String(item.text || ''))
-                .join('\n')
-                .trim()
-            : '';
-
-        if (toolResult.isError) {
-            const error = new Error(textPayload || `Yargi MCP tool hatasi (${name})`);
-            if (isUpstreamRateLimitError(error)) {
-                error.code = 'UPSTREAM_RATE_LIMIT';
-                error.status = 429;
-            }
-            throw error;
-        }
-
-        return {
-            text: textPayload,
-            parsed: maybeExtractJson(textPayload),
-        };
-    } finally {
-        await closeYargiMcpSession(sessionId);
-    }
-};
-
-const getMcpCourtTypesBySource = (source = 'all') => {
-    const normalized = normalizeSourceValue(source, 'all');
-    return YARGI_MCP_COURT_TYPES_BY_SOURCE[normalized] || YARGI_MCP_COURT_TYPES_BY_SOURCE.all;
-};
-
-const isRetryableAiError = (error) => {
-    const message = [
-        error?.message || '',
-        error?.cause?.message || '',
-        error?.stack || '',
-    ].join(' ').toLowerCase();
-
-    return [
-        'fetch failed',
-        'etimedout',
-        'econnreset',
-        'socket hang up',
-        'temporary failure',
-        'network error',
-        '503',
-        '429',
-    ].some(token => message.includes(token));
-};
-
-async function generateContentWithRetry(requestPayload, options = {}) {
-    const maxRetries = Number.isFinite(options.maxRetries) ? options.maxRetries : (Number.isFinite(AI_CONFIG.MAX_RETRIES) ? AI_CONFIG.MAX_RETRIES : 2);
-    const initialDelayMs = Number.isFinite(options.initialDelayMs) ? options.initialDelayMs : (Number.isFinite(AI_CONFIG.INITIAL_RETRY_DELAY_MS) ? AI_CONFIG.INITIAL_RETRY_DELAY_MS : 1000);
-    const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : Number(process.env.LEGAL_AI_TIMEOUT_MS || 35000);
-
-    let lastError = null;
-
-    for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
-        try {
-            return await withTimeout(
-                ai.models.generateContent(requestPayload),
-                timeoutMs,
-                'Legal AI request timed out'
-            );
-        } catch (error) {
-            lastError = error;
-            const canRetry = attempt < maxRetries && isRetryableAiError(error);
-            if (!canRetry) {
-                throw error;
-            }
-
-            const backoffDelay = initialDelayMs * (2 ** attempt);
-            const jitter = Math.floor(Math.random() * 200);
-            const waitMs = backoffDelay + jitter;
-            console.warn(`AI request failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${waitMs}ms...`);
-            await sleep(waitMs);
-        }
-    }
-
-    throw lastError || new Error('AI request failed');
-}
-
-const getBedestenHeaders = () => ({
-    'Accept': '*/*',
-    'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-    'AdaletApplicationName': 'UyapMevzuat',
-    'Content-Type': 'application/json; charset=utf-8',
-    'Origin': 'https://mevzuat.adalet.gov.tr',
-    'Referer': 'https://mevzuat.adalet.gov.tr/',
-    'Sec-Fetch-Dest': 'empty',
-    'Sec-Fetch-Mode': 'cors',
-    'Sec-Fetch-Site': 'same-site',
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
-});
-
-const getBedestenItemTypeList = (source) => {
-    const normalized = (source || '').toLowerCase();
-    switch (normalized) {
-        case 'yargitay':
-            return ['YARGITAYKARARI'];
-        case 'danistay':
-            return ['DANISTAYKARAR'];
-        case 'uyap':
-            return ['YERELHUKUK', 'YERELCEZA', 'BOLGEIDARE', 'BOLGEADLIYE'];
-        case 'anayasa':
-            return ['ANAYASAMAHKEMESI'];
-        default:
-            return ['YARGITAYKARARI', 'DANISTAYKARAR', 'YERELHUKUK', 'YERELCEZA', 'BOLGEIDARE', 'BOLGEADLIYE', 'ANAYASAMAHKEMESI'];
-    }
-};
-
-const LEGAL_SOURCE_SET = new Set(['all', 'yargitay', 'danistay', 'uyap', 'anayasa', 'kik']);
-
-const normalizeForRouting = (value = '') => String(value || '')
-    .toLocaleLowerCase('tr-TR')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\u0131/g, 'i')
-    .replace(/[^a-z0-9\s./-]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-const normalizeSourceValue = (value, fallback = 'all') => {
-    const normalized = normalizeForRouting(value);
-    if (LEGAL_SOURCE_SET.has(normalized)) return normalized;
-    return fallback;
-};
-
-const compactLegalKeywordQuery = (keyword, maxLen = 180) => {
-    const raw = String(keyword || '').replace(/\s+/g, ' ').trim();
-    if (!raw) return '';
-    if (raw.length <= maxLen) return raw;
-
-    const normalized = normalizeForRouting(raw);
-    const mustKeep = [];
-
-    const lawMatch = raw.match(/\b\d{3,4}\s*say\w*\s*[^.,;:\n]*?kanun[ua]\b/i);
-    if (lawMatch) mustKeep.push(lawMatch[0].trim());
-
-    const articleMatches = raw.match(/\b\d{1,3}\.?\s*maddesi?\b/gi) || [];
-    for (const article of articleMatches) {
-        if (mustKeep.length >= 3) break;
-        mustKeep.push(article.trim());
-    }
-
-    const phraseProbes = [
-        'imar kanunu',
-        'imar barisi',
-        'imar barışı',
-        'yapi kayit belgesi',
-        'yapı kayıt belgesi',
-        'gecici 16',
-        'geçici 16',
-        'sit alani',
-        'sit alanı',
-        'kacak yapi',
-        'ruhsatsiz insaat',
-        'ruhsatsız yapı',
-        'imar mevzuatina aykirilik',
-        'yikim karari',
-        'yıkım kararı',
-        'idari para cezasi',
-        'idari para cezası',
-        'yapi tatil tutanagi',
-        'yapı tatil tutanağı',
-        'proje tadilatina aykiri yapi',
-        'encumen karari',
-        'itirazin iptali',
-        'icra takibi',
-        'menfi tespit',
-        'hizmet tespiti',
-        'kidem tazminati',
-        'ise iade',
-        'kasten oldurme',
-        'uyusturucu madde',
-        'muhur fekki',
-        'mühürleme',
-        'iskan belgesi',
-        'yapı kullanma izin belgesi',
-        'yapi kullanma izin belgesi',
-    ];
-
-    for (const probe of phraseProbes) {
-        if (!normalized.includes(probe)) continue;
-        if (mustKeep.length >= 6) break;
-        mustKeep.push(probe);
-    }
-
-    const stopWords = new Set(['ve', 'veya', 'ile', 'icin', 'gibi', 'olan', 'olarak', 'dair', 'kararlari', 'karar']);
-    const tokenFallback = normalized
-        .split(/\s+/)
-        .filter(token => token.length >= 3 && !stopWords.has(token))
-        .slice(0, 18);
-
-    const merged = [...mustKeep, ...tokenFallback]
-        .map(item => String(item || '').trim())
-        .filter(Boolean);
-
-    const uniq = [];
-    const seen = new Set();
-    for (const item of merged) {
-        const key = normalizeForRouting(item);
-        if (!key || seen.has(key)) continue;
-        seen.add(key);
-        uniq.push(item);
-    }
-
-    let compacted = uniq.join(' ');
-    if (compacted.length > maxLen) {
-        compacted = compacted.slice(0, maxLen).trim();
-    }
-    return compacted || raw.slice(0, maxLen).trim();
-};
-
-const LEGAL_QUERY_STOPWORDS = new Set([
-    've', 'veya', 'ile', 'icin', 'gibi', 'olan', 'olarak', 'dair',
-    'karar', 'kararlari', 'karari', 'davasi', 'davasi',
-    'maddesi', 'madde', 'sayili', 'kanun', 'kanunu', 'hukuku',
-]);
-
-const LEGAL_QUERY_PHRASE_ANCHORS = [
-    'itirazin iptali',
-    'zaman asimi',
-    'icra takibi',
-    'borca itiraz',
-    'menfi tespit',
-    'konkordato',
-    'iflasin ertelenmesi',
-    'tasarrufun iptali',
-    'kacak elektrik',
-    'tespit tutanagi',
-    'muhur fekki',
-    'epdk',
-    'idari islemin iptali',
-    'tam yargi davasi',
-    'yurutmenin durdurulmasi',
-    'kamulastirma bedeli',
-    'kamu ihale',
-    'idari para cezasi',
-    'imar kanunu',
-    'imar barisi',
-    'yapi kayit belgesi',
-    'gecici 16',
-    '7143',
-    'ruhsatsiz yapi',
-    'yapi tatil tutanagi',
-    'kasten oldurme',
-    'uyusturucu madde',
-    'haksiz tahrik',
-    'gorevi kotuye kullanma',
-    'ise iade',
-    'fazla mesai alacagi',
-    'kidem tazminati',
-    'ihbar tazminati',
-    'is akdi feshi',
-    'iscilik alacagi',
-];
-
-const buildStrictBedestenQuery = (keyword = '') => {
-    const raw = String(keyword || '').replace(/\s+/g, ' ').trim();
-    if (!raw) return '';
-
-    const normalized = normalizeForRouting(raw);
-    const requiredPhrases = LEGAL_QUERY_PHRASE_ANCHORS
-        .filter((phrase) => normalized.includes(phrase))
-        .slice(0, 5);
-
-    const numericAnchors = (raw.match(/\b\d{2,4}\b/g) || []).slice(0, 3);
-    const tokenAnchors = normalized
-        .split(/\s+/)
-        .filter((token) => token.length >= 3 && !LEGAL_QUERY_STOPWORDS.has(token))
-        .slice(0, 6);
-
-    const parts = [...requiredPhrases, ...numericAnchors, ...tokenAnchors];
-    const uniq = [];
-    const seen = new Set();
-    for (const part of parts) {
-        const key = normalizeForRouting(part);
-        if (!key || seen.has(key)) continue;
-        seen.add(key);
-        uniq.push(part.includes(' ') ? `"${part}"` : part);
-    }
-
-    if (uniq.length < 2) return '';
-
-    const strictQuery = uniq.join(' AND ').trim();
-    return strictQuery.length > 220 ? strictQuery.slice(0, 220).trim() : strictQuery;
-};
-
-const buildBedestenQueryVariants = (keyword = '', originalKeyword = '') => {
-    const routed = String(keyword || '').replace(/\s+/g, ' ').trim();
-    const raw = String(originalKeyword || routed).replace(/\s+/g, ' ').trim();
-    if (!raw) return [];
-
-    const variants = [];
-    const seen = new Set();
-    const pushVariant = (value) => {
-        const cleaned = String(value || '').replace(/\s+/g, ' ').trim();
-        if (!cleaned) return;
-        const key = normalizeForRouting(cleaned);
-        if (!key || seen.has(key)) return;
-        seen.add(key);
-        variants.push(cleaned);
-    };
-
-    pushVariant(raw);
-    if (routed && routed !== raw) {
-        pushVariant(routed);
-    }
-    pushVariant(buildStrictBedestenQuery(raw));
-    pushVariant(compactLegalKeywordQuery(raw, 140));
-    pushVariant(compactLegalKeywordQuery(raw, 95));
-
-    const normalized = normalizeForRouting(raw);
-    const matchedAnchors = LEGAL_QUERY_PHRASE_ANCHORS
-        .filter((phrase) => normalized.includes(phrase))
-        .slice(0, 6);
-    const hasDenseAnchorIntent = matchedAnchors.length >= 3;
-    if (matchedAnchors.length >= 2) {
-        pushVariant(`"${matchedAnchors[0]}" AND "${matchedAnchors[1]}"`);
-    }
-    if (matchedAnchors.length >= 3) {
-        pushVariant(`"${matchedAnchors[0]}" AND "${matchedAnchors[1]}" AND "${matchedAnchors[2]}"`);
-    }
-    if (matchedAnchors.length >= 4) {
-        pushVariant(`"${matchedAnchors[0]}" AND "${matchedAnchors[1]}" AND "${matchedAnchors[2]}" AND "${matchedAnchors[3]}"`);
-    }
-    if (hasDenseAnchorIntent) {
-        const maxPairAnchors = Math.min(5, matchedAnchors.length);
-        for (let idx = 0; idx < maxPairAnchors - 1; idx += 1) {
-            pushVariant(`"${matchedAnchors[idx]}" AND "${matchedAnchors[idx + 1]}"`);
-        }
-    } else {
-        for (const phrase of matchedAnchors) {
-            pushVariant(phrase);
-        }
-    }
-
-    const segmentedTokens = normalized
-        .split(/\s+/)
-        .filter((token) => token.length >= 4 && !LEGAL_QUERY_STOPWORDS.has(token))
-        .slice(0, 12);
-    if (segmentedTokens.length >= 3) {
-        pushVariant(`${segmentedTokens[0]} ${segmentedTokens[1]} ${segmentedTokens[2]}`);
-    }
-    if (hasDenseAnchorIntent) {
-        if (segmentedTokens.length >= 4) {
-            pushVariant(`${segmentedTokens[0]} ${segmentedTokens[1]} ${segmentedTokens[2]} ${segmentedTokens[3]}`);
-        }
-    } else {
-        for (let idx = 0; idx < segmentedTokens.length; idx += 2) {
-            const pair = segmentedTokens.slice(idx, idx + 2);
-            if (pair.length >= 2) {
-                pushVariant(pair.join(' '));
-            }
-        }
-    }
-
-    const focused = [];
-    if (normalized.includes('3194')) focused.push('3194');
-    if (normalized.includes('gecici 16')) focused.push('gecici 16');
-    if (normalized.includes('imar')) focused.push('imar');
-    if (normalized.includes('yapi kayit')) focused.push('yapi kayit belgesi');
-    if (normalized.includes('sit')) focused.push('sit alani');
-    if (normalized.includes('koruma')) focused.push('koruma alani');
-    if (normalized.includes('idari para cezasi')) focused.push('idari para cezasi');
-    if (focused.length >= 2) {
-        pushVariant(focused.map(item => (item.includes(' ') ? `"${item}"` : item)).join(' AND '));
-    }
-
-    return variants.slice(0, LEGAL_QUERY_VARIANT_LIMIT);
-};
-
-const LEGAL_MATCH_PHRASES = [
-    'itirazin iptali',
-    'icra takibi',
-    'borca itiraz',
-    'menfi tespit',
-    'konkordato',
-    'iflasin ertelenmesi',
-    'tasarrufun iptali',
-    'hizmet tespiti',
-    'hizmet tespit',
-    'ise iade',
-    'fazla mesai alacagi',
-    'kidem tazminati',
-    'ihbar tazminati',
-    'is akdi feshi',
-    'iscilik alacagi',
-    'idari para cezasi',
-    'idari islemin iptali',
-    'tam yargi davasi',
-    'yurutmenin durdurulmasi',
-    'kamulastirma bedeli',
-    'kamu ihale',
-    'imar kanunu',
-    'imar barisi',
-    'gecici 16',
-    '7143',
-    'yapi kayit belgesi',
-    'ruhsatsiz yapi',
-    'yapi tatil tutanagi',
-    'sit alani',
-    'kacak elektrik',
-    'tespit tutanagi',
-    'kasten oldurme',
-    'uyusturucu madde',
-    'haksiz tahrik',
-    'gorevi kotuye kullanma',
-    'epdk',
-];
-
-const LEGAL_CORE_PHRASE_SET = new Set([
-    'itirazin iptali',
-    'icra takibi',
-    'borca itiraz',
-    'menfi tespit',
-    'konkordato',
-    'iflasin ertelenmesi',
-    'tasarrufun iptali',
-    'hizmet tespiti',
-    'hizmet tespit',
-    'ise iade',
-    'fazla mesai alacagi',
-    'kidem tazminati',
-    'ihbar tazminati',
-    'is akdi feshi',
-    'iscilik alacagi',
-    'idari para cezasi',
-    'idari islemin iptali',
-    'tam yargi davasi',
-    'yurutmenin durdurulmasi',
-    'kamulastirma bedeli',
-    'kamu ihale',
-    'imar kanunu',
-    'imar barisi',
-    'gecici 16',
-    '7143',
-    'yapi kayit belgesi',
-    'ruhsatsiz yapi',
-    'yapi tatil tutanagi',
-    'sit alani',
-    'kacak elektrik',
-    'tespit tutanagi',
-    'kasten oldurme',
-    'uyusturucu madde',
-    'haksiz tahrik',
-    'gorevi kotuye kullanma',
-    'epdk',
-]);
-
-const LEGAL_BROAD_PHRASE_SET = new Set([
-    'idari para cezasi',
-]);
-
-const LEGAL_GENERIC_MATCH_TOKENS = new Set([
-    'hukuki',
-    'sonuclari',
-    'uygulamasi',
-    'gecerliligi',
-    'gecerlilik',
-    'davasi',
-    'dava',
-    'islemin',
-    'iptali',
-    'idari',
-    'ceza',
-    'cezasi',
-    'para',
-    'karar',
-    'karari',
-    'kararlari',
-    'hakki',
-    'kapsaminda',
-    'kapsami',
-    'itiraz',
-    'itirazi',
-    'tutanagi',
-    'hukumleri',
-]);
-
-const clampScore = (value) => Math.max(0, Math.min(100, Math.round(value)));
-const LEGAL_MIN_MATCH_SCORE = Math.max(
-    35,
-    Math.min(90, Number(process.env.LEGAL_MIN_MATCH_SCORE || 50))
-);
-const LEGAL_RELAXED_MATCH_SCORE = Math.max(
-    30,
-    Math.min(
-        LEGAL_MIN_MATCH_SCORE,
-        Number(
-            process.env.LEGAL_RELAXED_MATCH_SCORE
-            || Math.max(35, LEGAL_MIN_MATCH_SCORE - 15)
-        )
-    )
-);
-const escapeRegex = (value = '') => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const containsWholeTerm = (haystack = '', term = '') => {
-    const token = String(term || '').trim();
-    if (!token) return false;
-    return new RegExp(`(?:^|\\s)${escapeRegex(token)}(?=\\s|$)`).test(String(haystack || ''));
-};
-
-const extractKeywordSignals = (keyword = '') => {
-    const raw = String(keyword || '').replace(/\s+/g, ' ').trim();
-    const normalized = normalizeForRouting(raw);
-    if (!normalized) {
-        return { tokens: [], anchorTokens: [], phrases: [], phraseKeys: [], corePhraseKeys: [], anchorPhraseKeys: [] };
-    }
-
-    const tokens = Array.from(new Set(
-        normalized
-            .split(/\s+/)
-            .filter((token) => token.length >= 3 && !LEGAL_QUERY_STOPWORDS.has(token))
-            .slice(0, 20)
-    ));
-
-    const phraseCandidates = [];
-    for (const phrase of LEGAL_MATCH_PHRASES) {
-        if (normalized.includes(phrase)) phraseCandidates.push(phrase);
-    }
-
-    const quoted = [
-        ...(raw.match(/"([^"]{3,80})"/g) || []),
-        ...(raw.match(/'([^']{3,80})'/g) || []),
-    ]
-        .map((segment) => segment.replace(/^["']|["']$/g, '').trim())
-        .filter(Boolean);
-    phraseCandidates.push(...quoted);
-
-    const numericAnchors = (raw.match(/\b\d{2,4}\b/g) || []).slice(0, 4);
-    tokens.push(...numericAnchors);
-
-    const uniqPhrases = Array.from(new Set(
-        phraseCandidates
-            .map((item) => String(item || '').trim())
-            .filter(Boolean)
-    ));
-    const phraseKeys = uniqPhrases.map((phrase) => normalizeForRouting(phrase)).filter(Boolean);
-    const corePhraseKeys = phraseKeys.filter((phrase) => LEGAL_CORE_PHRASE_SET.has(phrase));
-    const anchorTokens = tokens.filter((token) => token.length >= 4 && !LEGAL_GENERIC_MATCH_TOKENS.has(token));
-    const anchorPhraseKeys = phraseKeys.filter((phrase) => !LEGAL_BROAD_PHRASE_SET.has(phrase));
-
-    return {
-        tokens: Array.from(new Set(tokens)),
-        anchorTokens: Array.from(new Set(anchorTokens)),
-        phrases: uniqPhrases,
-        phraseKeys,
-        corePhraseKeys,
-        anchorPhraseKeys,
-    };
-};
-
-const scoreAndFilterResultsByKeyword = (results = [], keyword = '') => {
-    if (!Array.isArray(results) || results.length === 0) {
-        return { results: [], filteredOutCount: 0, scoredResults: [] };
-    }
-
-    const signals = extractKeywordSignals(keyword);
-    const hasSignals = signals.tokens.length > 0 || signals.phraseKeys.length > 0;
-    const hasCorePhrases = signals.corePhraseKeys.length > 0;
-    const requiredCorePhraseHits = hasCorePhrases ? (signals.corePhraseKeys.length >= 3 ? 2 : 1) : 0;
-    const hasAnchorSignals = signals.anchorTokens.length > 0 || signals.anchorPhraseKeys.length > 0;
-    const minTokenHits = hasCorePhrases ? 2 : (signals.tokens.length >= 6 ? 2 : 1);
-    const minAnchorTokenHits = signals.anchorTokens.length >= 4 ? 2 : (signals.anchorTokens.length > 0 ? 1 : 0);
-    const minScore = LEGAL_MIN_MATCH_SCORE;
-    const metadataOnlyMode = !results.some((item) => {
-        const ozetLength = String(item?.ozet || item?.snippet || '').trim().length;
-        return ozetLength >= 40;
-    });
-
-    const scored = results.map((result) => {
-        const haystack = normalizeForRouting([
-            result?.title || '',
-            result?.mahkeme || '',
-            result?.daire || '',
-            result?.ozet || '',
-            result?.esasNo || '',
-            result?.kararNo || '',
-            result?.tarih || '',
-        ].join(' '));
-
-        const tokenHitCount = signals.tokens.filter((token) => containsWholeTerm(haystack, token)).length;
-        const anchorTokenHitCount = signals.anchorTokens.filter((token) => containsWholeTerm(haystack, token)).length;
-        const phraseHitCount = signals.phraseKeys.filter((phrase) => phrase && containsWholeTerm(haystack, phrase)).length;
-        const corePhraseHitCount = signals.corePhraseKeys.filter((phrase) => phrase && containsWholeTerm(haystack, phrase)).length;
-        const anchorPhraseHitCount = signals.anchorPhraseKeys.filter((phrase) => phrase && containsWholeTerm(haystack, phrase)).length;
-        const tokenCoverage = signals.tokens.length > 0 ? tokenHitCount / signals.tokens.length : 0;
-        const phraseCoverage = signals.phraseKeys.length > 0 ? phraseHitCount / signals.phraseKeys.length : 0;
-        const anchorTokenCoverage = signals.anchorTokens.length > 0 ? anchorTokenHitCount / signals.anchorTokens.length : 0;
-        const upstreamScore = Number(result?.relevanceScore);
-
-        let computedScore = (tokenCoverage * 68) + (phraseCoverage * 22);
-        if (tokenHitCount >= 2) computedScore += 8;
-        if (tokenHitCount >= 3) computedScore += 4;
-        if (anchorTokenCoverage > 0) computedScore += anchorTokenCoverage * 12;
-        if (anchorTokenHitCount >= 2) computedScore += 8;
-        if (phraseHitCount > 0) computedScore += 10;
-        if (corePhraseHitCount > 0) computedScore += 12;
-        if (anchorPhraseHitCount > 0) computedScore += 10;
-
-        if (metadataOnlyMode && tokenHitCount === 0 && phraseHitCount === 0 && corePhraseHitCount === 0) {
-            computedScore = 0;
-        }
-
-        const finalScore = clampScore(computedScore);
-        const relaxedCoreFallback = hasCorePhrases
-            && corePhraseHitCount === 0
-            && anchorTokenHitCount >= Math.max(2, minAnchorTokenHits + 1)
-            && tokenHitCount >= Math.max(3, minTokenHits + 1);
-        const corePhraseRequirementSatisfied = !hasCorePhrases || corePhraseHitCount >= requiredCorePhraseHits || relaxedCoreFallback;
-        const anchorTokenFallbackSatisfied = anchorTokenHitCount >= Math.max(2, minAnchorTokenHits + 1);
-        const anchorRequirementSatisfied = signals.anchorPhraseKeys.length > 0
-            ? (anchorPhraseHitCount > 0 || anchorTokenFallbackSatisfied)
-            : (!hasAnchorSignals || anchorTokenHitCount >= minAnchorTokenHits);
-        const metadataOnlyMatch = phraseHitCount > 0 || tokenHitCount >= minTokenHits;
-        const standardMatch = (
-            phraseHitCount > 0
-            || tokenHitCount >= minTokenHits
-            || finalScore >= minScore
-        );
-        const isMatch = !hasSignals
-            || (corePhraseRequirementSatisfied && anchorRequirementSatisfied && (metadataOnlyMode ? metadataOnlyMatch : standardMatch));
-
-        return {
-            ...result,
-            relevanceScore: finalScore,
-            _tokenHitCount: tokenHitCount,
-            _anchorTokenHitCount: anchorTokenHitCount,
-            _phraseHitCount: phraseHitCount,
-            _corePhraseHitCount: corePhraseHitCount,
-            _anchorPhraseHitCount: anchorPhraseHitCount,
-            _upstreamScore: Number.isFinite(upstreamScore) ? upstreamScore : 0,
-            _isMatch: isMatch,
-        };
-    });
-
-    const scoredSorted = scored
-        .sort((a, b) => {
-            const diff = (b.relevanceScore || 0) - (a.relevanceScore || 0);
-            if (diff !== 0) return diff;
-            return (b._upstreamScore || 0) - (a._upstreamScore || 0);
-        });
-
-    const matched = scoredSorted
-        .filter((item) => item._isMatch)
-        .map(({ _tokenHitCount, _anchorTokenHitCount, _phraseHitCount, _corePhraseHitCount, _anchorPhraseHitCount, _upstreamScore, _isMatch, ...rest }) => rest);
-
-    const ranked = scoredSorted
-        .map(({ _tokenHitCount, _anchorTokenHitCount, _phraseHitCount, _corePhraseHitCount, _anchorPhraseHitCount, _upstreamScore, _isMatch, ...rest }) => rest);
-
-    return {
-        results: matched,
-        filteredOutCount: Math.max(0, scoredSorted.length - matched.length),
-        scoredResults: ranked,
-    };
-};
-
-const getLegalDecisionDocumentId = (result = {}) =>
-    String(result?.documentId || result?.id || '').trim();
-
-const dedupeLegalResults = (items = []) => {
-    const deduped = [];
-    const seen = new Set();
-    for (const item of (Array.isArray(items) ? items : [])) {
-        if (!item || typeof item !== 'object') continue;
-        const key = getLegalDecisionDocumentId(item)
-            || `${item?.title || ''}|${item?.esasNo || ''}|${item?.kararNo || ''}|${item?.tarih || ''}`;
-        if (!key || seen.has(key)) continue;
-        seen.add(key);
-        deduped.push(item);
-    }
-    return deduped;
-};
-
-const buildLegalResultBuckets = ({
-    strongResults = [],
-    candidateResults = [],
-    targetCount = LEGAL_RELATED_RESULT_TARGET,
-}) => {
-    const strong = dedupeLegalResults(strongResults).map((item) => ({
-        ...item,
-        matchTier: item?.matchTier || 'strong',
-    }));
-    const strongIds = new Set(strong.map((item) => getLegalDecisionDocumentId(item) || `${item?.title || ''}|${item?.esasNo || ''}|${item?.kararNo || ''}|${item?.tarih || ''}`));
-    const relatedPool = dedupeLegalResults(candidateResults)
-        .filter((item) => {
-            const key = getLegalDecisionDocumentId(item)
-                || `${item?.title || ''}|${item?.esasNo || ''}|${item?.kararNo || ''}|${item?.tarih || ''}`;
-            return key && !strongIds.has(key);
-        })
-        .sort((a, b) => Number(b?.relevanceScore || 0) - Number(a?.relevanceScore || 0));
-    const needed = Math.max(0, Number(targetCount) - strong.length);
-    const related = relatedPool.slice(0, needed).map((item) => ({
-        ...item,
-        matchTier: item?.matchTier || 'related',
-    }));
-    return {
-        strong,
-        related,
-        combined: [...strong, ...related],
-    };
-};
-
-const rerankResultsByDecisionContent = async (results = [], keyword = '', debugContext = null) => {
-    if (!Array.isArray(results) || results.length === 0) {
-        return {
-            applied: false,
-            results: [],
-            candidateCount: 0,
-            fetchedCount: 0,
-            matchedCount: 0,
-            filteredOutCount: 0,
-            fetchErrorCount: 0,
-            emptyContentCount: 0,
-        };
-    }
-
-    const signals = extractKeywordSignals(keyword);
-    const hasSignals = signals.tokens.length > 0 || signals.phraseKeys.length > 0;
-    if (!hasSignals) {
-        return {
-            applied: false,
-            results: [],
-            candidateCount: 0,
-            fetchedCount: 0,
-            matchedCount: 0,
-            filteredOutCount: 0,
-            fetchErrorCount: 0,
-            emptyContentCount: 0,
-        };
-    }
-
-    const uniqueCandidates = [];
-    const seenIds = new Set();
-    for (const item of results) {
-        const documentId = getLegalDecisionDocumentId(item);
-        if (!documentId || seenIds.has(documentId)) continue;
-        seenIds.add(documentId);
-        uniqueCandidates.push(item);
-        if (uniqueCandidates.length >= LEGAL_CONTENT_RERANK_LIMIT) break;
-    }
-
-    if (uniqueCandidates.length === 0) {
-        return {
-            applied: false,
-            results: [],
-            candidateCount: 0,
-            fetchedCount: 0,
-            matchedCount: 0,
-            filteredOutCount: 0,
-            fetchErrorCount: 0,
-            emptyContentCount: 0,
-        };
-    }
-
-    const hasCorePhrases = signals.corePhraseKeys.length > 0;
-    const requiredCorePhraseHits = hasCorePhrases ? (signals.corePhraseKeys.length >= 3 ? 2 : 1) : 0;
-    const hasAnchorSignals = signals.anchorTokens.length > 0 || signals.anchorPhraseKeys.length > 0;
-    const minTokenHits = hasCorePhrases ? 2 : (signals.tokens.length >= 6 ? 2 : 1);
-    const minAnchorTokenHits = signals.anchorTokens.length >= 4 ? 2 : (signals.anchorTokens.length > 0 ? 1 : 0);
-    const minScore = LEGAL_MIN_MATCH_SCORE;
-
-    const BATCH_SIZE = 5;
-    const settled = [];
-    let stoppedByRateLimit = false;
-
-    for (let i = 0; i < uniqueCandidates.length; i += BATCH_SIZE) {
-        const batch = uniqueCandidates.slice(i, i + BATCH_SIZE);
-        const batchResults = await Promise.all(batch.map(async (result) => {
-            const documentId = getLegalDecisionDocumentId(result);
-            if (!documentId) {
-                return {
-                    ok: false,
-                    documentId,
-                    result,
-                    reason: 'missing-document-id',
-                };
-            }
-            try {
-                const bedestenDoc = await getBedestenDocumentContent(documentId);
-                const content = String(bedestenDoc?.content || '').trim();
-                if (!content) {
-                    return {
-                        ok: true,
-                        documentId,
-                        result,
-                        content: '',
-                    };
-                }
-                return {
-                    ok: true,
-                    documentId,
-                    result,
-                    content,
-                };
-            } catch (error) {
-                return {
-                    ok: false,
-                    documentId,
-                    result,
-                    reason: error?.message || 'content-fetch-failed',
-                };
-            }
-        }));
-
-        settled.push(...batchResults);
-        if (batchResults.some((item) => !item?.ok && isUpstreamRateLimitError({ message: item?.reason || '' }))) {
-            stoppedByRateLimit = true;
-            markLegalSearchSignal(debugContext, 'contentRateLimited');
-            if (debugContext?.id) {
-                logLegalSearchDebug(debugContext.id, 'content-rerank-rate-limit', {
-                    processedCount: settled.length,
-                    candidateCount: uniqueCandidates.length,
-                });
-            }
-            break;
-        }
-
-        if (i + BATCH_SIZE < uniqueCandidates.length) {
-            await new Promise((resolve) => setTimeout(resolve, 800));
-        }
-    }
-
-    let fetchedCount = 0;
-    let matchedCount = 0;
-    let fetchErrorCount = 0;
-    let emptyContentCount = 0;
-    const matched = [];
-
-    for (const item of settled) {
-        if (!item?.ok) {
-            fetchErrorCount += 1;
-            continue;
-        }
-
-        fetchedCount += 1;
-        const normalizedContent = normalizeForRouting(item.content || '');
-        if (!normalizedContent) {
-            emptyContentCount += 1;
-        }
-        const contentHaystack = normalizeForRouting([
-            item.content || '',
-            item?.result?.title || '',
-            item?.result?.mahkeme || '',
-            item?.result?.daire || '',
-            item?.result?.ozet || '',
-            item?.result?.snippet || '',
-            item?.result?.esasNo || '',
-            item?.result?.kararNo || '',
-        ].join(' '));
-        if (!contentHaystack) continue;
-
-        const tokenHitCount = signals.tokens.filter((token) => containsWholeTerm(contentHaystack, token)).length;
-        const anchorTokenHitCount = signals.anchorTokens.filter((token) => containsWholeTerm(contentHaystack, token)).length;
-        const phraseHitCount = signals.phraseKeys.filter((phrase) => phrase && containsWholeTerm(contentHaystack, phrase)).length;
-        const corePhraseHitCount = signals.corePhraseKeys.filter((phrase) => phrase && containsWholeTerm(contentHaystack, phrase)).length;
-        const anchorPhraseHitCount = signals.anchorPhraseKeys.filter((phrase) => phrase && containsWholeTerm(contentHaystack, phrase)).length;
-        const tokenCoverage = signals.tokens.length > 0 ? tokenHitCount / signals.tokens.length : 0;
-        const phraseCoverage = signals.phraseKeys.length > 0 ? phraseHitCount / signals.phraseKeys.length : 0;
-        const anchorTokenCoverage = signals.anchorTokens.length > 0 ? anchorTokenHitCount / signals.anchorTokens.length : 0;
-
-        let contentScore = (tokenCoverage * 72) + (phraseCoverage * 24);
-        if (tokenHitCount >= 2) contentScore += 8;
-        if (tokenHitCount >= 3) contentScore += 5;
-        if (anchorTokenCoverage > 0) contentScore += anchorTokenCoverage * 14;
-        if (anchorTokenHitCount >= 2) contentScore += 10;
-        if (phraseHitCount > 0) contentScore += 12;
-        if (corePhraseHitCount > 0) contentScore += 14;
-        if (anchorPhraseHitCount > 0) contentScore += 12;
-
-        const normalizedContentScore = clampScore(contentScore);
-        const relaxedCoreFallback = hasCorePhrases
-            && corePhraseHitCount === 0
-            && anchorTokenHitCount >= Math.max(2, minAnchorTokenHits + 1)
-            && tokenHitCount >= Math.max(4, minTokenHits + 1);
-        const corePhraseRequirementSatisfied = !hasCorePhrases || corePhraseHitCount >= requiredCorePhraseHits || relaxedCoreFallback;
-        const anchorTokenFallbackSatisfied = anchorTokenHitCount >= Math.max(2, minAnchorTokenHits + 1);
-        const anchorRequirementSatisfied = signals.anchorPhraseKeys.length > 0
-            ? (anchorPhraseHitCount > 0 || anchorTokenFallbackSatisfied)
-            : (!hasAnchorSignals || anchorTokenHitCount >= minAnchorTokenHits);
-        const hasContentHit = phraseHitCount > 0 || tokenHitCount >= minTokenHits;
-        let fusionScore = normalizedContentScore;
-        if (tokenCoverage >= 0.7) fusionScore += 15;
-        else if (tokenCoverage >= 0.5) fusionScore += 8;
-        else if (tokenCoverage >= 0.3) fusionScore += 3;
-        if (phraseHitCount >= 2) fusionScore += 10;
-        else if (phraseHitCount >= 1) fusionScore += 5;
-        if (corePhraseHitCount >= 2) fusionScore += 12;
-        else if (corePhraseHitCount >= 1) fusionScore += 6;
-        const normalizedFusionScore = clampScore(fusionScore);
-        const softSignalMatch = (
-            normalizedFusionScore >= 25
-            || corePhraseHitCount > 0
-            || anchorPhraseHitCount > 0
-            || (anchorTokenHitCount >= 2 && tokenHitCount >= 2)
-        );
-        const isMatch = corePhraseRequirementSatisfied
-            && anchorRequirementSatisfied
-            && (hasContentHit || normalizedContentScore >= minScore || softSignalMatch);
-
-        if (!isMatch) continue;
-
-        matchedCount += 1;
-        const baseRelevanceScore = Number(item?.result?.relevanceScore) || 0;
-
-        let snippetText = item.result?.ozet || item.result?.snippet;
-        if (!snippetText && item.content) {
-            // Get first ~600 chars as snippet
-            const cleanContent = item.content.replace(/\s+/g, ' ').trim();
-            snippetText = cleanContent.length > 600 ? cleanContent.substring(0, 600) + '...' : cleanContent;
-        }
-
-        matched.push({
-            ...item.result,
-            relevanceScore: clampScore(Math.max(baseRelevanceScore, normalizedFusionScore)),
-            ozet: snippetText || `Anahtar kelime eslesmesi bulundu (metin skoru: ${normalizedFusionScore}).`,
-            // Also pass full content so the user can copy the full text if needed
-            snippet: item.content || snippetText || `Anahtar kelime eslesmesi bulundu (metin skoru: ${normalizedFusionScore}).`,
-        });
-    }
-
-    matched.sort((a, b) => Number(b?.relevanceScore || 0) - Number(a?.relevanceScore || 0));
-
-    if (debugContext?.id) {
-        logLegalSearchDebug(debugContext.id, 'content-rerank', {
-            candidateCount: uniqueCandidates.length,
-            fetchedCount,
-            matchedCount,
-            filteredOutCount: Math.max(0, uniqueCandidates.length - matchedCount),
-            fetchErrorCount,
-            emptyContentCount,
-            stoppedByRateLimit,
-            sample: buildLegalResultSample(matched, 3),
-        });
-    }
-
-    return {
-        applied: true,
-        results: matched,
-        candidateCount: uniqueCandidates.length,
-        fetchedCount,
-        matchedCount,
-        filteredOutCount: Math.max(0, uniqueCandidates.length - matchedCount),
-        fetchErrorCount,
-        emptyContentCount,
-        stoppedByRateLimit,
-    };
-};
-
-const pickLegalFallbackResults = ({
-    scoring = null,
-    contentCandidates = [],
-    contentRerank = null,
-    limit = LEGAL_RESULT_RETURN_LIMIT,
-}) => {
-    const safeLimit = Math.max(1, Number(limit) || LEGAL_RESULT_RETURN_LIMIT);
-    const strictMatches = Array.isArray(scoring?.results) ? scoring.results : [];
-    if (strictMatches.length > 0) {
-        return {
-            results: strictMatches.slice(0, safeLimit),
-            mode: 'strict-scoring',
-        };
-    }
-
-    const scoredResults = Array.isArray(scoring?.scoredResults) ? scoring.scoredResults : [];
-    const strictThresholdMatches = scoredResults.filter(
-        (item) => Number(item?.relevanceScore || 0) >= LEGAL_MIN_MATCH_SCORE
-    );
-    if (strictThresholdMatches.length > 0) {
-        return {
-            results: strictThresholdMatches.slice(0, safeLimit),
-            mode: 'strict-threshold',
-        };
-    }
-
-    const relaxedThresholdMatches = scoredResults.filter(
-        (item) => Number(item?.relevanceScore || 0) >= LEGAL_RELAXED_MATCH_SCORE
-    );
-    if (relaxedThresholdMatches.length > 0) {
-        return {
-            results: relaxedThresholdMatches.slice(0, safeLimit),
-            mode: 'relaxed-threshold',
-        };
-    }
-
-    const safeCandidates = Array.isArray(contentCandidates) ? contentCandidates.filter(Boolean) : [];
-    const hasFetchProblems = Boolean(contentRerank?.applied) && (
-        Number(contentRerank?.fetchErrorCount || 0) > 0
-        || Boolean(contentRerank?.stoppedByRateLimit)
-    );
-    if (hasFetchProblems && safeCandidates.length > 0) {
-        return {
-            results: safeCandidates.slice(0, safeLimit),
-            mode: 'content-candidates',
-        };
-    }
-
-    return {
-        results: [],
-        mode: 'empty',
-    };
-};
-
-const runPhraseFallbackSearch = async ({ keyword = '', source = 'all', filters = {}, debugContext = null }) => {
-    const normalizedKeyword = normalizeForRouting(keyword);
-    const signals = extractKeywordSignals(keyword);
-    const directKnownPhrases = LEGAL_MATCH_PHRASES
-        .filter((phrase) => normalizedKeyword.includes(phrase))
-        .slice(0, 6);
-    const compactTokens = normalizedKeyword
-        .split(/\s+/)
-        .filter((token) => token.length >= 3 && !LEGAL_QUERY_STOPWORDS.has(token))
-        .slice(0, 16);
-    const ngramCandidates = [];
-    for (let idx = 0; idx < compactTokens.length - 1; idx += 1) {
-        ngramCandidates.push(`${compactTokens[idx]} ${compactTokens[idx + 1]}`);
-        if (idx + 2 < compactTokens.length) {
-            ngramCandidates.push(`${compactTokens[idx]} ${compactTokens[idx + 1]} ${compactTokens[idx + 2]}`);
-        }
-    }
-
-    const phraseCandidates = Array.from(new Set([
-        ...(Array.isArray(signals.anchorPhraseKeys) ? signals.anchorPhraseKeys : []),
-        ...(Array.isArray(signals.corePhraseKeys) ? signals.corePhraseKeys : []),
-        ...directKnownPhrases,
-        ...ngramCandidates,
-    ]))
-        .filter((phrase) => String(phrase || '').trim().split(/\s+/).length >= 2)
-        .slice(0, 6);
-
-    if (phraseCandidates.length < 2) {
-        return {
-            applied: false,
-            results: [],
-            phraseCandidates: [],
-        };
-    }
-
-    const collected = [];
-    const seen = new Set();
-    const addCollected = (items = []) => {
-        for (const item of (Array.isArray(items) ? items : [])) {
-            const key = getLegalDecisionDocumentId(item)
-                || `${item?.title || ''}|${item?.esasNo || ''}|${item?.kararNo || ''}|${item?.tarih || ''}`;
-            if (!key || seen.has(key)) continue;
-            seen.add(key);
-            collected.push(item);
-        }
-    };
-
-    for (const phrase of phraseCandidates) {
-        try {
-            const phraseResults = await searchBedestenAPI(phrase, source, filters, debugContext);
-            if (!Array.isArray(phraseResults) || phraseResults.length === 0) continue;
-
-            const phraseRerank = await rerankResultsByDecisionContent(phraseResults, phrase, debugContext);
-            if (phraseRerank.applied && Array.isArray(phraseRerank.results) && phraseRerank.results.length > 0) {
-                addCollected(phraseRerank.results.slice(0, 6));
-                continue;
-            }
-
-            const phraseScoring = scoreAndFilterResultsByKeyword(phraseResults, phrase);
-            if (Array.isArray(phraseScoring.results) && phraseScoring.results.length > 0) {
-                addCollected(phraseScoring.results.slice(0, 6));
-            }
-        } catch (error) {
-            if (debugContext?.id) {
-                logLegalSearchDebug(debugContext.id, 'phrase-fallback-error', {
-                    phrase,
-                    source,
-                    message: error?.message || 'unknown-error',
-                });
-            }
-        }
-    }
-
-    let finalResults = collected;
-    try {
-        const fullKeywordScoring = scoreAndFilterResultsByKeyword(collected, keyword);
-        // Rescore collected results based on the FULL keyword, not just the tiny phrase.
-        if (Array.isArray(fullKeywordScoring.results) && fullKeywordScoring.results.length > 0) {
-            finalResults = fullKeywordScoring.results;
-        } else if (Array.isArray(fullKeywordScoring.scoredResults) && fullKeywordScoring.scoredResults.length > 0) {
-            const relaxedMatches = fullKeywordScoring.scoredResults.filter(
-                (item) => Number(item?.relevanceScore || 0) >= LEGAL_RELAXED_MATCH_SCORE
-            );
-            finalResults = relaxedMatches;
-        }
-    } catch (e) {
-        console.error('Fallback rescoring error:', e);
-    }
-
-    finalResults.sort((a, b) => Number(b?.relevanceScore || 0) - Number(a?.relevanceScore || 0));
-
-    return {
-        applied: true,
-        results: finalResults.slice(0, LEGAL_RESULT_RETURN_LIMIT),
-        phraseCandidates,
-    };
-};
-
-const semanticRerankWithGemini = async ({ candidates = [], keyword = '', debugContext = null }) => {
-    if (!USE_GEMINI_SEMANTIC_RERANK || !API_KEY) {
-        return { applied: false, results: [] };
-    }
-    if (!Array.isArray(candidates) || candidates.length === 0) {
-        return { applied: false, results: [] };
-    }
-
-    const uniq = [];
-    const seen = new Set();
-    for (const item of candidates) {
-        const key = getLegalDecisionDocumentId(item)
-            || `${item?.title || ''}|${item?.esasNo || ''}|${item?.kararNo || ''}|${item?.tarih || ''}`;
-        if (!key || seen.has(key)) continue;
-        seen.add(key);
-        uniq.push(item);
-        if (uniq.length >= LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT) break;
-    }
-    if (uniq.length === 0) {
-        return { applied: false, results: [] };
-    }
-
-    const promptRows = uniq.map((item, index) => {
-        const key = getLegalDecisionDocumentId(item) || `cand-${index + 1}`;
-        const preview = String(item?.ozet || item?.snippet || '').replace(/\s+/g, ' ').slice(0, 240);
-        return `${index + 1}) id=${key} | title=${item?.title || ''} | daire=${item?.daire || ''} | esas=${item?.esasNo || ''} | karar=${item?.kararNo || ''} | ozet=${preview}`;
-    }).join('\n');
-
-    const prompt = [
-        'Asagidaki Turkce hukuk karar adaylarini verilen sorguya gore anlamsal olarak puanla.',
-        'Kurallar:',
-        '- Sadece JSON dondur.',
-        '- JSON array formati: [{"id":"...","score":0-100}]',
-        '- Sorguyla ilgisiz adaylara dusuk skor ver (0-30).',
-        '- En ilgili adaylara yuksek skor ver (70-100).',
-        `Sorgu: ${keyword}`,
-        '',
-        'Adaylar:',
-        promptRows,
-    ].join('\n');
-
-    try {
-        const response = await generateContentWithRetry({
-            model: AI_CONFIG.MODEL_NAME,
-            contents: prompt,
-            config: { temperature: 0.1 },
-        }, { maxRetries: 0, timeoutMs: Math.max(9000, LEGAL_ROUTER_TIMEOUT_MS) });
-
-        const parsed = maybeExtractJson(response?.text || '');
-        const list = Array.isArray(parsed)
-            ? parsed
-            : (Array.isArray(parsed?.results) ? parsed.results : []);
-        if (!Array.isArray(list) || list.length === 0) {
-            return { applied: true, results: [] };
-        }
-
-        const scoreMap = new Map();
-        for (const row of list) {
-            const id = String(row?.id || '').trim();
-            const scoreRaw = Number(row?.score);
-            if (!id || !Number.isFinite(scoreRaw)) continue;
-            scoreMap.set(id, clampScore(scoreRaw));
-        }
-
-        const ranked = uniq.map((item, index) => {
-            const id = getLegalDecisionDocumentId(item) || `cand-${index + 1}`;
-            const semanticScore = Number(scoreMap.get(id) || 0);
-            return {
-                ...item,
-                relevanceScore: clampScore(Math.max(Number(item?.relevanceScore || 0), semanticScore)),
-                _semanticScore: semanticScore,
-            };
-        })
-            .filter((item) => Number(item._semanticScore || 0) >= 40)
-            .sort((a, b) => Number(b._semanticScore || 0) - Number(a._semanticScore || 0))
-            .map(({ _semanticScore, ...rest }) => rest);
-
-        if (debugContext?.id) {
-            logLegalSearchDebug(debugContext.id, 'gemini-semantic-rerank', {
-                candidateCount: uniq.length,
-                rankedCount: ranked.length,
-                sample: buildLegalResultSample(ranked, 3),
-            });
-        }
-
-        return {
-            applied: true,
-            results: ranked.slice(0, LEGAL_RESULT_RETURN_LIMIT),
-        };
-    } catch (error) {
-        if (debugContext?.id) {
-            logLegalSearchDebug(debugContext.id, 'gemini-semantic-error', {
-                message: error?.message || 'unknown-error',
-            });
-        }
-        return { applied: false, results: [] };
-    }
-};
-
-const resolveSourceByRules = (keyword, requestedSource = 'all') => {
-    const text = normalizeForRouting(keyword);
-    const requested = normalizeSourceValue(requestedSource, 'all');
-    if (!text) {
-        return {
-            source: requested,
-            confidence: requested === 'all' ? 0.4 : 0.75,
-            secondarySource: null,
-            secondaryScore: 0,
-            method: 'rules',
-        };
-    }
-
-    const scores = {
-        danistay: 0,
-        yargitay: 0,
-        anayasa: 0,
-        uyap: 0,
-    };
-
-    const addSignals = (source, probes, weight) => {
-        for (const probe of probes) {
-            if (text.includes(probe)) scores[source] += weight;
-        }
-    };
-
-    addSignals('danistay', ['danistay'], 5);
-    addSignals('yargitay', ['yargitay'], 5);
-    addSignals('anayasa', ['anayasa mahkemesi', 'aym', 'bireysel basvuru'], 4.5);
-    addSignals('uyap', ['uyap', 'istinaf', 'bolge adliye', 'yerel mahkeme', 'bolge idare'], 3.5);
-
-    // Danistay sinyalleri: idari yargi
-    addSignals('danistay', [
-        'imar', '3194', 'ruhsat', 'ruhsatsiz', 'kacak yapi',
-        'yikim karari', 'encumen', 'yapi tatil', 'imar barisi', 'yapi kayit belgesi', 'gecici 16',
-        'idari yargi', 'idare mahkemesi', 'tam yargi', 'tam yargi davasi', 'iptal davasi', 'idari islemin iptali',
-        'yurutmenin durdurulmasi', 'kamulastirma bedeli',
-        'bolge idare', 'vergi mahkemesi',
-        'belediye', 'idari para cezasi',
-        'kamu ihale', 'kik', 'ihale iptal',
-        'epdk', 'tedas', 'kacak elektrik', 'elektrik piyasasi',
-        'kayip kacak', 'enerji piyasasi', 'tespit tutanagi elektrik',
-        'dagitim lisansi', 'elektrik abonelik',
-        'vergi inceleme', 'vergi cezasi', 'disiplin cezasi', 'gumruk',
-    ], 1.35);
-
-    // Yargitay sinyalleri: ozel hukuk ve ceza
-    addSignals('yargitay', [
-        'tck', 'cmk', 'hmk', 'tbk', 'tmk', 'iik', 'ttk',
-        'kambiyo', 'icra', 'icra takibi', 'icra iflas', 'borca itiraz',
-        'itirazin iptali', 'menfi tespit', 'alacak davasi', 'zaman asimi', 'zamanaasimi',
-        'konkordato', 'iflasin ertelenmesi', 'tasarrufun iptali',
-        'ceza', 'dolandiricilik', 'hirsizlik', 'yaralama', 'tehdit', 'uyusturucu', 'uyusturucu madde', 'kasten oldurme', 'haksiz tahrik', 'gorevi kotuye kullanma',
-        'bosanma', 'nafaka', 'velayet', 'miras', 'veraset',
-        'is davasi', 'kidem tazminati', 'ihbar tazminati', 'hizmet tespiti', 'is akdi', 'ise iade', 'fazla mesai alacagi',
-        'kira sozlesmesi', 'kira alacagi', 'tahliye', 'tapu tescil',
-        'trafik kazasi', 'sigorta tazminati',
-    ], 1.1);
-
-    // Baglamsal duzeltme: itirazin iptali + idari baglam -> Danistay
-    if (text.includes('itirazin iptali') &&
-        (text.includes('idari') || text.includes('vergi') ||
-            text.includes('belediye') || text.includes('kamu') || text.includes('idare'))) {
-        scores.danistay += 2.5;
-        scores.yargitay = Math.max(0, scores.yargitay - 1.5);
-    }
-
-    // Baglamsal duzeltme: kacak elektrik + icra/alacak/zaman asimi baglami -> Yargitay
-    if (text.includes('kacak elektrik') &&
-        (text.includes('itirazin iptali') || text.includes('icra') || text.includes('alacak') || text.includes('menfi tespit') || text.includes('zaman asimi')) &&
-        !(text.includes('idari') || text.includes('epdk') || text.includes('idare mahkemesi'))) {
-        scores.yargitay += 3.0;
-        scores.danistay = Math.max(0, scores.danistay - 1.5);
-    }
-    if (text.includes('kacak elektrik') && text.includes('tespit tutanagi') &&
-        (text.includes('hukuki') || text.includes('gecerlilik') || text.includes('gecerliligi')) &&
-        !(text.includes('idari') || text.includes('epdk') || text.includes('idare mahkemesi'))) {
-        scores.yargitay += 2.5;
-        scores.danistay = Math.max(0, scores.danistay - 1.0);
-    }
-
-    // Baglamsal duzeltme: imar barisi/yapi kayit/gecici 16 -> Danistay
-    if (text.includes('imar barisi') || text.includes('yapi kayit belgesi') || text.includes('gecici 16') || text.includes('3194')) {
-        scores.danistay += 3.0;
-        scores.yargitay = Math.max(0, scores.yargitay - 1.0);
-    }
-
-    const explicitDanistay = text.includes('danistay');
-    const explicitYargitay = text.includes('yargitay');
-    if (explicitDanistay && explicitYargitay) {
-        return {
-            source: 'all',
-            confidence: 0.98,
-            secondarySource: null,
-            secondaryScore: 0,
-            method: 'rules',
-        };
-    }
-
-    const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-    const [topSource = 'all', topScore = 0] = sorted[0] || [];
-    const [secondSource = null, secondScore = 0] = sorted[1] || [];
-
-    if (!topSource || topScore <= 0) {
-        return {
-            source: requested,
-            confidence: requested === 'all' ? 0.45 : 0.75,
-            secondarySource: null,
-            secondaryScore: 0,
-            method: 'rules',
-        };
-    }
-
-    const diff = Math.max(0, topScore - secondScore);
-    let confidence = 0.55 + Math.min(0.3, topScore * 0.08) + Math.min(0.1, diff * 0.06);
-    confidence = Math.max(0.52, Math.min(0.95, confidence));
-
-    let source = topSource;
-    if (requested !== 'all' && requested !== topSource && diff < 1.2) {
-        source = requested;
-        confidence = Math.max(0.72, confidence - 0.08);
-    }
-
-    return {
-        source: normalizeSourceValue(source, requested),
-        confidence,
-        secondarySource: secondScore >= 1 ? secondSource : null,
-        secondaryScore: secondScore,
-        method: 'rules',
-    };
-};
-
-const tryResolveSourceWithAI = async ({ keyword, requestedSource = 'all' }) => {
-    if (!API_KEY) return null;
-
-    const requested = normalizeSourceValue(requestedSource, 'all');
-    const routingPrompt = [
-        'Asagidaki ictihat arama sorgusu icin en uygun yargi kaynagini sec.',
-        'Gecerli source: danistay, yargitay, anayasa, uyap, all',
-        'Kurallar:',
-        '- Imar/ruhsat/yikim/encumen/idari para cezasi/idari yargi konularinda danistay agirlikli sec.',
-        '- Ceza ve ozel hukuk temyiz agirlikli konularda yargitay sec.',
-        '- Emin degilsen all sec.',
-        'Sadece JSON dondur:',
-        '{"source":"...","confidence":0.0,"birimAdi":"ALL","compactQuery":"..."}',
-        `requestedSource: ${requested}`,
-        `query: ${keyword}`,
-    ].join('\n');
-
-    try {
-        const response = await generateContentWithRetry({
-            model: AI_CONFIG.MODEL_NAME,
-            contents: routingPrompt,
-            config: { temperature: 0.1 },
-        }, { maxRetries: 0, timeoutMs: LEGAL_ROUTER_TIMEOUT_MS });
-
-        const parsed = maybeExtractJson(response.text || '');
-        if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') return null;
-
-        const source = normalizeSourceValue(parsed.source, 'all');
-        const confidenceRaw = Number(parsed.confidence);
-        const confidence = Number.isFinite(confidenceRaw)
-            ? Math.max(0, Math.min(1, confidenceRaw))
-            : 0.5;
-        const compactQuery = typeof parsed.compactQuery === 'string'
-            ? parsed.compactQuery.trim()
-            : '';
-        const birimAdi = typeof parsed.birimAdi === 'string'
-            ? parsed.birimAdi.trim()
-            : '';
-
-        return {
-            source,
-            confidence,
-            compactQuery: compactQuery || keyword,
-            birimAdi: birimAdi || 'ALL',
-            method: 'ai',
-        };
-    } catch (error) {
-        console.error('Legal source AI router error:', error);
-        return null;
-    }
-};
-
-const buildSearchRoutingPlan = async ({ keyword, requestedSource = 'all', filters = {} }) => {
-    const requested = normalizeSourceValue(requestedSource, 'all');
-    const originalKeyword = String(keyword || '').replace(/\s+/g, ' ').trim();
-    const compactKeyword = compactLegalKeywordQuery(originalKeyword);
-    const ruleDecision = resolveSourceByRules(compactKeyword, requested);
-    const aiDecision = await tryResolveSourceWithAI({ keyword: compactKeyword, requestedSource: requested });
-
-    let resolvedSource = ruleDecision.source;
-    let confidence = ruleDecision.confidence;
-    let router = ruleDecision.method;
-
-    if (aiDecision && aiDecision.source) {
-        const aiCanOverrideRule = aiDecision.confidence >= 0.64 && (
-            ruleDecision.confidence < 0.84
-            || aiDecision.source === requested
-            || requested === 'all'
-        );
-
-        if (aiCanOverrideRule) {
-            resolvedSource = aiDecision.source;
-            confidence = Math.max(confidence, aiDecision.confidence);
-            router = 'ai';
-        }
-    }
-
-    if (requested !== 'all' && requested !== resolvedSource) {
-        const strongOverride = confidence >= 0.86;
-        if (!strongOverride) {
-            resolvedSource = requested;
-            confidence = Math.max(confidence, 0.75);
-            router = 'requested';
-        }
-    }
-
-    const fallbackSources = [];
-    for (const candidate of [resolvedSource, ruleDecision.secondarySource, 'all']) {
-        const normalized = normalizeSourceValue(candidate, '');
-        if (!normalized || fallbackSources.includes(normalized)) continue;
-        fallbackSources.push(normalized);
-        if (fallbackSources.length >= 3) break;
-    }
-
-    const nextFilters = { ...(filters || {}) };
-    if ((!nextFilters.birimAdi || nextFilters.birimAdi === 'ALL') && aiDecision?.birimAdi && aiDecision.birimAdi !== 'ALL') {
-        nextFilters.birimAdi = aiDecision.birimAdi;
-    }
-
-    const routedKeyword = (router === 'ai' && aiDecision?.compactQuery)
-        ? compactLegalKeywordQuery(aiDecision.compactQuery)
-        : compactKeyword;
-
-    return {
-        requestedSource: requested,
-        resolvedSource,
-        confidence,
-        router,
-        keyword: routedKeyword || originalKeyword,
-        originalKeyword,
-        fallbackSources,
-        filters: nextFilters,
-        compacted: compactKeyword !== originalKeyword,
-    };
-};
-
-const toBedestenFormattedDecision = (item, index) => {
-    const safeItem = item || {};
-    const esasNo = safeItem.esasNo || (safeItem.esasYili && safeItem.esasSiraNo ? `${safeItem.esasYili}/${safeItem.esasSiraNo}` : '');
-    const kararNo = safeItem.kararNo || (safeItem.kararYili && safeItem.kararSiraNo ? `${safeItem.kararYili}/${safeItem.kararSiraNo}` : '');
-    const daire = safeItem.birimAdi || safeItem.birim || '';
-    const mahkeme = safeItem.itemType?.description || safeItem.mahkeme || '';
-    const title = `${mahkeme} ${daire}`.trim() || safeItem.title || `Karar ${index + 1}`;
-    const ozet = safeItem.ozet || safeItem.kararOzeti || safeItem.summary || '';
-    const score = Number(safeItem.relevanceScore ?? safeItem.score);
-
-    return {
-        id: safeItem.documentId || safeItem.id || `bedesten-${index + 1}`,
-        documentId: safeItem.documentId || safeItem.id || '',
-        title,
-        esasNo,
-        kararNo,
-        tarih: safeItem.kararTarihiStr || safeItem.kararTarihi || safeItem.tarih || '',
-        daire,
-        ozet,
-        relevanceScore: Number.isFinite(score) ? score : undefined,
-    };
-};
-
-async function searchBedestenViaMcp(keyword, source, filters = {}, debugContext = null) {
-    const pageNumber = Math.max(1, Number(filters.pageNumber) || 1);
-    const mcpArgs = {
-        phrase: String(keyword || '').trim(),
-        court_types: getMcpCourtTypesBySource(source),
-        pageNumber,
-        birimAdi: normalizeYargiMcpBirimAdi(filters.birimAdi || 'ALL'),
-    };
-    if (filters.kararTarihiStart) mcpArgs.kararTarihiStart = filters.kararTarihiStart;
-    if (filters.kararTarihiEnd) mcpArgs.kararTarihiEnd = filters.kararTarihiEnd;
-
-    if (debugContext?.id) {
-        logLegalSearchDebug(debugContext.id, 'mcp-search-call', {
-            source,
-            phrase: mcpArgs.phrase,
-            courtTypes: mcpArgs.court_types,
-            birimAdi: mcpArgs.birimAdi,
-            pageNumber: mcpArgs.pageNumber,
-            kararTarihiStart: mcpArgs.kararTarihiStart || '',
-            kararTarihiEnd: mcpArgs.kararTarihiEnd || '',
-        });
-    }
-
-    const toolResponse = await callYargiMcpTool('search_bedesten_unified', mcpArgs);
-    const payload = toolResponse.parsed && typeof toolResponse.parsed === 'object'
-        ? toolResponse.parsed
-        : maybeExtractJson(toolResponse.text) || {};
-    const decisions = Array.isArray(payload?.decisions) ? payload.decisions : [];
-
-    if (debugContext?.id) {
-        logLegalSearchDebug(debugContext.id, 'mcp-search-response', {
-            rawDecisionCount: decisions.length,
-            sample: buildLegalResultSample(decisions, 2),
-        });
-    }
-
-    return decisions.map((item, index) => toBedestenFormattedDecision({
-        ...item,
-        relevanceScore: Number(item?.relevanceScore ?? item?.score) || Math.max(0, 100 - (index * 4)),
-    }, index));
-}
-
-function ensureLegalSearchSignals(debugContext = null) {
-    if (!debugContext || typeof debugContext !== 'object') return null;
-    if (!debugContext.signals || typeof debugContext.signals !== 'object') {
-        debugContext.signals = {
-            mcpCooldownSkipped: false,
-            mcpRateLimited: false,
-            bedestenRateLimited: false,
-            contentRateLimited: false,
-        };
-    }
-    return debugContext.signals;
-}
-
-function markLegalSearchSignal(debugContext = null, signalName = '') {
-    const signals = ensureLegalSearchSignals(debugContext);
-    if (signals && signalName) {
-        signals[signalName] = true;
-    }
-}
-
-async function searchBedestenAPI(keyword, source, filters = {}, debugContext = null, options = {}) {
-    const allowSourceFallback = options?.allowSourceFallback !== false;
-    if (USE_YARGI_MCP) {
-        if (isYargiMcpCoolingDown()) {
-            markLegalSearchSignal(debugContext, 'mcpCooldownSkipped');
-            if (debugContext?.id) {
-                logLegalSearchDebug(debugContext.id, 'mcp-search-skip-cooldown', {
-                    source,
-                    phrase: String(keyword || ''),
-                    cooldownRemainingMs: getYargiMcpCooldownRemainingMs(),
-                });
-            }
-        } else {
-            try {
-                return await searchBedestenViaMcp(keyword, source, filters, debugContext);
-            } catch (mcpError) {
-                if (debugContext?.id) {
-                    logLegalSearchDebug(debugContext.id, 'mcp-search-error', {
-                        source,
-                        phrase: String(keyword || ''),
-                        message: mcpError?.message || 'unknown-error',
-                    });
-                }
-                if (isUpstreamRateLimitError(mcpError)) {
-                    markLegalSearchSignal(debugContext, 'mcpRateLimited');
-                    activateYargiMcpCooldown(mcpError?.message || 'rate-limit');
-                }
-                console.error('Yargi MCP search failed:', mcpError);
-                if (STRICT_MCP_ONLY && !shouldBypassStrictMcp(mcpError)) {
-                    throw mcpError;
-                }
-            }
-        }
-    }
-
-    const pageNumber = Math.max(1, Number(filters.pageNumber) || 1);
-    const pageSize = Math.min(50, Math.max(1, Number(filters.pageSize) || LEGAL_RESULT_RETURN_LIMIT));
-    const rawBirimAdi = typeof filters.birimAdi === 'string' ? filters.birimAdi.trim() : '';
-    const birimAdi = (!rawBirimAdi || rawBirimAdi.toUpperCase() === 'ALL') ? '' : rawBirimAdi;
-
-    const payload = {
-        data: {
-            pageSize,
-            pageNumber,
-            itemTypeList: getBedestenItemTypeList(source),
-            phrase: keyword,
-            birimAdi,
-            kararTarihiStart: filters.kararTarihiStart || '',
-            kararTarihiEnd: filters.kararTarihiEnd || '',
-            sortFields: Array.isArray(filters.sortFields) && filters.sortFields.length > 0 ? filters.sortFields : ['KARAR_TARIHI'],
-            sortDirection: (filters.sortDirection || 'desc').toString().toLowerCase() === 'asc' ? 'asc' : 'desc',
-        },
-        applicationName: 'UyapMevzuat',
-        paging: true,
-    };
-    if (!payload.data.birimAdi) {
-        delete payload.data.birimAdi;
-    }
-
-    const response = await fetchWithTimeout(BEDESTEN_SEARCH_URL, {
-        method: 'POST',
-        headers: getBedestenHeaders(),
-        body: JSON.stringify(payload),
-    }, BEDESTEN_TIMEOUT_MS);
-
-    if (!response.ok) {
-        const errorText = await response.text().catch(() => '');
-        if (response.status === 429) {
-            markLegalSearchSignal(debugContext, 'bedestenRateLimited');
-        }
-        throw new Error(`Bedesten search failed (${response.status}): ${errorText}`);
-    }
-
-    const data = await response.json();
-    const rawListCandidates = [
-        data?.data?.emsalKararList,
-        data?.emsalKararList,
-        data?.results,
-    ];
-    const rawList = rawListCandidates.find(Array.isArray) || [];
-
-    const formatted = rawList.map((item, index) => toBedestenFormattedDecision(item, index));
-    if (debugContext?.id) {
-        logLegalSearchDebug(debugContext.id, 'direct-bedesten-search-response', {
-            rawDecisionCount: rawList.length,
-            formattedCount: formatted.length,
-            sample: buildLegalResultSample(formatted, 2),
-        });
-    }
-    if (formatted.length === 0 && allowSourceFallback && normalizeSourceValue(source, 'all') !== 'all') {
-        if (debugContext?.id) {
-            logLegalSearchDebug(debugContext.id, 'direct-bedesten-source-fallback', {
-                originalSource: source,
-                fallbackSource: 'all',
-                phrase: String(keyword || ''),
-            });
-        }
-        return await searchBedestenAPI(keyword, 'all', filters, debugContext, {
-            allowSourceFallback: false,
-        });
-    }
-    return formatted;
-}
-
-async function extractPdfTextWithGemini(base64Data, documentId = '') {
-    try {
-        const response = await ai.models.generateContent({
-            model: AI_CONFIG.MODEL_NAME,
-            contents: {
-                parts: [
-                    {
-                        text: `Aï¿½aï¿½ï¿½daki hukuk karar PDF iï¿½eriï¿½ini dï¿½z metin olarak ï¿½ï¿½kar.\nKurallar:\n- Link veya aï¿½ï¿½klama ekleme.\n- Kararï¿½n gï¿½rï¿½len metnini mï¿½mkï¿½n olduï¿½unca eksiksiz dï¿½ndï¿½r.\n- Metni Tï¿½rkï¿½e karakterleri koruyarak yaz.\nBelge Kimliï¿½i: ${documentId || 'bilinmiyor'}`
-                    },
-                    {
-                        inlineData: {
-                            mimeType: 'application/pdf',
-                            data: base64Data,
-                        }
-                    }
-                ]
-            },
-            config: {
-                temperature: 0.1,
-            },
-        });
-
-        return (response.text || '').trim();
-    } catch (error) {
-        console.error('PDF text extraction error:', error);
-        return '';
-    }
-}
-
-async function getBedestenDocumentContent(documentId) {
-    if (USE_YARGI_MCP) {
-        if (!isYargiMcpCoolingDown()) {
-            try {
-                const toolResponse = await callYargiMcpTool('get_bedesten_document_markdown', {
-                    documentId: String(documentId || '').trim(),
-                });
-                const payload = toolResponse.parsed && typeof toolResponse.parsed === 'object'
-                    ? toolResponse.parsed
-                    : maybeExtractJson(toolResponse.text) || {};
-                const markdown = String(payload?.markdown_content || payload?.content || toolResponse.text || '').trim();
-                return {
-                    content: markdown,
-                    mimeType: 'text/markdown',
-                    raw: payload,
-                };
-            } catch (mcpError) {
-                if (isUpstreamRateLimitError(mcpError)) {
-                    activateYargiMcpCooldown(mcpError?.message || 'rate-limit');
-                }
-                console.error('Yargi MCP document fetch failed:', mcpError);
-                if (STRICT_MCP_ONLY && !shouldBypassStrictMcp(mcpError)) {
-                    throw mcpError;
-                }
-            }
-        }
-    }
-
-    const payload = {
-        data: { documentId },
-        applicationName: 'UyapMevzuat',
-    };
-
-    const response = await fetchWithTimeout(BEDESTEN_DOCUMENT_URL, {
-        method: 'POST',
-        headers: getBedestenHeaders(),
-        body: JSON.stringify(payload),
-    }, BEDESTEN_TIMEOUT_MS);
-
-    if (!response.ok) {
-        const errorText = await response.text().catch(() => '');
-        throw new Error(`Bedesten document fetch failed (${response.status}): ${errorText}`);
-    }
-
-    const data = await response.json();
-    const container = data?.data || data || {};
-    const encodedContent = container.content || container.documentContent || container.base64Content || '';
-    const mimeType = (container.mimeType || container.contentType || 'text/html').toString();
-
-    if (!encodedContent || typeof encodedContent !== 'string') {
-        return {
-            content: '',
-            mimeType,
-            raw: container,
-        };
-    }
-
-    let content = '';
-
-    try {
-        if (mimeType.toLowerCase().includes('pdf')) {
-            content = await extractPdfTextWithGemini(encodedContent, documentId);
-        } else {
-            const decoded = Buffer.from(encodedContent, 'base64').toString('utf-8');
-            content = mimeType.toLowerCase().includes('html')
-                ? stripHtmlToText(decoded)
-                : decoded.trim();
-        }
-    } catch (error) {
-        console.error('Document decode error:', error);
-    }
-
-    return {
-        content: content || '',
-        mimeType,
-        raw: container,
-    };
-}
-// Fallback: Use Gemini + Google Search for legal decisions
-async function searchEmsalFallback(keyword, sourceHint = 'all') {
-    try {
-        const strictMcpOnly = process.env.LEGAL_STRICT_MCP !== '0';
-        if (strictMcpOnly) {
-            const routingPlan = await buildSearchRoutingPlan({
-                keyword,
-                requestedSource: sourceHint,
-                filters: {},
-            });
-            const queryVariants = buildBedestenQueryVariants(routingPlan.keyword, routingPlan.originalKeyword);
-
-            for (const candidateSource of routingPlan.fallbackSources) {
-                for (const variant of queryVariants) {
-                    try {
-                        const bedestenResults = await searchBedestenAPI(
-                            variant,
-                            candidateSource,
-                            routingPlan.filters
-                        );
-                        if (Array.isArray(bedestenResults) && bedestenResults.length > 0) {
-                            return {
-                                success: true,
-                                results: bedestenResults,
-                            };
-                        }
-                    } catch (mcpError) {
-                        console.error(`MCP search helper error (${candidateSource}, variant=${variant}):`, mcpError);
-                    }
-                }
-            }
-
-            return { success: false, results: [], error: 'MCP no-results' };
-        }
-
-        const normalizedSourceHint = normalizeSourceValue(sourceHint, 'all');
-        const sourceDirective = normalizedSourceHint === 'all'
-            ? 'Yargitay ve Danistay agirlikli'
-            : `${normalizedSourceHint.toUpperCase()} agirlikli`;
-        const response = await generateContentWithRetry({
-            model: AI_CONFIG.MODEL_NAME,
-            contents: `Tï¿½rkiye'de "${keyword}" konusunda ${sourceDirective} emsal kararlarini bul.
-
-Her karar iï¿½in ï¿½u alanlarï¿½ ï¿½ret:
-- mahkeme
-- daire
-- esasNo
-- kararNo
-- tarih
-- ozet (en fazla 2-3 cï¿½mle)
-- sourceUrl (resmi karar arama linki varsa)
-- relevanceScore (0-100)
-
-Sadece JSON array dï¿½ndï¿½r:
-[{"mahkeme":"...","daire":"...","esasNo":"...","kararNo":"...","tarih":"...","ozet":"...","sourceUrl":"https://...","relevanceScore":85}]`,
-            config: {
-                tools: [{ googleSearch: {} }]
-            }
-        });
-
-        const text = response.text || '';
-        const parsed = maybeExtractJson(text);
-        const rows = Array.isArray(parsed) ? parsed : [];
-
-        if (rows.length > 0) {
-            return {
-                success: true,
-                results: rows.map((r, i) => ({
-                    id: `search-${i}`,
-                    documentId: `search-${i}`,
-                    title: `${r.mahkeme || 'Yargitay'} ${r.daire || ''}`.trim(),
-                    esasNo: r.esasNo || r.esas_no || '',
-                    kararNo: r.kararNo || r.karar_no || '',
-                    tarih: r.tarih || r.date || '',
-                    daire: r.daire || '',
-                    ozet: r.ozet || r.snippet || '',
-                    sourceUrl: r.sourceUrl || r.url || '',
-                    documentUrl: r.documentUrl || r.sourceUrl || r.url || '',
-                    relevanceScore: Number(r.relevanceScore) || Math.max(0, 100 - (i * 8)),
-                })).sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
-            };
-        }
-
-        return {
-            success: true,
-            results: [{
-                id: 'ai-summary',
-                documentId: 'ai-summary',
-                title: 'AI Arama Sonucu',
-                ozet: text.substring(0, 500),
-            }]
-        };
-    } catch (error) {
-        console.error('Fallback search error:', error);
-        return {
-            success: false,
-            results: [],
-            error: error?.message || 'AI fallback failed',
-        };
-    }
-}
-
-async function _getDocumentFromUrl(documentUrl = '') {
-    const url = String(documentUrl || '').trim();
-    if (!/^https?:\/\//i.test(url)) return '';
-
-    try {
-        const response = await fetchWithTimeout(url, {
-            method: 'GET',
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'tr,en-US;q=0.9,en;q=0.8',
-            },
-        }, BEDESTEN_TIMEOUT_MS);
-
-        if (!response.ok) return '';
-
-        const contentType = String(response.headers.get('content-type') || '').toLowerCase();
-        if (!contentType.includes('text/html') && !contentType.includes('text/plain')) return '';
-
-        const rawText = await response.text().catch(() => '');
-        if (!rawText) return '';
-
-        const extracted = contentType.includes('text/html')
-            ? stripHtmlToText(rawText)
-            : rawText.trim();
-
-        return extracted.length >= 500 ? extracted : '';
-    } catch (error) {
-        console.error('Document URL fetch error:', error);
-        return '';
-    }
-}
-
-async function _getDocumentViaAIFallback({ keyword = '', documentId = '', documentUrl = '', title = '', esasNo = '', kararNo = '', tarih = '', daire = '', ozet = '' }) {
-    const queryParts = [
-        keyword,
-        title,
-        daire,
-        esasNo ? `E. ${esasNo}` : '',
-        kararNo ? `K. ${kararNo}` : '',
-        tarih ? `T. ${tarih}` : '',
-        ozet,
-        documentId,
-        documentUrl,
-    ].filter(Boolean);
-
-    const query = queryParts.join(' ').trim();
-    if (!query) return '';
-
-    const runFallbackPrompt = async (prompt) => {
-        const response = await generateContentWithRetry({
-            model: AI_CONFIG.MODEL_NAME,
-            contents: prompt,
-            config: {
-                tools: [{ googleSearch: {} }],
-                temperature: 0.1,
-            }
-        });
-
-        return (response.text || '').replace(/https?:\/\/\S+/gi, '').trim();
-    };
-
-    try {
-        const firstPassText = await runFallbackPrompt(`Asagidaki karar kunyesine ait karar METNINI resmi kaynaklardan bul:
-${query}
-
-Kurallar:
-- Cevapta URL/link verme.
-- Giris/yorum ekleme.
-- Sadece karar metnini duz yazi olarak dondur.
-- Ozeti degil, mumkun olan en uzun karar metnini dondur.
-- Tam metin bulunamazsa, bulunabilen en detayli metni dondur.`);
-
-        if (firstPassText.length >= 1200) {
-            return firstPassText;
-        }
-
-        const secondPassText = await runFallbackPrompt(`Asagidaki karar icin ilk deneme kisa dondu. Simdi yalnizca karar METNINI dondur:
-${query}
-
-Ek kurallar:
-- En az 1500 karakter hedefle (mumkun degilse ulasilabilen en uzun metni ver).
-- Ozet, aciklama, yorum, baslik, link verme.
-- Sadece karar metni.`);
-
-        const bestText = (secondPassText.length > firstPassText.length ? secondPassText : firstPassText).trim();
-        if (bestText.length > 0) {
-            return bestText;
-        }
-    } catch (error) {
-        console.error('AI document fallback strict-pass error:', error);
-    }
-
-    try {
-        const response = await generateContentWithRetry({
-            model: AI_CONFIG.MODEL_NAME,
-            contents: `Aï¿½aï¿½ï¿½daki karar kï¿½nyesine ait karar METNï¿½Nï¿½ resmi kaynaklardan bul:
-${query}
-
-Kurallar:
-- Cevapta URL/link verme.
-- Giriï¿½/yorum ekleme.
-- Sadece karar metnini dï¿½z yazï¿½ olarak dï¿½ndï¿½r.
-- Tam metin bulunamazsa, bulunabilen en detaylï¿½ metni dï¿½ndï¿½r.`,
-            config: {
-                tools: [{ googleSearch: {} }],
-                temperature: 0.1,
-            }
-        });
-
-        const text = (response.text || '').replace(/https?:\/\/\S+/gi, '').trim();
-        return text;
-    } catch (error) {
-        console.error('AI document fallback error:', error);
-        return '';
-    }
-}
 // Search legal decisions endpoint
 app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
     body('source')
@@ -4302,397 +2072,14 @@ app.post('/api/legal/search-decisions', authMiddleware, validateRequest([
 ]), async (req, res) => {
     try {
         await getAuthenticatedUserFromRequest(req);
-        const { source, keyword, filters = {} } = req.body;
-        const debugId = createLegalDebugId();
-        const legalDebugContext = { id: debugId };
-
-        const routingPlan = await buildSearchRoutingPlan({
+        const { source, keyword, rawQuery, filters = {} } = req.body;
+        const payload = await searchLegalDecisionsViaMcp({
+            source,
             keyword,
-            requestedSource: source,
+            rawQuery,
             filters,
         });
-
-        console.warn('Legal Search: "' + routingPlan.keyword + '" (requested: ' + (source || 'all') + ', resolved: ' + routingPlan.resolvedSource + ')');
-        logLegalSearchDebug(debugId, 'route-start', {
-            requestedSource: source || 'all',
-            resolvedSource: routingPlan.resolvedSource,
-            fallbackSources: routingPlan.fallbackSources,
-            keyword: routingPlan.keyword,
-            originalKeyword: routingPlan.originalKeyword,
-        });
-
-        let results = [];
-        const provider = USE_YARGI_MCP ? 'yargi-mcp' : 'bedesten';
-        let usedSource = routingPlan.resolvedSource;
-        const bedestenErrors = [];
-        const warningParts = [];
-        let semanticCandidates = [];
-        let relatedResultCandidates = [];
-        const queryVariants = buildBedestenQueryVariants(routingPlan.keyword, routingPlan.originalKeyword);
-        const baseKeyword = routingPlan.originalKeyword || routingPlan.keyword;
-        const normalizedBaseKeyword = normalizeForRouting(baseKeyword);
-        const denseAnchorIntent = LEGAL_QUERY_PHRASE_ANCHORS
-            .filter((phrase) => normalizedBaseKeyword.includes(phrase))
-            .length >= 3;
-
-        const requestedSourceNormalized = normalizeSourceValue(source, 'all');
-        const dominantVariantSource = requestedSourceNormalized === 'all' && Number(routingPlan.confidence || 0) >= 0.78
-            ? normalizeSourceValue(routingPlan.resolvedSource, 'all')
-            : '';
-        const variantPlans = [];
-        let aiVariantRouteAttempts = 0;
-        for (const variant of queryVariants) {
-            const variantText = normalizeForRouting(variant);
-            let explicitVariantSource = '';
-            if (variantText.includes('danistay')) explicitVariantSource = 'danistay';
-            else if (variantText.includes('yargitay')) explicitVariantSource = 'yargitay';
-            else if (variantText.includes('anayasa')) explicitVariantSource = 'anayasa';
-            else if (variantText.includes('uyap')) explicitVariantSource = 'uyap';
-
-            let variantSource = routingPlan.resolvedSource;
-            let routeMethod = 'rules';
-
-            if (requestedSourceNormalized !== 'all') {
-                variantSource = requestedSourceNormalized;
-                routeMethod = 'requested';
-            } else if (explicitVariantSource) {
-                variantSource = explicitVariantSource;
-                routeMethod = 'explicit';
-            } else if (dominantVariantSource) {
-                variantSource = dominantVariantSource;
-                routeMethod = 'dominant';
-            } else {
-                const ruleDecision = resolveSourceByRules(variant, 'all');
-                variantSource = normalizeSourceValue(ruleDecision.source, routingPlan.resolvedSource);
-                if (ruleDecision.confidence < 0.78 && aiVariantRouteAttempts < 3) {
-                    const aiDecision = await tryResolveSourceWithAI({
-                        keyword: variant,
-                        requestedSource: 'all',
-                    });
-                    aiVariantRouteAttempts += 1;
-                    if (aiDecision?.source && aiDecision.confidence >= Math.max(0.5, ruleDecision.confidence - 0.05)) {
-                        variantSource = normalizeSourceValue(aiDecision.source, variantSource);
-                        routeMethod = 'ai';
-                    }
-                }
-            }
-
-            variantPlans.push({
-                variant,
-                source: normalizeSourceValue(variantSource, routingPlan.resolvedSource),
-                routeMethod,
-            });
-        }
-        if (variantPlans.length === 0) {
-            variantPlans.push({
-                variant: baseKeyword,
-                source: routingPlan.resolvedSource,
-                routeMethod: 'fallback',
-            });
-        }
-
-        const sourceCollected = [];
-        const sourceSeen = new Set();
-        const resolvedSources = new Set();
-        let lastSourceError = null;
-        let strictVariantHitCount = 0;
-        const pushCollected = (items = []) => {
-            for (const item of (Array.isArray(items) ? items : [])) {
-                const key = getLegalDecisionDocumentId(item)
-                    || `${item?.title || ''}|${item?.esasNo || ''}|${item?.kararNo || ''}|${item?.tarih || ''}`;
-                if (!key || sourceSeen.has(key)) continue;
-                sourceSeen.add(key);
-                sourceCollected.push(item);
-            }
-        };
-
-        for (const plan of variantPlans) {
-            try {
-                const bedestenResults = await searchBedestenAPI(
-                    plan.variant,
-                    plan.source,
-                    routingPlan.filters,
-                    legalDebugContext
-                );
-                logLegalSearchDebug(debugId, 'variant-result', {
-                    candidateSource: plan.source,
-                    variant: plan.variant,
-                    routeMethod: plan.routeMethod,
-                    count: Array.isArray(bedestenResults) ? bedestenResults.length : 0,
-                    sample: buildLegalResultSample(bedestenResults, 2),
-                });
-
-                if (Array.isArray(bedestenResults) && bedestenResults.length > 0) {
-                    pushCollected(bedestenResults);
-                    resolvedSources.add(plan.source);
-                    if (/\band\b/i.test(plan.variant) || String(plan.variant || '').includes('"')) {
-                        strictVariantHitCount += 1;
-                    }
-                    if (plan.variant !== baseKeyword) {
-                        warningParts.push('Arama sorgusu optimize edilerek MCP sonucu bulundu.');
-                    }
-                    if (sourceCollected.length >= LEGAL_VARIANT_RESULT_CAP) break;
-                    if (denseAnchorIntent && strictVariantHitCount >= 2 && sourceCollected.length >= 12) break;
-                }
-            } catch (bedestenError) {
-                lastSourceError = bedestenError;
-                if (bedestenError?.code === 'REQUEST_TIMEOUT') {
-                    warningParts.push('MCP/Bedesten aramasi zaman asimina ugradi.');
-                    break;
-                }
-                console.error('Bedesten search failed (' + plan.source + ', variant=' + plan.variant + '):', bedestenError);
-            }
-        }
-
-        if (sourceCollected.length > 0) {
-            results = sourceCollected.slice(0, LEGAL_VARIANT_RESULT_CAP);
-            semanticCandidates = sourceCollected.slice(0, LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT);
-            relatedResultCandidates = sourceCollected.slice(0, LEGAL_VARIANT_RESULT_CAP);
-            if (resolvedSources.size === 1) {
-                usedSource = Array.from(resolvedSources)[0];
-            } else if (resolvedSources.size > 1) {
-                usedSource = 'all';
-            }
-            logLegalSearchDebug(debugId, 'source-aggregate', {
-                resolvedSources: Array.from(resolvedSources),
-                totalCollected: sourceCollected.length,
-                sample: buildLegalResultSample(results, 3),
-            });
-        }
-        if (lastSourceError) {
-            bedestenErrors.push((usedSource || routingPlan.resolvedSource) + ':' + (lastSourceError?.message || 'unknown-error'));
-        }
-
-        if (Array.isArray(results) && results.length > 0) {
-            const scoringKeyword = routingPlan.originalKeyword || routingPlan.keyword;
-            const scoring = scoreAndFilterResultsByKeyword(
-                results,
-                scoringKeyword
-            );
-            logLegalSearchDebug(debugId, 'scoring', {
-                beforeCount: Array.isArray(results) ? results.length : 0,
-                matchedCount: Array.isArray(scoring.results) ? scoring.results.length : 0,
-                rankedCount: Array.isArray(scoring.scoredResults) ? scoring.scoredResults.length : 0,
-                filteredOutCount: scoring.filteredOutCount || 0,
-                minMatchScore: LEGAL_MIN_MATCH_SCORE,
-                topRankedSample: buildLegalResultSample(scoring.scoredResults, 3),
-            });
-            const contentCandidates = [];
-            const contentCandidateSeen = new Set();
-            const pushContentCandidate = (item) => {
-                if (!item || typeof item !== 'object') return;
-                const id = getLegalDecisionDocumentId(item);
-                const fallbackKey = `${item.title || ''}|${item.esasNo || ''}|${item.kararNo || ''}`;
-                const key = id || fallbackKey;
-                if (!key || contentCandidateSeen.has(key)) return;
-                contentCandidateSeen.add(key);
-                contentCandidates.push(item);
-            };
-            for (const item of (Array.isArray(scoring.results) ? scoring.results : [])) {
-                pushContentCandidate(item);
-            }
-            for (const item of (Array.isArray(scoring.scoredResults) ? scoring.scoredResults : [])) {
-                pushContentCandidate(item);
-            }
-            semanticCandidates = contentCandidates.slice(0, LEGAL_GEMINI_SEMANTIC_CANDIDATE_LIMIT);
-            relatedResultCandidates = contentCandidates.slice(0, LEGAL_VARIANT_RESULT_CAP);
-
-            const contentRerank = await rerankResultsByDecisionContent(
-                contentCandidates,
-                scoringKeyword,
-                legalDebugContext
-            );
-            const scoringFallback = pickLegalFallbackResults({
-                scoring,
-                contentCandidates,
-                contentRerank,
-                limit: LEGAL_RESULT_RETURN_LIMIT,
-            });
-
-            if (contentRerank.applied && contentRerank.fetchedCount > 0) {
-                if (Array.isArray(contentRerank.results) && contentRerank.results.length > 0) {
-                    results = contentRerank.results.slice(0, Math.min(LEGAL_RESULT_RETURN_LIMIT, contentRerank.results.length));
-                    if (contentRerank.filteredOutCount > 0) {
-                        warningParts.push(`${contentRerank.filteredOutCount} sonuc tam metinde anahtar kelime uyusmasi dusuk oldugu icin elendi.`);
-                    }
-                } else {
-                    results = scoringFallback.results;
-                    if (scoringFallback.mode === 'strict-scoring') {
-                        warningParts.push('Tam metin filtresi sonuc vermedigi icin metadata eslesmeleri listelendi.');
-                    } else if (scoringFallback.mode === 'strict-threshold') {
-                        warningParts.push(`Tam metin filtresi sonuc vermedigi icin skor >= ${LEGAL_MIN_MATCH_SCORE} olan en yakin sonuclar listelendi.`);
-                    } else if (scoringFallback.mode === 'relaxed-threshold') {
-                        warningParts.push(`Tam metin filtresi sonuc vermedigi icin skor >= ${LEGAL_RELAXED_MATCH_SCORE} olan en yakin sonuclar listelendi.`);
-                    } else if (scoringFallback.mode === 'content-candidates') {
-                        warningParts.push('Karar tam metinleri kismen dogrulanamadigi icin ilk bulunan MCP sonuclari listelendi.');
-                    } else {
-                        warningParts.push('MCP tam metinlerinde anahtar kelime uyusmasi bulunamadi.');
-                    }
-                }
-            } else {
-                results = scoringFallback.results;
-                if (scoringFallback.mode === 'strict-threshold') {
-                    warningParts.push(`Kati ifade filtresi nedeniyle skor >= ${LEGAL_MIN_MATCH_SCORE} olan en yakin MCP sonuclari listelendi.`);
-                } else if (scoringFallback.mode === 'relaxed-threshold') {
-                    warningParts.push(`Kati ifade filtresi nedeniyle skor >= ${LEGAL_RELAXED_MATCH_SCORE} olan en yakin MCP sonuclari listelendi.`);
-                } else if (scoringFallback.mode === 'content-candidates') {
-                    warningParts.push('Karar tam metinleri cekilemedigi icin ilk bulunan MCP sonuclari listelendi.');
-                }
-
-                if (contentRerank.applied && contentRerank.fetchErrorCount > 0) {
-                    warningParts.push('Bazi karar tam metinleri MCP uzerinden cekilemedi.');
-                }
-                if (scoring.filteredOutCount > 0 && Array.isArray(scoring.results) && scoring.results.length > 0) {
-                    warningParts.push(`${scoring.filteredOutCount} sonuc anahtar kelime uyusmasi dusuk oldugu icin elendi.`);
-                }
-            }
-        }
-
-        if (!Array.isArray(results) || results.length === 0) {
-            const semanticRerank = await semanticRerankWithGemini({
-                candidates: semanticCandidates,
-                keyword: routingPlan.originalKeyword || routingPlan.keyword,
-                debugContext: { id: debugId },
-            });
-            if (semanticRerank.applied && Array.isArray(semanticRerank.results) && semanticRerank.results.length > 0) {
-                results = semanticRerank.results.slice(0, LEGAL_RESULT_RETURN_LIMIT);
-                warningParts.push('Gemini semantik siralama fallback kullanildi.');
-            }
-        }
-
-        if (!Array.isArray(results) || results.length === 0) {
-            const phraseFallback = await runPhraseFallbackSearch({
-                keyword: routingPlan.originalKeyword || routingPlan.keyword,
-                source: usedSource || routingPlan.resolvedSource || 'all',
-                filters: routingPlan.filters,
-                debugContext: legalDebugContext,
-            });
-            if (phraseFallback.applied && Array.isArray(phraseFallback.results) && phraseFallback.results.length > 0) {
-                results = phraseFallback.results;
-                for (let i = warningParts.length - 1; i >= 0; i -= 1) {
-                    if (String(warningParts[i] || '').includes('MCP tam metinlerinde anahtar kelime uyusmasi bulunamadi.')) {
-                        warningParts.splice(i, 1);
-                    }
-                }
-                warningParts.push('Birlesik sorgu parcalanarak anahtar ifadelerle MCP aramasi yapildi.');
-            }
-        }
-
-        if ((!Array.isArray(results) || results.length === 0) && sourceCollected.length > 0) {
-            results = sourceCollected
-                .slice()
-                .sort((a, b) => Number(b?.relevanceScore || 0) - Number(a?.relevanceScore || 0))
-                .slice(0, LEGAL_RESULT_RETURN_LIMIT);
-            warningParts.push('Tam metin ve ifade filtreleri sonuc vermedigi icin en yakin ham karar adaylari listelendi.');
-        }
-
-        const upstreamSignals = ensureLegalSearchSignals(legalDebugContext);
-        if (upstreamSignals?.mcpRateLimited || upstreamSignals?.mcpCooldownSkipped) {
-            warningParts.push('Yargi MCP upstream rate-limit/cooldown nedeniyle Bedesten fallback kullanildi.');
-        }
-        if (upstreamSignals?.bedestenRateLimited) {
-            warningParts.push('Bedesten upstream rate-limit nedeniyle bazi sorgu varyantlari atlandi.');
-        }
-        if (upstreamSignals?.contentRateLimited) {
-            warningParts.push('MCP tam metin cekimi rate-limit nedeniyle erken durduruldu.');
-        }
-
-        if (!Array.isArray(results) || results.length === 0) {
-            const uniqueWarnings = Array.from(new Set(warningParts));
-            logLegalSearchDebug(debugId, 'route-empty', {
-                provider,
-                usedSource,
-                warningParts: uniqueWarnings,
-                bedestenErrors,
-            });
-            return res.json({
-                success: true,
-                source: usedSource || routingPlan.resolvedSource || 'all',
-                keyword: routingPlan.keyword,
-                provider,
-                results: [],
-                warningParts: uniqueWarnings,
-                bedestenErrors,
-                warning: uniqueWarnings.length > 0
-                    ? uniqueWarnings.join(' ')
-                    : 'MCP/Bedesten kaynaginda karar bulunamadi veya servise ulasilamadi.',
-                routing: {
-                    requestedSource: routingPlan.requestedSource,
-                    resolvedSource: routingPlan.resolvedSource,
-                    usedSource,
-                    fallbackSources: routingPlan.fallbackSources,
-                    router: routingPlan.router,
-                    confidence: routingPlan.confidence,
-                    compacted: routingPlan.compacted,
-                },
-            });
-        }
-
-        if (routingPlan.compacted) {
-            warningParts.push('Uzun sorgu optimize edilerek arama yapildi.');
-        }
-        if (bedestenErrors.length > 0) {
-            warningParts.push('Bazi Bedesten denemeleri basarisiz oldu.');
-        }
-        let responseResults = Array.isArray(results) ? results : [];
-        let uniqueWarnings = Array.from(new Set(warningParts));
-        const strictFilteredResults = responseResults.filter(
-            (item) => Number(item?.relevanceScore || 0) >= LEGAL_MIN_MATCH_SCORE
-        );
-        if (responseResults.length > 0 && strictFilteredResults.length === 0) {
-            const relaxedFilteredResults = responseResults.filter(
-                (item) => Number(item?.relevanceScore || 0) >= LEGAL_RELAXED_MATCH_SCORE
-            );
-            if (relaxedFilteredResults.length > 0) {
-                responseResults = relaxedFilteredResults.slice(0, LEGAL_RESULT_RETURN_LIMIT);
-                warningParts.push(`Son skor filtresi listeyi bosalttigi icin skor >= ${LEGAL_RELAXED_MATCH_SCORE} olan en yakin sonuclar gosterildi.`);
-            } else {
-                responseResults = responseResults.slice(0, LEGAL_RESULT_RETURN_LIMIT);
-                warningParts.push('Son skor filtresi listeyi bosalttigi icin en yakin sonuclar gosterildi.');
-            }
-            uniqueWarnings = Array.from(new Set(warningParts));
-        } else {
-            responseResults = strictFilteredResults;
-        }
-        const resultBuckets = buildLegalResultBuckets({
-            strongResults: responseResults,
-            candidateResults: relatedResultCandidates.length > 0 ? relatedResultCandidates : sourceCollected,
-            targetCount: Math.max(LEGAL_RELATED_RESULT_TARGET, responseResults.length),
-        });
-        if (resultBuckets.related.length > 0) {
-            responseResults = resultBuckets.combined;
-            warningParts.push(`${resultBuckets.related.length} ilgili karar adayi da listeye eklendi.`);
-            uniqueWarnings = Array.from(new Set(warningParts));
-        }
-        logLegalSearchDebug(debugId, 'route-success', {
-            provider,
-            usedSource,
-            finalCount: Array.isArray(responseResults) ? responseResults.length : 0,
-            warningParts: uniqueWarnings,
-            sample: buildLegalResultSample(responseResults, 3),
-        });
-
-        res.json({
-            success: true,
-            source: usedSource || routingPlan.resolvedSource || 'all',
-            keyword: routingPlan.keyword,
-            provider,
-            results: responseResults,
-            resultBuckets,
-            warningParts: uniqueWarnings,
-            bedestenErrors,
-            routing: {
-                requestedSource: routingPlan.requestedSource,
-                resolvedSource: routingPlan.resolvedSource,
-                usedSource,
-                fallbackSources: routingPlan.fallbackSources,
-                router: routingPlan.router,
-                confidence: routingPlan.confidence,
-                compacted: routingPlan.compacted,
-            },
-            ...(uniqueWarnings.length > 0 ? { warning: uniqueWarnings.join(' ') } : {}),
-        });
-
+        res.json(payload);
     } catch (error) {
         const statusCode = Number(error?.status) || 500;
         console.error('Legal Search Error:', error);
@@ -4733,62 +2120,8 @@ app.post('/api/legal/get-document', authMiddleware, validateRequest([
 ]), async (req, res) => {
     try {
         await getAuthenticatedUserFromRequest(req);
-        const { source, documentId, documentUrl } = req.body;
-
-        if (!documentId && !documentUrl) {
-            return res.status(400).json({ error: 'documentId veya documentUrl gereklidir.' });
-        }
-
-        console.warn(`ğŸ“�? Get Document: ${documentId || documentUrl}`);
-
-        let content = '';
-        const provider = USE_YARGI_MCP ? 'yargi-mcp' : 'bedesten';
-        let mimeType = 'text/plain';
-        const safeDocumentId = String(documentId || '');
-        const safeDocumentUrl = String(documentUrl || '').trim();
-        const hasSyntheticDocumentId = /^(search-|legal-|ai-summary)/i.test(safeDocumentId);
-
-        // If search came from Bedesten, documentId can directly fetch full content.
-        const looksLikeFallbackId = hasSyntheticDocumentId;
-
-        if (!safeDocumentId || looksLikeFallbackId) {
-            return res.status(400).json({
-                error: 'Sadece MCP/Bedesten documentId ile karar metni getirilebilir.',
-            });
-        }
-
-        try {
-            const bedestenDocument = await getBedestenDocumentContent(safeDocumentId);
-            content = bedestenDocument.content || '';
-            mimeType = bedestenDocument.mimeType || mimeType;
-        } catch (bedestenError) {
-            console.error('Bedesten get-document failed:', bedestenError);
-            return res.status(502).json({
-                error: 'MCP/Bedesten karar metni servisine ulasilamadi.',
-            });
-        }
-
-        if (!content || content.trim().length === 0) {
-            return res.status(404).json({
-                error: 'MCP/Bedesten kaynaginda karar metni bulunamadi.',
-            });
-        }
-        if ((content || '').length < 0 && (!content || content.trim().length === 0)) {
-            content = 'Karar metni getirilemedi. Lï¿½tfen farklï¿½ bir karar seï¿½ip tekrar deneyin.';
-        }
-
-        res.json({
-            success: true,
-            source,
-            provider,
-            document: {
-                content,
-                mimeType,
-                documentId: safeDocumentId,
-                documentUrl: safeDocumentUrl,
-            }
-        });
-
+        const payload = await getLegalDocumentViaMcp(req.body || {});
+        res.json(payload);
     } catch (error) {
         const statusCode = Number(error?.status) || 500;
         console.error('Get Document Error:', error);
@@ -4808,15 +2141,7 @@ app.post('/api/legal/get-document', authMiddleware, validateRequest([
 
 // List available legal sources
 app.get('/api/legal/sources', (req, res) => {
-    res.json({
-        sources: [
-            { id: 'yargitay', name: 'Yargï¿½tay', description: 'Yargï¿½tay Kararlarï¿½ (Bedesten API)' },
-            { id: 'danistay', name: 'Danï¿½ï¿½tay', description: 'Danï¿½ï¿½tay Kararlarï¿½ (Bedesten API)' },
-            { id: 'uyap', name: 'Emsal (UYAP)', description: 'Emsal Kararlar (UYAP Sistemi)' },
-            { id: 'anayasa', name: 'Anayasa Mahkemesi', description: 'AYM Norm Denetimi ve Bireysel Baï¿½vuru' },
-            { id: 'kik', name: 'Kamu ï¿½hale Kurulu', description: 'Kï¿½K Kararlarï¿½' },
-        ]
-    });
+    res.json(getLegalSources());
 });
 
 // ============================================
@@ -6315,7 +3640,7 @@ app.get('/api/templates/:id', (req, res) => {
     const template = SANITIZED_TEMPLATES.find(t => t.id === req.params.id);
 
     if (!template) {
-        return res.status(404).json({ error: 'ï¿½ablon bulunamadï¿½' });
+        return res.status(404).json({ error: 'Şablon bulunamadı' });
     }
 
     res.json({ template });
@@ -6335,7 +3660,7 @@ app.post('/api/templates/:id/use', validateRequest([
     const template = SANITIZED_TEMPLATES.find(t => t.id === req.params.id);
 
     if (!template) {
-        return res.status(404).json({ error: 'ï¿½ablon bulunamadï¿½' });
+        return res.status(404).json({ error: 'Şablon bulunamadı' });
     }
 
     const { variables } = req.body;
@@ -6665,4 +3990,3 @@ app.all('/api/announcements', (req, res) => announcementsHandler(req, res));
 app.listen(PORT, () => {
     console.warn(`Server running on http://localhost:${PORT}`);
 });
-

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     Search,
     Info,
@@ -17,9 +17,253 @@ import {
 import { Header } from '../../components/Header';
 import {
     compactLegalSearchQuery,
+    getLegalDocument,
     searchLegalDecisions,
     type NormalizedLegalDecision,
 } from '../utils/legalSearch';
+
+const SEARCH_AREAS = [
+    { id: 'auto', label: 'Otomatik' },
+    { id: 'ceza', label: 'Ceza' },
+    { id: 'hukuk', label: 'Hukuk' },
+    { id: 'danistay', label: 'Danistay' },
+    { id: 'bam', label: 'BAM / Istinaf' },
+];
+
+const SYNTHETIC_RESULT_ID_REGEX = /^(search-|legal-|ai-summary|sem-|template-decision-)/i;
+const DOCUMENT_PREVIEW_RESULT_LIMIT = 3;
+const MIN_PREVIEW_FETCH_CHARS = 500;
+const DOCUMENT_PREVIEW_MAX_CHARS = 4000;
+const HIGHLIGHT_QUERY_STOPWORDS = new Set([
+    've',
+    'veya',
+    'ile',
+    'icin',
+    'için',
+    'ama',
+    'fakat',
+    'gibi',
+    'olan',
+    'olarak',
+    'bir',
+    'bu',
+    'su',
+    'şu',
+    'o',
+    'da',
+    'de',
+    'ki',
+    'mi',
+    'mu',
+    'mu?',
+    'mi?',
+    'midir',
+    'nedir',
+    'vekil',
+    'muvekkil',
+    'müvekkil',
+    'karar',
+    'karari',
+    'kararı',
+    'kararlar',
+    'mahkeme',
+    'mahkemesi',
+    'savcilik',
+    'savcılık',
+    'savciligin',
+    'savcılığın',
+    'savci',
+    'savcı',
+    'iddianame',
+    'iddianamedeki',
+    'tehlike',
+    'nokta',
+    'noktalar',
+    'plan',
+    'kritik',
+    'durum',
+    'olay',
+    'dosya',
+    'maddeler',
+    'maddeyi',
+    'maddenin',
+    'bunlari',
+    'bunları',
+    'curutme',
+    'çürütme',
+    'savunmamiz',
+    'savunmamız',
+]);
+
+const HIGHLIGHT_DOMAIN_TOKENS = new Set([
+    'uyusturucu',
+    'uyuşturucu',
+    'coklu',
+    'çoklu',
+    'madde',
+    'kullanma',
+    'kullanim',
+    'kullanım',
+    'polidrug',
+    'materyal',
+    'mukayese',
+    'raporu',
+    'rapor',
+    'ticaret',
+    'satici',
+    'satıcı',
+    'delil',
+    'ceşitliligi',
+    'çeşitliliği',
+    'kannabinoid',
+    'kokain',
+    'hap',
+    'promosyon',
+    'kagit',
+    'kağıt',
+    'bagimli',
+    'bağımlı',
+    'kullanicisi',
+    'kullanıcısı',
+]);
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const normalizeConceptText = (value: string) =>
+    String(value || '')
+        .toLocaleLowerCase('tr-TR')
+        .replace(/[^a-z0-9çğıöşü\s]/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+const extractSearchConcepts = (query: string) => {
+    const raw = String(query || '').trim();
+    if (!raw) return [];
+
+    const concepts: string[] = [];
+    const seen = new Set<string>();
+    const addConcept = (value: string) => {
+        const compact = value.replace(/\s+/g, ' ').trim();
+        const normalized = normalizeConceptText(compact);
+        if (!compact || normalized.length < 4 || seen.has(normalized)) return;
+        if (HIGHLIGHT_QUERY_STOPWORDS.has(normalized)) return;
+        seen.add(normalized);
+        concepts.push(compact);
+    };
+
+    for (const match of raw.matchAll(/"([^"]+)"|'([^']+)'/g)) {
+        addConcept(match[1] || match[2] || '');
+    }
+
+    raw
+        .replace(/["']/g, ' ')
+        .split(/[\s,;:.!?()[\]{}\\/+-]+/)
+        .map((token) => token.trim())
+        .filter(Boolean)
+        .forEach((token) => {
+            const normalized = normalizeConceptText(token);
+            if (!normalized || HIGHLIGHT_QUERY_STOPWORDS.has(normalized)) return;
+            if (HIGHLIGHT_DOMAIN_TOKENS.has(normalized) || normalized.length >= 8) {
+                addConcept(token);
+            }
+        });
+
+    const filteredTokens = raw
+        .replace(/["']/g, ' ')
+        .split(/[\s,;:.!?()[\]{}\\/+-]+/)
+        .map((token) => token.trim())
+        .filter(Boolean)
+        .filter((token) => {
+            const normalized = normalizeConceptText(token);
+            return normalized && !HIGHLIGHT_QUERY_STOPWORDS.has(normalized);
+        });
+
+    for (let size = 4; size >= 2; size -= 1) {
+        for (let index = 0; index <= filteredTokens.length - size; index += 1) {
+            const phraseTokens = filteredTokens.slice(index, index + size);
+            const normalizedPhraseTokens = phraseTokens.map((token) => normalizeConceptText(token));
+            const phrase = phraseTokens.join(' ');
+            const hasDomainSignal = normalizedPhraseTokens.some((token) => HIGHLIGHT_DOMAIN_TOKENS.has(token));
+            const joinedLength = normalizeConceptText(phrase).length;
+            if (!hasDomainSignal && joinedLength < 14) continue;
+            addConcept(phrase);
+        }
+    }
+
+    return concepts
+        .sort((left, right) => right.length - left.length)
+        .slice(0, 24);
+};
+
+const getPresentConcepts = (text: string, concepts: string[]) => {
+    const normalizedText = normalizeConceptText(text);
+    const presentConcepts = concepts.filter((concept) =>
+        normalizedText.includes(normalizeConceptText(concept))
+    );
+
+    return presentConcepts.filter((concept, _, allConcepts) => {
+        const normalizedConcept = normalizeConceptText(concept);
+        return !allConcepts.some((otherConcept) => {
+            const normalizedOtherConcept = normalizeConceptText(otherConcept);
+            return (
+                normalizedOtherConcept !== normalizedConcept &&
+                normalizedOtherConcept.length > normalizedConcept.length &&
+                normalizedOtherConcept.includes(normalizedConcept)
+            );
+        });
+    });
+};
+
+const renderHighlightedText = (
+    text: string,
+    concepts: string[],
+    keyPrefix: string
+): React.ReactNode => {
+    const safeText = String(text || '');
+    if (!safeText || concepts.length === 0) return safeText;
+
+    const pattern = concepts
+        .filter(Boolean)
+        .sort((left, right) => right.length - left.length)
+        .map((concept) => escapeRegExp(concept))
+        .join('|');
+
+    if (!pattern) return safeText;
+
+    const regex = new RegExp(`(${pattern})`, 'giu');
+    const segments = safeText.split(regex);
+
+    return segments.map((segment, index) => {
+        if (!segment) return null;
+        const normalizedSegment = normalizeConceptText(segment);
+        const isMatch = concepts.some(
+            (concept) => normalizedSegment === normalizeConceptText(concept)
+        );
+
+        return isMatch ? (
+            <mark
+                key={`${keyPrefix}-match-${index}`}
+                className="legal-match-highlight"
+            >
+                {segment}
+            </mark>
+        ) : (
+            <React.Fragment key={`${keyPrefix}-text-${index}`}>{segment}</React.Fragment>
+        );
+    });
+};
+
+const canFetchDocumentPreview = (result: NormalizedLegalDecision) => {
+    const documentId = String(result.documentId || result.id || '').trim();
+    const documentUrl = String(result.documentUrl || result.sourceUrl || '').trim();
+    if (documentUrl) return true;
+    return Boolean(documentId) && !SYNTHETIC_RESULT_ID_REGEX.test(documentId);
+};
+
+const shouldHydratePreview = (result: NormalizedLegalDecision) => {
+    const preview = String(result.snippet || result.ozet || '').replace(/\s+/g, ' ').trim();
+    return preview.length < MIN_PREVIEW_FETCH_CHARS;
+};
 
 // Component to handle floating copy button for selected text
 const SelectableText = ({
@@ -104,6 +348,7 @@ const SelectableText = ({
 
 export default function PrecedentSearch() {
     const [searchQuery, setSearchQuery] = useState('');
+    const [searchArea, setSearchArea] = useState('auto');
     const [isSearching, setIsSearching] = useState(false);
     const [hasResults, setHasResults] = useState(false);
     const [results, setResults] = useState<NormalizedLegalDecision[]>([]);
@@ -111,6 +356,7 @@ export default function PrecedentSearch() {
     const [copiedId, setCopiedId] = useState<string | number | null>(null);
     const [expandedIds, setExpandedIds] = useState<Set<string | number>>(new Set());
     const [isGuideOpen, setIsGuideOpen] = useState(false);
+    const activeSearchRunRef = useRef(0);
 
     const toggleExpand = (id: string | number) => {
         setExpandedIds((prev) => {
@@ -123,6 +369,69 @@ export default function PrecedentSearch() {
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+    const hydrateResultPreviews = useCallback(async (searchRunId: number, apiResults: NormalizedLegalDecision[]) => {
+        const previewTargets = apiResults
+            .map((result, index) => ({ result, index }))
+            .filter(({ result }) => canFetchDocumentPreview(result) && shouldHydratePreview(result))
+            .slice(0, DOCUMENT_PREVIEW_RESULT_LIMIT);
+
+        if (previewTargets.length === 0) return;
+
+        const previewUpdates = await Promise.all(
+            previewTargets.map(async ({ result, index }) => {
+                try {
+                    const documentId = String(result.documentId || result.id || '').trim();
+                    const documentUrl = String(result.documentUrl || result.sourceUrl || '').trim();
+                    const content = await getLegalDocument({
+                        source: result.source,
+                        documentId: documentId && !SYNTHETIC_RESULT_ID_REGEX.test(documentId) ? documentId : undefined,
+                        documentUrl: documentUrl || undefined,
+                        title: result.title,
+                        esasNo: result.esasNo,
+                        kararNo: result.kararNo,
+                        tarih: result.tarih,
+                        daire: result.daire,
+                        ozet: result.ozet,
+                        snippet: result.snippet,
+                    });
+
+                    const normalizedContent = String(content || '').replace(/\s+/g, ' ').trim();
+                    if (normalizedContent.length < MIN_PREVIEW_FETCH_CHARS) {
+                        return null;
+                    }
+
+                    return {
+                        index,
+                        snippet: normalizedContent.slice(0, DOCUMENT_PREVIEW_MAX_CHARS).trim(),
+                    };
+                } catch {
+                    return null;
+                }
+            })
+        );
+
+        if (activeSearchRunRef.current !== searchRunId) return;
+
+        const updateMap = new Map(
+            previewUpdates
+                .filter((item): item is { index: number; snippet: string } => Boolean(item?.snippet))
+                .map((item) => [item.index, item.snippet])
+        );
+
+        if (updateMap.size === 0) return;
+
+        setResults((prev) =>
+            prev.map((item, index) =>
+                updateMap.has(index)
+                    ? {
+                          ...item,
+                          snippet: updateMap.get(index) || item.snippet,
+                      }
+                    : item
+            )
+        );
+    }, []);
+
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
@@ -134,6 +443,8 @@ export default function PrecedentSearch() {
         e.preventDefault();
         if (!searchQuery.trim()) return;
 
+        const searchRunId = activeSearchRunRef.current + 1;
+        activeSearchRunRef.current = searchRunId;
         setIsSearching(true);
         setHasResults(false);
         setError(null);
@@ -147,10 +458,12 @@ export default function PrecedentSearch() {
                 keyword: compactedKeyword,
                 rawQuery: searchQuery,
                 source: 'all',
+                filters: { searchArea },
             });
 
             setResults(apiResults || []);
             setHasResults(true);
+            void hydrateResultPreviews(searchRunId, apiResults || []);
         } catch (err: any) {
             console.error('Legal search error:', err);
             setError(err.message || 'Karar aranırken bir hata oluştu.');
@@ -238,6 +551,19 @@ export default function PrecedentSearch() {
                             </button>
                         )}
                     </div>
+                    <div className="w-full sm:w-[180px] shrink-0">
+                        <select
+                            value={searchArea}
+                            onChange={(e) => setSearchArea(e.target.value)}
+                            className="w-full rounded-xl border border-white/10 bg-[#111113] px-4 py-4 text-sm text-white outline-none"
+                        >
+                            {SEARCH_AREAS.map((option) => (
+                                <option key={option.id} value={option.id}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
                     <div className="w-full sm:w-auto shrink-0 flex items-center pr-2">
                         <button
                             onClick={handleSearch}
@@ -273,7 +599,7 @@ export default function PrecedentSearch() {
 
             {/* Content Area */}
             <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-12 space-y-10">
-                {/* AI Semantic Search Explanation Banner */}
+                {/* MCP Search Explanation Banner */}
                 <div className="bg-gradient-to-r from-red-900/20 to-black/40 rounded-2xl p-6 border border-red-500/20 shadow-lg relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-6 opacity-10">
                         <BrainCircuit className="w-32 h-32 text-red-500" />
@@ -284,9 +610,15 @@ export default function PrecedentSearch() {
                         </div>
                         <div className="space-y-1.5">
                             <h3 className="text-lg font-bold text-white tracking-tight">
-                                Yapay Zeka Destekli Semantik Arama Devrede
+                                Temiz MCP Karar Arama Akisi
                             </h3>
                             <p className="text-gray-400 leading-relaxed text-sm lg:text-base max-w-3xl">
+                                Arama artik tek bir sade MCP akisi uzerinden calisir. Sonuclar
+                                Yargitay, Danistay, Istinaf ve UYAP kaynaklarindan cekilir;
+                                baslik, daire ve ozet alanlarindaki eslesmeye gore siralanir.
+                                En yuksek eslesme skoru ustte gosterilir.
+                            </p>
+                            <p className="hidden text-gray-400 leading-relaxed text-sm lg:text-base max-w-3xl">
                                 Aramalarınız sadece anahtar kelime eşleşmesine bakmaz. Yapay zeka
                                 (AI) sistemimiz sonuçları{' '}
                                 <strong>anlamsal olarak analiz eder</strong>, girdiğiniz konuyla
@@ -354,6 +686,18 @@ export default function PrecedentSearch() {
                                         const contentToDisplay =
                                             result.snippet || result.ozet || 'İçerik bulunamadı.';
                                         const esasKarar = `Esas No: ${result.esasNo || '-'} — Karar No: ${result.kararNo || '-'}`;
+                                        const backendMatchedConcepts = Array.isArray(result.matchHighlights)
+                                            ? result.matchHighlights.filter((item) => typeof item === 'string')
+                                            : [];
+                                        const searchConcepts = extractSearchConcepts(searchQuery);
+                                        const matchedConcepts = backendMatchedConcepts.length > 0
+                                            ? backendMatchedConcepts
+                                            : getPresentConcepts(
+                                                  [result.title, result.daire, contentToDisplay]
+                                                      .filter(Boolean)
+                                                      .join(' '),
+                                                  searchConcepts
+                                              );
 
                                         return (
                                             <div
@@ -376,7 +720,7 @@ export default function PrecedentSearch() {
                                                             )}
                                                             <span
                                                                 className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold border cursor-help ${scoreColorClass}`}
-                                                                title="Yapay Zeka Uyum Skoru"
+                                                                title="Eslesme Skoru"
                                                             >
                                                                 Skor: {score}
                                                             </span>
@@ -384,13 +728,25 @@ export default function PrecedentSearch() {
                                                         <h3 className="text-lg font-bold text-white mt-1">
                                                             {result.title &&
                                                             result.title !== result.daire
-                                                                ? result.title
-                                                                : esasKarar}
+                                                                ? renderHighlightedText(
+                                                                      result.title,
+                                                                      matchedConcepts,
+                                                                      `${uniqueId}-title`
+                                                                  )
+                                                                : renderHighlightedText(
+                                                                      esasKarar,
+                                                                      matchedConcepts,
+                                                                      `${uniqueId}-citation`
+                                                                  )}
                                                         </h3>
                                                         {result.title &&
                                                             result.title !== result.daire && (
                                                                 <div className="text-sm font-medium text-red-400/80 mt-0.5">
-                                                                    {esasKarar}
+                                                                    {renderHighlightedText(
+                                                                        esasKarar,
+                                                                        matchedConcepts,
+                                                                        `${uniqueId}-meta`
+                                                                    )}
                                                                 </div>
                                                             )}
                                                     </div>
@@ -420,6 +776,21 @@ export default function PrecedentSearch() {
 
                                                 {/* Card Body */}
                                                 <div className="p-6">
+                                                    {matchedConcepts.length > 0 && (
+                                                        <div className="mb-4 flex flex-wrap items-center gap-2">
+                                                            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-300/80">
+                                                                Eslesen kavramlar
+                                                            </span>
+                                                            {matchedConcepts.slice(0, 8).map((concept) => (
+                                                                <span
+                                                                    key={`${uniqueId}-chip-${concept}`}
+                                                                    className="legal-match-chip"
+                                                                >
+                                                                    {concept}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                     <SelectableText className="prose prose-invert max-w-none text-gray-300 text-[15px] leading-relaxed selection:bg-red-500/30 selection:text-white">
                                                         <div className="whitespace-pre-wrap font-serif text-justify">
                                                             {(() => {
@@ -437,7 +808,13 @@ export default function PrecedentSearch() {
 
                                                                 return (
                                                                     <>
-                                                                        <p>{textToShow}</p>
+                                                                        <p>
+                                                                            {renderHighlightedText(
+                                                                                textToShow,
+                                                                                matchedConcepts,
+                                                                                `${uniqueId}-body`
+                                                                            )}
+                                                                        </p>
                                                                         {isLong && (
                                                                             <button
                                                                                 onClick={() =>
