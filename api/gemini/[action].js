@@ -5,6 +5,10 @@ import keywordsHandler from '../../backend/gemini/keywords.js';
 import reviewHandler from '../../backend/gemini/review.js';
 import rewriteHandler from '../../backend/gemini/rewrite.js';
 import webSearchHandler from '../../backend/gemini/web-search.js';
+import {
+    getGoogleGenAiRuntimeLabel,
+    isGoogleGenAiConfigured,
+} from '../../lib/google/googleGenAiClient.js';
 
 export const config = {
     api: {
@@ -31,6 +35,7 @@ const normalizeAction = (value) => {
 };
 
 export default async function handler(req, res) {
+    res.setHeader('X-AI-Runtime', isGoogleGenAiConfigured() ? getGoogleGenAiRuntimeLabel() : 'disabled');
     const action = normalizeAction(req?.query?.action);
     const selectedHandler = ACTION_HANDLERS[action];
 
@@ -41,13 +46,13 @@ export default async function handler(req, res) {
             res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
             return res.status(200).end();
         }
-        return res.status(404).json({ error: 'Gemini endpoint not found' });
+        return res.status(404).json({ error: 'AI endpoint not found' });
     }
 
     try {
         return await selectedHandler(req, res);
     } catch (error) {
-        console.error(`Gemini API action error (${action}):`, error);
+        console.error(`AI API action error (${action}):`, error);
         if (action === 'web-search') {
             return res.status(200).json({
                 text: 'Web aramasi su anda kullanilamiyor. Soru genel hukuki cercevede yanitlanmalidir.',
@@ -59,8 +64,8 @@ export default async function handler(req, res) {
 
         return res.status(500).json({
             error: process.env.NODE_ENV === 'production'
-                ? 'Gemini API error'
-                : (error?.message || 'Gemini API error'),
+                ? 'AI API error'
+                : (error?.message || 'AI API error'),
         });
     }
 }
