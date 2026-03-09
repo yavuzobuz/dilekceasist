@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Canakkale Idare - Emsal Karar Raporu</title>
+    <style>
+        :root {
+            --bg: #f4efe4;
+            --paper: #fffdf8;
+            --ink: #1e2430;
+            --muted: #596273;
+            --line: #dccfb8;
+            --accent: #1f4f46;
+            --accent-soft: #dfeee8;
+            --shadow: 0 20px 50px rgba(38, 35, 27, 0.12);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at top left, rgba(31,79,70,0.12), transparent 28%),
+                radial-gradient(circle at bottom right, rgba(122,63,29,0.12), transparent 24%),
+                var(--bg);
+        }
+        .wrap {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 32px 20px 56px;
+        }
+        .hero {
+            background: linear-gradient(140deg, rgba(255,253,248,0.97), rgba(245,238,225,0.94));
+            border: 1px solid var(--line);
+            border-radius: 28px;
+            padding: 28px;
+            box-shadow: var(--shadow);
+            margin-bottom: 24px;
+        }
+        .eyebrow {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: var(--accent-soft);
+            color: var(--accent);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        h1 {
+            margin: 14px 0 10px;
+            font-size: clamp(28px, 4vw, 44px);
+            line-height: 1.04;
+        }
+        .hero p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.65;
+            max-width: 980px;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            margin: 22px 0 0;
+        }
+        .summary-card,
+        .topic-card {
+            background: var(--paper);
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+        }
+        .summary-card { padding: 18px; }
+        .summary-card .label {
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .summary-card .value {
+            margin-top: 8px;
+            font-size: 30px;
+            font-weight: 700;
+        }
+        .summary-card .value.small {
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .topics { display: grid; gap: 18px; }
+        .topic-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: flex-start;
+            padding: 24px 24px 0;
+        }
+        .topic-head h2 { margin: 0 0 8px; font-size: 24px; }
+        .topic-head p { margin: 0; color: var(--muted); line-height: 1.6; }
+        .meta-box {
+            min-width: 240px;
+            padding: 14px 16px;
+            border-radius: 18px;
+            background: var(--accent-soft);
+            color: var(--accent);
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        .topic-body { padding: 20px 24px 24px; }
+        .meta-row {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+        .meta-panel {
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            padding: 14px 16px;
+            background: rgba(255, 251, 243, 0.88);
+        }
+        .panel-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+            margin-bottom: 10px;
+        }
+        .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 7px 11px;
+            border-radius: 999px;
+            background: #f1ebe0;
+            border: 1px solid var(--line);
+            font-size: 13px;
+        }
+        .muted, .note-text { color: var(--muted); line-height: 1.6; }
+        .table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--line);
+            border-radius: 18px;
+        }
+        table { width: 100%; border-collapse: collapse; min-width: 1080px; }
+        th, td {
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(220, 207, 184, 0.75);
+            text-align: left;
+            vertical-align: top;
+            font-size: 14px;
+        }
+        thead th {
+            background: #efe6d4;
+            color: #4f4230;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 11px;
+        }
+        tbody tr:nth-child(even) { background: rgba(251, 247, 239, 0.72); }
+        .empty { text-align: center; color: var(--muted); padding: 22px; }
+        .decision-button {
+            border: 0;
+            background: var(--accent);
+            color: white;
+            border-radius: 999px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .decision-button:hover { opacity: 0.92; }
+        .decision-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(25, 28, 35, 0.58);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .decision-modal.hidden { display: none; }
+        .decision-dialog {
+            width: min(1000px, 100%);
+            max-height: 88vh;
+            overflow: auto;
+            background: var(--paper);
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            padding: 20px;
+        }
+        .decision-dialog-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .decision-dialog-head h3 { margin: 0; font-size: 24px; }
+        .decision-close {
+            border: 0;
+            background: #e8dcc7;
+            color: var(--ink);
+            border-radius: 999px;
+            padding: 8px 14px;
+            cursor: pointer;
+        }
+        .decision-meta {
+            color: var(--muted);
+            font-size: 13px;
+            margin-bottom: 14px;
+        }
+        .decision-content {
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-family: Consolas, monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            background: #faf6ee;
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 16px;
+            margin: 0;
+        }
+        .footer {
+            margin-top: 18px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.7;
+        }
+        @media (max-width: 860px) {
+            .wrap { padding: 18px 14px 40px; }
+            .hero, .topic-body, .topic-head { padding-left: 16px; padding-right: 16px; }
+            .topic-head { flex-direction: column; }
+            .meta-box { width: 100%; min-width: 0; }
+            .meta-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <section class="hero">
+            <span class="eyebrow">Canakkale Idare Dosyasi</span>
+            <h1>Yikim karari ve imar para cezasi icin emsal karar raporu</h1>
+            <p>
+                Bu sayfa, verdigin dilekcedeki ana basliklar baz alinarak canli karar aramasi ile uretildi.
+                Her kutu, dosyanin farkli bir hukuki eksenini ayri ayri tarar: imar barisi, yapi tatil
+                tutanagi, yikim karari, para cezasi, iptal denetimi ve yurutmenin durdurulmasi gibi.
+            </p>
+            
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div class="label">Konu sayisi</div>
+                <div class="value">8</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">Sonuc bulunan konu</div>
+                <div class="value">8</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">Toplam gosterilen karar</div>
+                <div class="value">18</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">Uretilen tarih</div>
+                <div class="value small">9 Mart 2026 13:47</div>
+            </div>
+        </div>
+    
+        </section>
+
+        <div class="topics">
+                <section class="topic-card">
+                    <div class="topic-head">
+                        <div>
+                            <h2>Genel dosya ekseni</h2>
+                            <p>Dilekcenin ana govdesi: yikim, para cezasi ve iptal talebi.</p>
+                        </div>
+                        <div class="meta-box">
+                            <div><strong>Arama:</strong> belediye yikim karari idari para cezasi imar kanunu 32 42 yurutmenin durdurulmasi</div>
+                            <div><strong>Kaynak:</strong> Danistay</div>
+                            <div><strong>Sonuc:</strong> 1</div>
+                        </div>
+                    </div>
+                    <div class="topic-body">
+                        <div class="meta-row">
+                            <div class="meta-panel">
+                                <div class="panel-title">AI ifadeleri</div>
+                                <div class="chips"><span class="chip">yikim karari</span><span class="chip">idari para cezasi</span><span class="chip">imar kanunu 32</span><span class="chip">imar kanunu 42</span><span class="chip">yurutmenin durdurulmasi</span><span class="chip">imar barisi</span><span class="chip">yapi kayit belgesi</span><span class="chip">ruhsata aykirilik</span><span class="chip">belediye yikim</span><span class="chip">iptal davasi</span></div>
+                            </div>
+                            <div class="meta-panel">
+                                <div class="panel-title">Kisa not</div>
+                                <div class="note-text">Sorgu AI ile arama odakli anahtar ifadelere indirgenerek arandi. AI plan: Belediye tarafından tesis edilen yikim kararı ve idari para cezasına karşı açılan iptal davası, imar kanunu ve yurutmenin durdurulması taleplerini içermektedir. İdari yargı ve imar hukuku kapsamındadır. Sonuclar tam metin dogrulamasi ile yeniden siralandi (2 karar). Belediye tarafından tesis edilen yikim kararı ve idari para cezasına karşı açılan iptal davası, imar kanunu ve yurutmenin durdurulması taleplerini içermektedir. İdari yargı ve imar hukuku kapsamındadır.</div>
+                            </div>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Karar</th>
+                                        <th>Daire / Mahkeme</th>
+                                        <th>Esas</th>
+                                        <th>Karar</th>
+                                        <th>Tarih</th>
+                                        <th>Skor</th>
+                                        <th>Semantik</th>
+                                        <th>Eslesme nedeni</th>
+                                        <th>Detay</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>Danıştay Kararı İdare Dava Daireleri Kurulu</td>
+                                <td>İdare Dava Daireleri Kurulu</td>
+                                <td>2025/204</td>
+                                <td>2025/2905</td>
+                                <td>24.11.2025</td>
+                                <td>67.0</td>
+                                <td>-</td>
+                                <td>tam metinde anahtar kelimeler: idari, imar, kanunu, yapi, tespit</td>
+                                <td><button class="decision-button" data-decision-key="danistay|1188903200|" data-title="Danıştay Kararı İdare Dava Daireleri Kurulu">Karari ac</button></td>
+                            </tr>
+                        </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            
+                <section class="topic-card">
+                    <div class="topic-head">
+                        <div>
+                            <h2>Imar barisi ve yapi kayit belgesi</h2>
+                            <p>Imar barisi basvurusu ve yapi kayit belgesinin etkisi.</p>
+                        </div>
+                        <div class="meta-box">
+                            <div><strong>Arama:</strong> imar barisi yapi kayit belgesi gecici 16 yikim karari</div>
+                            <div><strong>Kaynak:</strong> Danistay</div>
+                            <div><strong>Sonuc:</strong> 10</div>
+                        </div>
+                    </div>
+                    <div class="topic-body">
+                        <div class="meta-row">
+                            <div class="meta-panel">
+                                <div class="panel-title">AI ifadeleri</div>
+                                <div class="chips"><span class="muted">AI ifade cikarmadi.</span></div>
+                            </div>
+                            <div class="meta-panel">
+                                <div class="panel-title">Kisa not</div>
+                                <div class="note-text">Arama alani kullanici secimi ile sinirlandi: danistay. Sonuclar arasinda guclu konu eslesmesi bulunamadi. Sonuclar referans amacli gosteriliyor.</div>
+                            </div>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Karar</th>
+                                        <th>Daire / Mahkeme</th>
+                                        <th>Esas</th>
+                                        <th>Karar</th>
+                                        <th>Tarih</th>
+                                        <th>Skor</th>
+                                        <th>Semantik</th>
+                                        <th>Eslesme nedeni</th>
+                                        <th>Detay</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>Danıştay Kararı 8. Daire</td>
+                                <td>8. Daire</td>
+                                <td>2024/1708</td>
+                                <td>2025/9073</td>
+                                <td>25.11.2025</td>
+                                <td>75.0</td>
+                                <td>-</td>
+                                <td>MCP arama sonucu</td>
+                                <td><button class="decision-button" data-decision-key="danistay|1196203800|" data-title="Danıştay Kararı 8. Daire">Karari ac</button></td>
+                            </tr>
+                        
+                            <tr>
+                                <td>2</td>
+                                <td>Danıştay Kararı 8. Daire</td>
+                                <td>8. Daire</td>
+                                <td>2024/2883</td>
+                                <td>2025/9074</td>
+                                <td>25.11.2025</td>
+                                <td>75.0</td>
+                                <td>-</td>
+                                <td>MCP arama sonucu</td>
+                                <td><button class="decision-button" data-decision-key="danistay|1196204300|" data-title="Danıştay Kararı 8. Daire">Karari ac</button></td>
+                            </tr>
+                        
+                            <tr>
+                                <td>3</td>
+                                <td>Danıştay Kararı 8. Daire</td>
+                                <td>8. Daire</td>
+                                <td>2024/1680</td>
+                                <td>2025/9086</td>
+                                <td>25.11.2025</td>
+                                <td>75.0</td>
+                                <td>-</td>
+                                <td>MCP arama sonucu</td>
+                                <td><button class="decision-button" data-decision-key="danistay|1196203400|" data-title="Danıştay Kararı 8. Daire">Karari ac</button></td>
+                            </tr>
+                        
+                            <tr>
+                                <td>4</td>
+                                <td>Danıştay Kararı 8. Daire</td>
+                                <td>8. Daire</td>
+                                <td>2024/1659</td>
+                                <td>2025/9071</td>
+                                <td>25.11.2025</td>
+                                <td>75.0</td>
+                                <td>-</td>
+                                <td>MCP arama sonucu</td>
+                                <td><button class="decision-button" data-decision-key="danistay|1196247200|" data-title="Danıştay Kararı 8. Daire">Karari ac</button></td>
+                            </tr>
+                        
+                            <tr>
+                                <td>5</td>
+                                <td>Danıştay Kararı 8. Daire</td>
+                                <td>8. Daire</td>
+                                <td>2024/1417</td>
+                                <td>2025/9070</td>
+                                <td>25.11.2025</td>
+                                <td>75.0</td>
+                                <td>-</td>
+                                <td>MCP arama sonucu</td>
+                                <td><button class="decision-button" data-decision-key="danistay|1196248200|" data-title="Danıştay Kararı 8. Daire">Karari ac</button></td>
+                            </tr>
+                        
+                            <tr>
+                                <td>6</td>
+                                <td>Danıştay Kararı 8. Daire</td>
+                                <td>8. Daire</td>
+                                <td>2024/2886</td>
+                                <td>2025/9075</td>
+                                <td>25.11.2025</td>
+                                <td>75.0</td>
+                                <td>-</td>
+                                <td>MCP arama sonucu</td>
+                                <td><button class="decision-button" data-decision-key="danistay|1196361900|" data-title="Danıştay Kararı 8. Daire">Karari ac</button></td>
+                            </tr>
+                        </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            
+                <section class="topic-card">
+                    <div class="topic-head">
+                        <div>
+                            <h2>Yapi tatil tutanagi ve tebligat</h2>
+                            <p>Yapi tespit ve durdurma zaptinin sekil, tebligat ve savunma hakki boyutu.</p>
+                        </div>
+                        <div class="meta-box">
+                            <div><strong>Arama:</strong> yapi tatil tutanagi tebligat usulsuzlugu savunma hakki imar kanunu 32</div>
+                            <div><strong>Kaynak:</strong> Danistay</div>
+                            <div><strong>Sonuc:</strong> 1</div>
+                        </div>
+                    </div>
+                    <div class="topic-body">
+                        <div class="meta-row">
+                            <div class="meta-panel">
+                                <div class="panel-title">AI ifadeleri</div>
+                                <div class="chips"><span class="muted">AI ifade cikarmadi.</span></div>
+                            </div>
+                            <div class="meta-panel">
+                                <div class="panel-title">Kisa not</div>
+                                <div class="note-text">Arama alani kullanici secimi ile sinirlandi: danistay. Sonuclar tam metin dogrulamasi ile yeniden siralandi (2 karar).</div>
+                            </div>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Karar</th>
+                                        <th>Daire / Mahkeme</th>
+                                        <th>Esas</th>
+                                        <th>Karar</th>
+                                        <th>Tarih</th>
+                                        <th>Skor</th>
+                                        <th>Semantik</th>
+                                        <th>Eslesme nedeni</th>
+                                        <th>Detay</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>Danıştay Kararı İdare Dava Daireleri Kurulu</td>
+                                <td>İdare Dava Daireleri Kurulu</td>
+                                <td>2025/204</td>
+                                <td>2025/2905</td>
+                                <td>24.11.2025</td>
+                                <td>72.0</td>
+                                <td>-</td>
+                                <td>tam metinde anahtar kelimeler: yapi, savunma, hakki, imar, kanunu</td>
+                                <td><button class="decision-button" data-decision-key="danistay|1188903200|" data-title="Danıştay Kararı İdare Dava Daireleri Kurulu">Karari ac</button></td>
+                            </tr>
+                        </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            
+                <section class="topic-card">
+                    <div class="topic-head">
+                        <div>
+                            <h2>Ruhsata aykirilik ve yikim karari</h2>
+                            <p>Ruhsatli yapida sonradan aykirilik iddiasi ve yikim kararinin iptali.</p>
+                        </div>
+                        <div class="meta-box">
+                            <div><strong>Arama:</strong> ruhsata aykiri yapi yikim karari tadilat ruhsati konusuz kalma</div>
+                            <div><strong>Kaynak:</strong> Danistay</div>
+                            <div><strong>Sonuc:</strong> 1</div>
+                        </div>
+                    </div>
+                    <div class="topic-body">
+                        <div class="meta-row">
+                            <div class="meta-panel">
+                                <div class="panel-title">AI ifadeleri</div>
+                                <div class="chips"><span class="muted">AI ifade cikarmadi.</span></div>
+                            </div>
+                            <div class="meta-panel">
+                                <div class="panel-title">Kisa not</div>
+                                <div class="note-text">Arama alani kullanici secimi ile sinirlandi: danistay. Sonuclar tam metin dogrulamasi ile yeniden siralandi (2 karar).</div>
+                            </div>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Karar</th>
+                                        <th>Daire / Mahkeme</th>
+                                        <th>Esas</th>
+                                        <th>Karar</th>
+                                        <th>Tarih</th>
+                                        <th>Skor</th>
+                                        <th>Semantik</th>
+                                        <th>Eslesme nedeni</th>
+                                        <th>Detay</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>Danıştay Kararı İdare Dava Daireleri Kurulu</td>
+                                <td>İdare Dava Daireleri Kurulu</td>
+                                <td>2025/204</td>
+                                <td>2025/2905</td>
+                                <td>24.11.2025</td>
+                                <td>72.0</td>
+                                <td>-</td>
+                                <td>tam metinde anahtar kelimeler: aykiri, yapi, kalma, imar, kanunu</td>
+                                <td><button class="decision-button" data-decision-key="danistay|1188903200|" data-title="Danıştay Kararı İdare Dava Daireleri Kurulu">Karari ac</button></td>
+                            </tr>
+                        </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            
+                <section class="topic-card">
+                    <div class="topic-head">
+                        <div>
+                            <h2>Eski tarihli yapi ve geriye yurumezlik</h2>
+                            <p>Yapinin eski tarihli oldugu ve yeni mevzuatin geriye yurutulemeyecegi savi.</p>
+                        </div>
+                        <div class="meta-box">
+                            <div><strong>Arama:</strong> eski tarihli yapi bina beyannamesi iskan geriye yurumeme imar mevzuati</div>
+                            <div><strong>Kaynak:</strong> Danistay</div>
+                            <div><strong>Sonuc:</strong> 10</div>
+                        </div>
+                    </div>
+                    <div class="topic-body">
+                        <div class="meta-row">
+                            <div class="meta-panel">
+                                <div class="panel-title">AI ifadeleri</div>
+                                <div class="chips"><span class="muted">AI ifade cikarmadi.</span></div>
+                            </div>
+                            <div class="meta-panel">
+                                <div class="panel-title">Kisa not</div>
+                                <div class="note-text">Arama alani kullanici secimi ile sinirlandi: danistay. Sonuclar arasinda guclu konu eslesmesi bulunamadi. Sonuclar referans amacli gosteriliyor.</div>
+                            </div>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Karar</th>
+                                        <th>Daire / Mahkeme</th>
+                                        <th>Esas</th>
+                                        <th>Karar</th>
+                                        <th>Tarih</th>
+                                        <th>Skor</th>
+                                        <th>Semantik</th>
+                                        <th>Eslesme nedeni</th>
+                                        <th>Detay</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>Danıştay Kararı 8. Daire</td>
+                                <td>8. Daire</td>
+                                <td>2024/1708</td>
+                                <td>2025/9073</td>
+                                <td>25.11.2025</td>
+                                <td>75.0</td>
+                                <td>-</td>
+                                <td>MCP arama sonucu</td>
+                                <td><button class="decision-button" data-decision-key="danistay|1196203800|" data-title="Danıştay Kararı 8. Daire">Karari ac</button></td>
+                            </tr>
+                        
+                            <tr>
+                                <td>2</td>
+                                <td>Danıştay Kararı 8. Daire</td>
+                                <td>8. Daire</td>
+                                <td>2024/2883</td>
+                                <td>2025/9074</td>
+                                <td>25.11.2025</td>
+                                <td>75.0</td>
+                                <td>-</td>
+                                <td>MCP arama sonucu</td>
+                                <td><button class="decision-button" data-decision-key="danistay|1196204300|" data-title="Danıştay Kararı 8. Daire">Karari ac</button></td>
+                            </tr>
+                        
+                            <tr>
+                                <td>3</td>
+                                <td>Danıştay Kararı 8. Daire</td>
+                                <td>8. Daire</td>
+                                <td>2024/1680</td>
+                                <td>2025/9086</td>
+                                <td>25.11.2025</td>
+                                <td>75.0</td>
+                                <td>-</td>
+                                <td>MCP arama sonucu</td>
+                                <td><button class="decision-button" data-decision-key="danistay|1196203400|" data-title="Danıştay Kararı 8. Daire">Karari ac</button></td>
+                            </tr>
+                        
+                            <tr>
+                                <td>4</td>
+                                <td>Danıştay Kararı 8. Daire</td>
+                                <td>8. Daire</td>
+                                <td>2024/1659</td>
+                                <td>2025/9071</td>
+                                <td>25.11.2025</td>
+                                <td>75.0</td>
+                                <td>-</td>
+                                <td>MCP arama sonucu</td>
+                                <td><button class="decision-button" data-decision-key="danistay|1196247200|" data-title="Danıştay Kararı 8. Daire">Karari ac</button></td>
+                            </tr>
+                        
+                            <tr>
+                                <td>5</td>
+                                <td>Danıştay Kararı 8. Daire</td>
+                                <td>8. Daire</td>
+                                <td>2024/1417</td>
+                                <td>2025/9070</td>
+                                <td>25.11.2025</td>
+                                <td>75.0</td>
+                                <td>-</td>
+                                <td>MCP arama sonucu</td>
+                                <td><button class="decision-button" data-decision-key="danistay|1196248200|" data-title="Danıştay Kararı 8. Daire">Karari ac</button></td>
+                            </tr>
+                        
+                            <tr>
+                                <td>6</td>
+                                <td>Danıştay Kararı 8. Daire</td>
+                                <td>8. Daire</td>
+                                <td>2024/2886</td>
+                                <td>2025/9075</td>
+                                <td>25.11.2025</td>
+                                <td>75.0</td>
+                                <td>-</td>
+                                <td>MCP arama sonucu</td>
+                                <td><button class="decision-button" data-decision-key="danistay|1196361900|" data-title="Danıştay Kararı 8. Daire">Karari ac</button></td>
+                            </tr>
+                        </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            
+                <section class="topic-card">
+                    <div class="topic-head">
+                        <div>
+                            <h2>Imar para cezasi ve orantililik</h2>
+                            <p>Para cezasinin olculu ve gerekceli olmasi gerektigi savi.</p>
+                        </div>
+                        <div class="meta-box">
+                            <div><strong>Arama:</strong> imar kanunu 42 idari para cezasi orantililik somut gerekce</div>
+                            <div><strong>Kaynak:</strong> Danistay</div>
+                            <div><strong>Sonuc:</strong> 1</div>
+                        </div>
+                    </div>
+                    <div class="topic-body">
+                        <div class="meta-row">
+                            <div class="meta-panel">
+                                <div class="panel-title">AI ifadeleri</div>
+                                <div class="chips"><span class="muted">AI ifade cikarmadi.</span></div>
+                            </div>
+                            <div class="meta-panel">
+                                <div class="panel-title">Kisa not</div>
+                                <div class="note-text">Arama alani kullanici secimi ile sinirlandi: danistay. Sonuclar tam metin dogrulamasi ile yeniden siralandi (2 karar).</div>
+                            </div>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Karar</th>
+                                        <th>Daire / Mahkeme</th>
+                                        <th>Esas</th>
+                                        <th>Karar</th>
+                                        <th>Tarih</th>
+                                        <th>Skor</th>
+                                        <th>Semantik</th>
+                                        <th>Eslesme nedeni</th>
+                                        <th>Detay</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>Danıştay Kararı İdare Dava Daireleri Kurulu</td>
+                                <td>İdare Dava Daireleri Kurulu</td>
+                                <td>2025/204</td>
+                                <td>2025/2905</td>
+                                <td>24.11.2025</td>
+                                <td>72.0</td>
+                                <td>-</td>
+                                <td>tam metinde anahtar kelimeler: imar, kanunu, idari, gerekce, yapi</td>
+                                <td><button class="decision-button" data-decision-key="danistay|1188903200|" data-title="Danıştay Kararı İdare Dava Daireleri Kurulu">Karari ac</button></td>
+                            </tr>
+                        </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            
+                <section class="topic-card">
+                    <div class="topic-head">
+                        <div>
+                            <h2>Idari islemin unsurlari ve iptal</h2>
+                            <p>Klasik iptal davasi denetimi: yetki, sekil, sebep, konu, maksat.</p>
+                        </div>
+                        <div class="meta-box">
+                            <div><strong>Arama:</strong> idari islemin yetki sekil sebep konu maksat yonlerinden hukuka aykiriligi</div>
+                            <div><strong>Kaynak:</strong> Danistay</div>
+                            <div><strong>Sonuc:</strong> 1</div>
+                        </div>
+                    </div>
+                    <div class="topic-body">
+                        <div class="meta-row">
+                            <div class="meta-panel">
+                                <div class="panel-title">AI ifadeleri</div>
+                                <div class="chips"><span class="muted">AI ifade cikarmadi.</span></div>
+                            </div>
+                            <div class="meta-panel">
+                                <div class="panel-title">Kisa not</div>
+                                <div class="note-text">Arama alani kullanici secimi ile sinirlandi: danistay. Sonuclar tam metin dogrulamasi ile yeniden siralandi (2 karar).</div>
+                            </div>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Karar</th>
+                                        <th>Daire / Mahkeme</th>
+                                        <th>Esas</th>
+                                        <th>Karar</th>
+                                        <th>Tarih</th>
+                                        <th>Skor</th>
+                                        <th>Semantik</th>
+                                        <th>Eslesme nedeni</th>
+                                        <th>Detay</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>Danıştay Kararı İdare Dava Daireleri Kurulu</td>
+                                <td>İdare Dava Daireleri Kurulu</td>
+                                <td>2025/204</td>
+                                <td>2025/2905</td>
+                                <td>24.11.2025</td>
+                                <td>72.0</td>
+                                <td>-</td>
+                                <td>tam metinde anahtar kelimeler: idari, islemin, yetki, sekil, sebep</td>
+                                <td><button class="decision-button" data-decision-key="danistay|1188903200|" data-title="Danıştay Kararı İdare Dava Daireleri Kurulu">Karari ac</button></td>
+                            </tr>
+                        </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            
+                <section class="topic-card">
+                    <div class="topic-head">
+                        <div>
+                            <h2>Yurutmenin durdurulmasi</h2>
+                            <p>IYUK 27 kapsaminda telafisi guc zarar ve acik hukuka aykirilik.</p>
+                        </div>
+                        <div class="meta-box">
+                            <div><strong>Arama:</strong> iyuk 27 yurutmenin durdurulmasi telafisi guc zarar acik hukuka aykirilik</div>
+                            <div><strong>Kaynak:</strong> Danistay</div>
+                            <div><strong>Sonuc:</strong> 1</div>
+                        </div>
+                    </div>
+                    <div class="topic-body">
+                        <div class="meta-row">
+                            <div class="meta-panel">
+                                <div class="panel-title">AI ifadeleri</div>
+                                <div class="chips"><span class="muted">AI ifade cikarmadi.</span></div>
+                            </div>
+                            <div class="meta-panel">
+                                <div class="panel-title">Kisa not</div>
+                                <div class="note-text">Arama alani kullanici secimi ile sinirlandi: danistay. Sonuclar tam metin dogrulamasi ile yeniden siralandi (2 karar).</div>
+                            </div>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Karar</th>
+                                        <th>Daire / Mahkeme</th>
+                                        <th>Esas</th>
+                                        <th>Karar</th>
+                                        <th>Tarih</th>
+                                        <th>Skor</th>
+                                        <th>Semantik</th>
+                                        <th>Eslesme nedeni</th>
+                                        <th>Detay</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>Danıştay Kararı İdare Dava Daireleri Kurulu</td>
+                                <td>İdare Dava Daireleri Kurulu</td>
+                                <td>2025/204</td>
+                                <td>2025/2905</td>
+                                <td>24.11.2025</td>
+                                <td>72.0</td>
+                                <td>-</td>
+                                <td>tam metinde anahtar kelimeler: acik, hukuka, aykirilik, imar, kanunu</td>
+                                <td><button class="decision-button" data-decision-key="danistay|1188903200|" data-title="Danıştay Kararı İdare Dava Daireleri Kurulu">Karari ac</button></td>
+                            </tr>
+                        </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+        <div class="footer">
+            Uyari: Bu rapor otomatik arama sonucudur. Nihai dilekce kurulumundan once kararlar tek tek acilip
+            dosyanin olayina gercekten oturup oturmadigi ayrica kontrol edilmelidir. "Karari ac" dugmesi,
+            karar metnini rapor olusurken icine kaydeder ve tiklaninca pencerede gosterir.
+        </div>
+    </div>
+
+    <div id="decision-modal" class="decision-modal hidden" aria-hidden="true">
+        <div class="decision-dialog">
+            <div class="decision-dialog-head">
+                <h3 id="decision-modal-title">Karar detayi</h3>
+                <button id="decision-close" class="decision-close" type="button">Kapat</button>
+            </div>
+            <div id="decision-modal-meta" class="decision-meta"></div>
+            <pre id="decision-modal-content" class="decision-content">Karar metni burada gorunecek.</pre>
+        </div>
+    </div>
+
+    <script>
+        const DECISION_CONTENTS = {"danistay|1188903200|":{"title":"Danıştay Kararı İdare Dava Daireleri Kurulu","source":"danistay","documentId":"1188903200","content":"**DANIŞTAY İDARİ DAVA DAİRELERİ KURULU 2025/204 E. , 2025/2905 K.** **\"İçtihat Metni\"** T.C. D A N I Ş T A Y İDARİ DAVA DAİRELERİ KURULU Esas No : 2025/204 Karar No : 2025/2905 TEMYİZ EDEN (DAVALI) : ... Belediye Başkanlığı VEKİLİ : Av. ... KARŞI TARAF (DAVACI) : ... VEKİLİ : Av. ... İSTEMİN KONUSU : ... Bölge İdare Mahkemesi ... İdari Dava Dairesinin ... tarih ve E:..., K:...sayılı ısrar kararının temyizen incelenerek bozulması istenilmektedir. YARGILAMA SÜRECİ : Dava konusu istem: ... Belediye Başkanlığında 5393 sayılı Belediye Kanunu'na istinaden sözleşmeli statüde eğitmen olarak görev yapan davacının, 01/01/2019-31/12/2019 tarihleri arasında geçerli olan hizmet sözleşmesinin, hizmetinin gerektirdiği pozisyona ihtiyaç kalmadığından bahisle feshine ilişkin ...tarih ve ...sayılı işlemin iptaline karar verilmesi istenilmiştir. İlk Derece Mahkemesi kararının özeti: ... İdare Mahkemesinin ... tarih ve E:..., K:... sayılı kararıyla; sözleşmenin yenilenip yenilenmemesi konusunda idarenin takdir yetkisi bulunduğu gibi, haklı nedenlerin bulunması halinde, süresi dolmadan sözleşmelerin feshedilebilmesinin de mümkün olduğu; ancak, asli ve sürekli nitelikte kamu hizmeti ifa eden sözleşmeli personelin içinde bulunduğu kamu hukuku bağlantılı, esasları idare tarafından önceden düzenlenmiş, güvenceli durum sebebiyle, sözleşme yenilememe veya feshin haklı sebeplere dayanması gerektiği, davacının sözleşmesinin, ifa ettiği hizmette başarısız veya verimsiz olduğu yolundaki bir tespit nedeniyle değil, hizmetinin gerektirdiği pozisyona ihtiyaç bulunmadığından bahisle feshedildiği; eğitmen olan davacının, göreve başladığı tarihten itibaren eğitmen kadrosuyla ilgili bir görevde bulunmadığı, kendi alanıyla ilgili bir görev talebinin de olmadığı, dosyaya sunduğu belge ve bilgilerin ise, davalı idarede eğitmen hizmetine ihtiyaç olduğunu kanıtlar nitelikte olmadığı anlaşıldığından, göreve başladığı tarihten itibaren eğitmen görevini ifa etmeyen davacının sözleşmesinin feshine ilişkin dava konusu işlemde hukuka aykırılık bulunmadığı gerekçesiyle davanın reddine karar verilmiştir. Bölge İdare Mahkemesi kararının özeti: ... Bölge İdare Mahkemesi... İdari Dava Dairesinin ... tarih ve E:..., K:... sayılı kararıyla; 2014 yılından itibaren sözleşmeli statüde eğitmen olarak görev yapan davacının, önce Mali Hizmetler Müdürlüğünde görevlendirildiği, 12/02/2015 tarihinden itibaren ise, aynı Müdürlükte müdür vekili olarak çalışmaya devam ettiği, davalı idarece, bu görevle ilgili davacının hizmetine ihtiyaç kalmadığı yönünde herhangi bir sebep gösterilemediği; bu durumda, en son 01/01/2019-31/12/2019 tarihleri arasında hizmetine duyulan ihtiyaca binaen bir yıllık sözleşme imzalanan davacının, aradan kısa bir süre geçtikten sonra hizmetine duyulan ihtiyacın ne şekilde sona erdiği hususu ortaya konulmadan istihdam edildiği eğitmen görevi dışında mezunu olduğu işletme bölümüne uygun şekilde Mali Hizmetler Müdürlüğünde görevlendirilmesinin, tek başına sözleşmesinin feshini gerektirmediği gerekçesiyle davacının istinaf başvurusunun kabulüne, İdare Mahkemesi kararının kaldırılmasına ve dava konusu işlemin iptaline karar verilmiştir. Daire kararının özeti: Danıştay Onikinci Dairesinin 23/05/2024 tarih ve E:2021/6436, K:2024/2624 sayılı kararıyla; Uyuşmazlıkta; davacının, 22/07/2014 tarihinden itibaren davalı Belediyede sözleşmeli statüde eğitmen olarak istihdam edildiği, ... Belediye Başkanlığı İnsan Kaynakları ve Eğitim Müdürlüğünün ...tarih ve... sayılı yazısında, Genel İdare Hizmetleri Sınıfı 5. dereceli eğitmen kadrosu karşılık gösterilerek sözleşme imzalanan davacının, başkanlık oluruyla mali hizmetler müdür vekili, encümen üyeliği ve mali hizmetler müdürlüğü sanayi veznesinde çalıştığının bildirildiği, göreve başladığı tarihten, sözleşmesinin feshedildiği 10/06/2019 tarihine kadar davalı Belediyede uzmanlık alanı ya da istihdam edildiği pozisyon dışında işlerde görevlendirildiği; dolayısıyla, hizmetinin gerektirdiği pozisyona ihtiyaç kalmadığından bahisle sözleşmesinin feshedildiğinin anlaşıldığı, Bu durumda, 5. dereceli eğitmen kadro ünvanına ilişkin görevleri yerine getirmek üzere sözleşmeli statüde istihdam edilen davacının, ilk kez göreve başladığı tarihten itibaren eğitmen olarak çalışmadığı; bu itibarla, davalı idarede eğitmen pozisyonunda ihtiyaç bulunmadığı görüldüğünden, 01/01/2019-31/12/2019 tarihleri arasında geçerli olan hizmet sözleşmesinin, hizmetinin gerektirdiği pozisyona ihtiyaç kalmadığından bahisle feshine ilişkin dava konusu işlemde hukuka aykırılık bulunmadığı gerekçesiyle ... Bölge İdare Mahkemesi ... İdari Dava Dairesinin... tarih ve E:..., K:... sayılı kararının bozulmasına karar verilmiştir. Bölge İdare Mahkemesi ısrar kararının özeti: ... Bölge İdare Mahkemesi ...İdari Dava Dairesinin ...tarih ve E:..., K:... sayılı kararıyla; davacının istinaf başvurusunun kabulü, İdare Mahkemesi kararının kaldırılması, dava konusu işlemin iptali yolundaki ilk kararda ısrar edilmiştir. TEMYİZ EDENİN İDDİALARI : Davalı idare tarafından, Sözleşmeli Personel Çalıştırılmasına İlişkin Esaslar'ın 6. maddesi uyarınca sözleşmeli personelin görevi dışında bir işte çalıştırılamayacağı, davacının fiilen eğitmen olarak görev yapmadığı, sözleşmeli personelin, Devlet memurlarına tanınan güvencelerden faydalanmasına imkân olmadığı, idarenin takdir yetkisi kapsamında tesis edilen dava konusu işlemde hukuka ve usule aykırılık bulunmadığı belirtilerek Bölge İdare Mahkemesi ısrar kararının bozulması gerektiği ileri sürülmektedir. KARŞI TARAFIN SAVUNMASI : Davacı tarafından, savunma verilmemiştir. DANIŞTAY TETKİK HÂKİMİ ...'NUN DÜŞÜNCESİ : Temyiz isteminin reddi ile Bölge İdare Mahkemesi ısrar kararının onanması gerektiği düşünülmektedir. TÜRK MİLLETİ ADINA Karar veren Danıştay İdari Dava Daireleri Kurulunca, Tetkik Hâkiminin açıklamaları dinlendikten ve dosyadaki belgeler incelendikten sonra gereği görüşüldü: İNCELEME VE GEREKÇE: MADDİ OLAY : ...Belediye Başkanlığında 5393 sayılı Belediye Kanunu'na istinaden sözleşmeli statüde eğitmen olarak görev yapan davacının, 01/01/2019-31/12/2019 tarihleri arasında geçerli olan hizmet sözleşmesi, hizmetinin gerektirdiği pozisyona ihtiyaç kalmadığından bahisle ...tarih ve... sayılı işlemle feshedilmiştir. Bunun üzerine temyizen incelenen dava açılmıştır. İLGİLİ MEVZUAT : 657 sayılı Devlet Memurları Kanunu'nun 4/B maddesinde, \"Sözleşmeli personel: Kalkınma planı, yıllık program ve iş programlarında yer alan önemli projelerin hazırlanması, gerçekleştirilmesi, işletilmesi ve işlerliği için şart olan, zaruri ve istisnai hallere münhasır olmak üzere özel bir meslek bilgisine ve ihtisasına ihtiyaç gösteren geçici işlerde, kurumun teklifi üzerine Devlet Personel Dairesi ve Maliye Bakanlığının görüşleri alınarak Bakanlar Kurulunca geçici olarak sözleşme ile çalıştırılmasına karar verilen ve işçi sayılmayan kamu hizmeti görevlileridir.\" hükmüne yer verilmiştir. 5393 sayılı Belediye Kanunu'nun 49. maddesinin birinci fıkrasında, \"Norm kadro ilke ve standartları Çevre ve Şehircilik Bakanlığı ve Devlet Personel Başkanlığı tarafından müştereken belirlenir. Belediyenin ve bağlı kuruluşlarının norm kadroları, bu ilke ve standartlar çerçevesinde belediye meclisi kararıyla belirlenir.\"; ikinci fıkrasında, \"Belediye personeli, belediye başkanı tarafından atanır. Birim müdürlüğü ve üstü yönetici kadrolarına yapılan atamalar ilk toplantıda belediye meclisinin bilgisine sunulur.\"; üçüncü fıkrasında, \"Belediye ve bağlı kuruluşlarında, norm kadroya uygun olarak çevre, sağlık, veterinerlik, teknik, hukuk, ekonomi, bilişim ve iletişim, plânlama, araştırma ve geliştirme, eğitim ve danışmanlık alanlarında avukat, mimar, mühendis, şehir ve bölge plâncısı, çözümleyici ve programcı, tabip, uzman tabip, ebe, hemşire, veteriner, kimyager, teknisyen ve tekniker gibi uzman ve teknik personel yıllık sözleşme ile çalıştırılabilir. Sözleşmeli personel eliyle yürütülen hizmetlere ilişkin boş kadrolara ayrıca atama yapılamaz. Bu personelin, yürütecekleri hizmetler için ihdas edilmiş kadro unvanının gerektirdiği nitelikleri taşımaları şarttır.\" ve beşinci fıkrasında; \"Üçüncü ve dördüncü fıkra hükümleri uyarınca çalıştırılacak personele her ne ad altında olursa olsun sözleşme ücreti dışında herhangi bir ödeme yapılmaz ve ücret mahiyetinde aynî ya da nakdî menfaat temin edilmez. Bu personel hakkında bu Kanunla düzenlenmeyen hususlarda vize şartı aranmaksızın 657 sayılı Devlet Memurları Kanununun 4 üncü maddesinin (B) fıkrasına göre istihdam edilenler hakkındaki hükümler uygulanır. ...\" hükümleri öngörülmüştür. 06/06/1978 tarih ve 7/15754 sayılı Bakanlar Kurulu Kararı ile yürürlüğe konulan Sözleşmeli Personel Çalıştırılmasına İlişkin Esaslar'ın 1. maddesinde; bu Esaslar'ın 657 sayılı Devlet Memurları Kanunu'nun 4. maddesinin (B) fıkrası hükmü uyarınca kamu idare, kurum ve kuruluşlarında mali yılla sınırlı olarak sözleşme ile çalıştırılan ve işçi sayılmayan kamu hizmeti görevlileri hakkında uygulanacağı ve \"Sözleşmenin Feshi\" başlıklı Ek 6/d maddesinde ise, \"Hizmetinin gerektirdiği pozisyona ihtiyaç kalmaması halinde, ilgili kamu kurum ve kuruluşlarınca sözleşmesi tek taraflı feshedilir.\" düzenlemelerine yer verilmiştir. HUKUKİ DEĞERLENDİRME: 5393 sayılı Belediye Kanunu'nun yukarıda metnine yer verilen 49. maddesinin üçüncü fıkrasındaki düzenleme ile kamu tüzel kişiliğine sahip olan belediyelerin uzmanlık gerektiren asli ve sürekli görevlerini yürütmek üzere hizmet sözleşmesi ile personel çalıştırabilmesi mümkün kılınmıştır. Söz konusu personelin sözleşme süresinin sonunda, sözleşmenin yenilenip yenilenmemesi konusunda idarenin kamu yararı ve hizmet gerekleri doğrultusunda takdir yetkisi bulunduğu gibi; haklı nedenlerin varlığı halinde sözleşmenin süresi dolmadan feshi de mümkündür. Ancak asli ve sürekli nitelikte kamu hizmeti yürüten sözleşmeli personelin kamu hukukuna tabi, esasları idarece önceden belirlenmiş ve güvenceli statüleri gereği, gerek sözleşmenin yenilenmemesi gerekse feshin haklı sebeplere dayanması; bu sebeplerin ise yargısal denetime imkân verecek biçimde ortaya konulması gerekmektedir. Öte yandan, idarenin tüm işlem ve eylemlerinde olduğu gibi sözleşmeli personel hakkında tesis edilecek tasarruflarında da süreklilik ilkesinin gözetilmesi gerekmektedir. Zira kamu hizmetlerinin kesintisiz ve düzenli yürütülmesi, idarenin hukuka bağlılığının bir yansımasıdır. Bu itibarla, sözleşmenin feshi yönündeki işlemlerin keyfi uygulamalara yol açmayacak şekilde, objektif ve hukuki gerekçelere dayandırılması; böylelikle hem kamu hizmetinin sürekliliğinin hem de idareye duyulan güvenin korunması zorunludur. Uyuşmazlıkta; davacının Genel İdare Hizmetleri Sınıfı 5. dereceli eğitmen kadrosu karşılık gösterilerek 22/07/2014 tarihinde imzalanan hizmet sözleşmesi ile eğitmen olarak göreve başlatıldığı, ancak göreve başladığı tarihten sözleşmesinin feshedildiği 10/06/2019 tarihine kadar başkanlık oluruyla mali hizmetler müdür vekili, encümen üyeliği ve Mali Hizmetler Müdürlüğü sanayi veznesinde personel olarak görev yaptırıldığı, dava konusu işlemle de, uzmanlık alanı ya da istihdam edildiği kadro dışındaki işlerde görev yapması nedeniyle bulunduğu pozisyona ihtiyaç kalmadığından bahisle sözleşmesinin feshedildiği anlaşılmaktadır. Bu durumda, davacının uzmanlık alanı ya da istihdam edildiği kadro dışındaki işlerde görevlendirilmesinin kendi iradesinden değil idarenin tasarrufundan kaynaklandığı ve hizmetine ihtiyaç kalmadığına ilişkin idare tarafından başkaca bir sebep gösterilemediği hususları dikkate alındığında, davacının bulunduğu pozisyona ihtiyaç kalmadığından bahisle sözleşmesinin feshedilmesine yönelik dava konusu işlemin, idarenin sürekliliği ilkesi ve idareye güvenin korunması gerekliliği ile bağdaşmadığı sonucuna ulaşılmıştır. Bu itibarla, davanın reddi yolunda verilen İdare Mahkemesi kararının kaldırılarak, dava konusu işlemin iptali yolunda verilen ... Bölge İdare Mahkemesi ... İdari Dava Dairesinin temyize konu ısrar kararında sonucu itibarıyla hukuka aykırılık bulunmamaktadır. KARAR SONUCU: Açıklanan nedenlerle; 1. Davalı idarenin temyiz isteminin reddine, 2. Davanın reddine ilişkin İdare Mahkemesi kararına yönelik yapılan istinaf başvurusunun yukarıda özetlenen gerekçeyle kabulü, kararın kaldırılması ve dava konusu işlemin iptali yolundaki ... Bölge İdare Mahkemesi ... İdari Dava Dairesinin temyize konu ... tarih ve E:..., K:... sayılı ısrar kararının yukarıda belirtilen gerekçe ile ONANMASINA, 3. Bu onama kararının taraflara tebliğini ve bir örneğinin de ... Bölge İdare Mahkemesi... İdari Dava Dairesine gönderilmesini teminen dosyanın ... İdare Mahkemesine gönderilmesine, 24/11/2025 tarihinde kesin olarak oyçokluğu ile karar verildi. KARŞI OY X- ... Bölge İdare Mahkemesi... İdari Dava Dairesinin temyize konu ... tarih ve E:..., K:... sayılı ısrar kararının, Danıştay Onikinci Dairesinin 23/05/2024 tarih ve E:2021/6436, K:2024/2624 sayılı kararında yer alan gerekçe doğrultusunda bozulması gerektiği oyuyla, karara katılmıyoruz.","error":""},"danistay|1196203800|":{"title":"Danıştay Kararı 8. Daire","source":"danistay","documentId":"1196203800","content":"**Danıştay 8. Daire Başkanlığı 2024/1708 E. , 2025/9073 K.** **\"İçtihat Metni\"** T.C. D A N I Ş T A Y SEKİZİNCİ DAİRE Esas No : 2024/1708 Karar No : 2025/9073 TEMYİZ İSTEMİNDE BULUNAN (DAVALI) : ... Valiliği VEKİLİ : Av. ... KARŞI TARAF (DAVACILAR) : 1- ... 2- ... İSTEMİN KONUSU : ... Bölge İdare Mahkemesi ...İdari Dava Dairesinin... gün ve E:..., K:... sayılı kararının, temyizen incelenerek bozulması istenilmektedir. YARGILAMA SÜRECİ : Dava konusu istem: Davacı ... adına kayıtlı,...plaka numaralı araçla ilgili Belediyeden alınmış çalışma izni/ruhsatı olmadığı halde yolcu taşımacılığı yapıldığının tespit edildiğinden bahisle, söz konusu aracın 2918 sayılı Karayolları Trafik Kanunu'nun Ek 2/3-a maddesi uyarınca 60 gün süreyle trafikten men edilmesine ilişkin tesis edilen... tarih ve ... sayılı işlem ile araç sürücüsü olan davacı ... adına 20.342,00-TL tutarında idari para cezası uygulanmasına ilişkin tesis edilen ... sayılı işlemin iptali istenilmektedir. İlk Derece Mahkemesi kararının özeti:...İdare Mahkemesince verilen ...tarih ve E:..., K:...sayılı kararda; denetim günü olan 03/01/2023 tarihinden sekiz gün sonra İstanbul Büyükşehir Belediyesi Ulaşım Daire Başkanlığı Toplu Ulaşım Hizmetleri Müdürlüğünce verilmiş 11/01/2023 onay tarihli ve 07/09/2023 tarihine kadar geçerli Turizm Yolcu Taşımacılığı İzin Belgesi'nin bulunduğu görülmekle, davacılara isnat edilen fiilin 2918 sayılı Kanun'un Ek-2/3-a maddesi kapsamına girmediği anlaşıldığından tesis edilen dava konusu işlemlerde hukuka uygunluk görülmediği gerekçesiyle dava konusu işlemlerin iptaline karar verilmiştir. Bölge İdare Mahkemesi kararının özeti: İstinaf başvurusuna konu kararın hukuka ve usule uygun olduğu ileri sürülen iddiaların söz konusu kararın kaldırılmasını sağlayacak nitelikte görülmediği belirtilerek 2577 sayılı İdari Yargılama Usulü Kanunu'nun 45. maddesinin 3. fıkrası uyarınca istinaf başvurusunun reddine karar verilmiştir. TEMYİZ EDENİN İDDİALARI : Davalı idare tarafından, 2918 sayılı Kanun'un Ek 2/3 maddesi uyarınca izin/ruhsat alınmaksızın ticari amaçlı taşımacılık yapıldığından bahisle tesis edilen dava konusu işlemlerde hukuka ve mevzuata aykırılık bulunmadığı belirtilerek, temyiz istemine konu Bölge İdare Mahkemesi kararının bozulmasına karar verilmesi gerektiği ileri sürülmektedir. KARŞI TARAFIN SAVUNMASI : Davacılar tarafından, savunma verilmemiştir. DANIŞTAY TETKİK HÂKİMİ ...'NIN DÜŞÜNCESİ : Temyiz isteminin kabulü ile Bölge İdare Mahkemesi kararının bozulması gerektiği düşünülmektedir. TÜRK MİLLETİ ADINA Karar veren Danıştay Sekizinci Dairesince, Tetkik Hâkiminin açıklamaları dinlendikten ve dosyadaki belgeler incelendikten sonra gereği görüşüldü: İNCELEME VE GEREKÇE: MADDİ OLAY : Davacı ... adına kayıtlı ... plakalı aracın, ilgili belediyeden izin veya ruhsat alınmaksızın belediye sınırları dahilinde ticari amaçlı yolcu taşımacılığında kullanıldığından bahisle 2918 sayılı Karayolları Trafik Kanunu'nun Ek 2/3-a maddesi uyarınca aracın 60 gün süre ile trafikten men edilmesine ilişkin ... tarih ve ... sayılı işlem ile araç sürücüsü olan davacı ... adına 20.342,00-TL tutarında idari para cezası uygulanmasına ilişkin tesis edilen ...sayılı işlemin iptali istemiyle bakılan dava açılmıştır. İLGİLİ MEVZUAT: 2918 sayılı Karayolları Trafik Kanunu'nun 18/10/2018 tarih ve 7148 sayılı Kanun'un 26. maddesi ile değişik Ek 2. maddesinde; \"Araçlarını motorlu araç tescil belgesinde gösterilen maksadın dışında kullananlar ile sürülmesine izin veren araç sahiplerine 1.002 Türk lirası idari para cezası uygulanır. (Mülga cümle:21/2/2019-7166/5 md.)(…) (Ek fıkra:21/2/2019-7166/5 md.) Ayrıca, araç on beş gün süre ile trafikten menedilir. 10/7/2004 tarihli ve 5216 sayılı Büyükşehir Belediyesi Kanunu ve 3/7/2005 tarihli ve 5393 sayılı Belediye Kanunu kapsamında ilgili belediyeden; a) Çalışma izni/ruhsatı almadan, b) Alınan izin/ruhsatta belirtilen faaliyet konusu dışında, c) Alınan izin/ruhsatta belirtilen çalışma bölgesi/güzergâh dışında belediye sınırları dâhilinde yolcu taşımak yasaktır. Bu fıkranın (a) bendine uymayanlara 5.010 Türk lirası, (b) bendine uymayanlara 2.018 Türk lirası, (c) bendine uymayanlara 1.002 Türk lirası idari para cezası verilir. Fiilin işlendiği tarihten itibaren geriye doğru bir yıl içinde tekerrürü hâlinde, bu fıkrada yer alan idari para cezaları iki kat olarak uygulanır. İşleteni veya sahibi, sürücüsünün kendisi olup olmadığına bakılmaksızın aracın bu maddenin üçüncü fıkrasına aykırı olarak kullanılmaması hususunda gerekli tedbirleri almak ve denetimini yapmakla yükümlüdür. Araç, bu maddenin üçüncü fıkrasının; a) (a) bendinin ihlali hâlinde altmış gün, b) (b) bendinin ihlali hâlinde otuz gün, c) (c) bendinin ihlali hâlinde ise on beş gün süreyle trafikten menedilir. İlgili belediye tarafından tahdit veya tahsis kapsamına alınmış ve bu kapsamda verilmiş çalışma izninin/ruhsatının süresi bittiği hâlde, belediye sınırları dâhilinde yolcu taşıyan kişiye 1.002 Türk lirası idari para cezası uygulanır ve eksikliği giderilinceye kadar araç trafikten menedilir. Ayırıcı işareti bulunmayan üçüncü fıkra kapsamındaki araçlardan taşımacılık hizmeti alanlara da 334 Türk lirası idari para cezası uygulanır.\" düzenlemesi yer almaktadır. HUKUKİ DEĞERLENDİRME: Yukarıda belirtilen mevzuat hükümleri uyarınca, toplu taşıma hizmetleri konusunda belediyelere tanınan yetkiler arasında güzergahları belirlemek de sayılmış olup, bu yetkinin kullanımının ruhsat / izin belgesi verilmesi ve bu belgenin denetimlerde ibraz edilmesi ile mümkün olacağı açıktır. Büyükşehirlerde gerek trafik güvenliği, gerek yolcu emniyeti ve gerekse belli bir güzergah için yasal koşulları yerine getirmek suretiyle izin almış kişilerin haklarının korunması bakımından idarenin denetim yaptığı sırada; araç sahipleri/araç sürücülerinin kullandıkları araçlar için gerekli olan ve yetkili makamlardan aldıkları ruhsat / izin gibi belgeleri denetim görevlilerine ibraz etmeleri gerekmektedir. Denetim tarihinden sonra temin edilen belgeler, tesis edilen dava konusu işlemleri hukuka aykırı hale getirmeyecek ve davacının hukuka aykırı davranışlarını ortadan kaldırmayacaktır. Dosyadaki bilgi ve belgelerden; olaya ilişkin 03/01/2023 tarihli tutanakta belirtildiği üzere araç içerisinde bulunan yolcunun \"İstanbul Havaalanına götürüldüğü\" beyan edildiği, dava konusu işlemlerin tesis edildiği tarihte (03/01/2023), davacı tarafından fiilen yapılan turizm taşımacılığına izin veren \"Turizm Yolcu Taşımacılığı İzin Belgesinin\" bulunmadığı, ancak davacı tarafından denetim tarihinden sonra, 11/01/2023 tarihinde düzenlenen ve 07/09/2023 tarihine kadar geçerli turizm yolcu taşımacılığı izin belgesinin temin edildiği, ilgili düzenleme uyarınca, işlemin tesis edildiği sırada belgenin olması veyahut hakkaniyet ilkesi ve nesafet kuralı kapsamında en geç aynı gün düzenlenmiş olması gereken izin belgesinin, takip eden günlerde alınması halinde makul süre sınırından bahsedilemeyeceği anlaşılmaktadır. Mahkemece her ne kadar davacıya ait turizm yolcu taşımacılığı izin belgesinin olay (03/01/2023) tarihinden sonra (11/01/2023 tarihinde) makul sürede alındığından bahisle davacılara 2918 sayılı Kanunun Ek-2/3-a uyarınca ceza verilemeyeceğine karar verilmişse de, Dairemizin içtihatlarına göre söz konusu belgelerin edinilmesi için makul sürenin işlem tarihi ile aynı gün olduğu kabul edilmiş olup, dava konusu işlemler tesis edildiğinde geçerli izin belgesi bulunmadığı anlaşıldığından dava konusu işlemlerde hukuka aykırılık görülmemiştir. Bu itibarla, dava konusu işlemlerin iptali yönündeki Mahkeme kararına yönelik istinaf isteminin esastan reddine ilişkin temyize konu Bölge İdare Mahkemesi kararında hukuki isabet bulunmamaktadır. KARAR SONUCU: Açıklanan nedenlerle; 1. 2577 sayılı Kanun'un 49. maddesine uygun bulunan temyiz isteminin kabulüne, 2. ... Bölge İdare Mahkemesi ... İdari Dava Dairesinin ... gün ve E:..., K:... sayılı kararının BOZULMASINA, 3. Yeniden bir karar verilmek üzere dosyanın yukarıda belirtilen Bölge İdare Mahkemesi İdari Dava Dairesine gönderilmesine, 4. Kesin olarak, 25/11/2025 tarihinde oybirliği ile karar verildi.","error":""},"danistay|1196204300|":{"title":"Danıştay Kararı 8. Daire","source":"danistay","documentId":"1196204300","content":"**Danıştay 8. Daire Başkanlığı 2024/2883 E. , 2025/9074 K.** **\"İçtihat Metni\"** T.C. D A N I Ş T A Y SEKİZİNCİ DAİRE Esas No : 2024/2883 Karar No : 2025/9074 TEMYİZ İSTEMİNDE BULUNAN (DAVALI) : ... Valiliği VEKİLİ : Av. ... KARŞI TARAF (DAVACILAR) : 1- ... 2- ... İSTEMİN KONUSU : ... Bölge İdare Mahkemesi... İdari Dava Dairesinin... gün ve E:..., K:...sayılı kararının, temyizen incelenerek bozulması istenilmektedir. YARGILAMA SÜRECİ : Dava konusu istem: Davacılardan...'in maliki olduğu ... plakalı araçla, ilgili belediyeden çalışma izni/ruhsatı alınmadan belediye sınırları dahilinde yolcu taşımacılığı yapıldığı tespit edildiğinden bahisle, 2918 sayılı Karayolları Trafik Kanunu'nun Ek 2/3-a maddesi uyarınca söz konusu aracın 60 gün süreyle trafikten men edilmesine ilişkin ... tarih ve ... sayılı tutanak ile aynı madde uyarınca davacılardan ...'a 9.125,00 TL idari para cezası verilmesine ilişkin aynı tarih ve ... sayılı işlemin iptali istenilmektedir. İlk Derece Mahkemesi kararının özeti: ...İdare Mahkemesince verilen ... tarih ve E:..., K:... sayılı kararda; denetim günü olan 26/12/2022 tarihinden bir gün sonra İstanbul Büyükşehir Belediyesi Ulaşım Daire Başkanlığı Toplu Ulaşım Hizmetleri Müdürlüğünce verilmiş 27/12/2022 onay tarihli ve 09/05/2023 tarihine kadar geçerli Turizm Yolcu Taşımacılığı İzin Belgesi'nin bulunduğu görülmekle, davacılara isnat edilen fiilin 2918 sayılı Kanun'un Ek-2/3-a maddesi kapsamına girmediği anlaşıldığından tesis edilen dava konusu işlemlerde hukuka uygunluk görülmediği gerekçesiyle dava konusu işlemlerin iptaline karar verilmiştir. Bölge İdare Mahkemesi kararının özeti: İstinaf başvurusuna konu kararın hukuka ve usule uygun olduğu ileri sürülen iddiaların söz konusu kararın kaldırılmasını sağlayacak nitelikte görülmediği belirtilerek 2577 sayılı İdari Yargılama Usulü Kanunu'nun 45. maddesinin 3. fıkrası uyarınca istinaf başvurusunun reddine karar verilmiştir. TEMYİZ EDENİN İDDİALARI : Davalı idare tarafından, 2918 sayılı Kanun'un Ek 2/3 maddesi uyarınca izin/ruhsat alınmaksızın ticari amaçlı taşımacılık yapıldığından bahisle tesis edilen dava konusu işlemlerde hukuka ve mevzuata aykırılık bulunmadığı belirtilerek, temyiz istemine konu Bölge İdare Mahkemesi kararının bozulmasına karar verilmesi gerektiği ileri sürülmektedir. KARŞI TARAFIN SAVUNMASI : Davacılar tarafından, savunma verilmemiştir. DANIŞTAY TETKİK HÂKİMİ...'NIN DÜŞÜNCESİ : Temyiz isteminin kabulü ile Bölge İdare Mahkemesi kararının bozulması gerektiği düşünülmektedir. TÜRK MİLLETİ ADINA Karar veren Danıştay Sekizinci Dairesince, Tetkik Hâkiminin açıklamaları dinlendikten ve dosyadaki belgeler incelendikten sonra gereği görüşüldü: İNCELEME VE GEREKÇE: MADDİ OLAY : Davacılardan ... adına kayıtlı ... plakalı aracın, ilgili belediyeden izin veya ruhsat alınmaksızın belediye sınırları dahilinde ticari amaçlı yolcu taşımacılığında kullanıldığından bahisle 2918 sayılı Karayolları Trafik Kanunu'nun Ek 2/3-a maddesi uyarınca aracın 60 gün süre ile trafikten men edilmesine ilişkin ... tarih ve...sayılı işlem ile diğer davacı araç sürücüsü ... adına 9.125,00 TL para cezası verilmesine ilişkin aynı tarih ve ... sayılı işlemin iptali istemiyle bakılan dava açılmıştır. İLGİLİ MEVZUAT: 2918 sayılı Karayolları Trafik Kanunu'nun 18/10/2018 tarih ve 7148 sayılı Kanun'un 26. maddesi ile değişik Ek 2. maddesinde; \"Araçlarını motorlu araç tescil belgesinde gösterilen maksadın dışında kullananlar ile sürülmesine izin veren araç sahiplerine 1.002 Türk lirası idari para cezası uygulanır. (Mülga cümle:21/2/2019-7166/5 md.)(…) (Ek fıkra:21/2/2019-7166/5 md.) Ayrıca, araç on beş gün süre ile trafikten menedilir. 10/7/2004 tarihli ve 5216 sayılı Büyükşehir Belediyesi Kanunu ve 3/7/2005 tarihli ve 5393 sayılı Belediye Kanunu kapsamında ilgili belediyeden; a) Çalışma izni/ruhsatı almadan, b) Alınan izin/ruhsatta belirtilen faaliyet konusu dışında, c) Alınan izin/ruhsatta belirtilen çalışma bölgesi/güzergâh dışında belediye sınırları dâhilinde yolcu taşımak yasaktır. Bu fıkranın (a) bendine uymayanlara 5.010 Türk lirası, (b) bendine uymayanlara 2.018 Türk lirası, (c) bendine uymayanlara 1.002 Türk lirası idari para cezası verilir. Fiilin işlendiği tarihten itibaren geriye doğru bir yıl içinde tekerrürü hâlinde, bu fıkrada yer alan idari para cezaları iki kat olarak uygulanır. İşleteni veya sahibi, sürücüsünün kendisi olup olmadığına bakılmaksızın aracın bu maddenin üçüncü fıkrasına aykırı olarak kullanılmaması hususunda gerekli tedbirleri almak ve denetimini yapmakla yükümlüdür. Araç, bu maddenin üçüncü fıkrasının; a) (a) bendinin ihlali hâlinde altmış gün, b) (b) bendinin ihlali hâlinde otuz gün, c) (c) bendinin ihlali hâlinde ise on beş gün süreyle trafikten menedilir. İlgili belediye tarafından tahdit veya tahsis kapsamına alınmış ve bu kapsamda verilmiş çalışma izninin/ruhsatının süresi bittiği hâlde, belediye sınırları dâhilinde yolcu taşıyan kişiye 1.002 Türk lirası idari para cezası uygulanır ve eksikliği giderilinceye kadar araç trafikten menedilir. Ayırıcı işareti bulunmayan üçüncü fıkra kapsamındaki araçlardan taşımacılık hizmeti alanlara da 334 Türk lirası idari para cezası uygulanır.\" düzenlemesi yer almaktadır. HUKUKİ DEĞERLENDİRME: Yukarıda belirtilen mevzuat hükümleri uyarınca, toplu taşıma hizmetleri konusunda belediyelere tanınan yetkiler arasında güzergahları belirlemek de sayılmış olup, bu yetkinin kullanımının ruhsat / izin belgesi verilmesi ve bu belgenin denetimlerde ibraz edilmesi ile mümkün olacağı açıktır. Büyükşehirlerde gerek trafik güvenliği, gerek yolcu emniyeti ve gerekse belli bir güzergah için yasal koşulları yerine getirmek suretiyle izin almış kişilerin haklarının korunması bakımından idarenin denetim yaptığı sırada; araç sahipleri/araç sürücülerinin kullandıkları araçlar için gerekli olan ve yetkili makamlardan aldıkları ruhsat / izin gibi belgeleri denetim görevlilerine ibraz etmeleri gerekmektedir. Denetim tarihinden sonra temin edilen belgeler, tesis edilen dava konusu işlemleri hukuka aykırı hale getirmeyecek ve davacının hukuka aykırı davranışlarını ortadan kaldırmayacaktır. Dosyadaki bilgi ve belgelerden; olaya ilişkin 26/12/2022 tarihli tutanakta belirtildiği üzere araç içerisinde bulunan yolcunun \"İstanbul Havaalanına götürüldüğü\" beyan edildiği, dava konusu işlemlerin tesis edildiği tarihte (26/12/2022), davacı tarafından fiilen yapılan turizm taşımacılığına izin veren \"Turizm Yolcu Taşımacılığı İzin Belgesinin\" bulunmadığı, ancak davacı tarafından denetim tarihinden sonra, 27/12/2022 tarihinde düzenlenen ve 09/05/2023 tarihine kadar geçerli turizm yolcu taşımacılığı izin belgesinin temin edildiği, ilgili düzenleme uyarınca, işlemin tesis edildiği sırada belgenin olması veyahut hakkaniyet ilkesi ve nesafet kuralı kapsamında en geç aynı gün düzenlenmiş olması gereken izin belgesinin, takip eden günlerde alınması halinde makul süre sınırından bahsedilemeyeceği anlaşılmaktadır. Mahkemece her ne kadar davacıya ait turizm yolcu taşımacılığı izin belgesinin olay (26/12/2022) tarihinden sonra (27/12/2022 tarihinde) makul sürede alındığından bahisle davacılara 2918 sayılı Kanun'un Ek-2/3-a uyarınca ceza verilemeyeceğine karar verilmişse de, Dairemizin içtihatlarına göre söz konusu belgelerin edinilmesi için makul sürenin işlem tarihi ile aynı gün olduğu kabul edilmiş olup, dava konusu işlemler tesis edildiğinde geçerli izin belgesi bulunmadığı anlaşıldığından dava konusu işlemlerde hukuka aykırılık görülmemiştir. Bu itibarla, dava konusu işlemlerin iptali yönündeki Mahkeme kararına yönelik istinaf isteminin esastan reddine ilişkin temyize konu Bölge İdare Mahkemesi kararında hukuki isabet bulunmamaktadır. KARAR SONUCU: Açıklanan nedenlerle; 1. 2577 sayılı Kanun'un 49. maddesine uygun bulunan temyiz isteminin kabulüne, 2. ... Bölge İdare Mahkemesi ... İdari Dava Dairesinin ... gün ve E:..., K:... sayılı kararının BOZULMASINA, 3. Yeniden bir karar verilmek üzere dosyanın yukarıda belirtilen Bölge İdare Mahkemesi İdari Dava Dairesine gönderilmesine, 4. Kesin olarak, 25/11/2025 tarihinde oybirliği ile karar verildi.","error":""},"danistay|1196203400|":{"title":"Danıştay Kararı 8. Daire","source":"danistay","documentId":"1196203400","content":"**Danıştay 8. Daire Başkanlığı 2024/1680 E. , 2025/9086 K.** **\"İçtihat Metni\"** T.C. D A N I Ş T A Y SEKİZİNCİ DAİRE Esas No : 2024/1680 Karar No : 2025/9086 TEMYİZ İSTEMİNDE BULUNAN (DAVALI) : ... Valiliği VEKİLİ : Av. ... KARŞI TARAF (DAVACILAR) : 1- ... 2- ... İSTEMİN KONUSU : ... Bölge İdare Mahkemesi... İdari Dava Dairesinin ... gün ve E:..., K:...sayılı kararının, temyizen incelenerek bozulması istenilmektedir. YARGILAMA SÜRECİ : Dava konusu istem: Davacı ... adına kayıtlı...plakalı araçla ilgili belediyeden izin alınmaksızın ticari amaçlı yolcu taşımacılığı yapıldığından bahisle 2918 sayılı Karayolları Trafik Kanunu'nun Ek 2/3-a maddesi uyarınca 60 gün trafikten men edilmesine ilişkin...tarih ve ... sayılı işlem ile araç sürücüsü diğer davacı ... adına 9.125,00-TL idari para cezası verilmesine ilişkin... tarih ve ... sayılı işlemin iptali istenilmektedir. İlk Derece Mahkemesi kararının özeti:...İdare Mahkemesince verilen...tarih ve E:..., K:... sayılı kararda; denetim günü olan 09/12/2022 tarihinden üç gün sonra İstanbul Büyükşehir Belediyesi Ulaşım Daire Başkanlığı Toplu Ulaşım Hizmetleri Müdürlüğünce verilmiş 12/12/2022 onay tarihli ve 12/12/2023 tarihine kadar geçerli Turizm Yolcu Taşımacılığı İzin Belgesi'nin bulunduğu, davacılara isnat edilen fiilin 2918 sayılı Kanun'un Ek 2/3-a maddesi kapsamına girmediği anlaşıldığından tesis edilen dava konusu işlemlerde hukuka uygunluk görülmediği gerekçesiyle dava konusu işlemlerin iptaline karar verilmiştir. Bölge İdare Mahkemesi kararının özeti: İstinaf başvurusuna konu kararın hukuka ve usule uygun olduğu ileri sürülen iddiaların söz konusu kararın kaldırılmasını sağlayacak nitelikte görülmediği belirtilerek 2577 sayılı İdari Yargılama Usulü Kanunu'nun 45. maddesinin 3. fıkrası uyarınca istinaf başvurusunun reddine karar verilmiştir. TEMYİZ EDENİN İDDİALARI : Davalı idare tarafından, 2918 sayılı Kanun'un Ek 2/3 maddesi uyarınca izin/ruhsat alınmaksızın ticari amaçlı taşımacılık yapıldığından bahisle tesis edilen dava konusu işlemlerde hukuka ve mevzuata aykırılık bulunmadığı belirtilerek, temyiz istemine konu Bölge İdare Mahkemesi kararının bozulmasına karar verilmesi gerektiği ileri sürülmektedir. KARŞI TARAFIN SAVUNMASI : Davacılar tarafından, savunma verilmemiştir. DANIŞTAY TETKİK HÂKİMİ ...'NIN DÜŞÜNCESİ : Temyiz isteminin kabulü ile Bölge İdare Mahkemesi kararının bozulması gerektiği düşünülmektedir. TÜRK MİLLETİ ADINA Karar veren Danıştay Sekizinci Dairesince, Tetkik Hâkiminin açıklamaları dinlendikten ve dosyadaki belgeler incelendikten sonra gereği görüşüldü: İNCELEME VE GEREKÇE: MADDİ OLAY : 09/12/2022 tarihinde yapılan denetimde, davacı ...'e ait ... plakalı araç ile bir yolcunun Bakırköy'den alınıp İstanbul Havalimanına götürüldüğü ve yolculuk ücretinin ise şirkete ödendiği tespit edilerek düzenlenen tutanağa istinaden, söz konusu aracın 2918 sayılı Karayolları Trafik Kanunu'nun Ek 2/3-a maddesi uyarınca 60 gün süre ile trafikten men edilmesine ve araç sürücüsüne trafik para cezası verilmesine ilişkin işlemin tesis edildiği, bu işlemlerin iptali istemiyle de bakılan davanın açıldığı anlaşılmaktadır. İLGİLİ MEVZUAT: 2918 sayılı Karayolları Trafik Kanunu'nun 18/10/2018 tarih ve 7148 sayılı Kanun'un 26. maddesi ile değişik Ek 2. maddesinde; \"Araçlarını motorlu araç tescil belgesinde gösterilen maksadın dışında kullananlar ile sürülmesine izin veren araç sahiplerine 1.002 Türk lirası idari para cezası uygulanır. (Mülga cümle:21/2/2019-7166/5 md.)(…) (Ek fıkra:21/2/2019-7166/5 md.) Ayrıca, araç on beş gün süre ile trafikten menedilir. 10/7/2004 tarihli ve 5216 sayılı Büyükşehir Belediyesi Kanunu ve 3/7/2005 tarihli ve 5393 sayılı Belediye Kanunu kapsamında ilgili belediyeden; a) Çalışma izni/ruhsatı almadan, b) Alınan izin/ruhsatta belirtilen faaliyet konusu dışında, c) Alınan izin/ruhsatta belirtilen çalışma bölgesi/güzergâh dışında belediye sınırları dâhilinde yolcu taşımak yasaktır. Bu fıkranın (a) bendine uymayanlara 5.010 Türk lirası, (b) bendine uymayanlara 2.018 Türk lirası, (c) bendine uymayanlara 1.002 Türk lirası idari para cezası verilir. Fiilin işlendiği tarihten itibaren geriye doğru bir yıl içinde tekerrürü hâlinde, bu fıkrada yer alan idari para cezaları iki kat olarak uygulanır. İşleteni veya sahibi, sürücüsünün kendisi olup olmadığına bakılmaksızın aracın bu maddenin üçüncü fıkrasına aykırı olarak kullanılmaması hususunda gerekli tedbirleri almak ve denetimini yapmakla yükümlüdür. Araç, bu maddenin üçüncü fıkrasının; a) (a) bendinin ihlali hâlinde altmış gün, b) (b) bendinin ihlali hâlinde otuz gün, c) (c) bendinin ihlali hâlinde ise on beş gün süreyle trafikten menedilir. İlgili belediye tarafından tahdit veya tahsis kapsamına alınmış ve bu kapsamda verilmiş çalışma izninin/ruhsatının süresi bittiği hâlde, belediye sınırları dâhilinde yolcu taşıyan kişiye 1.002 Türk lirası idari para cezası uygulanır ve eksikliği giderilinceye kadar araç trafikten menedilir. Ayırıcı işareti bulunmayan üçüncü fıkra kapsamındaki araçlardan taşımacılık hizmeti alanlara da 334 Türk lirası idari para cezası uygulanır.\" düzenlemesi yer almaktadır. HUKUKİ DEĞERLENDİRME: Yukarıda belirtilen mevzuat hükümleri uyarınca, toplu taşıma hizmetleri konusunda belediyelere tanınan yetkiler arasında güzergahları belirlemek de sayılmış olup, bu yetkinin kullanımının ruhsat / izin belgesi verilmesi ve bu belgenin denetimlerde ibraz edilmesi ile mümkün olacağı açıktır. Büyükşehirlerde gerek trafik güvenliği, gerek yolcu emniyeti ve gerekse belli bir güzergah için yasal koşulları yerine getirmek suretiyle izin almış kişilerin haklarının korunması bakımından idarenin denetim yaptığı sırada; araç sahipleri/araç sürücülerinin kullandıkları araçlar için gerekli olan ve yetkili makamlardan aldıkları ruhsat / izin gibi belgeleri denetim görevlilerine ibraz etmeleri gerekmektedir. Denetim tarihinden sonra temin edilen belgeler, tesis edilen dava konusu işlemleri hukuka aykırı hale getirmeyecek ve davacının hukuka aykırı davranışlarını ortadan kaldırmayacaktır. Dosyadaki bilgi ve belgelerden; olaya ilişkin 09/12/2022 tarihli tutanakta belirtildiği üzere araç içerisinde bulunan yolcunun \"İstanbul Havaalanına götürüldüğü\" beyan edildiği, dava konusu işlemlerin tesis edildiği tarihte (09/12/2022), davacı tarafından fiilen yapılan turizm taşımacılığına izin veren \"turizm yolcu taşımacılığı izin belgesinin\" bulunmadığı, ancak davacı tarafından denetim tarihinden sonra, 12/12/2022 tarihinde düzenlenen ve 12/12/2023 tarihine kadar geçerli turizm yolcu taşımacılığı izin belgesinin temin edildiği, ilgili düzenleme uyarınca, işlemin tesis edildiği sırada belgenin olması veyahut hakkaniyet ilkesi ve nesafet kuralı kapsamında en geç aynı gün düzenlenmiş olması gereken izin belgesinin, takip eden günlerde alınması halinde makul süre sınırından bahsedilemeyeceği anlaşılmaktadır. Mahkemece her ne kadar davacıya ait turizm yolcu taşımacılığı izin belgesinin olay (09/12/2022) tarihinden sonra (12/12/2022 tarihinde) makul sürede alındığından bahisle davacıya 2918 sayılı Kanunun Ek-2/3-a uyarınca ceza verilemeyeceğine karar verilmişse de, Dairemizin içtihatlarına göre söz konusu belgelerin edinilmesi için makul sürenin işlem tarihi ile aynı gün olduğu kabul edilmiş olup, dava konusu işlemler tesis edildiğinde geçerli izin belgesi bulunmadığı anlaşıldığından dava konusu işlemlerde hukuka aykırılık görülmemiştir. Bu itibarla, dava konusu işlemlerin iptali yönündeki Mahkeme kararına yönelik istinaf isteminin esastan reddine ilişkin temyize konu Bölge İdare Mahkemesi kararında hukuki isabet bulunmamaktadır. KARAR SONUCU: Açıklanan nedenlerle; 1. 2577 sayılı Kanun'un 49. maddesine uygun bulunan temyiz isteminin kabulüne, 2. ... Bölge İdare Mahkemesi ...İdari Dava Dairesinin ... gün ve E:..., K:... sayılı kararının BOZULMASINA, 3. Yeniden bir karar verilmek üzere dosyanın yukarıda belirtilen Bölge İdare Mahkemesi İdari Dava Dairesine gönderilmesine, 4. Kesin olarak, 25/11/2025 tarihinde oybirliği ile karar verildi.","error":""},"danistay|1196247200|":{"title":"Danıştay Kararı 8. Daire","source":"danistay","documentId":"1196247200","content":"**Danıştay 8. Daire Başkanlığı 2024/1659 E. , 2025/9071 K.** **\"İçtihat Metni\"** T.C. D A N I Ş T A Y SEKİZİNCİ DAİRE Esas No : 2024/1659 Karar No : 2025/9071 TEMYİZ İSTEMİNDE BULUNAN (DAVALI) : ... Valiliği VEKİLİ : Av. ... KARŞI TARAF (DAVACILAR) : 1- ... 2- ... İSTEMİN KONUSU : ... Bölge İdare Mahkemesi ...İdari Dava Dairesinin ... gün ve E:..., K:...sayılı kararının, temyizen incelenerek bozulması istenilmektedir. YARGILAMA SÜRECİ : Dava konusu istem: Davacı Muhammet Berdan Tanrıkulu tarafından ... plakalı aracın, ilgili belediyeden izin veya ruhsat alınmaksızın belediye sınırları dahilinde ticari amaçlı yolcu taşımacılığında kullanıldığından bahisle 2918 sayılı Karayolları Trafik Kanunu'nun Ek 2/3-a maddesi uyarınca aracın 60 gün süre ile trafikten men edilmesine ilişkin ... tarih ve ... sayılı işlem ile diğer davacı araç sürücüsü ... adına 9.125,00-TL idari para cezasına ilişkin ... tarih ... sayılı işlemin iptali istenilmektedir. İlk Derece Mahkemesi kararının özeti: ... İdare Mahkemesince verilen... tarih ve E:..., K:... sayılı kararda; denetim günü olan 05/11/2022 tarihinden iki gün sonra İstanbul Büyükşehir Belediyesi Ulaşım Daire Başkanlığı Toplu Ulaşım Hizmetleri Müdürlüğünce verilmiş 07/11/2022 onay tarihli ve 04/11/2023 tarihine kadar geçerli Turizm Yolcu Taşımacılığı İzin Belgesi'nin bulunduğu görülmekle, davacılara isnad edilen fiilin 2918 sayılı Kanun'un Ek.2/3-a maddesi kapsamına girmediği anlaşıldığından tesis edilen dava konusu işlemlerde hukuka uygunluk görülmediği gerekçesiyle dava konusu işlemlerin iptaline karar verilmiştir. Bölge İdare Mahkemesi kararının özeti: İstinaf başvurusuna konu kararın hukuka ve usule uygun olduğu ileri sürülen iddiaların söz konusu kararın kaldırılmasını sağlayacak nitelikte görülmediği belirtilerek 2577 sayılı İdari Yargılama Usulü Kanunu'nun 45. maddesinin 3. fıkrası uyarınca istinaf başvurusunun reddine karar verilmiştir. TEMYİZ EDENİN İDDİALARI : Davalı idare tarafından, 2918 sayılı Kanun'un Ek 2/3 maddesi uyarınca izin/ruhsat alınmaksızın ticari amaçlı taşımacılık yapıldığından bahisle tesis edilen dava konusu işlemlerde hukuka ve mevzuata aykırılık bulunmadığı belirtilerek, temyiz istemine konu Bölge İdare Mahkemesi kararının bozulmasına karar verilmesi gerektiği ileri sürülmektedir. KARŞI TARAFIN SAVUNMASI : Davacılar tarafından, savunma verilmemiştir. DANIŞTAY TETKİK HÂKİMİ ...'NIN DÜŞÜNCESİ : Temyiz isteminin kabulü ile Bölge İdare Mahkemesi kararının bozulması gerektiği düşünülmektedir. TÜRK MİLLETİ ADINA Karar veren Danıştay Sekizinci Dairesince, Tetkik Hâkiminin açıklamaları dinlendikten ve dosyadaki belgeler incelendikten sonra gereği görüşüldü: İNCELEME VE GEREKÇE: MADDİ OLAY : Davacı Muhammet Berdan Tanrıkulu tarafından ... plakalı aracın, ilgili belediyeden izin veya ruhsat alınmaksızın belediye sınırları dahilinde ticari amaçlı yolcu taşımacılığında kullanıldığından bahisle 2918 sayılı Karayolları Trafik Kanunu'nun Ek 2/3-a maddesi uyarınca aracın 60 gün süre ile trafikten men edilmesine ilişkin 0... tarih ve... sayılı işlem ile diğer davacı araç sürücüsü ... adına 9.125,00-TL idari para cezasına ilişkin... tarih ... sayılı işlemin iptali istenilmektedir. İLGİLİ MEVZUAT: 2918 sayılı Karayolları Trafik Kanunu'nun 18/10/2018 tarih ve 7148 sayılı Kanun'un 26. maddesi ile değişik Ek 2. maddesinde; \"Araçlarını motorlu araç tescil belgesinde gösterilen maksadın dışında kullananlar ile sürülmesine izin veren araç sahiplerine 1.002 Türk lirası idari para cezası uygulanır. (Mülga cümle:21/2/2019-7166/5 md.)(…) (Ek fıkra:21/2/2019-7166/5 md.) Ayrıca, araç on beş gün süre ile trafikten menedilir. 10/7/2004 tarihli ve 5216 sayılı Büyükşehir Belediyesi Kanunu ve 3/7/2005 tarihli ve 5393 sayılı Belediye Kanunu kapsamında ilgili belediyeden; a) Çalışma izni/ruhsatı almadan, b) Alınan izin/ruhsatta belirtilen faaliyet konusu dışında, c) Alınan izin/ruhsatta belirtilen çalışma bölgesi/güzergâh dışında belediye sınırları dâhilinde yolcu taşımak yasaktır. Bu fıkranın (a) bendine uymayanlara 5.010 Türk lirası, (b) bendine uymayanlara 2.018 Türk lirası, (c) bendine uymayanlara 1.002 Türk lirası idari para cezası verilir. Fiilin işlendiği tarihten itibaren geriye doğru bir yıl içinde tekerrürü hâlinde, bu fıkrada yer alan idari para cezaları iki kat olarak uygulanır. İşleteni veya sahibi, sürücüsünün kendisi olup olmadığına bakılmaksızın aracın bu maddenin üçüncü fıkrasına aykırı olarak kullanılmaması hususunda gerekli tedbirleri almak ve denetimini yapmakla yükümlüdür. Araç, bu maddenin üçüncü fıkrasının; a) (a) bendinin ihlali hâlinde altmış gün, b) (b) bendinin ihlali hâlinde otuz gün, c) (c) bendinin ihlali hâlinde ise on beş gün süreyle trafikten menedilir. İlgili belediye tarafından tahdit veya tahsis kapsamına alınmış ve bu kapsamda verilmiş çalışma izninin/ruhsatının süresi bittiği hâlde, belediye sınırları dâhilinde yolcu taşıyan kişiye 1.002 Türk lirası idari para cezası uygulanır ve eksikliği giderilinceye kadar araç trafikten menedilir. Ayırıcı işareti bulunmayan üçüncü fıkra kapsamındaki araçlardan taşımacılık hizmeti alanlara da 334 Türk lirası idari para cezası uygulanır.\" düzenlemesi yer almaktadır. HUKUKİ DEĞERLENDİRME: Yukarıda belirtilen mevzuat hükümleri uyarınca, toplu taşıma hizmetleri konusunda belediyelere tanınan yetkiler arasında güzergahları belirlemek de sayılmış olup, bu yetkinin kullanımının ruhsat / izin belgesi verilmesi ve bu belgenin denetimlerde ibraz edilmesi ile mümkün olacağı açıktır. Büyükşehirlerde gerek trafik güvenliği, gerek yolcu emniyeti ve gerekse belli bir güzergah için yasal koşulları yerine getirmek suretiyle izin almış kişilerin haklarının korunması bakımından idarenin denetim yaptığı sırada; araç sahipleri/araç sürücülerinin kullandıkları araçlar için gerekli olan ve yetkili makamlardan aldıkları ruhsat / izin gibi belgeleri denetim görevlilerine ibraz etmeleri gerekmektedir. Denetim tarihinden sonra temin edilen belgeler, tesis edilen dava konusu işlemleri hukuka aykırı hale getirmeyecek ve davacının hukuka aykırı davranışlarını ortadan kaldırmayacaktır. Dosyadaki bilgi ve belgelerden; olaya ilişkin 05/11/2022 tarihli tutanakta belirtildiği üzere araç içerisinde bulunan yolcunun \"İstanbul Havaalanına götürüldüğü\" beyan edildiği, dava konusu işlemlerin tesis edildiği tarihte ( 05/11/2022), davacı tarafından fiilen yapılan turizm taşımacılığına izin veren \"turizm yolcu taşımacılığı izin belgesinin\" bulunmadığı, ancak davacı tarafından denetim tarihinden sonra, 07/11/2022 tarihinde düzenlenen ve 04/11/2023 tarihine kadar geçerli turizm yolcu taşımacılığı izin belgesinin temin edildiği, ilgili düzenleme uyarınca, işlemin tesis edildiği sırada belgenin olması veyahut hakkaniyet ilkesi ve nesafet kuralı kapsamında en geç aynı gün düzenlenmiş olması gereken izin belgesinin, takip eden günlerde alınması halinde makul süre sınırından bahsedilemeyeceği anlaşılmaktadır. Mahkemece her ne kadar davacıya ait turizm yolcu taşımacılığı izin belgesinin olay (05/11/2022) tarihinden sonra ( 07/11/2022 tarihinde) makul sürede alındığından bahisle davacılara 2918 sayılı Kanun'un Ek-2/3-a uyarınca ceza verilemeyeceğine karar verilmişse de, Dairemizin içtihatlarına göre söz konusu belgelerin edinilmesi için makul sürenin işlem tarihi ile aynı gün olduğu kabul edilmiş olup, dava konusu işlemler tesis edildiğinde geçerli izin belgesi bulunmadığı anlaşıldığından dava konusu işlemlerde hukuka aykırılık görülmemiştir. Bu itibarla, dava konusu işlemlerin iptali yönündeki Mahkeme kararına yönelik istinaf isteminin esastan reddine ilişkin temyize konu Bölge İdare Mahkemesi kararında hukuki isabet bulunmamaktadır. KARAR SONUCU: Açıklanan nedenlerle; 1. 2577 sayılı Kanun'un 49. maddesine uygun bulunan temyiz isteminin kabulüne, 2. ... Bölge İdare Mahkemesi ... İdari Dava Dairesinin ... gün ve E:..., K:...sayılı kararının BOZULMASINA, 3. Yeniden bir karar verilmek üzere dosyanın yukarıda belirtilen Bölge İdare Mahkemesi İdari Dava Dairesine gönderilmesine, 4. Kesin olarak, 25/11/2025 tarihinde oybirliği ile karar verildi.","error":""},"danistay|1196248200|":{"title":"Danıştay Kararı 8. Daire","source":"danistay","documentId":"1196248200","content":"**Danıştay 8. Daire Başkanlığı 2024/1417 E. , 2025/9070 K.** **\"İçtihat Metni\"** T.C. D A N I Ş T A Y SEKİZİNCİ DAİRE Esas No : 2024/1417 Karar No : 2025/9070 TEMYİZ İSTEMİNDE BULUNAN (DAVALI) : ... Valiliği VEKİLİ : Av. ... KARŞI TARAF (DAVACILAR) : 1- ... Elektrik Gıda Turizm Taşımacılık Reklam Sağlık Sanayi ve Dış Ticaret Ltd. Şti. 2- ... İSTEMİN KONUSU : ... Bölge İdare Mahkemesi ... İdari Dava Dairesinin ...gün ve E:..., K:...sayılı kararının, temyizen incelenerek bozulması istenilmektedir. YARGILAMA SÜRECİ : Dava konusu istem: Davacı şirkete ait ... plakalı aracın ilgili belediyeden izin veya ruhsat alınmaksızın belediye sınırları dahilinde ticari amaçlı yolcu taşımacılığında kullanıldığından bahisle 2918 sayılı Karayolları Trafik Kanunu'nun Ek 2/3-a maddesi uyarınca aracın 60 gün süre ile trafikten men edilmesine ilişkin ...tarih ve ...sayılı işlem ile diğer davacı olan araç sürücüsü ... adına 9.125,00-TL tutarında idari para cezası verilmesine ilişkin... tarih ve ... sayılı işlemin iptali istenilmiştir. İlk Derece Mahkemesi kararının özeti: ... İdare Mahkemesince verilen ... tarih ve E:..., K:... sayılı kararda; denetim günü olan 19/04/2022 tarihinden bir gün sonra İstanbul Büyükşehir Belediyesi Ulaşım Daire Başkanlığı Toplu Ulaşım Hizmetleri Müdürlüğünce verilmiş 20/04/2022 onay tarihli ve 20/04/2023 tarihine kadar geçerli Turizm Yolcu Taşımacılığı İzin Belgesi'nin bulunduğu görülmekle, davacılara isnat edilen fiilin 2918 sayılı Kanun'un Ek.2/3-a maddesi kapsamına girmediği anlaşıldığından tesis edilen dava konusu işlemlerde hukuka uygunluk görülmediği gerekçesiyle dava konusu işlemlerin iptaline karar verilmiştir. Bölge İdare Mahkemesi kararının özeti: Uyuşmazlıkta, davacıya ait aracın trafik tescil belgesinde ticari ve yolcu nakli kaydı bulunduğu, yine davacı şirketin A Grubu Turizm Acentası İşletme Belgeli olduğu, bununla beraber yolcu taşımacılığı faaliyet konulu vergi kaydı mevcut olduğu, olay günü D2 yetki belgesi kapsamında yolcu listesinin de düzenlendiği, işlem dayanağı tutanakta da yabancı uyruklu kişinin turizm faaliyeti kapsamında havalimanına transfer edildiği dikkate alındığında, tüm bu hususların yapılan yolcu taşımacılığının alınan turizm taşıma belgesi kapsamında turizm yolcu taşımacılığı niteliğinde olduğu, her ne kadar denetim esnasında izin belgesi ibraz edilmemiş ise de, yapılan başvuruyu takiben makul sayılabilecek bir süre içerisinde aranılan belgenin de temin edilmesi karşısında, kişi ve toplum yararı arasındaki dengeyi bozucu nitelikte, hakkaniyet ilkesine ve nesafet kurallarına aykırı olarak tesis edilen dava konusu işlemlerde hukuka uyarlık görülmediği gerekçesiyle istinaf başvurusuna konu kararın hukuka ve usule uygun olduğu ileri sürülen iddiaların söz konusu kararın kaldırılmasını sağlayacak nitelikte görülmediği belirtilerek 2577 sayılı İdari Yargılama Usulü Kanunu'nun 45. maddesinin 3. fıkrası uyarınca istinaf başvurusunun reddine karar verilmiştir. TEMYİZ EDENİN İDDİALARI : Davalı idare tarafından, 2918 sayılı Kanun'un Ek 2/3 maddesi uyarınca izin/ruhsat alınmaksızın ticari amaçlı taşımacılık yapıldığından bahisle tesis edilen dava konusu işlemlerde hukuka ve mevzuata aykırılık bulunmadığı belirtilerek, temyiz istemine konu Bölge İdare Mahkemesi kararının bozulmasına karar verilmesi gerektiği ileri sürülmektedir. KARŞI TARAFIN SAVUNMASI : Davacılar tarafından, savunma verilmemiştir. DANIŞTAY TETKİK HÂKİMİ ...'NIN DÜŞÜNCESİ : Temyiz isteminin kabulü ile Bölge İdare Mahkemesi kararının bozulması gerektiği düşünülmektedir. TÜRK MİLLETİ ADINA Karar veren Danıştay Sekizinci Dairesince, Tetkik Hâkiminin açıklamaları dinlendikten ve dosyadaki belgeler incelendikten sonra gereği görüşüldü: İNCELEME VE GEREKÇE: MADDİ OLAY : Davacı şirkete ait ... plakalı aracın ilgili belediyeden izin veya ruhsat alınmaksızın belediye sınırları dahilinde ticari amaçlı yolcu taşımacılığında kullanıldığından bahisle 2918 sayılı Karayolları Trafik Kanunu'nun Ek 2/3-a maddesi uyarınca aracın 60 gün süre ile trafikten men edilmesine ilişkin ...tarih ve...sayılı işlem ile diğer davacı olan araç sürücüsü ... adına 9.125,00-TL tutarında idari para cezası verilmesine ilişkin ...tarih ve ... sayılı işlemin iptali istemiyle bakılan dava açılmıştır. İLGİLİ MEVZUAT: 2918 sayılı Karayolları Trafik Kanunu'nun 18/10/2018 tarih ve 7148 sayılı Kanun'un 26. maddesi ile değişik Ek 2. maddesinde; \"Araçlarını motorlu araç tescil belgesinde gösterilen maksadın dışında kullananlar ile sürülmesine izin veren araç sahiplerine 1.002 Türk lirası idari para cezası uygulanır. (Mülga cümle:21/2/2019-7166/5 md.)(…) (Ek fıkra:21/2/2019-7166/5 md.) Ayrıca, araç on beş gün süre ile trafikten menedilir. 10/7/2004 tarihli ve 5216 sayılı Büyükşehir Belediyesi Kanunu ve 3/7/2005 tarihli ve 5393 sayılı Belediye Kanunu kapsamında ilgili belediyeden; a) Çalışma izni/ruhsatı almadan, b) Alınan izin/ruhsatta belirtilen faaliyet konusu dışında, c) Alınan izin/ruhsatta belirtilen çalışma bölgesi/güzergâh dışında belediye sınırları dâhilinde yolcu taşımak yasaktır. Bu fıkranın (a) bendine uymayanlara 5.010 Türk lirası, (b) bendine uymayanlara 2.018 Türk lirası, (c) bendine uymayanlara 1.002 Türk lirası idari para cezası verilir. Fiilin işlendiği tarihten itibaren geriye doğru bir yıl içinde tekerrürü hâlinde, bu fıkrada yer alan idari para cezaları iki kat olarak uygulanır. İşleteni veya sahibi, sürücüsünün kendisi olup olmadığına bakılmaksızın aracın bu maddenin üçüncü fıkrasına aykırı olarak kullanılmaması hususunda gerekli tedbirleri almak ve denetimini yapmakla yükümlüdür. Araç, bu maddenin üçüncü fıkrasının; a) (a) bendinin ihlali hâlinde altmış gün, b) (b) bendinin ihlali hâlinde otuz gün, c) (c) bendinin ihlali hâlinde ise on beş gün süreyle trafikten menedilir. İlgili belediye tarafından tahdit veya tahsis kapsamına alınmış ve bu kapsamda verilmiş çalışma izninin/ruhsatının süresi bittiği hâlde, belediye sınırları dâhilinde yolcu taşıyan kişiye 1.002 Türk lirası idari para cezası uygulanır ve eksikliği giderilinceye kadar araç trafikten menedilir. Ayırıcı işareti bulunmayan üçüncü fıkra kapsamındaki araçlardan taşımacılık hizmeti alanlara da 334 Türk lirası idari para cezası uygulanır.\" düzenlemesi yer almaktadır. HUKUKİ DEĞERLENDİRME: Yukarıda belirtilen mevzuat hükümleri uyarınca, toplu taşıma hizmetleri konusunda belediyelere tanınan yetkiler arasında güzergahları belirlemek de sayılmış olup, bu yetkinin kullanımının ruhsat / izin belgesi verilmesi ve bu belgenin denetimlerde ibraz edilmesi ile mümkün olacağı açıktır. Büyükşehirlerde gerek trafik güvenliği, gerek yolcu emniyeti ve gerekse belli bir güzergah için yasal koşulları yerine getirmek suretiyle izin almış kişilerin haklarının korunması bakımından idarenin denetim yaptığı sırada; araç sahipleri/araç sürücülerinin kullandıkları araçlar için gerekli olan ve yetkili makamlardan aldıkları ruhsat / izin gibi belgeleri denetim görevlilerine ibraz etmeleri gerekmektedir. Denetim tarihinden sonra temin edilen belgeler, tesis edilen dava konusu işlemleri hukuka aykırı hale getirmeyecek ve davacının hukuka aykırı davranışlarını ortadan kaldırmayacaktır. Dosyadaki bilgi ve belgelerden; olaya ilişkin 19/04/2022 tarihli tutanakta belirtildiği üzere araç içerisinde bulunan yolcunun \"İstanbul Havalimanından alınıp Fatih'e götürüldüğü\" beyan edildiği, dava konusu işlemlerin tesis edildiği tarihte (19/04/2022), davacı tarafından fiilen yapılan turizm taşımacılığına izin veren \"turizm yolcu taşımacılığı izin belgesinin\" bulunmadığı, ancak davacı tarafından denetim tarihinden sonra, 20/04/2022 tarihinde düzenlenen ve 20/04/2023 tarihine kadar geçerli turizm yolcu taşımacılığı izin belgesinin temin edildiği, ilgili düzenleme uyarınca, işlemin tesis edildiği sırada belgenin olması veyahut hakkaniyet ilkesi ve nesafet kuralı kapsamında en geç aynı gün düzenlenmiş olması gereken izin belgesinin, takip eden günlerde alınması halinde makul süre sınırından bahsedilemeyeceği anlaşılmaktadır. Mahkemece her ne kadar davacıya ait turizm yolcu taşımacılığı izin belgesinin olay (19/04/2022) tarihinden sonra (20/04/2022 tarihinde) makul sürede alındığından bahisle davacılara 2918 sayılı Kanun'un Ek-2/3-a uyarınca ceza verilemeyeceğine karar verilmişse de, Dairemizin içtihatlarına göre söz konusu belgelerin edinilmesi için makul sürenin işlem tarihi ile aynı gün olduğu kabul edilmiş olup, dava konusu işlem tesis edildiğinde geçerli izin belgesi bulunmadığı anlaşıldığından dava konusu işlemlerde hukuka aykırılık görülmemiştir. Bu itibarla, dava konusu işlemlerin iptali yönündeki Mahkeme kararına yönelik istinaf isteminin esastan reddine ilişkin temyize konu Bölge İdare Mahkemesi kararında hukuki isabet bulunmamaktadır. KARAR SONUCU: Açıklanan nedenlerle; 1. 2577 sayılı Kanun'un 49. maddesine uygun bulunan temyiz isteminin kabulüne, 2. ... Bölge İdare Mahkemesi ... İdari Dava Dairesinin ...gün ve E:..., K:... sayılı kararının BOZULMASINA, 3. Yeniden bir karar verilmek üzere dosyanın yukarıda belirtilen Bölge İdare Mahkemesi İdari Dava Dairesine gönderilmesine, 4. Kesin olarak, 25/11/2025 tarihinde oybirliği ile karar verildi.","error":""},"danistay|1196361900|":{"title":"Danıştay Kararı 8. Daire","source":"danistay","documentId":"1196361900","content":"**Danıştay 8. Daire Başkanlığı 2024/2886 E. , 2025/9075 K.** **\"İçtihat Metni\"** T.C. D A N I Ş T A Y SEKİZİNCİ DAİRE Esas No : 2024/2886 Karar No : 2025/9075 TEMYİZ İSTEMİNDE BULUNAN (DAVALI) : ... Valiliği VEKİLİ : Av. ... KARŞI TARAF (DAVACI) : ... İSTEMİN KONUSU : ... Bölge İdare Mahkemesi ... İdari Dava Dairesinin ...gün ve E:..., K:...sayılı kararının, temyizen incelenerek bozulması istenilmektedir. YARGILAMA SÜRECİ : Dava konusu istem: Davacı tarafından, ruhsat sahibi olduğu ... plakalı aracın 2918 sayılı Karayolları Trafik Kanunu'nun Ek 2/3-a maddesi uyarınca trafikten men edilmesine ilişkin ... tarih ve... sayılı işlemin iptali istenilmektedir. İlk Derece Mahkemesi kararının özeti: ... İdare Mahkemesince verilen ...tarih ve E:..., K:...sayılı kararda; denetim günü olan 21/03/2023 tarihinden iki gün sonra İstanbul Büyükşehir Belediyesi Ulaşım Daire Başkanlığı Toplu Ulaşım Hizmetleri Müdürlüğünce verilmiş 23/01/2023 onay tarihli ve 10/01/2024 tarihine kadar geçerli Turizm Yolcu Taşımacılığı İzin Belgesi'nin bulunduğu görülmekle, davacıya isnat edilen fiilin 2918 sayılı Kanun'un Ek-2/3-a maddesi kapsamına girmediği anlaşıldığından tesis edilen dava konusu işlemde hukuka uygunluk görülmediği gerekçesiyle dava konusu işlemin iptaline karar verilmiştir. Bölge İdare Mahkemesi kararının özeti: İstinaf başvurusuna konu kararın hukuka ve usule uygun olduğu ileri sürülen iddiaların söz konusu kararın kaldırılmasını sağlayacak nitelikte görülmediği belirtilerek 2577 sayılı İdari Yargılama Usulü Kanunu'nun 45. maddesinin 3. fıkrası uyarınca istinaf başvurusunun reddine karar verilmiştir. TEMYİZ EDENİN İDDİALARI : Davalı idare tarafından, 2918 sayılı Kanun'un Ek 2/3 maddesi uyarınca izin/ruhsat alınmaksızın ticari amaçlı taşımacılık yapıldığından bahisle tesis edilen dava konusu işlemde hukuka ve mevzuata aykırılık bulunmadığı belirtilerek, temyiz istemine konu Bölge İdare Mahkemesi kararının bozulmasına karar verilmesi gerektiği ileri sürülmektedir. KARŞI TARAFIN SAVUNMASI : Davacı tarafından, savunma verilmemiştir. DANIŞTAY TETKİK HÂKİMİ ...'NIN DÜŞÜNCESİ : Temyiz isteminin kabulü ile Bölge İdare Mahkemesi kararının bozulması gerektiği düşünülmektedir. TÜRK MİLLETİ ADINA Karar veren Danıştay Sekizinci Dairesince, Tetkik Hâkiminin açıklamaları dinlendikten ve dosyadaki belgeler incelendikten sonra gereği görüşüldü: İNCELEME VE GEREKÇE: MADDİ OLAY : Davacı tarafından... plakalı aracın, ilgili belediyeden izin veya ruhsat alınmaksızın belediye sınırları dahilinde ticari amaçlı yolcu taşımacılığında kullanıldığından bahisle 2918 sayılı Karayolları Trafik Kanunu'nun Ek 2/3-a maddesi uyarınca aracın 60 gün süre ile trafikten men edilmesine ilişkin ... tarih ve ... sayılı işlemin iptali istemiyle bakılan dava açılmıştır. İLGİLİ MEVZUAT: 2918 sayılı Karayolları Trafik Kanunu'nun 18/10/2018 tarih ve 7148 sayılı Kanun'un 26. maddesi ile değişik Ek 2. maddesinde; \"Araçlarını motorlu araç tescil belgesinde gösterilen maksadın dışında kullananlar ile sürülmesine izin veren araç sahiplerine 1.002 Türk lirası idari para cezası uygulanır. (Mülga cümle:21/2/2019-7166/5 md.)(…) (Ek fıkra:21/2/2019-7166/5 md.) Ayrıca, araç on beş gün süre ile trafikten menedilir. 10/7/2004 tarihli ve 5216 sayılı Büyükşehir Belediyesi Kanunu ve 3/7/2005 tarihli ve 5393 sayılı Belediye Kanunu kapsamında ilgili belediyeden; a) Çalışma izni/ruhsatı almadan, b) Alınan izin/ruhsatta belirtilen faaliyet konusu dışında, c) Alınan izin/ruhsatta belirtilen çalışma bölgesi/güzergâh dışında belediye sınırları dâhilinde yolcu taşımak yasaktır. Bu fıkranın (a) bendine uymayanlara 5.010 Türk lirası, (b) bendine uymayanlara 2.018 Türk lirası, (c) bendine uymayanlara 1.002 Türk lirası idari para cezası verilir. Fiilin işlendiği tarihten itibaren geriye doğru bir yıl içinde tekerrürü hâlinde, bu fıkrada yer alan idari para cezaları iki kat olarak uygulanır. İşleteni veya sahibi, sürücüsünün kendisi olup olmadığına bakılmaksızın aracın bu maddenin üçüncü fıkrasına aykırı olarak kullanılmaması hususunda gerekli tedbirleri almak ve denetimini yapmakla yükümlüdür. Araç, bu maddenin üçüncü fıkrasının; a) (a) bendinin ihlali hâlinde altmış gün, b) (b) bendinin ihlali hâlinde otuz gün, c) (c) bendinin ihlali hâlinde ise on beş gün süreyle trafikten menedilir. İlgili belediye tarafından tahdit veya tahsis kapsamına alınmış ve bu kapsamda verilmiş çalışma izninin/ruhsatının süresi bittiği hâlde, belediye sınırları dâhilinde yolcu taşıyan kişiye 1.002 Türk lirası idari para cezası uygulanır ve eksikliği giderilinceye kadar araç trafikten menedilir. Ayırıcı işareti bulunmayan üçüncü fıkra kapsamındaki araçlardan taşımacılık hizmeti alanlara da 334 Türk lirası idari para cezası uygulanır.\" düzenlemesi yer almaktadır. HUKUKİ DEĞERLENDİRME: Yukarıda belirtilen mevzuat hükümleri uyarınca, idarenin denetim yaptığı sırada; araç sahipleri/araç sürücülerinin kullandıkları araçlar için gerekli olan ve yetkili makamlardan aldıkları izin/ruhsat gibi belgeleri denetim görevlilerine ibraz etmelerinin gerektiği, başka bir ifadeyle söz konusu belgelerin denetim ve işlem tarihinde düzenlenmiş bulunması gerekmekte olup, daha sonra temin edilen izin/ruhsat gibi belgelerin tesis edilen işlemleri hukuka aykırı hale getirmeyeceği gibi, hakkaniyet ilkesi ve nesafet kuralı kapsamında makul süre sınırlarını da aşacağı açıktır. Dosyadaki bilgi ve belgelerden; olaya ilişkin 21/01/2023 tarihli tutanakta belirtildiği üzere araç içerisinde bulunan yolcunun \"İstanbul Havaalanına götürüldüğü\" beyan edildiği, dava konusu işlemlerin tesis edildiği tarihte (21/01/2023), davacı tarafından fiilen yapılan turizm taşımacılığına izin veren \"Turizm Yolcu Taşımacılığı İzin Belgesinin\" bulunmadığı, ancak davacı tarafından denetim tarihinden sonra, 23/01/2023 tarihinde düzenlenen ve 10/01/2024 tarihine kadar geçerli turizm yolcu taşımacılığı izin belgesinin temin edildiği, ilgili düzenleme uyarınca, işlemin tesis edildiği sırada belgenin olması veyahut hakkaniyet ilkesi ve nesafet kuralı kapsamında en geç aynı gün düzenlenmiş olması gereken izin belgesinin, takip eden günlerde alınması halinde makul süre sınırından bahsedilemeyeceği anlaşılmaktadır. Mahkemece her ne kadar davacıya ait turizm yolcu taşımacılığı izin belgesinin olay (21/01/2023) tarihinden sonra (23/01/2023 tarihinde) makul sürede alındığından bahisle davacıya 2918 sayılı Kanunun Ek-2/3-a uyarınca ceza verilemeyeceğine karar verilmişse de, Dairemizin içtihatlarına göre söz konusu belgelerin edinilmesi için makul sürenin işlem tarihi ile aynı gün olduğu kabul edilmiş olup, dava konusu işlem tesis edildiğinde geçerli izin belgesi bulunmadığı anlaşıldığından dava konusu işlemde hukuka aykırılık görülmemiştir. Bu itibarla, dava konusu işlemin iptali yönündeki Mahkeme kararına yönelik istinaf isteminin esastan reddine ilişkin temyize konu Bölge İdare Mahkemesi kararında hukuki isabet bulunmamaktadır. KARAR SONUCU: Açıklanan nedenlerle; 1. 2577 sayılı Kanun'un 49. maddesine uygun bulunan temyiz isteminin kabulüne, 2. ... Bölge İdare Mahkemesi ... İdari Dava Dairesinin ...gün ve E:..., K:...sayılı kararının BOZULMASINA, 3. Yeniden bir karar verilmek üzere dosyanın yukarıda belirtilen Bölge İdare Mahkemesi İdari Dava Dairesine gönderilmesine, 4. Kesin olarak, 25/11/2025 tarihinde oybirliği ile karar verildi.","error":""}};
+        const modal = document.getElementById('decision-modal');
+        const modalTitle = document.getElementById('decision-modal-title');
+        const modalMeta = document.getElementById('decision-modal-meta');
+        const modalContent = document.getElementById('decision-modal-content');
+        const closeButton = document.getElementById('decision-close');
+
+        const closeModal = () => {
+            modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
+        };
+
+        closeButton.addEventListener('click', closeModal);
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) closeModal();
+        });
+
+        document.querySelectorAll('.decision-button').forEach((button) => {
+            button.addEventListener('click', () => {
+                const decisionKey = button.dataset.decisionKey || '';
+                const title = button.dataset.title || 'Karar detayi';
+                const payload = DECISION_CONTENTS[decisionKey] || null;
+
+                modal.classList.remove('hidden');
+                modal.setAttribute('aria-hidden', 'false');
+                modalTitle.textContent = title;
+
+                if (!payload) {
+                    modalMeta.textContent = 'Detay bulunamadi';
+                    modalContent.textContent = 'Bu rapor olusurken karar metni kaydedilemedi.';
+                    return;
+                }
+
+                modalMeta.textContent = 'Kaynak: ' + (payload.source || '-') + (payload.documentId ? ' | DocumentId: ' + payload.documentId : '');
+                if (payload.content) {
+                    modalContent.textContent = payload.content;
+                } else if (payload.error) {
+                    modalContent.textContent = 'Karar metni alinamadi: ' + payload.error;
+                } else {
+                    modalContent.textContent = 'Karar metni bos geldi.';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
