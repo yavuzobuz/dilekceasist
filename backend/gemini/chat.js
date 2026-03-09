@@ -1,16 +1,11 @@
-import { GoogleGenAI, Type } from '@google/genai';
+import { Type } from '@google/genai';
 import { consumeGenerationCredit, TRIAL_DAILY_GENERATION_LIMIT } from '../../lib/api/generationQuota.js';
 import legalApiHandler from '../../api/legal/[action].js';
+import { GEMINI_MODEL_NAME, getGeminiClient } from './_shared.js';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-const MODEL_NAME = process.env.GEMINI_MODEL_NAME || process.env.VITE_GEMINI_MODEL_NAME || 'gemini-2.5-flash';
+const MODEL_NAME = GEMINI_MODEL_NAME;
 
-const getAiClient = () => {
-    if (!GEMINI_API_KEY) {
-        throw new Error('GEMINI_API_KEY or VITE_GEMINI_API_KEY is not configured');
-    }
-    return new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-};
+const getAiClient = () => getGeminiClient();
 
 const normalizeText = (value) => (typeof value === 'string' ? value.trim() : '');
 const truncateText = (value, maxLength = 180) => {

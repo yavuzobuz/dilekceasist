@@ -1,8 +1,8 @@
-﻿import express from 'express';
+import express from 'express';
 import 'dotenv/config';
 import htmlToDocx from 'html-to-docx';
 import cors from 'cors';
-import { GoogleGenAI, Type } from '@google/genai';
+import { Type } from '@google/genai';
 import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
 import helmet from 'helmet';
@@ -13,6 +13,12 @@ import { body, param, validationResult } from 'express-validator';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { AI_CONFIG, SERVER_CONFIG } from './config.js';
+import {
+    getGoogleGenAIClient,
+    getGoogleGenAiConfigError,
+    getGoogleGenAiRuntimeLabel,
+    isGoogleGenAiConfigured,
+} from './lib/google/googleGenAiClient.js';
 import templatesHandler from './api/templates.js';
 import announcementsHandler from './api/announcements.js';
 import {
@@ -31,14 +37,14 @@ import {
 
 const app = express();
 const PORT = SERVER_CONFIG.PORT;
-const API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 
-if (!API_KEY) {
-    console.error('❌ GEMINI_API_KEY (or VITE_GEMINI_API_KEY) is not defined in .env file');
+if (!isGoogleGenAiConfigured()) {
+    console.error('[AI] ' + getGoogleGenAiConfigError());
     process.exit(1);
 }
 
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+const ai = getGoogleGenAIClient();
+console.log('[AI] Google GenAI runtime: ' + getGoogleGenAiRuntimeLabel());
 
 // Security: API Key for server endpoints (optional, set in .env)
 const SERVER_API_KEY = process.env.SERVER_API_KEY;
