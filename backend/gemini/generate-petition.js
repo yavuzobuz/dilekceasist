@@ -1,4 +1,4 @@
-﻿import { consumeGenerationCredit } from '../../lib/api/generationQuota.js';
+import { consumeGenerationCredit } from '../../lib/api/generationQuota.js';
 import { applyCors, getSafeErrorMessage } from '../../lib/api/cors.js';
 import {
     GEMINI_FLASH_PREVIEW_MODEL_NAME,
@@ -465,13 +465,11 @@ function buildIntegratedResearchSection(params) {
 }
 
 function mergeIntegratedResearchIntoPetition(text, params) {
-    const appendix = buildEvidenceAppendix(params).trim();
     const integratedSection = buildIntegratedResearchSection(params).trim();
-    const { mainBody, appendix: existingAppendix } = splitPetitionSections(text);
+    const { mainBody } = splitPetitionSections(text);
     const parts = [
         mainBody,
         integratedSection,
-        existingAppendix || appendix,
     ].filter(Boolean);
 
     return parts.join('\n\n').trim();
@@ -495,15 +493,15 @@ function petitionUsesResearchEvidence(text, params) {
         || normalizedMainBody.includes('emsal');
 
     return {
-        hasEvidenceSection,
-        usesWebEvidence,
+        hasEvidenceSection: false,
+        usesWebEvidence: true,
         usesLegalEvidence: usesLegalEvidenceInBody,
         usesLegalEvidenceInBody,
         referencedLegalResultCount,
         minimumRequiredLegalCitations,
         hasIntegratedPrecedentSection,
-        appendixPresent: Boolean(appendix),
-        satisfied: hasEvidenceSection && usesWebEvidence && usesLegalEvidenceInBody && hasIntegratedPrecedentSection,
+        appendixPresent: false,
+        satisfied: usesLegalEvidenceInBody && hasIntegratedPrecedentSection,
     };
 }
 
@@ -578,8 +576,7 @@ ${mandatoryCitationChecklist}
 4. Hukuki degerlendirme bolumunde her ana iddiayi: vakia + delil + norm + emsal karar + somut olaya uyarlama seklinde kur
 5. Karsi tarafin muhtemel savunmalarina veya dosyanin zayif noktalarina cevap ver
 6. Web arastirmasini ve emsal karar aramasini ilgili argumanlara bagla
-7. Son kisimda aynen \`## DESTEKLEYICI ARASTIRMA\` basligini koru
-8. Markdown formatinda yaz
+7. Markdown formatinda yaz, dilekce sonuna kesinlikle link listesi, web kaynaklari veya karar listesi EKLEME. Kaynaklari yalnizca dilekce metni icerisinde atif yaparak erit.
 `;
 }
 
@@ -605,8 +602,7 @@ ${draftText}
 - Her emsal atifindan hemen sonra kararın somut olaya uygulanma nedenini yaz.
 - Arastirma verilerini, ilgili numarali aciklama maddesi veya ilgili talep altinda somut vakia ile birlikte kullan.
 - Emsal kararlar sadece listenmesin; taleple, vakiyayla ve delille baglansin.
-- Metnin sonunda aynen \`## DESTEKLEYICI ARASTIRMA\` basligini koru.
-- Web kaynaklarini basliklariyla yaz.
+- Metnin sonuna veya herhangi bir yerine "Destekleyici Arastirma", "Web Kaynaklari", "Yargitay Kararlari" gibi referans listeleri veya raw linkler KESINLIKLE EKLEME.
 - Saglanmayan kaynak, karar veya vakia uydurma.
 `;
 }
@@ -695,10 +691,6 @@ Saglanan ham verileri, profesyonel, detayli, gerekceli ve dava stratejisi kuran 
         if (!evidenceCheck.satisfied) {
             finalText = mergeIntegratedResearchIntoPetition(finalText, effectiveParams);
             evidenceCheck = petitionUsesResearchEvidence(finalText, effectiveParams);
-        }
-
-        if (!evidenceCheck.hasEvidenceSection) {
-            finalText = `${finalText.trim()}\n\n${buildEvidenceAppendix(effectiveParams)}`.trim();
         }
 
         res.json({ text: finalText, usage: credit.usage || null });
