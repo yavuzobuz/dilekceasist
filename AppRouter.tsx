@@ -21,6 +21,7 @@ import PrecedentSearch from './src/pages/PrecedentSearch';
 import LegalSearchLiveTest from './src/pages/LegalSearchLiveTest';
 import ProtectedRoute from './src/components/auth/ProtectedRoute';
 import { PageEntrance } from './src/components/PageEntrance';
+import ChatPage from './src/pages/ChatPage';
 
 // Admin imports
 import { AdminLayout } from './src/components/admin/AdminLayout';
@@ -109,6 +110,7 @@ export default function App() {
           </PageEntrance>
         }
       />
+      <Route path="/chat" element={<PageEntrance><ChatPage /></PageEntrance>} />
       <Route
         path="/sablonlar"
         element={

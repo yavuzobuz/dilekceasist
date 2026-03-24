@@ -407,23 +407,34 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
         setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
     };
 
-    const introMessage = `Merhaba! Ben sizin hukuk asistaninizim. Dilekcenizi olusturmadan once konuyu netlestirmek, hukuki terimleri aciklamak veya dava stratejisi uzerine beyin firtinasi yapmak icin benimle sohbet edebilirsiniz. Yukaridaki "Dilekce Baglami" bolumunden anahtar bilgileri duzenleyebilirsiniz.`;
+    const isPetitionRequested = props.messages.some(m => 
+        m.role === 'user' && /(dilekce|dilekçe|belge|taslak|template|ihtarname|itiraz|temyiz|feragat|talep|sozlesme|sözleşme)/i.test(m.text || '') && /(olustur|olutur|hazirla|hazırla|yaz)/i.test(m.text || '')
+    );
+    
+    const hasMeaningfulContext = props.searchKeywords.length > 0 || !!props.webSearchResult?.summary || !!props.precedentContext || !!props.docContent || !!props.specifics;
+    
+    // Yalnızca dilekçe istendiğinde veya bağlam doluysa göster
+    const showContextPanel = isPetitionRequested || hasMeaningfulContext;
+
+    const introMessage = `Merhaba! Ben sizin hukuk asistaninizim. Dilekcenizi olusturmadan once konuyu netlestirmek, hukuki terimleri aciklamak veya dava stratejisi uzerine beyin firtinasi yapmak icin benimle sohbet edebilirsiniz.`;
 
     return (
         <div className="h-full min-h-0 flex flex-col p-4 ai-theme">
             <div className="flex-1 min-h-0 overflow-y-auto pr-2 ai-scrollable">
-                <ChatContextPanel
-                    searchKeywords={props.searchKeywords}
-                    setSearchKeywords={props.setSearchKeywords}
-                    webSearchResult={props.webSearchResult}
-                    setWebSearchResult={props.setWebSearchResult}
-                    precedentContext={props.precedentContext}
-                    setPrecedentContext={props.setPrecedentContext}
-                    docContent={props.docContent}
-                    setDocContent={props.setDocContent}
-                    specifics={props.specifics}
-                    setSpecifics={props.setSpecifics}
-                />
+                {showContextPanel && (
+                    <ChatContextPanel
+                        searchKeywords={props.searchKeywords}
+                        setSearchKeywords={props.setSearchKeywords}
+                        webSearchResult={props.webSearchResult}
+                        setWebSearchResult={props.setWebSearchResult}
+                        precedentContext={props.precedentContext}
+                        setPrecedentContext={props.setPrecedentContext}
+                        docContent={props.docContent}
+                        setDocContent={props.setDocContent}
+                        specifics={props.specifics}
+                        setSpecifics={props.setSpecifics}
+                    />
+                )}
                 <div className="min-h-[220px] space-y-4">
                     {messages.length === 0 ? (
                         <div className="flex min-h-[220px] flex-col items-center justify-center text-center text-gray-400">

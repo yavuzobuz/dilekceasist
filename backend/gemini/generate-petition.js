@@ -335,8 +335,8 @@ function formatLegalResultsForPrompt(params) {
             }
 
             return [
-                `${index + 1}. ${reference || result.title || 'Emsal karar'}`,
-                result.summary || 'Ozet saglanmadi.',
+                `[Karar ${index + 1}] Mahkeme/Daire: ${reference || result.title || 'Belirtilmemis'}`,
+                `Ozet: ${result.summary || 'Ozet saglanmadi.'}`,
                 ...conceptLines,
             ].filter(Boolean).join('\n');
         })

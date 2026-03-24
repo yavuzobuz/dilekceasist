@@ -119,7 +119,7 @@ describe('chat context evidence wiring', () => {
         expect(instruction).toContain('Anahtar Kelimeler: ise iade, gecersiz fesih');
         expect(instruction).toContain('Web Arastirma: Web arastirmasi gecersiz fesihte');
         expect(instruction).toContain('Emsal Kararlar: 9. Hukuk Dairesi');
-        expect(instruction).toContain('Web Kaynaklari:');
+        expect(instruction).toContain('WEB ARASTIRMASI OZETI:');
         expect(instruction).toContain('Ornek kaynak');
         expect(instruction).toContain('Yapilandirilmis Emsal Sonuclari:');
         expect(instruction).toContain('Gecersiz fesih olcutlerini acikliyor.');

@@ -1,4 +1,4 @@
-﻿import { Type } from '@google/genai';
+import { Type } from '@google/genai';
 import { consumeGenerationCredit, TRIAL_DAILY_GENERATION_LIMIT } from '../../lib/api/generationQuota.js';
 import { applyCors, getSafeErrorMessage } from '../../lib/api/cors.js';
 import { GEMINI_MODEL_NAME, getGeminiClient } from './_shared.js';
@@ -58,23 +58,40 @@ const buildSystemInstruction = ({ analysisSummary, context }) => {
     const additionalText = normalizeText(safeContext.additionalContext || safeContext.docContent);
     const specialInstructions = normalizeText(safeContext.specialInstructions || safeContext.specifics);
 
+    const hasWebData = !!(webSummary || webSources);
+    const hasLegalData = !!(legalSummary || legalResults);
+
     return [
-        'Sen Turk hukuku konusunda yardimci bir hukuk asistanisin.',        'Dogrulanmamis kaynak uydurma.',
-        'Kullanici belge isterse generate_document fonksiyonunu kullan.',
-        'Kullanici anahtar kelime eklemek isterse update_search_keywords fonksiyonunu kullan.',
+        'Sen Turk hukuku konusunda uzman bir hukuk asistanisin.',
+        'ONEMLI KURALLAR:',
+        '- Dogrulanmamis kaynak uydurma.',
+        '- Kullanici belge isterse generate_document fonksiyonunu kullan.',
+        '- Kullanici anahtar kelime eklemek isterse update_search_keywords fonksiyonunu kullan.',
         '',
-        'Baglam:',
-        `- Vaka Ozeti: ${summary || 'Yok'}`,
-        `- Anahtar Kelimeler: ${keywords || 'Yok'}`,
-        `- Web Arastirma: ${webSummary || 'Yok'}`,
-        `- Emsal Kararlar: ${legalSummary || 'Yok'}`,
-        `- Web Kaynaklari:\n${webSources || 'Yok'}`,
-        `- Yapilandirilmis Emsal Sonuclari:\n${legalResults || 'Yok'}`,
-        `- Ek Metinler: ${additionalText || 'Yok'}`,
-        `- Ozel Talimatlar: ${specialInstructions || 'Yok'}`,
+        'YETENEKLERIN:',
+        '- Web arastirmasi: Sistem arka planda otomatik olarak web arastirmasi yapar ve sonuclari sana iletir.',
+        '- Emsal karar aramasi: Sistem arka planda otomatik olarak Yargitay ve Danistay ictihat veritabanlarini tarar.',
+        '- Belge olusturma: generate_document fonksiyonu ile dilekce, ihtarname, sozlesme vb. olusturabilirsin.',
         '',
-        'Belge istendiginde, yukaridaki web arastirmasi ve emsal karar verilerini somut iddia veya ilgili madde ile eslestirerek kullan.',
-    ].join('\n');
+        'CEVAP VERIRKEN:',
+        '- ASLA "web aramasi yapamiyorum", "internete erisemiyorum" veya "arama yetenegim yok" gibi ifadeler KULLANMA.',
+        '- Asagidaki baglam bilgilerinde web arastirmasi veya emsal karar verileri varsa, bunlari aktif olarak kullanarak detayli ve kapsamli cevaplar ver.',
+        '- Eger baglam bilgilerinde henuz veri yoksa, kullaniciya "Bu konuda arastirma yapiliyor" de veya dogrudan bildiklerinle yardimci ol.',
+        '- Her zaman gercek bilgi ve mevzuat referanslarina dayanarak cevap ver.',
+        '',
+        '=== MEVCUT BAGLAM VERILERI ===',
+        `Vaka Ozeti: ${summary || 'Henuz yok'}`,
+        `Anahtar Kelimeler: ${keywords || 'Henuz belirlenmedi'}`,
+        '',
+        hasWebData ? `--- WEB ARASTIRMASI SONUCLARI ---\n${webSummary || 'Ozet yok'}\n\nKaynaklar:\n${webSources || 'Kaynak yok'}` : '(Web arastirmasi henuz yapilmadi veya sonuc bulunamadi)',
+        '',
+        hasLegalData ? `--- EMSAL KARAR SONUCLARI ---\n${legalSummary || 'Ozet yok'}\n\nDetayli Sonuclar:\n${legalResults || 'Sonuc yok'}` : '(Emsal karar aramasi henuz yapilmadi veya sonuc bulunamadi)',
+        '',
+        additionalText ? `--- EK BELGELER ---\n${additionalText}` : '',
+        specialInstructions ? `--- OZEL TALIMATLAR ---\n${specialInstructions}` : '',
+        '',
+        'BELGE OLUSTURMA: Belge istendiginde, yukaridaki web arastirmasi ve emsal karar verilerini somut iddia veya ilgili madde ile eslestirerek kullan.',
+    ].filter(Boolean).join('\n');
 };
 
 export default async function handler(req, res) {

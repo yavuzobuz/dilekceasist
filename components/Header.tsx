@@ -46,103 +46,91 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
               </div>
 
               {/* Navigation Links - Desktop */}
-              <nav className="hidden xl:flex items-center gap-1 min-w-0">
-                {user && (
-                  <div className="group relative shrink-0">
-                    <button
-                      className="relative flex items-center gap-2 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-sm 2xl:text-base font-semibold rounded-lg overflow-hidden"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-red-600/0 via-red-600/20 to-red-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                      <span className="relative flex items-center gap-2">
-                        <PenTool className="w-4 h-4 text-red-500 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300" />
-                        <span className="group-hover:translate-x-0.5 transition-transform duration-300">Oluştur</span>
-                      </span>
+              <nav className="hidden xl:flex items-center gap-2 min-w-0">
+                {/* 1. Araçlarımız */}
+                <div className="group relative shrink-0">
+                  <button
+                    className="relative flex items-center gap-2 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-sm 2xl:text-base font-semibold rounded-lg"
+                  >
+                    <span className="relative flex items-center gap-2">
+                      <PenTool className="w-4 h-4 text-red-500" />
+                      <span>Araçlarımız</span>
+                    </span>
+                  </button>
+
+                  <div className="invisible bg-gray-900/95 absolute left-0 top-full z-30 mt-1 w-max min-w-[220px] rounded-lg border border-gray-700/70 p-1 opacity-0 translate-y-1 shadow-lg backdrop-blur-sm transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
+                    <button onClick={() => handleNavigate('/chat')} className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm text-gray-300 hover:text-white hover:bg-gray-800/95 rounded-md transition-colors">
+                      <Sparkles className="w-4 h-4 text-red-500" />
+                      <span>Yapay Zeka Asistanı</span>
                     </button>
-
-                    <div className="invisible absolute left-0 top-full z-30 mt-1 w-max min-w-[250px] rounded-lg border border-gray-700/70 bg-gray-900/95 p-1 opacity-0 translate-y-1 shadow-lg shadow-black/40 backdrop-blur-sm transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
-                      <button
-                        onClick={() => handleNavigate('/alt-app')}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-xs 2xl:text-sm text-gray-300 hover:text-white hover:bg-gray-800/95 rounded-md transition-colors"
-                      >
-                        <PenTool className="w-4 h-4 text-red-500" />
-                        <span>Dilekçe Oluştur</span>
-                      </button>
-                      <button
-                        onClick={() => handleNavigate('/sozlesmeler-ihtarnameler')}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-xs 2xl:text-sm text-gray-300 hover:text-white hover:bg-gray-800/95 rounded-md transition-colors"
-                      >
-                        <Scroll className="w-4 h-4 text-red-500" />
-                        <span>Sözleşmeler & İhtarnameler</span>
-                      </button>
-                    </div>
+                    {user && (
+                      <>
+                        <button onClick={() => handleNavigate('/alt-app')} className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm text-gray-300 hover:text-white hover:bg-gray-800/95 rounded-md transition-colors">
+                          <PenTool className="w-4 h-4 text-red-500" />
+                          <span>Dilekçe Oluştur</span>
+                        </button>
+                        <button onClick={() => handleNavigate('/sozlesmeler-ihtarnameler')} className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm text-gray-300 hover:text-white hover:bg-gray-800/95 rounded-md transition-colors">
+                          <Scroll className="w-4 h-4 text-red-500" />
+                          <span>Sözleşmeler & İhtarnameler</span>
+                        </button>
+                      </>
+                    )}
+                    <button onClick={() => handleNavigate('/sablonlar?category=templates')} className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm text-gray-300 hover:text-white hover:bg-gray-800/95 rounded-md transition-colors">
+                      <Library className="w-4 h-4 text-red-500" />
+                      <span>Şablonlar</span>
+                    </button>
                   </div>
-                )}
+                </div>
 
-                <button
-                  onClick={() => handleNavigate('/petition-pool')}
-                  className="group relative shrink-0 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-xs 2xl:text-sm font-medium rounded-lg overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-red-600/0 via-red-600/20 to-red-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                  <span className="relative flex items-center gap-2">
-                    <Library className="w-4 h-4 text-red-500 group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
-                    <span className="group-hover:translate-x-0.5 transition-transform duration-300">Dilekçe Havuzu</span>
-                  </span>
-                </button>
+                {/* 2. Araştırma */}
+                <div className="group relative shrink-0">
+                  <button
+                    className="relative flex items-center gap-2 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-sm 2xl:text-base font-semibold rounded-lg"
+                  >
+                    <span className="relative flex items-center gap-2">
+                      <Scale className="w-4 h-4 text-red-500" />
+                      <span>Araştırma</span>
+                    </span>
+                  </button>
 
-                <button
-                  onClick={() => handleNavigate('/emsal-karar-arama')}
-                  className="group relative shrink-0 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-xs 2xl:text-sm font-medium rounded-lg overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-red-600/0 via-red-600/20 to-red-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                  <span className="relative flex items-center gap-2">
-                    <Scale className="w-4 h-4 text-red-500 group-hover:-rotate-12 group-hover:scale-110 transition-all duration-300" />
-                    <span className="group-hover:translate-x-0.5 transition-transform duration-300">Emsal Karar</span>
-                  </span>
-                </button>
+                  <div className="invisible bg-gray-900/95 absolute left-0 top-full z-30 mt-1 w-max min-w-[220px] rounded-lg border border-gray-700/70 p-1 opacity-0 translate-y-1 shadow-lg backdrop-blur-sm transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
+                    <button onClick={() => handleNavigate('/emsal-karar-arama')} className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm text-gray-300 hover:text-white hover:bg-gray-800/95 rounded-md transition-colors">
+                      <Scale className="w-4 h-4 text-red-500" />
+                      <span>Emsal Karar Arama</span>
+                    </button>
+                    <button onClick={() => handleNavigate('/petition-pool')} className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm text-gray-300 hover:text-white hover:bg-gray-800/95 rounded-md transition-colors">
+                      <Library className="w-4 h-4 text-red-500" />
+                      <span>Dilekçe Havuzu</span>
+                    </button>
+                  </div>
+                </div>
 
-                <button
-                  onClick={() => handleNavigate('/sablonlar?category=templates')}
-                  className="group relative shrink-0 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-xs 2xl:text-sm font-medium rounded-lg overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-red-600/0 via-red-600/20 to-red-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                  <span className="relative flex items-center gap-2">
-                    <Library className="w-4 h-4 text-red-500 group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
-                    <span className="group-hover:translate-x-0.5 transition-transform duration-300">Şablonlar</span>
-                  </span>
-                </button>
+                {/* 3. Kurumsal */}
+                <div className="group relative shrink-0">
+                  <button
+                    className="relative flex items-center gap-2 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-sm 2xl:text-base font-semibold rounded-lg"
+                  >
+                    <span className="relative flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-red-500" />
+                      <span>Kurumsal</span>
+                    </span>
+                  </button>
 
-                <button
-                  onClick={() => handleNavigate('/about')}
-                  className="group relative shrink-0 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-xs 2xl:text-sm font-medium rounded-lg overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-red-600/0 via-red-600/20 to-red-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                  <span className="relative flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-red-500 group-hover:-rotate-12 group-hover:scale-110 transition-all duration-300" />
-                    <span className="group-hover:translate-x-0.5 transition-transform duration-300">Hakkında</span>
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => handleNavigate('/fiyatlandirma')}
-                  className="group relative shrink-0 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-xs 2xl:text-sm font-medium rounded-lg overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-red-600/0 via-red-600/20 to-red-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                  <span className="relative flex items-center gap-2">
-                    <CreditCard className="w-4 h-4 text-red-500 group-hover:scale-110 transition-all duration-300" />
-                    <span className="group-hover:translate-x-0.5 transition-transform duration-300">Fiyatlandırma</span>
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => handleNavigate('/faq')}
-                  className="group relative shrink-0 px-3 py-2 text-gray-300 hover:text-white transition-all duration-300 text-xs 2xl:text-sm font-medium rounded-lg overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-red-600/0 via-red-600/20 to-red-600/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                  <span className="relative flex items-center gap-2">
-                    <HelpCircle className="w-4 h-4 text-red-500 group-hover:scale-125 group-hover:rotate-[360deg] transition-all duration-500" />
-                    <span className="group-hover:translate-x-0.5 transition-transform duration-300">SSS</span>
-                  </span>
-                </button>
+                  <div className="invisible bg-gray-900/95 absolute left-0 top-full z-30 mt-1 w-max min-w-[220px] rounded-lg border border-gray-700/70 p-1 opacity-0 translate-y-1 shadow-lg backdrop-blur-sm transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
+                    <button onClick={() => handleNavigate('/about')} className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm text-gray-300 hover:text-white hover:bg-gray-800/95 rounded-md transition-colors">
+                      <BookOpen className="w-4 h-4 text-red-500" />
+                      <span>Hakkında</span>
+                    </button>
+                    <button onClick={() => handleNavigate('/fiyatlandirma')} className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm text-gray-300 hover:text-white hover:bg-gray-800/95 rounded-md transition-colors">
+                      <CreditCard className="w-4 h-4 text-red-500" />
+                      <span>Fiyatlandırma</span>
+                    </button>
+                    <button onClick={() => handleNavigate('/faq')} className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm text-gray-300 hover:text-white hover:bg-gray-800/95 rounded-md transition-colors">
+                      <HelpCircle className="w-4 h-4 text-red-500" />
+                      <span>SSS</span>
+                    </button>
+                  </div>
+                </div>
               </nav>
             </div>
 
@@ -222,6 +210,17 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
         {isMobileMenuOpen && (
           <div className="xl:hidden bg-gray-900/95 backdrop-blur-lg border-t border-gray-800 max-h-[calc(100vh-4rem)] overflow-y-auto">
             <nav className="container mx-auto px-4 py-4 space-y-2">
+              {/* Araçlarımız */}
+              <div className="pt-2 pb-1">
+                <p className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Araçlarımız</p>
+              </div>
+              <button
+                onClick={() => handleNavigate('/chat')}
+                className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
+              >
+                <Sparkles className="w-5 h-5 text-red-500" />
+                Yapay Zeka Asistanı
+              </button>
               {user && (
                 <>
                   <button
@@ -240,23 +239,6 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
                   </button>
                 </>
               )}
-
-              <button
-                onClick={() => handleNavigate('/petition-pool')}
-                className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
-              >
-                <Library className="w-5 h-5 text-red-500" />
-                Dilekçe Havuzu
-              </button>
-
-              <button
-                onClick={() => handleNavigate('/emsal-karar-arama')}
-                className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
-              >
-                <Scale className="w-5 h-5 text-red-500" />
-                Emsal Karar Arama
-              </button>
-
               <button
                 onClick={() => handleNavigate('/sablonlar?category=templates')}
                 className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
@@ -265,6 +247,29 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
                 Şablonlar
               </button>
 
+              {/* Araştırma */}
+              <div className="pt-4 pb-1">
+                <p className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Araştırma</p>
+              </div>
+              <button
+                onClick={() => handleNavigate('/emsal-karar-arama')}
+                className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
+              >
+                <Scale className="w-5 h-5 text-red-500" />
+                Emsal Karar Arama
+              </button>
+              <button
+                onClick={() => handleNavigate('/petition-pool')}
+                className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
+              >
+                <Library className="w-5 h-5 text-red-500" />
+                Dilekçe Havuzu
+              </button>
+
+              {/* Kurumsal */}
+              <div className="pt-4 pb-1">
+                <p className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Kurumsal</p>
+              </div>
               <button
                 onClick={() => handleNavigate('/about')}
                 className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
@@ -272,7 +277,6 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
                 <BookOpen className="w-5 h-5 text-red-500" />
                 Hakkında
               </button>
-
               <button
                 onClick={() => handleNavigate('/fiyatlandirma')}
                 className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
@@ -280,7 +284,6 @@ export const Header: React.FC<HeaderProps> = ({ onShowLanding }) => {
                 <CreditCard className="w-5 h-5 text-red-500" />
                 Fiyatlandırma
               </button>
-
               <button
                 onClick={() => handleNavigate('/faq')}
                 className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
