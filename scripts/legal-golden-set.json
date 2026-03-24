@@ -1,0 +1,342 @@
+[
+  {
+    "id": "ceza-uyusturucu-fiziki-takip",
+    "query": "Uyuşturucu madde ticareti, fiziki takip, hassas terazi, kullanıcı tanık beyanı",
+    "source": "all",
+    "filters": { "searchArea": "ceza" },
+    "legalSearchPacket": { "caseType": "ceza_uyusturucu_ticaret", "queryMode": "long_fact" },
+    "expected": { "domain": "ceza", "birim": "C10", "family": "10. Ceza Dairesi" },
+    "mustConcepts": ["uyusturucu", "fiziki takip", "hassas terazi"],
+    "forbiddenConcepts": ["hukuk dairesi", "danistay", "vergi"]
+  },
+  {
+    "id": "ceza-uyusturucu-kullanma-savunmasi",
+    "query": "Uyuşturucu ticareti, kullanmak için bulundurma savunması, kişisel kullanım sınırı",
+    "source": "all",
+    "filters": { "searchArea": "ceza" },
+    "legalSearchPacket": { "caseType": "ceza_uyusturucu_ticaret", "queryMode": "long_fact" },
+    "expected": { "domain": "ceza", "birim": "C10", "family": "10. Ceza Dairesi" },
+    "mustConcepts": ["uyusturucu", "kullanmak icin bulundurma", "kisisel kullanim"],
+    "forbiddenConcepts": ["hukuk dairesi", "danistay", "vergi"]
+  },
+  {
+    "id": "ceza-uyusturucu-paketleme",
+    "query": "TCK 188 kapsamında uyuşturucu satışı, paketleme, ele geçirilen madde miktarı",
+    "source": "all",
+    "filters": { "searchArea": "ceza" },
+    "legalSearchPacket": { "caseType": "ceza_uyusturucu_ticaret", "queryMode": "long_fact" },
+    "expected": { "domain": "ceza", "birim": "C10", "family": "10. Ceza Dairesi" },
+    "mustConcepts": ["uyusturucu", "paketleme", "ticaret"],
+    "forbiddenConcepts": ["hukuk dairesi", "danistay", "vergi"]
+  },
+  {
+    "id": "is-fazla-mesai-puantaj",
+    "query": "Fazla mesai ücreti, puantaj kayıtları, bordro ihtirazi kayıt",
+    "source": "all",
+    "filters": { "searchArea": "hukuk" },
+    "legalSearchPacket": { "caseType": "is_hukuku_fazla_mesai" },
+    "expected": { "domain": "is_hukuku", "birim": "H9", "family": "9. Hukuk Dairesi" },
+    "mustConcepts": ["fazla mesai", "puantaj", "bordro"],
+    "forbiddenConcepts": ["sgk", "hizmet tespiti", "ceza dairesi"]
+  },
+  {
+    "id": "is-fazla-calisma-270-saat",
+    "query": "Fazla çalışma alacağı, 270 saat sınırı, işçinin onayı ve serbest zaman",
+    "source": "all",
+    "filters": { "searchArea": "hukuk" },
+    "legalSearchPacket": { "caseType": "is_hukuku_fazla_mesai" },
+    "expected": { "domain": "is_hukuku", "birim": "H9", "family": "9. Hukuk Dairesi" },
+    "mustConcepts": ["fazla calisma", "270 saat", "iscinin onayi"],
+    "forbiddenConcepts": ["sgk", "hizmet tespiti", "ceza dairesi"]
+  },
+  {
+    "id": "is-hizmet-tespiti-sgk",
+    "query": "Hizmet tespiti davası, sigortalılık başlangıcı, SGK bildirimi eksik çalışma",
+    "source": "all",
+    "filters": { "searchArea": "hukuk" },
+    "legalSearchPacket": { "caseType": "is_hukuku_hizmet_tespiti" },
+    "expected": { "domain": "is_hukuku", "birim": "H10", "family": "10. Hukuk Dairesi" },
+    "mustConcepts": ["hizmet tespiti", "sgk", "sigortalilik"],
+    "forbiddenConcepts": ["fazla mesai", "ceza dairesi", "danistay"]
+  },
+  {
+    "id": "is-kazasi-rucu",
+    "query": "İş kazası, meslek hastalığı, SGK rücu alacağı ve kusur oranı",
+    "source": "all",
+    "filters": { "searchArea": "hukuk" },
+    "legalSearchPacket": { "caseType": "is_hukuku_is_kazasi_sgk" },
+    "expected": { "domain": "is_hukuku", "birim": "H10", "family": "10. Hukuk Dairesi" },
+    "mustConcepts": ["is kazasi", "sgk", "rucu"],
+    "forbiddenConcepts": ["fazla mesai", "ceza dairesi", "danistay"]
+  },
+  {
+    "id": "aile-6284-uzaklastirma",
+    "query": "6284 sayılı Kanun kapsamında uzaklaştırma tedbiri, ortak konut, tedbir ihlali",
+    "source": "all",
+    "filters": { "searchArea": "hukuk" },
+    "legalSearchPacket": { "caseType": "aile_6284" },
+    "expected": { "domain": "aile", "birim": "H2", "family": "2. Hukuk Dairesi" },
+    "mustConcepts": ["6284", "uzaklastirma", "ortak konut"],
+    "forbiddenConcepts": ["ceza dairesi", "danistay", "vergi"]
+  },
+  {
+    "id": "aile-zorlama-hapsi",
+    "query": "6284 zorlama hapsi, koruyucu tedbir, şiddet mağduru eş",
+    "source": "all",
+    "filters": { "searchArea": "hukuk" },
+    "legalSearchPacket": { "caseType": "aile_6284" },
+    "expected": { "domain": "aile", "birim": "H2", "family": "2. Hukuk Dairesi" },
+    "mustConcepts": ["6284", "zorlama hapsi", "koruyucu tedbir"],
+    "forbiddenConcepts": ["ceza dairesi", "danistay", "vergi"]
+  },
+  {
+    "id": "borclar-kira-temerrut",
+    "query": "Kiracı kira bedelini ödemiyor, temerrüt nedeniyle tahliye ve TBK 315",
+    "source": "all",
+    "filters": { "searchArea": "hukuk" },
+    "legalSearchPacket": { "caseType": "borclar_kira" },
+    "expected": { "domain": "borclar", "birim": "H3", "family": "3. Hukuk Dairesi" },
+    "mustConcepts": ["kira", "tahliye", "tbk 315"],
+    "forbiddenConcepts": ["ceza dairesi", "danistay", "marka"]
+  },
+  {
+    "id": "borclar-kira-ihtiyac",
+    "query": "İhtiyaç nedeniyle tahliye, kiralananın tahliyesi, TBK 350",
+    "source": "all",
+    "filters": { "searchArea": "hukuk" },
+    "legalSearchPacket": { "caseType": "borclar_kira" },
+    "expected": { "domain": "borclar", "birim": "H3", "family": "3. Hukuk Dairesi" },
+    "mustConcepts": ["ihtiyac nedeniyle tahliye", "kiralanan", "tbk 350"],
+    "forbiddenConcepts": ["ceza dairesi", "danistay", "marka"]
+  },
+  {
+    "id": "borclar-eser-arsa-payi",
+    "query": "Arsa payı karşılığı inşaat, eksik ifa, ayıplı iş ve gecikme tazminatı",
+    "source": "all",
+    "filters": { "searchArea": "hukuk" },
+    "legalSearchPacket": { "caseType": "borclar_vekalet_eser" },
+    "expected": { "domain": "borclar", "birim": "H6", "family": "6. Hukuk Dairesi" },
+    "mustConcepts": ["arsa payi karsiligi insaat", "ayipli is", "gecikme tazminati"],
+    "forbiddenConcepts": ["ceza dairesi", "danistay", "muris muvazaasi"]
+  },
+  {
+    "id": "gayrimenkul-tapu-muris",
+    "query": "Muris muvazaası nedeniyle tapu iptali ve tescil, bedelsiz devir, miras bırakanın gerçek iradesi",
+    "source": "all",
+    "filters": { "searchArea": "hukuk" },
+    "legalSearchPacket": { "caseType": "gayrimenkul_tapu_muris_muvazaasi" },
+    "expected": { "domain": "gayrimenkul", "birim": "H1", "family": "1. Hukuk Dairesi" },
+    "mustConcepts": ["muris muvazaasi", "tapu iptali", "tescil"],
+    "forbiddenConcepts": ["ceza dairesi", "danistay", "marka"]
+  },
+  {
+    "id": "gayrimenkul-ortakligin-giderilmesi",
+    "query": "Ortaklığın giderilmesi, aynen taksim, izalei şuyu ve paylı mülkiyet",
+    "source": "all",
+    "filters": { "searchArea": "hukuk" },
+    "legalSearchPacket": { "caseType": "gayrimenkul_ortaklik" },
+    "expected": { "domain": "gayrimenkul", "birim": "H7", "family": "7. Hukuk Dairesi" },
+    "mustConcepts": ["ortakligin giderilmesi", "aynen taksim", "paydas"],
+    "forbiddenConcepts": ["ceza dairesi", "danistay", "marka"]
+  },
+  {
+    "id": "miras-muris-muvazaasi",
+    "query": "Miras bırakanın mal kaçırması, muris muvazaası, ölünceye kadar bakma sözleşmesi",
+    "source": "all",
+    "filters": { "searchArea": "hukuk" },
+    "legalSearchPacket": { "caseType": "miras_muris_muvazaasi" },
+    "expected": { "domain": "miras", "birim": "H1", "family": "1. Hukuk Dairesi" },
+    "mustConcepts": ["muris muvazaasi", "miras", "tescil"],
+    "forbiddenConcepts": ["ceza dairesi", "danistay", "marka"]
+  },
+  {
+    "id": "miras-tenkis-sakli-pay",
+    "query": "Tenkis davası, saklı pay ihlali, miras payı ve tasarruf nisabı",
+    "source": "all",
+    "filters": { "searchArea": "hukuk" },
+    "legalSearchPacket": { "caseType": "miras_tenkis" },
+    "expected": { "domain": "miras", "birim": "H7", "family": "7. Hukuk Dairesi" },
+    "mustConcepts": ["tenkis", "sakli pay", "miras payi"],
+    "forbiddenConcepts": ["ceza dairesi", "danistay", "marka"]
+  },
+  {
+    "id": "tuketici-ayipli-mal",
+    "query": "Ayıplı mal, seçimlik haklar, bedel iadesi ve ücretsiz onarım",
+    "source": "all",
+    "filters": { "searchArea": "hukuk" },
+    "legalSearchPacket": { "caseType": "tuketici_ayipli_mal" },
+    "expected": { "domain": "tuketici", "birim": "H3", "family": "3. Hukuk Dairesi" },
+    "mustConcepts": ["ayipli mal", "bedel iadesi", "ucretsiz onarim"],
+    "forbiddenConcepts": ["ceza dairesi", "danistay", "marka"]
+  },
+  {
+    "id": "ticaret-marka-iltibas",
+    "query": "Marka hakkına tecavüz, iltibas, karıştırılma ihtimali ve haksız rekabet",
+    "source": "all",
+    "filters": { "searchArea": "hukuk" },
+    "legalSearchPacket": { "caseType": "ticaret_marka_iltibas" },
+    "expected": { "domain": "ticaret", "birim": "H11", "family": "11. Hukuk Dairesi" },
+    "mustConcepts": ["marka", "iltibas", "haksiz rekabet"],
+    "forbiddenConcepts": ["tapu", "muris muvazaasi", "ceza dairesi"]
+  },
+  {
+    "id": "ticaret-marka-e-ticaret",
+    "query": "Tescilli marka, e-ticaret satışı, logo benzerliği ve karıştırılma ihtimali",
+    "source": "all",
+    "filters": { "searchArea": "hukuk" },
+    "legalSearchPacket": { "caseType": "ticaret_marka_iltibas" },
+    "expected": { "domain": "ticaret", "birim": "H11", "family": "11. Hukuk Dairesi" },
+    "mustConcepts": ["tescilli marka", "karistirilma ihtimali", "logo"],
+    "forbiddenConcepts": ["tapu", "muris muvazaasi", "ceza dairesi"]
+  },
+  {
+    "id": "ticaret-genel-kurul-iptal",
+    "query": "Anonim şirket genel kurul kararı iptali, çağrı usulsüzlüğü, pay sahipliği",
+    "source": "all",
+    "filters": { "searchArea": "hukuk" },
+    "legalSearchPacket": { "caseType": "ticaret_genel_kurul" },
+    "expected": { "domain": "ticaret", "birim": "H11", "family": "11. Hukuk Dairesi" },
+    "mustConcepts": ["genel kurul", "pay sahipligi", "cagri usulsuzlugu"],
+    "forbiddenConcepts": ["tapu", "marka", "ceza dairesi"]
+  },
+  {
+    "id": "ticaret-konkordato-komiser",
+    "query": "Konkordato komiseri, mühlet kararı, alacaklılar kurulu ve tasdik şartları",
+    "source": "all",
+    "filters": { "searchArea": "hukuk" },
+    "legalSearchPacket": { "caseType": "ticaret_konkordato_iflas" },
+    "expected": { "domain": "ticaret", "birim": "H6", "family": "6. Hukuk Dairesi" },
+    "mustConcepts": ["konkordato", "komiser", "muhlet"],
+    "forbiddenConcepts": ["marka", "tapu", "ceza dairesi"]
+  },
+  {
+    "id": "icra-itirazin-iptali",
+    "query": "İİK 67 itirazın iptali, cari hesap alacağı, ticari defterler",
+    "source": "all",
+    "filters": { "searchArea": "hukuk" },
+    "legalSearchPacket": { "caseType": "icra_ticari_itirazin_iptali" },
+    "expected": { "domain": "icra", "birim": "H11", "family": "11. Hukuk Dairesi" },
+    "mustConcepts": ["itirazin iptali", "iik 67", "cari hesap"],
+    "forbiddenConcepts": ["ceza dairesi", "danistay", "muris muvazaasi"]
+  },
+  {
+    "id": "icra-menfi-tespit",
+    "query": "Menfi tespit, istirdat, icra takibine konu borcun bulunmadığı iddiası",
+    "source": "all",
+    "filters": { "searchArea": "hukuk" },
+    "legalSearchPacket": { "caseType": "icra_ticari_itirazin_iptali" },
+    "expected": { "domain": "icra", "birim": "H11", "family": "11. Hukuk Dairesi" },
+    "mustConcepts": ["menfi tespit", "istirdat", "icra takibi"],
+    "forbiddenConcepts": ["ceza dairesi", "danistay", "muris muvazaasi"]
+  },
+  {
+    "id": "icra-haciz-meskeniyet",
+    "query": "Haczedilmezlik şikayeti, meskeniyet, icra mahkemesi kararı",
+    "source": "all",
+    "filters": { "searchArea": "hukuk" },
+    "legalSearchPacket": { "caseType": "icra_haciz" },
+    "expected": { "domain": "icra", "birim": "H12", "family": "12. Hukuk Dairesi" },
+    "mustConcepts": ["haczedilmezlik", "meskeniyet", "icra mahkemesi"],
+    "forbiddenConcepts": ["ceza dairesi", "danistay", "marka"]
+  },
+  {
+    "id": "icra-ihalenin-feshi",
+    "query": "İhalenin feshi, satış ilanı usulsüzlüğü, kıymet takdiri ve haciz",
+    "source": "all",
+    "filters": { "searchArea": "hukuk" },
+    "legalSearchPacket": { "caseType": "icra_haciz" },
+    "expected": { "domain": "icra", "birim": "H12", "family": "12. Hukuk Dairesi" },
+    "mustConcepts": ["ihalenin feshi", "kiymet takdiri", "haciz"],
+    "forbiddenConcepts": ["ceza dairesi", "danistay", "marka"]
+  },
+  {
+    "id": "idare-imar-yikim",
+    "query": "İmar planı iptali, yıkım kararı, yapı ruhsatı ve kazanılmış hak",
+    "source": "all",
+    "filters": { "searchArea": "idare" },
+    "legalSearchPacket": { "caseType": "idare_imar" },
+    "expected": { "domain": "idare", "birim": "D6", "family": "6. Daire" },
+    "mustConcepts": ["imar plani", "yapi ruhsati", "kazanilmis hak"],
+    "forbiddenConcepts": ["hukuk dairesi", "ceza dairesi", "anayasa mahkemesi"]
+  },
+  {
+    "id": "idare-imar-para-cezasi",
+    "query": "İmar para cezası, orantılılık, ruhsatsız yapı ve iptal davası",
+    "source": "all",
+    "filters": { "searchArea": "idare" },
+    "legalSearchPacket": { "caseType": "idare_imar" },
+    "expected": { "domain": "idare", "birim": "D6", "family": "6. Daire" },
+    "mustConcepts": ["imar", "para cezasi", "orantililik"],
+    "forbiddenConcepts": ["hukuk dairesi", "ceza dairesi", "anayasa mahkemesi"]
+  },
+  {
+    "id": "idare-kamu-ihale-asiri-dusuk",
+    "query": "Kamu ihalesi, aşırı düşük teklif sorgulaması, teklif değerlendirme dışı bırakma",
+    "source": "all",
+    "filters": { "searchArea": "idare" },
+    "legalSearchPacket": { "caseType": "idare_kamu_ihale" },
+    "expected": { "domain": "idare", "birim": "D13", "family": "13. Daire" },
+    "mustConcepts": ["kamu ihalesi", "asiri dusuk teklif", "degerlendirme disi"],
+    "forbiddenConcepts": ["hukuk dairesi", "ceza dairesi", "anayasa mahkemesi"]
+  },
+  {
+    "id": "idare-disiplin-savunma-hakki",
+    "query": "Disiplin cezası, savunma hakkı, kademe ilerlemesinin durdurulması",
+    "source": "all",
+    "filters": { "searchArea": "idare" },
+    "legalSearchPacket": { "caseType": "idare_disiplin" },
+    "expected": { "domain": "idare", "birim": "D12", "family": "12. Daire" },
+    "mustConcepts": ["disiplin cezasi", "savunma hakki", "kademe ilerlemesi"],
+    "forbiddenConcepts": ["hukuk dairesi", "ceza dairesi", "anayasa mahkemesi"]
+  },
+  {
+    "id": "vergi-kdv-sahte-fatura",
+    "query": "Sahte fatura, KDV indirimi, vergi inceleme raporu ve vergi ziyaı",
+    "source": "all",
+    "filters": { "searchArea": "vergi" },
+    "legalSearchPacket": { "caseType": "vergi_kdv_sahte_fatura" },
+    "expected": { "domain": "vergi", "birim": "D3", "family": "3. Daire" },
+    "mustConcepts": ["sahte fatura", "kdv indirimi", "vergi ziya"],
+    "forbiddenConcepts": ["hukuk dairesi", "ceza dairesi", "anayasa mahkemesi"]
+  },
+  {
+    "id": "vergi-miyb-resen-tarhiyat",
+    "query": "Muhteviyatı itibarıyla yanıltıcı belge, re'sen tarhiyat, ispat yükü",
+    "source": "all",
+    "filters": { "searchArea": "vergi" },
+    "legalSearchPacket": { "caseType": "vergi_kdv_sahte_fatura" },
+    "expected": { "domain": "vergi", "birim": "D3", "family": "3. Daire" },
+    "mustConcepts": ["yaniltici belge", "resen tarhiyat", "ispat yuku"],
+    "forbiddenConcepts": ["hukuk dairesi", "ceza dairesi", "anayasa mahkemesi"]
+  },
+  {
+    "id": "vergi-gumruk-royalti",
+    "query": "Gümrük kıymeti, royalti ödemesi, ithalat vergileri ve ÖTV",
+    "source": "all",
+    "filters": { "searchArea": "vergi" },
+    "legalSearchPacket": { "caseType": "vergi_gumruk_otv" },
+    "expected": { "domain": "vergi", "birim": "D7", "family": "7. Daire" },
+    "mustConcepts": ["gumruk kiymeti", "royalti", "ithalat"],
+    "forbiddenConcepts": ["hukuk dairesi", "ceza dairesi", "anayasa mahkemesi"]
+  },
+  {
+    "id": "anayasa-bireysel-makul-sure",
+    "query": "Bireysel başvuru, makul sürede yargılanma hakkı, manevi tazminat",
+    "source": "all",
+    "filters": { "searchArea": "anayasa" },
+    "legalSearchPacket": { "caseType": "anayasa_bireysel_basvuru_makul_sure" },
+    "expected": { "domain": "anayasa", "family": "Anayasa Mahkemesi" },
+    "mustConcepts": ["bireysel basvuru", "makul sure", "hak ihlali"],
+    "forbiddenConcepts": ["yargitay", "danistay", "hukuk dairesi"]
+  },
+  {
+    "id": "anayasa-norm-denetimi",
+    "query": "Anayasaya aykırılık itirazı, norm denetimi, eşitlik ve belirlilik ilkesi",
+    "source": "all",
+    "filters": { "searchArea": "anayasa" },
+    "legalSearchPacket": { "caseType": "anayasa_norm_denetimi" },
+    "expected": { "domain": "anayasa", "family": "Anayasa Mahkemesi" },
+    "mustConcepts": ["anayasaya aykirilik", "norm denetimi", "esitlik ilkesi"],
+    "forbiddenConcepts": ["yargitay", "danistay", "hukuk dairesi"]
+  }
+]

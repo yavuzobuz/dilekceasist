@@ -105,9 +105,7 @@ export default function App() {
         path="/emsal-karar-test"
         element={
           <PageEntrance>
-            <ProtectedRoute>
-              <LegalSearchLiveTest />
-            </ProtectedRoute>
+            <LegalSearchLiveTest />
           </PageEntrance>
         }
       />
@@ -162,3 +160,4 @@ export default function App() {
     </Routes>
   );
 }
+

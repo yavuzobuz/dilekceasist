@@ -25,6 +25,8 @@ interface OutputPanelProps {
   setSearchKeywords: (keywords: string[]) => void;
   webSearchResult: WebSearchResult | null;
   setWebSearchResult: (result: React.SetStateAction<WebSearchResult | null>) => void;
+  precedentContext: string;
+  setPrecedentContext: React.Dispatch<React.SetStateAction<string>>;
   docContent: string;
   setDocContent: React.Dispatch<React.SetStateAction<string>>;
   specifics: string;
@@ -117,6 +119,8 @@ export const OutputPanel: React.FC<OutputPanelProps> = (props) => {
             setSearchKeywords={props.setSearchKeywords}
             webSearchResult={props.webSearchResult}
             setWebSearchResult={props.setWebSearchResult}
+            precedentContext={props.precedentContext}
+            setPrecedentContext={props.setPrecedentContext}
             docContent={props.docContent}
             setDocContent={props.setDocContent}
             specifics={props.specifics}

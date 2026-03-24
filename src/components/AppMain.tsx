@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { useState, useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
@@ -18,8 +18,9 @@ import { SparklesIcon } from '../../components/Icon';
 import { Petition, supabase } from '../../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
-import { buildLegalKeywordQuery, searchLegalDecisions } from '../utils/legalSearch';
+import { buildLegalKeywordQuery, compactLegalSearchQuery, getLegalDocument, searchLegalDecisionsDetailed } from '../utils/legalSearch';
 import { resolveLegalSourceForQuery } from '../utils/legalSource';
+import { buildGeneratePetitionParams, buildLegalSearchResultSummary } from '../utils/petitionGeneration';
 import {
   clearTransientStorageItem,
   readTransientStorageItem,
@@ -54,6 +55,28 @@ const createToastId = (): string => {
     ? crypto.randomUUID()
     : Math.random().toString(36).slice(2, 10);
   return `${Date.now()}-${toastIdCounter}-${randomPart}`;
+};
+
+const hasWebEvidence = (result: WebSearchResult | null): boolean => {
+  if (!result) return false;
+  const summary = typeof result.summary === 'string' ? result.summary.trim() : '';
+  const hasSummary = summary.length >= 40;
+  const hasSource = Array.isArray(result.sources) && result.sources.some(source => typeof source?.uri === 'string' && source.uri.trim().length > 0);
+  return hasSummary && hasSource;
+};
+
+const hasLegalEvidenceForGeneration = (results: LegalSearchResult[]): boolean =>
+  buildLegalSearchResultSummary(results).trim().length > 0;
+
+const buildDecisionPreviewText = (value: string): string => {
+  const plain = String(value || '')
+    .replace(/[#*_>`-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!plain) return '';
+  if (plain.length <= 320) return plain;
+  return `${plain.slice(0, 319).trim()}...`;
 };
 
 const parseFunctionCallArgs = (rawArgs: unknown): Record<string, any> => {
@@ -129,6 +152,7 @@ export const AppMain: React.FC = () => {
   const [searchKeywords, setSearchKeywords] = useState<string[]>([]);
   const [webSearchResult, setWebSearchResult] = useState<WebSearchResult | null>(null);
   const [legalSearchResults, setLegalSearchResults] = useState<LegalSearchResult[]>([]);
+  const [precedentContext, setPrecedentContext] = useState('');
 
   // Final output
   const [generatedPetition, setGeneratedPetition] = useState(
@@ -148,6 +172,10 @@ export const AppMain: React.FC = () => {
   const [isFullPageEditorMode, setIsFullPageEditorMode] = useState(false);
   const [editorReturnRoute, setEditorReturnRoute] = useState('/app');
   const [isLegalSearchOpen, setIsLegalSearchOpen] = useState(false);
+
+  useEffect(() => {
+    setPrecedentContext(buildLegalSearchResultSummary(legalSearchResults));
+  }, [legalSearchResults]);
 
   const {
     totalUnanswered: missingInfoTotalUnansweredCount,
@@ -442,12 +470,59 @@ export const AppMain: React.FC = () => {
 
       addToast('Ictihat aramasi baslatiliyor...', 'info');
       try {
-        const searchQuery = buildLegalKeywordQuery(keywords, { maxTerms: 8, maxLength: 220 }) || keywords.slice(0, 5).join(' ');
-        const resolvedSource = resolveLegalSourceForQuery(searchQuery, 'all');
-        const newResults = await searchLegalDecisions({
-          source: resolvedSource,
-          keyword: searchQuery,
+        const rawSearchQuery = buildLegalKeywordQuery(keywords, { maxTerms: 8, maxLength: 220 }) || keywords.slice(0, 5).join(' ');
+        const keyword = compactLegalSearchQuery(rawSearchQuery, { preserveKeywords: keywords }) || rawSearchQuery;
+        const detailedResult = await searchLegalDecisionsDetailed({
+          source: 'all',
+          keyword,
+          rawQuery: rawSearchQuery,
+          legalSearchPacket: analysisData?.legalSearchPacket,
+          apiBaseUrl: '',
         });
+        const normalizedResults = detailedResult.normalizedResults as LegalSearchResult[];
+        const newResults = await Promise.all(normalizedResults.map(async (result, index) => {
+          const summary = String(result.ozet || (result as any).snippet || '').trim();
+          if (summary || index >= 3) {
+            return result;
+          }
+
+          try {
+            const resolvedSource =
+              String((result as any).source || '').trim() ||
+              resolveLegalSourceForQuery(
+                [
+                  (result as any).source || '',
+                  result.title || '',
+                  result.daire || '',
+                ],
+                'all'
+              );
+
+            const content = await getLegalDocument({
+              source: resolvedSource,
+              documentId: (result as any).documentId || (result as any).id || `${result.title || 'karar'}-${index}`,
+              title: result.title,
+              esasNo: result.esasNo,
+              kararNo: result.kararNo,
+              tarih: result.tarih,
+              daire: result.daire,
+              ozet: result.ozet,
+              snippet: (result as any).snippet,
+              apiBaseUrl: '',
+            });
+
+            const preview = buildDecisionPreviewText(content || '');
+            if (!preview) return result;
+
+            return {
+              ...result,
+              ozet: result.ozet || preview,
+              snippet: (result as any).snippet || preview,
+            } as LegalSearchResult;
+          } catch {
+            return result;
+          }
+        }));
 
         if (newResults.length > 0) {
           mergeLegalResults(newResults);
@@ -457,6 +532,9 @@ export const AppMain: React.FC = () => {
         }
       } catch (searchError) {
         console.error('Auto legal search error:', searchError);
+        const message = searchError instanceof Error ? searchError.message : 'Ictihat aramasi basarisiz oldu.';
+        setError(`Ictihat aramasi sirasinda bir hata olustu: ${message}`);
+        addToast('Ictihat aramasi tamamlanamadi.', 'warning');
       }
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'Bilinmeyen bir hata olustu.';
@@ -522,30 +600,19 @@ export const AppMain: React.FC = () => {
     setGeneratedPetition('');
 
     try {
-      // Format legal search results for the prompt
-      const legalResultsText = legalSearchResults.length > 0
-        ? legalSearchResults.map(r =>
-          `- ${r.title || 'Karar'} ${r.esasNo ? `E.${r.esasNo}` : ''} ${r.kararNo ? `K.${r.kararNo}` : ''} ${r.tarih || ''}: ${r.ozet || ''}`
-        ).join('\n')
-        : '';
-
-      const result = await generatePetition({
+      const result = await generatePetition(buildGeneratePetitionParams({
         userRole,
         petitionType,
         caseDetails,
-        analysisSummary: analysisData.summary,
-        webSearchResult: webSearchResult?.summary || '',
-        legalSearchResult: legalResultsText, // Add legal search results
+        analysisData,
+        webSearchResult,
+        legalSearchResults,
         docContent,
         specifics: specificsWithMissingInfo,
         searchKeywords,
         chatHistory: chatMessages,
         parties,
-        webSourceCount: webSearchResult?.sources?.length || 0,
-        legalResultCount: legalSearchResults.length,
-        lawyerInfo: analysisData.lawyerInfo,
-        contactInfo: analysisData.contactInfo,
-      });
+      }));
       setGeneratedPetition(result);
       setPetitionVersion(v => v + 1); // Increment version to force re-mount of editor
       setEditorReturnRoute('/app');
@@ -616,6 +683,8 @@ export const AppMain: React.FC = () => {
     let mergedAnalysisData = analysisData;
     let mergedAnalysisSummary = analysisData?.summary || '';
     let mergedDocContent = docContent;
+    let mergedWebSearchResult = webSearchResult;
+    let mergedLegalResults = [...legalSearchResults];
 
     const userMessage: ChatMessage = {
       role: 'user',
@@ -705,14 +774,12 @@ export const AppMain: React.FC = () => {
         mergedAnalysisSummary,
         {
           keywords: searchKeywords.join(', '),
-          searchSummary: webSearchResult?.summary || '',
-          legalSummary: legalSearchResults.length > 0
-            ? legalSearchResults
-              .map(r => `${r.title || 'Karar'} ${r.esasNo ? `E.${r.esasNo}` : ''} ${r.kararNo ? `K.${r.kararNo}` : ''} ${r.tarih || ''}: ${r.ozet || ''}`)
-              .join('\n')
-            : '',
-          webSourceCount: webSearchResult?.sources?.length || 0,
-          legalResultCount: legalSearchResults.length,
+          searchSummary: mergedWebSearchResult?.summary || '',
+          legalSummary: buildLegalSearchResultSummary(mergedLegalResults),
+          webSources: mergedWebSearchResult?.sources || [],
+          legalSearchResults: mergedLegalResults,
+          webSourceCount: mergedWebSearchResult?.sources?.length || 0,
+          legalResultCount: mergedLegalResults.length,
           docContent: mergedDocContent,
           specifics: specificsWithMissingInfo,
           analysisSummary: mergedAnalysisSummary,
@@ -749,6 +816,13 @@ export const AppMain: React.FC = () => {
             relevanceScore: result.relevanceScore,
           }));
           if (newResults.length > 0) {
+            const seen = new Set<string>();
+            mergedLegalResults = [...mergedLegalResults, ...newResults].filter((result: any) => {
+              const key = `${result.title || ''}|${result.esasNo || ''}|${result.kararNo || ''}|${result.tarih || ''}`;
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            });
             mergeLegalResults(newResults);
             addToast(`${newResults.length} adet emsal karar bulundu.`, 'success');
           }
@@ -815,8 +889,19 @@ export const AppMain: React.FC = () => {
 
             // Handle document generation from chat
             if (fc.name === 'generate_document') {
-              if (missingInfoBlockingUnansweredCount > 0) {
-                const blockedText = `Belge olusturma engellendi. Eksikleri Tara alaninda ${missingInfoBlockingUnansweredCount} bloklayici soru bos. Lutfen once yanitlayin.`;
+              const effectiveAnalysisData = mergedAnalysisData || analysisData;
+              const canGenerateDocument = Boolean(
+                effectiveAnalysisData?.summary
+                && hasWebEvidence(mergedWebSearchResult)
+                && hasLegalEvidenceForGeneration(mergedLegalResults)
+                && missingInfoBlockingUnansweredCount === 0
+              );
+
+              if (!canGenerateDocument) {
+                const missingInfoText = missingInfoBlockingUnansweredCount > 0
+                  ? ` Eksikleri Tara alaninda ${missingInfoBlockingUnansweredCount} bloklayici soru bos. Lutfen once yanitlayin.`
+                  : '';
+                const blockedText = `Belge olusturma engellendi. Web arastirmasi, emsal kararlar veya analiz ozeti eksik.${missingInfoText}`;
                 setError(blockedText);
                 setChatMessages(prev => prev.map((msg, index) =>
                   index === prev.length - 1
@@ -827,25 +912,39 @@ export const AppMain: React.FC = () => {
               }
 
               const payload = extractGeneratedDocumentPayload(fc.args);
-              if (!payload || generatedDocument) {
+              if (!payload || generatedDocument || !effectiveAnalysisData) {
                 continue;
               }
+
+              const authoritativePetition = await generatePetition(buildGeneratePetitionParams({
+                userRole,
+                petitionType,
+                caseDetails,
+                analysisData: effectiveAnalysisData,
+                webSearchResult: mergedWebSearchResult,
+                legalSearchResults: mergedLegalResults,
+                docContent: mergedDocContent,
+                specifics: specificsWithMissingInfo,
+                searchKeywords,
+                chatHistory: [...newMessages, { role: 'model', text: payload.content }],
+                parties,
+              }));
 
               generatedDocument = true;
 
               // Set the generated petition
-              setGeneratedPetition(payload.content);
+              setGeneratedPetition(authoritativePetition);
               setPetitionVersion(v => v + 1);
 
               // Persist chat-generated petition for profile history
               if (user) {
-                await savePetitionToSupabase(payload.content, specificsWithMissingInfo, {
-                  chatHistory: [...newMessages, { role: 'model', text: assistantText }],
+                await savePetitionToSupabase(authoritativePetition, specificsWithMissingInfo, {
+                  chatHistory: [...newMessages, { role: 'model', text: authoritativePetition }],
                   searchKeywords,
                   docContent: mergedDocContent,
-                  analysisData: mergedAnalysisData,
-                  webSearchResult,
-                  legalSearchResults,
+                  analysisData: effectiveAnalysisData,
+                  webSearchResult: mergedWebSearchResult,
+                  legalSearchResults: mergedLegalResults,
                 });
               }
 
@@ -931,7 +1030,6 @@ export const AppMain: React.FC = () => {
   }, [generatedPetition, userRole, petitionType, caseDetails, analysisData, webSearchResult, docContent, specifics, chatMessages, parties]);
 
   const handleReset = useCallback(() => {
-    // Reset all state
     setPetitionType(PetitionType.DavaDilekcesi);
     setUserRole(UserRole.Davaci);
     setCaseDetails({ caseTitle: '', court: '', fileNumber: '', decisionNumber: '', decisionDate: '' });
@@ -1165,6 +1263,8 @@ export const AppMain: React.FC = () => {
             setSearchKeywords={setSearchKeywords}
             webSearchResult={webSearchResult}
             setWebSearchResult={setWebSearchResult}
+            precedentContext={precedentContext}
+            setPrecedentContext={setPrecedentContext}
 
             docContent={docContent}
             setDocContent={setDocContent}
@@ -1197,6 +1297,8 @@ export const AppMain: React.FC = () => {
     </div>
   );
 };
+
+
 
 
 

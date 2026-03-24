@@ -225,10 +225,10 @@ export const TemplateManagement: React.FC = () => {
             {/* Edit Modal */}
             {showModal && editingTemplate && (
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-gray-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-700">
+                    <div className="bg-gray-900 rounded-2xl w-[min(96vw,1100px)] max-h-[90vh] border border-gray-700 flex flex-col overflow-hidden">
                         <div className="flex items-center justify-between p-6 border-b border-gray-700">
                             <h2 className="text-xl font-bold text-white">
-                                {editingTemplate.id ? 'Şablonu Düzenle' : 'Yeni Şablon'}
+                                {editingTemplate.id ? 'Sablonu Duzenle' : 'Yeni Sablon'}
                             </h2>
                             <button
                                 onClick={() => {
@@ -240,59 +240,81 @@ export const TemplateManagement: React.FC = () => {
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
-                        <div className="p-6 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-1">Başlık</label>
-                                    <input
-                                        type="text"
-                                        value={editingTemplate.title}
-                                        onChange={(e) => setEditingTemplate({ ...editingTemplate, title: e.target.value })}
-                                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                                    />
+                        <div className="flex-1 overflow-y-auto p-6">
+                            <div className="grid gap-6 md:grid-cols-[320px_minmax(0,1fr)]">
+                                <div className="space-y-4">
+                                    <div className="rounded-2xl border border-gray-700 bg-gray-800/40 p-4 space-y-4">
+                                        <div>
+                                            <p className="text-sm font-semibold text-white">Sablon Ayarlari</p>
+                                            <p className="text-xs text-gray-400 mt-1">Temel bilgileri soldan gir, icerigi sag tarafta rahatca duzenle.</p>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-300 mb-1">Baslik</label>
+                                            <input
+                                                type="text"
+                                                value={editingTemplate.title}
+                                                onChange={(e) => setEditingTemplate({ ...editingTemplate, title: e.target.value })}
+                                                className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-300 mb-1">Kategori</label>
+                                            <select
+                                                value={editingTemplate.category}
+                                                onChange={(e) => setEditingTemplate({ ...editingTemplate, category: e.target.value })}
+                                                className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white"
+                                            >
+                                                {CATEGORIES.map(cat => (
+                                                    <option key={cat} value={cat}>{cat}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-300 mb-1">Aciklama</label>
+                                            <input
+                                                type="text"
+                                                value={editingTemplate.description}
+                                                onChange={(e) => setEditingTemplate({ ...editingTemplate, description: e.target.value })}
+                                                className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white"
+                                            />
+                                        </div>
+
+                                        <label className="flex items-center gap-2 cursor-pointer rounded-xl border border-gray-700 bg-gray-800/40 px-3 py-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={editingTemplate.isPremium}
+                                                onChange={(e) => setEditingTemplate({ ...editingTemplate, isPremium: e.target.checked })}
+                                                className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-red-600"
+                                            />
+                                            <span className="text-gray-300">Premium sablon</span>
+                                        </label>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-1">Kategori</label>
-                                    <select
-                                        value={editingTemplate.category}
-                                        onChange={(e) => setEditingTemplate({ ...editingTemplate, category: e.target.value })}
-                                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                                    >
-                                        {CATEGORIES.map(cat => (
-                                            <option key={cat} value={cat}>{cat}</option>
-                                        ))}
-                                    </select>
+
+                                <div className="space-y-4">
+                                    <div className="rounded-2xl border border-gray-700 bg-gray-800/40 p-4 space-y-3">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-300">Icerik</label>
+                                                <p className="text-xs text-gray-500 mt-1">Degiskenleri {'{{DEGISKEN_ADI}}'} biciminde yazabilirsin.</p>
+                                            </div>
+                                            <div className="text-xs text-gray-500 shrink-0">
+                                                {editingTemplate.content.length} karakter
+                                            </div>
+                                        </div>
+
+                                        <textarea
+                                            value={editingTemplate.content}
+                                            onChange={(e) => setEditingTemplate({ ...editingTemplate, content: e.target.value })}
+                                            rows={18}
+                                            className="min-h-[420px] w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-xl text-white font-mono text-sm resize-y"
+                                            placeholder="{{DEGISKEN_ADI}} formatinda degiskenler kullanabilirsiniz"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-1">Açıklama</label>
-                                <input
-                                    type="text"
-                                    value={editingTemplate.description}
-                                    onChange={(e) => setEditingTemplate({ ...editingTemplate, description: e.target.value })}
-                                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-1">İçerik</label>
-                                <textarea
-                                    value={editingTemplate.content}
-                                    onChange={(e) => setEditingTemplate({ ...editingTemplate, content: e.target.value })}
-                                    rows={10}
-                                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white font-mono text-sm"
-                                    placeholder="{{DEGISKEN_ADI}} formatında değişkenler kullanabilirsiniz"
-                                />
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={editingTemplate.isPremium}
-                                        onChange={(e) => setEditingTemplate({ ...editingTemplate, isPremium: e.target.checked })}
-                                        className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-red-600"
-                                    />
-                                    <span className="text-gray-300">Premium Şablon</span>
-                                </label>
                             </div>
                         </div>
                         <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-700">
@@ -303,7 +325,7 @@ export const TemplateManagement: React.FC = () => {
                                 }}
                                 className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
                             >
-                                İptal
+                                Iptal
                             </button>
                             <button
                                 onClick={handleSave}

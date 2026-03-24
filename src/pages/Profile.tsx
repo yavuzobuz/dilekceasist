@@ -603,7 +603,7 @@ const Profile: React.FC = () => {
             </button>
             <div className="flex items-center space-x-2 sm:space-x-4">
               <button
-                onClick={() => navigate('/app')}
+                onClick={() => navigate('/alt-app')}
                 className="premium-cta-button premium-cta-button--brand text-sm sm:text-base"
               >
                 <Plus className="w-4 h-4 sm:mr-2" />
@@ -863,7 +863,7 @@ const Profile: React.FC = () => {
                   </p>
                   {!searchQuery && filterType === 'all' && (
                     <button
-                      onClick={() => navigate('/app')}
+                      onClick={() => navigate('/alt-app')}
                       className="premium-cta-button premium-cta-button--brand px-8 py-4 rounded-xl inline-flex items-center"
                     >
                       <Plus className="w-5 h-5 mr-2" />

@@ -1,4 +1,4 @@
-import { applyCors, getSafeErrorMessage } from '../../lib/api/cors.js';
+﻿import { applyCors, getSafeErrorMessage } from '../../lib/api/cors.js';
 import { GEMINI_MODEL_NAME, getGeminiClient } from './_shared.js';
 
 const MODEL_NAME = GEMINI_MODEL_NAME;
@@ -830,7 +830,7 @@ export default async function handler(req, res) {
 
         const systemInstruction = `Sen, Turk hukuku alaninda uzmanlasmis bir anahtar kelime analiz sistemisin.
 
-**ANA GOREV:** Verilen hukuki metni analiz ederek, Yargitay/Danistay ictihat veritabanlarinda ve web uzerinde arama yapmak icin en etkili anahtar kelime ve ifadeleri uret.
+**ANA GOREV:** Verilen hukuki metni analiz ederek, hukuki arastirma ve web uzerinde arama yapmak icin en etkili anahtar kelime ve ifadeleri uret.
 
 **ANALIZ ADIMLARI:**
 1. Oncelikle metni oku ve su unsurlari belirle:
@@ -846,7 +846,7 @@ export default async function handler(req, res) {
    **SINIF A - Zorunlu (her zaman uret):**
    - Suc veya uyusmazlik tipi (orn: "haksiz fesih", "kasten yaralama", "kira alacagi", "bosanma davasi")
    - Uygulanabilir kanun hukmu (orn: "TCK 188/3", "Is Kanunu 18", "TBK 299", "HMK 389")
-   - Yargitay/Danistay ilgili daire (orn: "Yargitay 10. Ceza Dairesi", "Yargitay 9. Hukuk Dairesi", "Danistay 5. Daire")
+   - Varsa ilgili yargi kolu veya kurum bilgisi
 
    **SINIF B - Baglamsal (olay detaylarindan):**
    - Delil turleri (orn: "kamera kaydi", "tanik beyani", "bilirkisi raporu", "banka kaydi", "mesaj kaydi")
@@ -855,7 +855,7 @@ export default async function handler(req, res) {
    - Usul hukuku (orn: "gorev itiraz", "yetki itiraz", "zamanasimindan red", "HMK 107 belirsiz alacak")
 
    **SINIF C - Arama Stratejisi:**
-   - Emsal karar cesitleri (orn: "beraat karari", "onama karari", "bozma karari", "HAGB")
+   - Arastirma yonleri (orn: "beraat", "onama", "bozma", "HAGB")
    - Hukuki ilkeler (orn: "in dubio pro reo", "secimlerin yarismasi", "manevi tazminat olcutleri")
    - Savunma/talep stratejileri (orn: "etkin pismanlik", "haksiz tahrik", "meşru müdafaa", "usul hatasi")
 
@@ -899,3 +899,4 @@ Sadece asagidaki JSON formatinda dondur, baska hicbir sey yazma:
         res.status(500).json({ error: getSafeErrorMessage(error, 'Keywords API error') });
     }
 }
+

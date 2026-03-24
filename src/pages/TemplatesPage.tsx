@@ -657,18 +657,20 @@ const findBestMatchingHeaderForVariable = (variable: TemplateVariable, headers: 
         normalized: normalizeLookupKey(header),
     }));
     const aliases = getVariableAliases(variable);
-    let best: { header: string; score: number } | null = null;
+    let bestHeader: string | null = null;
+    let bestScore = -1;
 
     normalizedHeaders.forEach(headerInfo => {
         aliases.forEach(alias => {
             const score = scoreHeaderMatch(alias, headerInfo.normalized);
-            if (!best || score > best.score) {
-                best = { header: headerInfo.raw, score };
+            if (score > bestScore) {
+                bestHeader = headerInfo.raw;
+                bestScore = score;
             }
         });
     });
 
-    return best && best.score >= 30 ? best.header : null;
+    return bestScore >= 30 ? bestHeader : null;
 };
 
 const inferColumnMapping = (variables: TemplateVariable[], headers: string[]): Record<string, string> => {
@@ -996,7 +998,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                     title: customForm.title.trim(),
                     description: customForm.description.trim() || null,
                     template_type: customForm.template_type,
-                    petition_category: customForm.template_type === 'dilekce' ? customForm.petition_category : null,
+                    petition_category: customForm.template_type === 'dilekce' ? (customForm.petition_category || null) : null,
                     content: customForm.content,
                     style_notes: customForm.style_notes.trim() || null,
                     source_file_name: customForm.source_file_name,
@@ -1008,7 +1010,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                     title: customForm.title.trim(),
                     description: customForm.description.trim() || null,
                     template_type: customForm.template_type,
-                    petition_category: customForm.template_type === 'dilekce' ? customForm.petition_category : null,
+                    petition_category: customForm.template_type === 'dilekce' ? (customForm.petition_category || null) : null,
                     content: customForm.content,
                     style_notes: customForm.style_notes.trim() || null,
                     source_file_name: customForm.source_file_name,
@@ -1142,6 +1144,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
             const results = await searchLegalDecisions({
                 source: 'all',
                 keyword,
+                rawQuery: keyword,
                 apiBaseUrl: API_BASE_URL,
             });
             setMcpSearchResults(results);
@@ -1495,6 +1498,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
     const pageDescription = isContractsNoticesView
         ? 'Tüm sözleşme ve ihtarname şablonlarını buradan kullanabilirsiniz'
         : 'Hazır dilekçe şablonlarından seçin';
+    const showTemplateDetailPage = Boolean(selectedTemplate || isLoadingTemplate);
 
     const renderTemplateCard = (template: Template) => {
         const isCustom = template.isCustom === true;
@@ -1671,7 +1675,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                     </div>
                 )}
 
-                {!isLoading && !error && (
+                {!showTemplateDetailPage && !isLoading && !error && (
                     isContractsNoticesView ? (
                         <div className="space-y-10">
                             <section className="space-y-4">
@@ -1708,7 +1712,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                     )
                 )}
 
-                {!isLoading && !error && filteredTemplates.length === 0 && (
+                {!showTemplateDetailPage && !isLoading && !error && filteredTemplates.length === 0 && (
                     <div className="text-center py-20">
                         <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                         <h3 className="text-xl font-semibold text-gray-400 mb-2">Şablon bulunamadı</h3>
@@ -1717,9 +1721,9 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                 )}
             </div>
 
-            {(selectedTemplate || isLoadingTemplate) && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-2">
-                    <div className="bg-gray-900 rounded-t-2xl sm:rounded-2xl w-full sm:w-[96vw] 2xl:max-w-[1800px] h-[96vh] sm:h-[92vh] flex flex-col border-t sm:border border-gray-700 shadow-2xl overflow-hidden">
+            {showTemplateDetailPage && (
+                <div className="max-w-7xl mx-auto px-4 pb-10">
+                    <div className="bg-gray-900 rounded-3xl min-h-[calc(100vh-10rem)] flex flex-col border border-gray-700 shadow-2xl overflow-hidden">
                         {isLoadingTemplate ? (
                             <div className="flex items-center justify-center py-20">
                                 <Loader2 className="w-12 h-12 text-red-500 animate-spin" />
@@ -1741,15 +1745,18 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                     </div>
                                     <button
                                         onClick={closeTemplateModal}
-                                        className="p-2 hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0 ml-2"
+                                        className="inline-flex items-center gap-2 p-2 sm:px-4 sm:py-2 hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0 ml-2 text-gray-300"
                                     >
-                                        <X className="w-5 h-5 text-gray-400" />
+                                        <>
+                                            <ArrowLeft className="w-4 h-4" />
+                                            <span className="hidden sm:inline">Listeye D?n</span>
+                                        </>
                                     </button>
                                 </div>
 
                                 <div className="flex-1 min-h-0 overflow-hidden p-4 sm:p-6">
-                                    <div className="h-full min-h-0 grid grid-cols-1 xl:grid-cols-2 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-rows-1 gap-4 sm:gap-6">
-                                        <div className="min-h-0 bg-black/30 border border-gray-700 rounded-xl p-4 flex flex-col">
+                                    <div className="h-full min-h-0 grid grid-cols-1 xl:grid-cols-[minmax(340px,0.92fr)_minmax(0,1.08fr)] grid-rows-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-rows-1 gap-4 sm:gap-6">
+                                        <div className="min-h-0 bg-black/30 border border-gray-700 rounded-xl p-4 flex flex-col order-2 xl:order-2">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <FileText className="w-4 h-4 text-red-500" />
                                                 <h3 className="font-semibold text-white">Dilekçe Önizleme</h3>
@@ -1762,7 +1769,7 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
                                             </div>
                                         </div>
 
-                                        <div className="min-h-0 overflow-y-auto pr-1 pb-2 space-y-4">
+                                        <div className="min-h-0 overflow-y-auto pr-1 pb-2 space-y-4 order-1 xl:order-1">
                                             <p className="text-gray-400 mb-4">{selectedTemplate.description}</p>
 
                                             <div className="flex items-center gap-2 bg-gray-800 p-1 rounded-xl border border-gray-700 mb-5">
@@ -2406,3 +2413,4 @@ export const TemplatesPage: React.FC<TemplatesPageProps> = ({ onBack, onUseTempl
         </div>
     );
 };
+

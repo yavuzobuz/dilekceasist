@@ -1,0 +1,231 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e8] [cursor=pointer]:
+          - img "DilekAI Logo" [ref=e9]
+          - heading "DilekAI" [level=1] [ref=e10]
+        - navigation [ref=e11]:
+          - button "Dilekçe Havuzu" [ref=e12] [cursor=pointer]:
+            - generic [ref=e14]:
+              - img [ref=e15]
+              - generic [ref=e17]: Dilekçe Havuzu
+          - button "Emsal Karar" [ref=e18] [cursor=pointer]:
+            - generic [ref=e20]:
+              - img [ref=e21]
+              - generic [ref=e25]: Emsal Karar
+          - button "Şablonlar" [ref=e26] [cursor=pointer]:
+            - generic [ref=e28]:
+              - img [ref=e29]
+              - generic [ref=e31]: Şablonlar
+          - button "Hakkında" [ref=e32] [cursor=pointer]:
+            - generic [ref=e34]:
+              - img [ref=e35]
+              - generic [ref=e37]: Hakkında
+          - button "Fiyatlandırma" [ref=e38] [cursor=pointer]:
+            - generic [ref=e40]:
+              - img [ref=e41]
+              - generic [ref=e43]: Fiyatlandırma
+          - button "SSS" [ref=e44] [cursor=pointer]:
+            - generic [ref=e46]:
+              - img [ref=e47]
+              - generic [ref=e50]: SSS
+      - generic [ref=e51]:
+        - button "Ana Sayfa" [ref=e52] [cursor=pointer]:
+          - generic [ref=e54]:
+            - img [ref=e55]
+            - text: Ana Sayfa
+        - button "Giriş" [ref=e58] [cursor=pointer]:
+          - generic [ref=e60]:
+            - img [ref=e61]
+            - text: Giriş
+        - button "Kayıt Ol" [ref=e65] [cursor=pointer]:
+          - generic [ref=e67]:
+            - img [ref=e68]
+            - text: Kayıt Ol
+  - generic [ref=e71]:
+    - generic [ref=e73]:
+      - img "DilekAI Logo" [ref=e77]
+      - heading "DilekAI AI Hukuk Üretim Platformu" [level=1] [ref=e78]:
+        - generic [ref=e79]: DilekAI
+        - generic [ref=e80]: AI Hukuk Üretim Platformu
+      - paragraph [ref=e81]: Dilekçe, sözleşme ve ihtarname süreçlerini tek merkezde yönetin. Belge analizi, emsal arama, seri üretim ve UDF uyumlu çıktıyı bir arada kullanın.
+      - generic [ref=e82]:
+        - button "14 Gün Ücretsiz Dene" [ref=e83] [cursor=pointer]:
+          - generic [ref=e84]:
+            - img [ref=e85]
+            - text: 14 Gün Ücretsiz Dene
+        - button "Fiyatlandırma" [ref=e87] [cursor=pointer]:
+          - img [ref=e88]
+          - text: Fiyatlandırma
+        - button "Word Eklentisini Kur" [ref=e90] [cursor=pointer]:
+          - img [ref=e91]
+          - text: Word Eklentisini Kur
+        - button "Özellikleri Keşfet" [ref=e94] [cursor=pointer]
+      - paragraph [ref=e95]: "Word eklentisi butonu kurulum sayfasını açar. Bu sayfadan `.bat` kurulum aracını veya `manifest.xml` dosyasını indirip Word içine chatbot entegrasyonunu başlatabilirsiniz."
+      - generic [ref=e96]:
+        - generic [ref=e97]:
+          - generic [ref=e98]: "45"
+          - generic [ref=e99]: Maks. yükleme (15x3)
+        - generic [ref=e100]:
+          - generic [ref=e101]: XLSX/CSV
+          - generic [ref=e102]: Seri üretim
+        - generic [ref=e103]:
+          - generic [ref=e104]: UDF
+          - generic [ref=e105]: UYAP uyumlu çıktı
+        - generic [ref=e106]:
+          - generic [ref=e107]: 14 Gün
+          - generic [ref=e108]: Ücretsiz deneme
+    - generic [ref=e109]:
+      - generic [ref=e110]:
+        - heading "Üründe Neler Var" [level=2] [ref=e111]
+        - paragraph [ref=e112]: Codebase tarafında aktif kullandığınız temel kabiliyetleri öne çıkardık.
+      - generic [ref=e113]:
+        - generic [ref=e114]:
+          - img [ref=e116]
+          - heading "UDF + Word + PDF Analizi" [level=3] [ref=e118]
+          - paragraph [ref=e119]: PDF, Word, UDF, TIFF ve görsel dosyaları tek akışta analiz edin.
+        - generic [ref=e120]:
+          - img [ref=e122]
+          - heading "Seri Dilekçe Üretimi" [level=3] [ref=e124]
+          - paragraph [ref=e125]: Excel/CSV ile toplu dilekçe paketleri oluşturun.
+        - generic [ref=e126]:
+          - img [ref=e128]
+          - heading "Sözleşme ve İhtarname" [level=3] [ref=e130]
+          - paragraph [ref=e131]: Şablonlarla sözleşme ve ihtarname akışını yönetin.
+        - generic [ref=e132]:
+          - img [ref=e134]
+          - heading "AI Chat ile Belge Üretimi" [level=3] [ref=e136]
+          - paragraph [ref=e137]: Sohbetten belge oluşturun, yeniden yazın ve güçlendirin.
+        - generic [ref=e138]:
+          - img [ref=e140]
+          - heading "Hesaplama Araçları" [level=3] [ref=e142]
+          - paragraph [ref=e143]: Faiz, harç, vekalet ücreti ve süre hesaplarını aynı panelde yönetin.
+        - generic [ref=e144]:
+          - img [ref=e146]
+          - heading "Word Eklentisi + Chatbot" [level=3] [ref=e148]
+          - paragraph [ref=e149]: Word içinden chatbot, karar arama, beyin fırtınası ve web aramasını aktif kullanın.
+        - generic [ref=e150]:
+          - img [ref=e152]
+          - heading "Emsal Karar Arama" [level=3] [ref=e154]
+          - paragraph [ref=e155]: Yargıtay/Danıştay kararlarını bağlama ekleyin.
+        - generic [ref=e156]:
+          - img [ref=e158]
+          - heading "UDF Uyumlu Çıktı" [level=3] [ref=e160]
+          - paragraph [ref=e161]: Tekil akışta UDF, DOCX, PDF ve TXT çıktı alın.
+    - generic [ref=e162]:
+      - generic [ref=e163]:
+        - heading "Nasıl Çalışır?" [level=2] [ref=e164]
+        - paragraph [ref=e165]: 3 adımda belge hazırlama akışınız tamamlanır.
+      - generic [ref=e166]:
+        - generic [ref=e167]:
+          - generic [ref=e168]: "1"
+          - generic [ref=e169]:
+            - heading "Belge yükle veya şablon seç" [level=3] [ref=e170]
+            - paragraph [ref=e171]: UDF/PDF/Word dosyalarını analiz ettirin veya hazır şablonla başlayın.
+        - generic [ref=e172]:
+          - generic [ref=e173]: "2"
+          - generic [ref=e174]:
+            - heading "AI ile geliştir ve emsal ekle" [level=3] [ref=e175]
+            - paragraph [ref=e176]: Chat, rewrite/review ve emsal karar aramasıyla metni güçlendirin.
+        - generic [ref=e177]:
+          - generic [ref=e178]: "3"
+          - generic [ref=e179]:
+            - heading "Seri veya tekil çıktı alın" [level=3] [ref=e180]
+            - paragraph [ref=e181]: UDF, DOCX, PDF, TXT ya da Excel/CSV tabanlı seri paket oluşturun.
+    - generic [ref=e185]:
+      - heading "Fiyatlandırma Modeli" [level=2] [ref=e186]
+      - paragraph [ref=e187]: 14 günlük trial + günlük üretim limiti ile başlayın, ihtiyacınıza göre paket seçin.
+      - generic [ref=e188]:
+        - button "Paketleri Gör" [ref=e189] [cursor=pointer]
+        - button "Ücretsiz Başla" [ref=e190] [cursor=pointer]
+    - generic [ref=e191]:
+      - heading "Sıkça Sorulan Sorular" [level=2] [ref=e193]
+      - generic [ref=e194]:
+        - generic [ref=e195]:
+          - heading "Ücretsiz deneme nasıl çalışır?" [level=3] [ref=e196]
+          - paragraph [ref=e197]: Ücretsiz deneme 14 gündür. Trial süresinde günlük belge üretim limiti uygulanır.
+        - generic [ref=e198]:
+          - heading "Seri dilekçe üretimi var mı?" [level=3] [ref=e199]
+          - paragraph [ref=e200]: Evet. Excel/CSV yükleyip kolon eşleştirmesiyle toplu paket oluşturabilirsiniz.
+        - generic [ref=e201]:
+          - heading "Sözleşme ve ihtarname oluşturabilir miyim?" [level=3] [ref=e202]
+          - paragraph [ref=e203]: Evet. Sözleşmeler ve ihtarnameler için ayrı şablon akışımız bulunur.
+        - generic [ref=e204]:
+          - heading "UDF destekliyor musunuz?" [level=3] [ref=e205]
+          - paragraph [ref=e206]: Evet. UDF dosyası analizini destekler ve tekil akışta UDF çıktı alabilirsiniz.
+      - generic [ref=e208]:
+        - button "Hakkında" [ref=e209] [cursor=pointer]:
+          - img [ref=e210]
+          - text: Hakkında
+        - button "Tüm SSS" [ref=e212] [cursor=pointer]:
+          - img [ref=e213]
+          - text: Tüm SSS
+        - button "Fiyatlandırma" [ref=e216] [cursor=pointer]:
+          - img [ref=e217]
+          - text: Fiyatlandırma
+  - contentinfo [ref=e219]:
+    - generic [ref=e220]:
+      - generic [ref=e221]:
+        - generic [ref=e222]:
+          - generic [ref=e223]:
+            - img "DilekAI Logo" [ref=e224]
+            - generic [ref=e225]: DilekAI
+          - paragraph [ref=e226]: Yapay zeka destekli belge oluşturma platformu. Dilekçe, sözleşme ve ihtarname süreçlerini hızlandırın.
+        - generic [ref=e227]:
+          - heading "Hızlı Linkler" [level=3] [ref=e228]
+          - list [ref=e229]:
+            - listitem [ref=e230]:
+              - link "Ana Sayfa" [ref=e231] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e232]:
+              - link "Hakkında" [ref=e233] [cursor=pointer]:
+                - /url: /about
+            - listitem [ref=e234]:
+              - link "SSS" [ref=e235] [cursor=pointer]:
+                - /url: /faq
+            - listitem [ref=e236]:
+              - link "Word Eklentisi" [ref=e237] [cursor=pointer]:
+                - /url: /word-eklentisi
+            - listitem [ref=e238]:
+              - link "Fiyatlandırma" [ref=e239] [cursor=pointer]:
+                - /url: /fiyatlandirma
+            - listitem [ref=e240]:
+              - link "Dilekçe Havuzu" [ref=e241] [cursor=pointer]:
+                - /url: /petition-pool
+            - listitem [ref=e242]:
+              - link "Dilekçe Oluştur" [ref=e243] [cursor=pointer]:
+                - /url: /app
+        - generic [ref=e244]:
+          - heading "Yasal" [level=3] [ref=e245]
+          - list [ref=e246]:
+            - listitem [ref=e247]:
+              - link "Gizlilik Politikası" [ref=e248] [cursor=pointer]:
+                - /url: /gizlilik
+            - listitem [ref=e249]:
+              - link "Kullanım Koşulları" [ref=e250] [cursor=pointer]:
+                - /url: /kullanim-kosullari
+            - listitem [ref=e251]:
+              - link "Çerez Politikası" [ref=e252] [cursor=pointer]:
+                - /url: /cerez-politikasi
+        - generic [ref=e253]:
+          - heading "İletişim" [level=3] [ref=e254]
+          - list [ref=e255]:
+            - listitem [ref=e256]:
+              - img [ref=e257]
+              - generic [ref=e260]: info@dilekai.com
+            - listitem [ref=e261]:
+              - img [ref=e262]
+              - generic [ref=e264]: +90 (212) 123 45 67
+            - listitem [ref=e265]:
+              - img [ref=e266]
+              - generic [ref=e269]: İstanbul, Türkiye
+      - generic [ref=e270]:
+        - paragraph [ref=e271]: © 2026 DilekAI. Tüm hakları saklıdır.
+        - generic [ref=e272]:
+          - link "Gizlilik Politikası" [ref=e273] [cursor=pointer]:
+            - /url: /gizlilik
+          - link "Kullanım Koşulları" [ref=e274] [cursor=pointer]:
+            - /url: /kullanim-kosullari
+          - link "Çerez Politikası" [ref=e275] [cursor=pointer]:
+            - /url: /cerez-politikasi

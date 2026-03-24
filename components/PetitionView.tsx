@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { PetitionViewProps } from '../types';
 import { LoadingSpinner } from './LoadingSpinner';
 import { DocumentTextIcon, LinkIcon, SparklesIcon, ArrowDownTrayIcon } from './Icon';
@@ -108,24 +108,19 @@ export const PetitionView: React.FC<PetitionViewProps> = ({ petition, setGenerat
   const [totalMatches, setTotalMatches] = useState(0);
 
 
-  // Update editor content when petition changes or petitionVersion updates
-  useEffect(() => {
-    const updateContent = () => {
-      if (editorRef.current && petition) {
-        // Convert markdown to HTML for proper display
-        const htmlContent = convertMarkdownToHtml(petition);
-        editorRef.current.innerHTML = htmlContent;
-      }
+  // Keep the editable DOM in sync on first mount and subsequent remounts.
+  useLayoutEffect(() => {
+    const syncEditorContent = () => {
+      if (!editorRef.current) return;
+      editorRef.current.innerHTML = petition ? convertMarkdownToHtml(petition) : '';
     };
 
-    // Try immediately first
-    updateContent();
+    syncEditorContent();
 
-    // Also try with a small delay for cases where DOM isn't ready
-    const timer = setTimeout(updateContent, 50);
+    const frameId = window.requestAnimationFrame(syncEditorContent);
 
-    return () => clearTimeout(timer);
-  }, [petition, petitionVersion]); // Update when either changes
+    return () => window.cancelAnimationFrame(frameId);
+  }, [petition, petitionVersion, isLoading, isReviewing]);
 
   const handleMouseUp = useCallback(() => {
     const selection = window.getSelection();

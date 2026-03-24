@@ -15,10 +15,12 @@ import {
     BrainCircuit,
 } from 'lucide-react';
 import { Header } from '../../components/Header';
+import { analyzeDocuments, generateSearchKeywords } from '../../services/geminiService';
+import { UserRole, type DetailedAnalysis, type LegalSearchPacket } from '../../types';
 import {
-    compactLegalSearchQuery,
+    buildLegalSearchInputs,
     getLegalDocument,
-    searchLegalDecisions,
+    searchLegalDecisionsDetailed,
     type NormalizedLegalDecision,
 } from '../utils/legalSearch';
 
@@ -31,9 +33,8 @@ const SEARCH_AREAS = [
 ];
 
 const SYNTHETIC_RESULT_ID_REGEX = /^(search-|legal-|ai-summary|sem-|template-decision-)/i;
-const DOCUMENT_PREVIEW_RESULT_LIMIT = 3;
-const MIN_PREVIEW_FETCH_CHARS = 500;
-const DOCUMENT_PREVIEW_MAX_CHARS = 4000;
+const DOCUMENT_PREVIEW_RESULT_LIMIT = 20;
+const MIN_PREVIEW_FETCH_CHARS = 40;
 const HIGHLIGHT_QUERY_STOPWORDS = new Set([
     've',
     'veya',
@@ -132,9 +133,238 @@ const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\
 const normalizeConceptText = (value: string) =>
     String(value || '')
         .toLocaleLowerCase('tr-TR')
-        .replace(/[^a-z0-9çğıöşü\s]/gi, ' ')
+        .replace(/ç/g, 'c')
+        .replace(/ğ/g, 'g')
+        .replace(/ı/g, 'i')
+        .replace(/ö/g, 'o')
+        .replace(/ş/g, 's')
+        .replace(/ü/g, 'u')
+        .replace(/[^a-z0-9\s]/gi, ' ')
         .replace(/\s+/g, ' ')
         .trim();
+
+const normalizeKeywordText = (value: string): string => String(value || '')
+    .toLocaleLowerCase('tr-TR')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\u0131/g, 'i')
+    .replace(/[^a-z0-9\s./-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const KEYWORD_STOPWORDS = new Set([
+    've', 'veya', 'ile', 'olan', 'oldugu', 'iddia', 'edilen', 'uzerine', 'kapsaminda',
+    'gibi', 'icin', 'uzere', 'bu', 'su', 'o', 'bir', 'de', 'da', 'mi', 'mu',
+]);
+
+const KEYWORD_DRAFTING_TERMS = new Set([
+    'dilekce', 'savunma', 'belge', 'sozlesme', 'taslak', 'yaz', 'yazalim', 'hazirla', 'olustur', 'uret',
+    'detayli', 'olmasi', 'olmali', 'koruyacak', 'haklarini', 'muvekkil', 'muvekkilin', 'vekil', 'vekili',
+    'bana', 'lutfen', 'yardim', 'hazir', 'yapalim',
+]);
+
+const FACT_SIGNAL_REGEX = /\b(tck|cmk|hmk|tmk|anayasa|madde|maddesi|esas|karar|uyusturucu|hirsizlik|dolandiricilik|tehdit|yaralama|oldurme|gozalti|tutuk|delil|kamera|tanik|rapor|bilirkisi|ele gecir|kullanim siniri|ticaret|satici|isveren|kidem|ihbar|fesih|veraset|tapu|imar|ruhsat)\b/i;
+const DATE_ONLY_REGEX = /^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/;
+const DIGITS_ONLY_REGEX = /^\d+$/;
+const PERSON_NAME_REGEX = /^[A-Z\u00C7\u011E\u0130\u00D6\u015E\u00DC][a-z\u00E7\u011F\u0131\u00F6\u015F\u00FC]+(?:\s+[A-Z\u00C7\u011E\u0130\u00D6\u015E\u00DC][a-z\u00E7\u011F\u0131\u00F6\u015F\u00FC]+){1,2}$/;
+const ADDRESS_HINT_REGEX = /\b(mahallesi|mah|sokak|sok|cadde|cad|bulvar|bulvari|apartman|apt|bina|daire|blok|kapi|no)\b/i;
+const BARE_MADDE_REGEX = /^\d{1,3}\.?\s*maddesi?$/i;
+const LAW_REFERENCE_REGEX = /\b(tck|cmk|hmk|tmk|tbk|iik|ttk|vuk|kmk|anayasa|imar kanunu|is kanunu)\b/i;
+
+const hasFactSignal = (rawValue: string): boolean => {
+    const normalized = normalizeKeywordText(rawValue);
+    if (!normalized) return false;
+    return FACT_SIGNAL_REGEX.test(normalized);
+};
+
+const normalizeAmbiguousMaddeKeyword = (value: string, sourceText: string): string => {
+    const cleaned = String(value || '').replace(/[â€œâ€"']/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!cleaned) return '';
+
+    const maddeMatch = cleaned.match(/^(\d{1,3})\.?\s*maddesi?$/i);
+    if (!maddeMatch) return cleaned;
+
+    const maddeNo = maddeMatch[1];
+    const normalizedSource = normalizeKeywordText(sourceText);
+    if ((maddeNo === '32' || maddeNo === '42') && /(imar|ruhsat|ruhsatsiz|yapi|yikim|imar barisi)/i.test(normalizedSource)) {
+        return `3194 sayili Imar Kanunu ${maddeNo}. madde`;
+    }
+
+    return '';
+};
+
+const isNoisyKeywordCandidate = (value: string): boolean => {
+    const cleaned = String(value || '').replace(/[â€œâ€"']/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!cleaned) return true;
+
+    if (DATE_ONLY_REGEX.test(cleaned)) return true;
+    if (DIGITS_ONLY_REGEX.test(cleaned)) return true;
+    if (ADDRESS_HINT_REGEX.test(cleaned)) return true;
+    if (PERSON_NAME_REGEX.test(cleaned)) return true;
+    if (BARE_MADDE_REGEX.test(cleaned) && !LAW_REFERENCE_REGEX.test(cleaned)) return true;
+
+    return false;
+};
+
+const extractKeywordCandidates = (rawValue: string): string[] => {
+    const text = String(rawValue || '').trim();
+    if (!text) return [];
+
+    const normalizedText = normalizeKeywordText(text);
+    const candidates: string[] = [];
+    const seen = new Set<string>();
+
+    const addCandidate = (value: string) => {
+        const normalizedMadde = normalizeAmbiguousMaddeKeyword(value, text);
+        const cleaned = String(normalizedMadde || value || '').replace(/[â€œâ€"']/g, ' ').replace(/\s+/g, ' ').trim();
+        if (!cleaned || cleaned.length < 3) return;
+        if (isNoisyKeywordCandidate(cleaned)) return;
+
+        const normalizedKey = normalizeKeywordText(cleaned);
+        if (!normalizedKey || normalizedKey.length < 3) return;
+
+        const words = normalizedKey.split(/\s+/).filter(Boolean);
+        const nonStopWords = words.filter((word) => !KEYWORD_STOPWORDS.has(word));
+        if (nonStopWords.length === 0) return;
+
+        if (!hasFactSignal(normalizedKey) && nonStopWords.length < 2) return;
+
+        const hasDraftingTerm = nonStopWords.some((word) => KEYWORD_DRAFTING_TERMS.has(word));
+        if (hasDraftingTerm && !hasFactSignal(normalizedKey)) return;
+
+        if (seen.has(normalizedKey)) return;
+        seen.add(normalizedKey);
+        candidates.push(cleaned);
+    };
+
+    const tckMatches = text.match(/TCK\s*\d+(?:\s*\/\s*\d+)?(?:\s*[-â€“]\s*\d+)?/gi) || [];
+    for (const match of tckMatches) {
+        addCandidate(match);
+    }
+
+    const phraseChunks = text.split(/[,\n;]+/g);
+    for (const chunk of phraseChunks) {
+        const normalizedChunk = normalizeKeywordText(chunk);
+        const chunkWordCount = normalizedChunk ? normalizedChunk.split(/\s+/).filter(Boolean).length : 0;
+        if (!hasFactSignal(chunk) && chunkWordCount > 8) continue;
+        addCandidate(chunk);
+    }
+
+    const tokenFallback = normalizedText
+        .split(/[\s,;:.!?()\/\\-]+/g)
+        .map((token) => token.trim())
+        .filter((token) => token.length >= 4
+            && !KEYWORD_STOPWORDS.has(token)
+            && !KEYWORD_DRAFTING_TERMS.has(token)
+            && hasFactSignal(token));
+
+    for (const token of tokenFallback) {
+        addCandidate(token);
+        if (candidates.length >= 12) break;
+    }
+
+    return candidates.slice(0, 12);
+};
+
+const getPacketKeywordList = (packet: LegalSearchPacket | null | undefined): string[] => {
+    if (!packet) return [];
+
+    const ordered = [
+        ...(Array.isArray(packet.requiredConcepts) ? packet.requiredConcepts : []),
+        ...(Array.isArray(packet.supportConcepts) ? packet.supportConcepts : []),
+        ...(Array.isArray(packet.evidenceConcepts) ? packet.evidenceConcepts : []),
+    ];
+
+    const seen = new Set<string>();
+    const keywords: string[] = [];
+
+    for (const item of ordered) {
+        const normalized = String(item || '').replace(/\s+/g, ' ').trim();
+        if (!normalized) continue;
+        const key = normalizeKeywordText(normalized);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        keywords.push(normalized);
+        if (keywords.length >= 12) break;
+    }
+
+    return keywords;
+};
+
+const getInsightList = (values: string[] | undefined, limit = 8): string[] => {
+    if (!Array.isArray(values)) return [];
+
+    const seen = new Set<string>();
+    const items: string[] = [];
+
+    for (const item of values) {
+        const normalized = String(item || '').replace(/\s+/g, ' ').trim();
+        if (!normalized) continue;
+        const key = normalizeKeywordText(normalized);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        items.push(normalized);
+        if (items.length >= limit) break;
+    }
+
+    return items;
+};
+
+const getWebPlanKeywordList = (
+    insights: DetailedAnalysis | null | undefined,
+    packet: LegalSearchPacket | null | undefined
+): string[] => {
+    const ordered = [
+        ...getInsightList(insights?.webSearchPlan?.coreQueries, 6),
+        ...getInsightList(insights?.webSearchPlan?.supportQueries, 6),
+        ...getInsightList(insights?.webSearchPlan?.focusTopics, 6),
+        ...getPacketKeywordList(packet),
+    ];
+
+    return getInsightList(ordered, 12);
+};
+
+const buildAutoLegalSearchText = ({
+    packet,
+    fallbackSummary = '',
+    fallbackKeywords = [],
+}: {
+    packet?: LegalSearchPacket | null;
+    fallbackSummary?: string;
+    fallbackKeywords?: string[];
+}): string => {
+    const directPacketSearchText = String(packet?.searchSeedText || '').trim();
+    if (directPacketSearchText) return directPacketSearchText;
+
+    const packetText = [
+        packet?.coreIssue,
+        packet?.caseType,
+        ...(Array.isArray(packet?.requiredConcepts) ? packet.requiredConcepts.slice(0, 4) : []),
+        ...(Array.isArray(packet?.supportConcepts) ? packet.supportConcepts.slice(0, 2) : []),
+    ]
+        .map((value) => String(value || '').trim())
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+
+    if (packetText) return packetText;
+    if (String(fallbackSummary || '').trim()) return String(fallbackSummary || '').trim();
+    return Array.isArray(fallbackKeywords) ? fallbackKeywords.join(' ').trim() : '';
+};
+
+const buildAutoWebSearchKeywords = ({
+    insights,
+    packet,
+    fallbackKeywords = [],
+}: {
+    insights?: DetailedAnalysis | null;
+    packet?: LegalSearchPacket | null;
+    fallbackKeywords?: string[];
+}): string[] => {
+    const planKeywords = getWebPlanKeywordList(insights, packet);
+    if (planKeywords.length > 0) return planKeywords;
+    return getInsightList(fallbackKeywords, 12);
+};
 
 const extractSearchConcepts = (query: string) => {
     const raw = String(query || '').trim();
@@ -214,6 +444,24 @@ const getPresentConcepts = (text: string, concepts: string[]) => {
     });
 };
 
+const turkishCharClass: Record<string, string> = {
+    c: '[cç]', ç: '[cç]',
+    g: '[gğ]', ğ: '[gğ]',
+    i: '[iı]', ı: '[iı]',
+    o: '[oö]', ö: '[oö]',
+    s: '[sş]', ş: '[sş]',
+    u: '[uü]', ü: '[uü]',
+};
+
+const conceptToFuzzyPattern = (concept: string) =>
+    Array.from(concept)
+        .map((ch) => {
+            const lower = ch.toLowerCase();
+            if (turkishCharClass[lower]) return turkishCharClass[lower];
+            return escapeRegExp(ch);
+        })
+        .join('');
+
 const renderHighlightedText = (
     text: string,
     concepts: string[],
@@ -225,7 +473,7 @@ const renderHighlightedText = (
     const pattern = concepts
         .filter(Boolean)
         .sort((left, right) => right.length - left.length)
-        .map((concept) => escapeRegExp(concept))
+        .map((concept) => conceptToFuzzyPattern(concept))
         .join('|');
 
     if (!pattern) return safeText;
@@ -353,6 +601,7 @@ export default function PrecedentSearch() {
     const [hasResults, setHasResults] = useState(false);
     const [results, setResults] = useState<NormalizedLegalDecision[]>([]);
     const [error, setError] = useState<string | null>(null);
+    const [zeroResultMessage, setZeroResultMessage] = useState<string | null>(null);
     const [copiedId, setCopiedId] = useState<string | number | null>(null);
     const [expandedIds, setExpandedIds] = useState<Set<string | number>>(new Set());
     const [isGuideOpen, setIsGuideOpen] = useState(false);
@@ -395,14 +644,14 @@ export default function PrecedentSearch() {
                         snippet: result.snippet,
                     });
 
-                    const normalizedContent = String(content || '').replace(/\s+/g, ' ').trim();
+                    const normalizedContent = String(content || '').trim();
                     if (normalizedContent.length < MIN_PREVIEW_FETCH_CHARS) {
                         return null;
                     }
 
                     return {
                         index,
-                        snippet: normalizedContent.slice(0, DOCUMENT_PREVIEW_MAX_CHARS).trim(),
+                        snippet: normalizedContent,
                     };
                 } catch {
                     return null;
@@ -448,25 +697,69 @@ export default function PrecedentSearch() {
         setIsSearching(true);
         setHasResults(false);
         setError(null);
+        setZeroResultMessage(null);
         setResults([]);
         setExpandedIds(new Set());
 
         try {
             // Dual query yaklaşımı: retrieval için kısaltılmış, rerank/routing için ham sorgu
-            const compactedKeyword = compactLegalSearchQuery(searchQuery);
-            const apiResults = await searchLegalDecisions({
-                keyword: compactedKeyword,
-                rawQuery: searchQuery,
+            const analysis = await analyzeDocuments([], searchQuery.trim(), '');
+            const keywordSeed = [
+                analysis.summary || '',
+                searchQuery.trim(),
+            ]
+                .filter(Boolean)
+                .join('\n');
+            const packetKeywords = getPacketKeywordList(analysis.legalSearchPacket);
+            const plannedKeywords = buildAutoWebSearchKeywords({
+                insights: analysis.analysisInsights,
+                packet: analysis.legalSearchPacket,
+                fallbackKeywords: packetKeywords,
+            });
+
+            let finalKeywords = plannedKeywords;
+            if (finalKeywords.length === 0) {
+                try {
+                    finalKeywords = await generateSearchKeywords(
+                        keywordSeed || analysis.summary || '',
+                        UserRole.Vekil
+                    );
+                } catch {
+                    finalKeywords = [];
+                }
+            }
+            if (finalKeywords.length === 0) {
+                finalKeywords = extractKeywordCandidates(keywordSeed || analysis.summary || '').slice(0, 8);
+            }
+
+            const rawSearchQuery = buildAutoLegalSearchText({
+                packet: analysis.legalSearchPacket,
+                fallbackSummary: analysis.summary || '',
+                fallbackKeywords: finalKeywords,
+            });
+            const { keyword, rawQuery, legalSearchPacket } = buildLegalSearchInputs({
+                queryInput: rawSearchQuery || finalKeywords,
+                legalSearchPacket: analysis.legalSearchPacket,
+                preserveKeywords: [...packetKeywords, ...finalKeywords],
+                fallbackSummary: analysis.summary || '',
+                fallbackKeywords: finalKeywords,
+            });
+            const detailedResult = await searchLegalDecisionsDetailed({
+                keyword,
+                rawQuery,
+                legalSearchPacket,
                 source: 'all',
                 filters: { searchArea },
             });
 
-            setResults(apiResults || []);
+            setResults(detailedResult.normalizedResults || []);
+            setZeroResultMessage(detailedResult.diagnostics.zeroResultMessage || null);
             setHasResults(true);
-            void hydrateResultPreviews(searchRunId, apiResults || []);
+            void hydrateResultPreviews(searchRunId, detailedResult.normalizedResults || []);
         } catch (err: any) {
             console.error('Legal search error:', err);
-            setError(err.message || 'Karar aranırken bir hata oluştu.');
+            setError(err.message || 'Karar aranirken bir hata olustu.');
+            setZeroResultMessage(null);
             setHasResults(true); // show error message area
         } finally {
             setIsSearching(false);
@@ -478,6 +771,7 @@ export default function PrecedentSearch() {
         setHasResults(false);
         setResults([]);
         setError(null);
+        setZeroResultMessage(null);
     };
 
     const insertExample = (text: string) => {
@@ -536,7 +830,7 @@ export default function PrecedentSearch() {
                                     }
                                 }}
                                 rows={1}
-                                placeholder='Örn: +"itirazın iptali" +"zaman aşımı" veya dava metnini yapıştırın...'
+                                placeholder='Orn: Sanigin uzerinde para cikmamasi ticaret kastinin ispatlanamadigini gosterir veya dava metnini yapistirin...'
                                 className="w-full pl-12 pr-12 py-4 bg-[#111113] border border-white/5 rounded-xl text-white placeholder-gray-600 text-lg focus:outline-none focus:ring-0 focus:border-white/10 transition-colors resize-none overflow-y-auto min-h-[60px] max-h-[300px]"
                                 style={{ height: 'auto' }}
                             />
@@ -599,7 +893,7 @@ export default function PrecedentSearch() {
 
             {/* Content Area */}
             <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-12 space-y-10">
-                {/* MCP Search Explanation Banner */}
+                {/* Search Explanation Banner */}
                 <div className="bg-gradient-to-r from-red-900/20 to-black/40 rounded-2xl p-6 border border-red-500/20 shadow-lg relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-6 opacity-10">
                         <BrainCircuit className="w-32 h-32 text-red-500" />
@@ -610,13 +904,10 @@ export default function PrecedentSearch() {
                         </div>
                         <div className="space-y-1.5">
                             <h3 className="text-lg font-bold text-white tracking-tight">
-                                Temiz MCP Karar Arama Akisi
+                                Akilli Karar Arama
                             </h3>
                             <p className="text-gray-400 leading-relaxed text-sm lg:text-base max-w-3xl">
-                                Arama artik tek bir sade MCP akisi uzerinden calisir. Sonuclar
-                                Yargitay, Danistay, Istinaf ve UYAP kaynaklarindan cekilir;
-                                baslik, daire ve ozet alanlarindaki eslesmeye gore siralanir.
-                                En yuksek eslesme skoru ustte gosterilir.
+                                Arama; CLI, Bedesten ve gerekirse diger arka plan arama katmanlariyla calisir. Uygun sonuclar bulunup mevcut ekranda gosterilir.
                             </p>
                             <p className="hidden text-gray-400 leading-relaxed text-sm lg:text-base max-w-3xl">
                                 Aramalarınız sadece anahtar kelime eşleşmesine bakmaz. Yapay zeka
@@ -646,10 +937,13 @@ export default function PrecedentSearch() {
                                 <Search className="w-10 h-10 text-gray-600 mx-auto mb-3" />
                                 <h3 className="text-white font-semibold mb-1">Kayıt Bulunamadı</h3>
                                 <p className="text-gray-400 text-sm">
-                                    Girdiğiniz arama terimleriyle eşleşen bir karar bulunamadı.
-                                    Lütfen farklı kelimelerle veya rehberdeki kurallara göre tekrar
+                                    Girdiginiz arama terimleriyle eslesen bir karar bulunamadi.
+                                    Lutfen farkli kelimelerle veya rehberdeki kurallara gore tekrar
                                     deneyin.
                                 </p>
+                                {zeroResultMessage ? (
+                                    <p className="mt-3 text-xs text-gray-500">{zeroResultMessage}</p>
+                                ) : null}
                             </div>
                         ) : (
                             <>
@@ -690,14 +984,16 @@ export default function PrecedentSearch() {
                                             ? result.matchHighlights.filter((item) => typeof item === 'string')
                                             : [];
                                         const searchConcepts = extractSearchConcepts(searchQuery);
-                                        const matchedConcepts = backendMatchedConcepts.length > 0
-                                            ? backendMatchedConcepts
-                                            : getPresentConcepts(
-                                                  [result.title, result.daire, contentToDisplay]
-                                                      .filter(Boolean)
-                                                      .join(' '),
-                                                  searchConcepts
-                                              );
+                                        const combinedTextForMatch = [result.title, result.daire, contentToDisplay]
+                                            .filter(Boolean)
+                                            .join(' ');
+                                        // Validate backend concepts against actual text — only show concepts truly present
+                                        const validatedBackendConcepts = backendMatchedConcepts.length > 0
+                                            ? getPresentConcepts(combinedTextForMatch, backendMatchedConcepts)
+                                            : [];
+                                        const matchedConcepts = validatedBackendConcepts.length > 0
+                                            ? validatedBackendConcepts
+                                            : getPresentConcepts(combinedTextForMatch, searchConcepts);
 
                                         return (
                                             <div
@@ -796,15 +1092,21 @@ export default function PrecedentSearch() {
                                                             {(() => {
                                                                 const isExpanded =
                                                                     expandedIds.has(uniqueId);
-                                                                const words =
-                                                                    contentToDisplay.split(/\s+/);
-                                                                const isLong = words.length > 250;
-                                                                const textToShow =
-                                                                    !isLong || isExpanded
-                                                                        ? contentToDisplay
-                                                                        : words
-                                                                              .slice(0, 250)
-                                                                              .join(' ') + '...';
+                                                                const COLLAPSE_CHAR_LIMIT = 1500;
+                                                                const isLong = contentToDisplay.length > COLLAPSE_CHAR_LIMIT;
+
+                                                                let textToShow = contentToDisplay;
+                                                                if (isLong && !isExpanded) {
+                                                                    // Find nearest newline or sentence end before the limit for a clean cut
+                                                                    let cutPoint = contentToDisplay.lastIndexOf('\n', COLLAPSE_CHAR_LIMIT);
+                                                                    if (cutPoint < COLLAPSE_CHAR_LIMIT * 0.5) {
+                                                                        cutPoint = contentToDisplay.lastIndexOf('. ', COLLAPSE_CHAR_LIMIT);
+                                                                    }
+                                                                    if (cutPoint < COLLAPSE_CHAR_LIMIT * 0.3) {
+                                                                        cutPoint = COLLAPSE_CHAR_LIMIT;
+                                                                    }
+                                                                    textToShow = contentToDisplay.slice(0, cutPoint).trimEnd() + '\n\n...';
+                                                                }
 
                                                                 return (
                                                                     <>
@@ -812,7 +1114,7 @@ export default function PrecedentSearch() {
                                                                             {renderHighlightedText(
                                                                                 textToShow,
                                                                                 matchedConcepts,
-                                                                                `${uniqueId}-body`
+                                                                                `${uniqueId}-body-${isExpanded ? 'full' : 'short'}`
                                                                             )}
                                                                         </p>
                                                                         {isLong && (
@@ -826,19 +1128,12 @@ export default function PrecedentSearch() {
                                                                             >
                                                                                 {isExpanded ? (
                                                                                     <>
-                                                                                        <span>
-                                                                                            Metni
-                                                                                            Daralt
-                                                                                        </span>
+                                                                                        <span>Metni Daralt</span>
                                                                                         <ChevronUp className="w-4 h-4 ml-2" />
                                                                                     </>
                                                                                 ) : (
                                                                                     <>
-                                                                                        <span>
-                                                                                            Devamını
-                                                                                            Oku (Tüm
-                                                                                            Metin)
-                                                                                        </span>
+                                                                                        <span>Devamını Oku (Tüm Metin)</span>
                                                                                         <ChevronDown className="w-4 h-4 ml-2" />
                                                                                     </>
                                                                                 )}
@@ -1174,3 +1469,6 @@ export default function PrecedentSearch() {
         </div>
     );
 }
+
+
+
