@@ -1177,6 +1177,15 @@ export const buildDetailedLegalSearchResult = ({
     durationMs,
 }: Pick<LegalSearchDetailedResult, 'endpoint' | 'request' | 'response' | 'durationMs'>): LegalSearchDetailedResult => {
     const normalizedResults = normalizeLegalSearchResults(response);
+    
+    let evaluationGroups;
+    if (response?.evaluationGroups) {
+        evaluationGroups = {
+            davaci_lehine: response.evaluationGroups.davaci_lehine ? normalizeLegalSearchResults({ results: response.evaluationGroups.davaci_lehine }) : [],
+            davali_lehine: response.evaluationGroups.davali_lehine ? normalizeLegalSearchResults({ results: response.evaluationGroups.davali_lehine }) : [],
+            notr: response.evaluationGroups.notr ? normalizeLegalSearchResults({ results: response.evaluationGroups.notr }) : [],
+        };
+    }
 
     return {
         endpoint,
@@ -1184,6 +1193,7 @@ export const buildDetailedLegalSearchResult = ({
         response,
         durationMs,
         normalizedResults,
+        evaluationGroups,
         diagnostics: extractLegalSearchDiagnostics(response, normalizedResults),
     };
 };

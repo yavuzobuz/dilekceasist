@@ -22,6 +22,7 @@ import {
     getLegalDocument,
     searchLegalDecisionsDetailed,
     type NormalizedLegalDecision,
+    type LegalSearchDetailedResult,
 } from '../utils/legalSearch';
 
 const SEARCH_AREAS = [
@@ -600,6 +601,8 @@ export default function PrecedentSearch() {
     const [isSearching, setIsSearching] = useState(false);
     const [hasResults, setHasResults] = useState(false);
     const [results, setResults] = useState<NormalizedLegalDecision[]>([]);
+    const [evaluationGroups, setEvaluationGroups] = useState<LegalSearchDetailedResult['evaluationGroups']>();
+    const [activeTab, setActiveTab] = useState<'all' | 'davaci_lehine' | 'davali_lehine' | 'notr'>('all');
     const [error, setError] = useState<string | null>(null);
     const [zeroResultMessage, setZeroResultMessage] = useState<string | null>(null);
     const [copiedId, setCopiedId] = useState<string | number | null>(null);
@@ -753,6 +756,8 @@ export default function PrecedentSearch() {
             });
 
             setResults(detailedResult.normalizedResults || []);
+            setEvaluationGroups(detailedResult.evaluationGroups);
+            setActiveTab('all');
             setZeroResultMessage(detailedResult.diagnostics.zeroResultMessage || null);
             setHasResults(true);
             void hydrateResultPreviews(searchRunId, detailedResult.normalizedResults || []);
@@ -770,6 +775,8 @@ export default function PrecedentSearch() {
         setSearchQuery('');
         setHasResults(false);
         setResults([]);
+        setEvaluationGroups(undefined);
+        setActiveTab('all');
         setError(null);
         setZeroResultMessage(null);
     };
@@ -947,19 +954,76 @@ export default function PrecedentSearch() {
                             </div>
                         ) : (
                             <>
-                                <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                                <div className="flex items-center justify-between pb-2 border-b border-white/10 mb-4">
                                     <h2 className="text-xl font-semibold text-white flex items-center gap-2">
                                         <Search className="w-5 h-5 text-red-500" />
                                         Arama Sonuçları
-                                        <span className="text-sm font-normal text-gray-500 ml-2">
-                                            ({results.length} sonuç bulundu)
-                                        </span>
+                                        {activeTab === 'all' && (
+                                            <span className="text-sm font-normal text-gray-500 ml-2">
+                                                ({results.length} sonuç bulundu)
+                                            </span>
+                                        )}
                                     </h2>
                                 </div>
 
+                                {/* Tabs */}
+                                {evaluationGroups && (
+                                    <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-none">
+                                        <button
+                                            onClick={() => setActiveTab('all')}
+                                            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap ${
+                                                activeTab === 'all'
+                                                    ? 'bg-red-500 text-white'
+                                                    : 'bg-[#1A1A1D] text-gray-400 hover:text-white border border-white/5'
+                                            }`}
+                                        >
+                                            Tümü ({results.length})
+                                        </button>
+                                        {evaluationGroups.davaci_lehine && evaluationGroups.davaci_lehine.length > 0 && (
+                                            <button
+                                                onClick={() => setActiveTab('davaci_lehine')}
+                                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2 ${
+                                                    activeTab === 'davaci_lehine'
+                                                        ? 'bg-green-600 text-white'
+                                                        : 'bg-[#1A1A1D] text-green-500 hover:text-green-400 border border-green-500/20'
+                                                }`}
+                                            >
+                                                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                                Davacı / Kabul ({evaluationGroups.davaci_lehine.length})
+                                            </button>
+                                        )}
+                                        {evaluationGroups.davali_lehine && evaluationGroups.davali_lehine.length > 0 && (
+                                            <button
+                                                onClick={() => setActiveTab('davali_lehine')}
+                                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2 ${
+                                                    activeTab === 'davali_lehine'
+                                                        ? 'bg-rose-600 text-white'
+                                                        : 'bg-[#1A1A1D] text-rose-500 hover:text-rose-400 border border-rose-500/20'
+                                                }`}
+                                            >
+                                                <div className="w-2 h-2 rounded-full bg-rose-500"></div>
+                                                Davalı / Red ({evaluationGroups.davali_lehine.length})
+                                            </button>
+                                        )}
+                                        {evaluationGroups.notr && evaluationGroups.notr.length > 0 && (
+                                            <button
+                                                onClick={() => setActiveTab('notr')}
+                                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2 ${
+                                                    activeTab === 'notr'
+                                                        ? 'bg-amber-600 text-white'
+                                                        : 'bg-[#1A1A1D] text-amber-500 hover:text-amber-400 border border-amber-500/20'
+                                                }`}
+                                            >
+                                                <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                                                Nötr / Usul ({evaluationGroups.notr.length})
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+
                                 {/* Premium Result Cards List */}
                                 <div className="space-y-8">
-                                    {results.map((result, index) => {
+                                    {(activeTab === 'all' ? results : (evaluationGroups?.[activeTab] || [])).map((result, index) => {
                                         const uniqueId = result.id || `res-${index}`;
                                         const isThisCopied = copiedId === uniqueId;
 
