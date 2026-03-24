@@ -228,13 +228,18 @@ export interface LegalSearchDetailedResult {
     request: Record<string, any>;
     response: any;
     normalizedResults: NormalizedLegalDecision[];
+    evaluationGroups?: {
+        davaci_lehine: NormalizedLegalDecision[];
+        davali_lehine: NormalizedLegalDecision[];
+        notr: NormalizedLegalDecision[];
+    };
     durationMs: number;
     diagnostics: LegalSearchResponseDiagnostics;
 }
 
 const REQUEST_TIMEOUT_MS = Math.max(
     15000,
-    Math.min(60000, Number((import.meta as any)?.env?.VITE_LEGAL_REQUEST_TIMEOUT_MS || 45000))
+    Math.min(90000, Number((import.meta as any)?.env?.VITE_LEGAL_REQUEST_TIMEOUT_MS || 90000))
 );
 const DOCUMENT_REQUEST_TIMEOUT_MS = Math.max(
     12000,
@@ -400,7 +405,7 @@ const normalizeLegalSearchPacketVariants = (values: LegalSearchPacket['searchVar
 };
 
 export const normalizeExplicitLegalSearchPacket = (value: LegalSearchPacket | null | undefined): LegalSearchPacket | undefined =>
-    normalizeSharedExplicitLegalSearchPacket(value) || undefined;
+    (normalizeSharedExplicitLegalSearchPacket(value as any) as unknown as LegalSearchPacket) || undefined;
 
 const normalizeLegalSearchPacket = normalizeExplicitLegalSearchPacket;
 

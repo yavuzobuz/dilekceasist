@@ -753,6 +753,7 @@ export default function PrecedentSearch() {
                 legalSearchPacket,
                 source: 'all',
                 filters: { searchArea },
+                searchMode: 'pro',
             });
 
             setResults(detailedResult.normalizedResults || []);
@@ -1023,7 +1024,7 @@ export default function PrecedentSearch() {
 
                                 {/* Premium Result Cards List */}
                                 <div className="space-y-8">
-                                    {(activeTab === 'all' ? results : (evaluationGroups?.[activeTab] || [])).map((result, index) => {
+                                    {(activeTab === 'all' ? results : (evaluationGroups?.[activeTab] || [])).map((result: NormalizedLegalDecision, index: number) => {
                                         const uniqueId = result.id || `res-${index}`;
                                         const isThisCopied = copiedId === uniqueId;
 
@@ -1045,7 +1046,7 @@ export default function PrecedentSearch() {
                                             result.snippet || result.ozet || 'İçerik bulunamadı.';
                                         const esasKarar = `Esas No: ${result.esasNo || '-'} — Karar No: ${result.kararNo || '-'}`;
                                         const backendMatchedConcepts = Array.isArray(result.matchHighlights)
-                                            ? result.matchHighlights.filter((item) => typeof item === 'string')
+                                            ? result.matchHighlights.filter((item: any) => typeof item === 'string')
                                             : [];
                                         const searchConcepts = extractSearchConcepts(searchQuery);
                                         const combinedTextForMatch = [result.title, result.daire, contentToDisplay]
