@@ -1,6 +1,6 @@
 import { getGeminiClient, GEMINI_MODEL_NAME } from './_shared.js';
 
-const EVALUATION_TIMEOUT_MS = 30000;
+const EVALUATION_TIMEOUT_MS = 15000;
 
 /**
  * Kararları batch olarak değerlendirip sınıflandırır.

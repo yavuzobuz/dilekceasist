@@ -226,6 +226,29 @@ export default async function handler(req, res) {
         }
     };
 
+    // Global safety timeout: respond before Vercel kills the function (60s limit)
+    const GLOBAL_TIMEOUT_MS = 55000;
+    let globalTimedOut = false;
+    const globalTimer = setTimeout(() => {
+        globalTimedOut = true;
+        abortRequest();
+        console.warn('[LEGAL_SEARCH] Global 55s safety timeout triggered');
+        if (!res.headersSent) {
+            return res.status(200).json({
+                results: [],
+                searchMode: 'auto',
+                retrievalDiagnostics: {
+                    backendMode: 'timeout_safety',
+                    fallbackUsed: false,
+                    fallbackReason: 'global_timeout_55s',
+                    upstream: 'none',
+                    zeroResultReason: 'global_timeout',
+                },
+                diagnostics: { globalTimeout: true },
+            });
+        }
+    }, GLOBAL_TIMEOUT_MS);
+
     req?.once?.('aborted', abortRequest);
     res?.once?.('close', () => {
         if (!res.writableEnded) {
@@ -517,7 +540,8 @@ export default async function handler(req, res) {
             searchMode: normalizedSearchMode,
         }));
     } catch (error) {
-        if (error?.code === 'REQUEST_ABORTED' || requestAbortController.signal.aborted || req.aborted) {
+        clearTimeout(globalTimer);
+        if (globalTimedOut || error?.code === 'REQUEST_ABORTED' || requestAbortController.signal.aborted || req.aborted) {
             return;
         }
         const statusCode = Number(error?.status) || 500;
@@ -525,5 +549,7 @@ export default async function handler(req, res) {
         return res.status(statusCode).json({
             error: getSafeErrorMessage(error, 'Karar aramasi su anda kullanilamiyor.'),
         });
+    } finally {
+        clearTimeout(globalTimer);
     }
 }
