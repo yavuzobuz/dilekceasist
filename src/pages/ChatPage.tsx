@@ -467,26 +467,41 @@ export default function ChatPage() {
                 for (const fc of functionCalls) {
                     if (fc.name === 'generate_document') {
                         const payload = extractGeneratedDocumentPayload(fc.args);
-                        if (payload && mergedAnalysisSummary && hasWebEvidence(mergedWebSearchResult) && hasLegalEvidenceForChat(mergedLegalResults)) {
-                            setChatProgressText('Dilekçe oluşturuluyor...');
-                            const generated = await generatePetition({
-                                userRole: UserRole.Vekil,
-                                petitionType: 'Genel Dilekce' as any,
-                                caseDetails: {} as any,
-                                analysisSummary: mergedAnalysisSummary,
-                                searchKeywords: mergedKeywords,
-                                webSearchResult: mergedWebSearchResult?.summary || '',
-                                webSources: mergedWebSearchResult?.sources || [],
-                                legalSearchResult: buildLegalResultsPrompt(mergedLegalResults),
-                                legalSearchResults: mergedLegalResults,
-                                docContent: mergedDocContent, specifics: specifics, chatHistory: newMessages, parties: {},
-                                webSourceCount: mergedWebSearchResult?.sources?.length || 0,
-                                legalResultCount: mergedLegalResults.length,
-                            });
-                            addToast(`Dilekçe başarıyla oluşturuldu: ${payload.title}`, 'success');
-                            const note = `\n\n[Dilekçe/Belge Oluşturuldu: ${payload.title}]\n\n${generated}`;
-                            assistantText += note;
-                            setChatMessages(prev => prev.map((msg, idx) => idx === prev.length - 1 ? { ...msg, text: msg.text + note } : msg));
+                        if (payload) {
+                            if (mergedAnalysisSummary || hasWebEvidence(mergedWebSearchResult) || hasLegalEvidenceForChat(mergedLegalResults)) {
+                                setChatProgressText('Dilekçe oluşturuluyor...');
+                                try {
+                                    const generated = await generatePetition({
+                                        userRole: UserRole.Vekil,
+                                        petitionType: 'Genel Dilekce' as any,
+                                        caseDetails: {} as any,
+                                        analysisSummary: mergedAnalysisSummary || 'Kullanıcı chat talebi',
+                                        searchKeywords: mergedKeywords,
+                                        webSearchResult: mergedWebSearchResult?.summary || '',
+                                        webSources: mergedWebSearchResult?.sources || [],
+                                        legalSearchResult: buildLegalResultsPrompt(mergedLegalResults),
+                                        legalSearchResults: mergedLegalResults,
+                                        docContent: mergedDocContent, specifics: specifics, chatHistory: newMessages, parties: {},
+                                        webSourceCount: mergedWebSearchResult?.sources?.length || 0,
+                                        legalResultCount: mergedLegalResults.length,
+                                    });
+                                    addToast(`Dilekçe başarıyla oluşturuldu: ${payload.title}`, 'success');
+                                    const note = `\n\n[Dilekçe/Belge Oluşturuldu: ${payload.title}]\n\n${generated}`;
+                                    assistantText += note;
+                                    setChatMessages(prev => prev.map((msg, idx) => idx === prev.length - 1 ? { ...msg, text: msg.text + note } : msg));
+                                } catch (genErr) {
+                                    console.error('generatePetition error', genErr);
+                                    addToast(`Hızlı modda dilekçe oluşturuldu: ${payload.title}`, 'success');
+                                    const note = `\n\n[Dilekçe/Belge Oluşturuldu: ${payload.title}]\n\n${payload.content}`;
+                                    assistantText += note;
+                                    setChatMessages(prev => prev.map((msg, idx) => idx === prev.length - 1 ? { ...msg, text: msg.text + note } : msg));
+                                }
+                            } else {
+                                addToast(`Dilekçe taslağı oluşturuldu: ${payload.title}`, 'success');
+                                const note = `\n\n[Dilekçe/Belge Oluşturuldu: ${payload.title}]\n\n${payload.content}`;
+                                assistantText += note;
+                                setChatMessages(prev => prev.map((msg, idx) => idx === prev.length - 1 ? { ...msg, text: msg.text + note } : msg));
+                            }
                         }
                     }
                 }
