@@ -239,7 +239,7 @@ export interface LegalSearchDetailedResult {
 
 const REQUEST_TIMEOUT_MS = Math.max(
     15000,
-    Math.min(90000, Number((import.meta as any)?.env?.VITE_LEGAL_REQUEST_TIMEOUT_MS || 90000))
+    Math.min(180000, Number((import.meta as any)?.env?.VITE_LEGAL_REQUEST_TIMEOUT_MS || 180000))
 );
 const DOCUMENT_REQUEST_TIMEOUT_MS = Math.max(
     12000,

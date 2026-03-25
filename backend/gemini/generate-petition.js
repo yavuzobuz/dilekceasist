@@ -150,10 +150,18 @@ function compactDecisionText(value) {
 
 function collectWebSources(params) {
     return normalizeArray(params?.webSources)
-        .map((source) => ({
-            title: normalizeText(source?.title),
-            uri: normalizeText(source?.uri),
-        }))
+        .map((source) => {
+            let title = normalizeText(source?.title);
+            let uri = normalizeText(source?.uri);
+            if (!title && uri) {
+                try { title = new URL(uri).hostname.replace('www.', ''); } catch {}
+            }
+            if (uri && uri.includes('vertexaisearch')) {
+                uri = '';
+                if (!title) title = 'Google Search Source';
+            }
+            return { title, uri };
+        })
         .filter((source) => source.title || source.uri)
         .slice(0, MAX_WEB_SOURCES_IN_PROMPT);
 }

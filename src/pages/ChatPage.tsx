@@ -8,7 +8,8 @@ import { Scale } from 'lucide-react';
 import { ChatMessage, WebSearchResult, AnalysisData, UserRole } from '../../types';
 import { analyzeDocuments, generateSearchKeywords, performWebSearch, streamChatResponse, generatePetition } from '../../services/geminiService';
 import { prepareChatAttachmentsForAnalysis, mergeAnalysisData } from '../utils/chatAttachmentProcessing';
-import { buildLegalSearchInputs, normalizeLegalSearchResults as normalizeSharedLegalSearchResults, searchLegalDecisionsDetailed, type NormalizedLegalDecision } from '../utils/legalSearch';
+import { buildLegalSearchInputs, normalizeLegalSearchResults as normalizeSharedLegalSearchResults, searchLegalDecisionsDetailed, getLegalDocument, type NormalizedLegalDecision } from '../utils/legalSearch';
+import { resolveLegalSourceForQuery } from '../utils/legalSource';
 
 type AlternativeLegalSearchResult = NormalizedLegalDecision;
 
@@ -111,15 +112,20 @@ const hasSearchOptOutIntent = (rawMessage: string): boolean => {
 const isExplicitWebSearchRequest = (raw: string): boolean => {
     const norm = normalizeKeywordText(raw);
     if (!norm || hasSearchOptOutIntent(norm)) return false;
-    // Sadece açık web araması talebi: "web araması yap", "internetten ara", "google'da bul" vb.
-    return /\b(web|internet|google|site|kaynak|link|url|internetten|webde|webden)\b/i.test(norm) && /\b(ara|arama|arastir|arastirma|bul|tara|getir|incele|listele)\b/i.test(norm);
+    // "web araması yap", "internetten ara", "google'da bul" vb.
+    const hasWebTerm = /(web|internet|google|internetten|webde|webden)/i.test(norm);
+    const hasSearchVerb = /(ara|bul|tara|getir|incele|listele|arastir)/i.test(norm);
+    return hasWebTerm && hasSearchVerb;
 };
 
 const isExplicitLegalSearchRequest = (raw: string): boolean => {
     const norm = normalizeKeywordText(raw);
     if (!norm || hasSearchOptOutIntent(norm)) return false;
-    // Sadece açık emsal/içtihat talebi: "emsal karar ara", "yargıtay kararı bul" vb.
-    return /\b(emsal|ictihat|yargitay|danistay|karar no|esas no|karar ara|ictihat ara)\b/i.test(norm) && /\b(ara|arama|arastir|arastirma|bul|getir|goster|listele|paylas|var mi|ne diyor|ornek)\b/i.test(norm);
+    // "karar" çok sık geçtiği için sadece "emsal", "yargıtay", "içtihat" veya "karar ara/bul" yan yana ise tetiklenir
+    const hasLegalTerm = /(emsal|ictihat|yargitay|danistay)/i.test(norm);
+    const hasSearchVerb = /(ara|bul|getir|goster|listele|paylas|ornek|arastir)/i.test(norm);
+    const hasKararAra = /(karar ara|kararlari ara|karar bul|kararlari bul|esas no|karar no)/i.test(norm);
+    return (hasLegalTerm && hasSearchVerb) || hasKararAra;
 };
 
 const isLikelyPetitionRequest = (rawMessage: string): boolean => {
@@ -220,8 +226,54 @@ export default function ChatPage() {
             });
 
             if (detailedResult.normalizedResults && detailedResult.normalizedResults.length > 0) {
-                if (!options.silent) addToast(`${detailedResult.normalizedResults.length} karar bulundu.`, 'success');
-                return detailedResult.normalizedResults;
+                const normalizedResults = detailedResult.normalizedResults as AlternativeLegalSearchResult[];
+                
+                // ALT-APP'den kopyalanan yapı: İlk kararların (veya özeti boş olanların) metinlerini çek
+                const enrichedResults = await Promise.all(normalizedResults.map(async (result, index) => {
+                    if ((result.ozet || result.snippet || '').trim()) {
+                        return result;
+                    }
+
+                    try {
+                        const resolvedSource =
+                            String(result.source || '').trim() ||
+                            resolveLegalSourceForQuery(
+                                [
+                                    result.source || '',
+                                    result.title || '',
+                                    result.daire || '',
+                                ],
+                                'all'
+                            );
+
+                        const content = await getLegalDocument({
+                            source: resolvedSource,
+                            documentId: result.documentId || result.id || `${result.title || 'karar'}-${index}`,
+                            title: result.title,
+                            esasNo: result.esasNo,
+                            kararNo: result.kararNo,
+                            tarih: result.tarih,
+                            daire: result.daire,
+                            ozet: result.ozet,
+                            snippet: result.snippet,
+                        });
+
+                        const plainText = String(content || '').replace(/[#*_>`-]+/g, ' ').replace(/\s+/g, ' ').trim();
+                        const preview = plainText.length > 600 ? `${plainText.slice(0, 599)}...` : plainText;
+                        if (!preview) return result;
+                        return {
+                            ...result,
+                            ozet: result.ozet || preview,
+                            snippet: result.snippet || preview,
+                            summaryText: plainText,
+                        };
+                    } catch {
+                        return result;
+                    }
+                }));
+
+                if (!options.silent) addToast(`${enrichedResults.length} karar bulundu.`, 'success');
+                return enrichedResults;
             }
 
             if (!options.silent) addToast('Karar bulunamadı.', 'warning');
@@ -279,8 +331,27 @@ export default function ChatPage() {
                 if (explicitKeys.length > 0) setSearchKeywords(mergedKeywords = Array.from(new Set([...mergedKeywords, ...explicitKeys])));
             }
 
-            const allowWebSearch = isExplicitWebSearchRequest(normalizedMessage) || isLikelyPetitionRequest(normalizedMessage);
-            const allowLegalSearch = isExplicitLegalSearchRequest(normalizedMessage) || isLikelyPetitionRequest(normalizedMessage);
+            let isWebExplicit = isExplicitWebSearchRequest(normalizedMessage);
+            let isLegalExplicit = isExplicitLegalSearchRequest(normalizedMessage);
+            const isPetition = isLikelyPetitionRequest(normalizedMessage);
+
+            // Sadece biri isteniyorsa diğerini eziyoruz, böylece her ikisi de aynı anda gereksiz yere çalışmaz. 
+            // Belge istenirse her ikisine de izin veriyoruz.
+            if (isPetition) {
+                isWebExplicit = true;
+                isLegalExplicit = true;
+            } else if (isWebExplicit && isLegalExplicit) {
+                // Eğer cümlede "sadece web" veya "web araması yap" ağırlıktaysa legal iptal, vs...
+                // Ya da basitçe ikisini de koruruz ancak biz burada en ağır basanı seçeceğiz,
+                // Ama genellikle biri açıkça istendiği için diğerinin "false positive" olma ihtimali yüksektir. 
+                // Örn: "Yargıtay kararını webden araştır" cümlesinde legal search ağırlıklıdır.
+                if (/(web aramasi yap|sadece web|internetten ara)/i.test(normalizeKeywordText(normalizedMessage))) {
+                    isLegalExplicit = false;
+                }
+            }
+
+            const allowWebSearch = isWebExplicit;
+            const allowLegalSearch = isLegalExplicit;
 
             let evidenceKeywords = mergedKeywords.length > 0 ? mergedKeywords : extractKeywordCandidates([mergedAnalysisSummary, mergedDocContent, normalizedMessage].filter(Boolean).join('\n'));
             
@@ -294,16 +365,52 @@ export default function ChatPage() {
                 try {
                     mergedWebSearchResult = mergeWebSearchResults(mergedWebSearchResult, await performWebSearch(evidenceKeywords));
                     setWebSearchResult(mergedWebSearchResult);
+                    // Sonuçları anında chat'e göster
+                    if (mergedWebSearchResult?.summary) {
+                        const sourcesText = (mergedWebSearchResult.sources || [])
+                            .filter((s: any) => s?.title || s?.uri)
+                            .map((s: any) => {
+                                const name = s.title || (s.uri ? new URL(s.uri).hostname.replace('www.', '') : 'Bilinmeyen Kaynak');
+                                return `- ${name}`;
+                            })
+                            .join('\n');
+                        const webResultMsg = `📌 **Web Araştırması Sonuçları:**\n\n${mergedWebSearchResult.summary}\n\n${sourcesText ? `**Kaynaklar:**\n${sourcesText}` : ''}`;
+                        setChatMessages(prev => [...prev, { role: 'model', text: webResultMsg }]);
+                    }
                 } catch (e) { console.error('Web search error', e); }
             }
 
             if (allowLegalSearch && evidenceKeywords.length > 0) {
                 setChatProgressText('Emsal karar aranıyor...');
                 try {
-                    const searchedResults = await runLegalSearch(evidenceKeywords, { silent: true, suppressError: true });
+                    // Orijinal mesajı rawQuery olarak gönder, ayrıca son mesajlardan oluşan bağlamı (context) AI asistanının anlaması için ekle
+                    const recentMessagesText = newMessages.slice(Math.max(0, newMessages.length - 6))
+                        .map(m => `${m.role === 'user' ? 'Kullanıcı' : 'Yapay Zeka'}: ${m.text}`).join('\n');
+                    const enrichedContextQuery = `Sorgu: ${normalizedMessage || evidenceKeywords.join(', ')}\n\n--- Sohbet Geçmişi (Bağlam) ---\n${recentMessagesText}`;
+                    
+                    const searchedResults = await runLegalSearch(enrichedContextQuery, { silent: true, suppressError: true });
                     mergedLegalResults = mergeUniqueLegalResults(mergedLegalResults, searchedResults);
                     setLegalSearchResults(mergedLegalResults);
                     setPrecedentContext(buildLegalResultsPrompt(mergedLegalResults));
+                    // Sonuçları anında chat'e göster
+                    if (mergedLegalResults.length > 0) {
+                        const newMessagesToAdd: ChatMessage[] = [];
+                        newMessagesToAdd.push({ role: 'model', text: `⚖️ **Emsal Karar Başarılı:** (${mergedLegalResults.length} karar bulundu. İlk 5 kararın içeriği aşağıdadır:)` });
+                        
+                        mergedLegalResults.slice(0, 5).forEach((r, i) => {
+                            const ref = [r.title, r.esasNo ? `E. ${r.esasNo}` : '', r.kararNo ? `K. ${r.kararNo}` : '', r.tarih].filter(Boolean).join(' | ');
+                            const sourceText = r.summaryText || r.ozet || r.snippet || '';
+                            const content = sourceText.toString().replace(/[\r\n]+/g, ' ').trim();
+                            const finalContent = content.length > 600 ? content.slice(0, 599) + '...' : content;
+                            
+                            newMessagesToAdd.push({ 
+                                role: 'model', 
+                                text: `**Karar ${i + 1}:** ${ref}\n\n> ${finalContent || 'İçerik çekilemedi, ancak karar referanslanabilir.'}` 
+                            });
+                        });
+                        
+                        setChatMessages(prev => [...prev, ...newMessagesToAdd]);
+                    }
                 } catch (e) { console.error('Legal search error', e); }
             }
             // Sohbet geçmişinden modelin "yapamıyorum" gibi zararlı eski cevaplarını temizle
@@ -321,9 +428,12 @@ export default function ChatPage() {
                 {
                     keywords: evidenceKeywords.join(', '),
                     searchSummary: mergedWebSearchResult?.summary || '',
-                    legalSummary: buildLegalResultsPrompt(mergedLegalResults),
-                    webSources: mergedWebSearchResult?.sources || [],
-                    legalSearchResults: mergedLegalResults,
+                    legalSummary: buildLegalResultsPrompt(mergedLegalResults.slice(0, 3)),
+                    webSources: (mergedWebSearchResult?.sources || []).slice(0, 4),
+                    legalSearchResults: mergedLegalResults.slice(0, 3).map(r => ({
+                        title: r.title, esasNo: r.esasNo, kararNo: r.kararNo, tarih: r.tarih,
+                        ozet: (r.ozet || '').slice(0, 150),
+                    })),
                     webSourceCount: mergedWebSearchResult?.sources?.length || 0,
                     legalResultCount: mergedLegalResults.length,
                     docContent: mergedDocContent,

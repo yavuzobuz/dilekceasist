@@ -1,5 +1,5 @@
 import { applyCors, getSafeErrorMessage } from '../../lib/api/cors.js';
-import { normalizeAiLegalSearchPlanWithDiagnostics } from '../gemini/legal-search-plan-core.js';
+import { normalizeAiLegalSearchPlanWithDiagnostics, generateLegalSearchPlanWithDiagnostics } from '../gemini/legal-search-plan-core.js';
 import { searchLegalDecisionsViaMcp } from '../../lib/legal/mcpLegalSearch.js';
 import {
     searchLegalDecisionsViaSimpleBedesten,
@@ -256,6 +256,19 @@ export default async function handler(req, res) {
         let normalizedProvidedPlan = null;
         if (req?.body?.aiSearchPlan && typeof req.body.aiSearchPlan === 'object') {
             normalizedProvidedPlan = normalizeAiLegalSearchPlanWithDiagnostics(req.body.aiSearchPlan, source);
+        } else if (normalizedSearchMode === 'pro' && !legalSearchPacket && rawQuery && rawQuery.length > 5) {
+            try {
+                const generatedPlan = await generateLegalSearchPlanWithDiagnostics({ rawText: rawQuery, preferredSource: source });
+                if (generatedPlan && generatedPlan.plan) {
+                    normalizedProvidedPlan = {
+                        plan: generatedPlan.plan,
+                        planDiagnostics: generatedPlan.diagnostics,
+                    };
+                    console.info(`[LEGAL_SEARCH] Auto-generated AI plan for pro search mode (rawQuery: ${rawQuery.slice(0, 50)})`);
+                }
+            } catch (planError) {
+                console.warn('[LEGAL_SEARCH] Failed to auto-generate AI plan:', planError?.message || planError);
+            }
         }
         const resolvedContract = resolveLegalSearchContract({
             rawText,

@@ -30,8 +30,19 @@ const buildSystemInstruction = ({ analysisSummary, context }) => {
     const webSources = normalizeArray(safeContext.webSources)
         .map((source) => {
             const title = normalizeText(source?.title);
-            const uri = normalizeText(source?.uri);
-            return title || uri ? `${title || uri}${title && uri ? ` | ${uri}` : ''}` : '';
+            let display = title;
+            if (!display && source?.uri) {
+                try {
+                    display = new URL(source.uri).hostname.replace('www.', '');
+                } catch {
+                    display = source.uri;
+                }
+            }
+            // Çirkin yönlendirme linklerini (vertexaisearch vb.) modele hiç verme
+            if (display && display.includes('vertexaisearch')) {
+                display = 'Google Search Source';
+            }
+            return display ? `- ${display}` : '';
         })
         .filter(Boolean)
         .slice(0, 6)
@@ -69,28 +80,24 @@ const buildSystemInstruction = ({ analysisSummary, context }) => {
         '- Kullanici anahtar kelime eklemek isterse update_search_keywords fonksiyonunu kullan.',
         '',
         'YETENEKLERIN:',
-        '- Web arastirmasi: Sistem arka planda otomatik olarak web arastirmasi yapar ve sonuclari sana iletir.',
-        '- Emsal karar aramasi: Sistem arka planda otomatik olarak Yargitay ve Danistay ictihat veritabanlarini tarar.',
-        '- Belge olusturma: generate_document fonksiyonu ile dilekce, ihtarname, sozlesme vb. olusturabilirsin.',
+        '- Web arastirmasi: Kullanici "web aramasi yap" veya "internetten ara" dediginde sistem otomatik web arastirmasi yapar.',
+        '- Emsal karar arama: Kullanici "emsal karar ara" veya "yargitay karari bul" dediginde sistem ictihat veritabanlarini tarar.',
+        '- Belge olusturma: Kullanici dilekce/belge istediginde sistem her iki aramayi da yapar ve generate_document ile belge olusturur.',
         '',
         'CEVAP VERIRKEN:',
-        '- ASLA "web aramasi yapamiyorum", "internete erisemiyorum" veya "arama yetenegim yok" gibi ifadeler KULLANMA.',
-        '- Asagidaki baglam bilgilerinde web arastirmasi veya emsal karar verileri varsa, bunlari aktif olarak kullanarak detayli ve kapsamli cevaplar ver.',
-        '- Eger baglam bilgilerinde henuz veri yoksa, kullaniciya "Bu konuda arastirma yapiliyor" de veya dogrudan bildiklerinle yardimci ol.',
+        '- ASLA "web aramasi yapamiyorum", "internete erisemiyorum", "arama yetenegim yok", "bu konuda arastirma yapiliyor" gibi ifadeler KULLANMA.',
+        '- ASLA "bekleyin" veya "en kisa surede sunulacak" gibi bekleme ifadeleri KULLANMA.',
+        '- Asagida web veya emsal karar verileri varsa bunlari kullanarak detayli cevap ver.',
+        '- Asagida veri yoksa, DOGRUDAN kendi hukuk bilginle kapsamli ve detayli cevap ver. Bilmiyormus gibi davranma.',
+        '- Gerektiginde kullaniciya "Daha detayli bilgi icin \'web aramasi yap\' veya \'emsal karar ara\' diyebilirsiniz" seklinde oneri sun.',
         '- Her zaman gercek bilgi ve mevzuat referanslarina dayanarak cevap ver.',
         '',
-        '=== MEVCUT BAGLAM VERILERI ===',
-        `Vaka Ozeti: ${summary || 'Henuz yok'}`,
-        `Anahtar Kelimeler: ${keywords || 'Henuz belirlenmedi'}`,
-        '',
-        hasWebData ? `--- WEB ARASTIRMASI SONUCLARI ---\n${webSummary || 'Ozet yok'}\n\nKaynaklar:\n${webSources || 'Kaynak yok'}` : '(Web arastirmasi henuz yapilmadi veya sonuc bulunamadi)',
-        '',
-        hasLegalData ? `--- EMSAL KARAR SONUCLARI ---\n${legalSummary || 'Ozet yok'}\n\nDetayli Sonuclar:\n${legalResults || 'Sonuc yok'}` : '(Emsal karar aramasi henuz yapilmadi veya sonuc bulunamadi)',
-        '',
-        additionalText ? `--- EK BELGELER ---\n${additionalText}` : '',
-        specialInstructions ? `--- OZEL TALIMATLAR ---\n${specialInstructions}` : '',
-        '',
-        'BELGE OLUSTURMA: Belge istendiginde, yukaridaki web arastirmasi ve emsal karar verilerini somut iddia veya ilgili madde ile eslestirerek kullan.',
+        hasWebData ? `=== WEB ARASTIRMASI SONUCLARI ===\n${webSummary || ''}\n\nKaynaklar:\n${webSources || ''}` : '',
+        hasLegalData ? `=== EMSAL KARAR SONUCLARI ===\n${legalSummary || ''}\n\nDetayli Sonuclar:\n${legalResults || ''}` : '',
+        summary ? `=== VAKA OZETI ===\n${summary}` : '',
+        keywords ? `Anahtar Kelimeler: ${keywords}` : '',
+        additionalText ? `=== EK BELGELER ===\n${additionalText}` : '',
+        specialInstructions ? `=== OZEL TALIMATLAR ===\n${specialInstructions}` : '',
     ].filter(Boolean).join('\n');
 };
 
@@ -140,16 +147,28 @@ export default async function handler(req, res) {
             },
         };
 
-        const contents = safeChatHistory.map((message) => {
+        const contents = [];
+        for (const message of safeChatHistory) {
             const parts = [{ text: normalizeText(message?.text) }];
             if (Array.isArray(message?.files) && message.files.length > 0) {
                 appendGeminiFileParts(parts, message.files);
             }
-            return {
-                role: message?.role === 'user' ? 'user' : 'model',
-                parts,
-            };
-        });
+            const role = message?.role === 'user' ? 'user' : 'model';
+            
+            if (contents.length > 0 && contents[contents.length - 1].role === role) {
+                // Aynı role sahip ardışık mesajları birleştir. Araya yeni satır ekleyerek metinleri ayır.
+                const lastParts = contents[contents.length - 1].parts;
+                const lastPartText = lastParts[lastParts.length - 1]?.text;
+                if (lastPartText && parts[0]?.text) {
+                    lastParts[lastParts.length - 1].text = lastPartText + '\n\n' + parts[0].text;
+                    lastParts.push(...parts.slice(1));
+                } else {
+                    lastParts.push(...parts);
+                }
+            } else {
+                contents.push({ role, parts });
+            }
+        }
 
         if (Array.isArray(files) && files.length > 0 && contents.length > 0) {
             const lastIndex = contents.length - 1;

@@ -24,6 +24,7 @@ import {
     type NormalizedLegalDecision,
     type LegalSearchDetailedResult,
 } from '../utils/legalSearch';
+import { resolveLegalSourceForQuery } from '../utils/legalSource';
 
 const SEARCH_AREAS = [
     { id: 'auto', label: 'Otomatik' },
@@ -756,12 +757,57 @@ export default function PrecedentSearch() {
                 searchMode: 'pro',
             });
 
-            setResults(detailedResult.normalizedResults || []);
+            const normalizedResults = detailedResult.normalizedResults || [];
+
+            // Alt-App mantığını burada uygula: Çıkan sonuçların metinlerini çek
+            const enrichedResults = await Promise.all(normalizedResults.map(async (result: NormalizedLegalDecision, index: number) => {
+                if ((result.ozet || result.snippet || '').trim()) {
+                    return result;
+                }
+                
+                try {
+                    const resolvedSource =
+                        String(result.source || '').trim() ||
+                        resolveLegalSourceForQuery(
+                            [
+                                result.source || '',
+                                result.title || '',
+                                result.daire || '',
+                            ],
+                            'all'
+                        );
+
+                    const content = await getLegalDocument({
+                        source: resolvedSource,
+                        documentId: result.documentId || result.id || `${result.title || 'karar'}-${index}`,
+                        title: result.title,
+                        esasNo: result.esasNo,
+                        kararNo: result.kararNo,
+                        tarih: result.tarih,
+                        daire: result.daire,
+                        ozet: result.ozet,
+                        snippet: result.snippet,
+                    });
+
+                    const plainText = String(content || '').replace(/[#*_>`-]+/g, ' ').replace(/\s+/g, ' ').trim();
+                    const preview = plainText.length > 600 ? `${plainText.slice(0, 599)}...` : plainText;
+                    if (!preview) return result;
+                    return {
+                        ...result,
+                        ozet: result.ozet || preview,
+                        snippet: result.snippet || preview,
+                    };
+                } catch {
+                    return result;
+                }
+            }));
+
+            setResults(enrichedResults);
             setEvaluationGroups(detailedResult.evaluationGroups);
             setActiveTab('all');
             setZeroResultMessage(detailedResult.diagnostics.zeroResultMessage || null);
             setHasResults(true);
-            void hydrateResultPreviews(searchRunId, detailedResult.normalizedResults || []);
+            void hydrateResultPreviews(searchRunId, enrichedResults);
         } catch (err: any) {
             console.error('Legal search error:', err);
             setError(err.message || 'Karar aranirken bir hata olustu.');

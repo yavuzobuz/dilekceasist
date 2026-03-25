@@ -373,6 +373,7 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -486,7 +487,7 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
                         ))}
                     </div>
                 )}
-                <div className="flex items-center gap-2">
+                <div className="relative flex items-end">
                     <input
                         ref={fileInputRef}
                         type="file"
@@ -495,40 +496,63 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
                         onChange={handleFileSelect}
                         className="hidden"
                     />
-                    <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="rounded-lg bg-gray-700 p-3 text-gray-300 transition-colors hover:bg-gray-600 hover:text-white"
-                        title="Dosya Ekle (PDF, UDF, Word, TXT, Resim)"
-                        disabled={isLoading || selectedFiles.length >= 5}
-                    >
-                        <Paperclip className="h-5 w-5" />
-                    </button>
-                    <VoiceInputButton
-                        disabled={isLoading}
-                        onTranscript={(text) => setInput((prev) => (prev.trim().length > 0 ? `${prev} ${text}` : text))}
-                    />
-                    <textarea
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                handleSend(e);
-                            }
-                        }}
-                        placeholder={selectedFiles.length > 0 ? 'Bu belgeler hakkinda soru sorun...' : 'AI asistana bir mesaj gonder...'}
-                        className="ai-input min-h-[48px] max-h-[200px] flex-1 resize-y rounded-lg p-3 transition-colors placeholder-gray-400"
-                        disabled={isLoading}
-                        rows={1}
-                    />
-                    <button
-                        type="submit"
-                        disabled={isLoading || (!input.trim() && selectedFiles.length === 0)}
-                        className="ai-button rounded-lg p-3 transition-colors disabled:cursor-not-allowed"
-                    >
-                        <PaperAirplaneIcon className="h-6 w-6" />
-                    </button>
+                    <div className="ai-input flex-1 flex items-end rounded-xl border border-gray-600 bg-gray-800/80 focus-within:border-red-500/50 focus-within:ring-1 focus-within:ring-red-500/30 transition-all">
+                        <div className="flex items-center gap-1 pl-3 pb-3">
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
+                                title="Dosya Ekle (PDF, UDF, Word, TXT, Resim)"
+                                disabled={isLoading || selectedFiles.length >= 5}
+                            >
+                                <Paperclip className="h-5 w-5" />
+                            </button>
+                            <VoiceInputButton
+                                disabled={isLoading}
+                                onTranscript={(text) => {
+                                    const newVal = input.trim().length > 0 ? `${input} ${text}` : text;
+                                    setInput(newVal);
+                                    if (textareaRef.current) {
+                                        setTimeout(() => {
+                                            if (textareaRef.current) {
+                                                textareaRef.current.style.height = 'auto';
+                                                textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+                                            }
+                                        }, 10);
+                                    }
+                                }}
+                            />
+                        </div>
+                        <textarea
+                            ref={textareaRef}
+                            value={input}
+                            onChange={(e) => {
+                                setInput(e.target.value);
+                                e.target.style.height = 'auto';
+                                e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSend(e);
+                                }
+                            }}
+                            placeholder={selectedFiles.length > 0 ? 'Bu belgeler hakkinda soru sorun...' : 'AI asistana bir mesaj gonder...'}
+                            className="min-h-[48px] flex-1 resize-none bg-transparent p-3 text-white placeholder-gray-400 focus:outline-none focus:ring-0 border-none overflow-y-auto outline-none shadow-none"
+                            style={{ height: '48px', maxHeight: '200px' }}
+                            disabled={isLoading}
+                            rows={1}
+                        />
+                        <div className="flex items-center pr-2 pb-3">
+                            <button
+                                type="submit"
+                                disabled={isLoading || (!input.trim() && selectedFiles.length === 0)}
+                                className="rounded-lg bg-red-600 p-2 text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                                <PaperAirplaneIcon className="h-5 w-5" />
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </form>
         </div>
