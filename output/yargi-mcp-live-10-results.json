@@ -1,0 +1,395 @@
+{
+  "generatedAt": "17.03.2026 16:48:45",
+  "summary": {
+    "total": 10,
+    "suitable": 8,
+    "borderline": 2,
+    "weak": 0,
+    "documentsFetched": 10,
+    "averageSearchDurationMs": 38475,
+    "averageTotalDurationMs": 38475,
+    "averageScore": 90.4
+  },
+  "results": [
+    {
+      "id": "ise-iade",
+      "label": "Ise iade ve gecersiz fesih",
+      "query": "ise iade gecersiz fesih",
+      "expectedCourt": "YARGITAYKARARI",
+      "expectedTerms": [
+        "ise iade",
+        "fesih",
+        "is sozlesmesi"
+      ],
+      "source": "yargitay",
+      "verdict": "sinirda",
+      "score": 60,
+      "resultCount": 8,
+      "searchDurationMs": 42310,
+      "documentDurationMs": 0,
+      "totalDurationMs": 42310,
+      "topDecision": {
+        "documentId": "1092311300",
+        "daire": "3. Hukuk Dairesi",
+        "esasNo": "2023/3333",
+        "kararNo": "2024/1939",
+        "tarih": "12.06.2024",
+        "source": "yargitay",
+        "resultIndex": 1
+      },
+      "termHits": 1,
+      "sourceHitCount": 5,
+      "relevantTopFiveCount": 5,
+      "documentFetched": true,
+      "documentFetchCount": 5,
+      "documentLength": 11982,
+      "notes": [
+        "ilk 5 icinde beklenen kaynak: 5",
+        "ilk 5 icinde ilgili karar: 5",
+        "karar metni kismen ilgili"
+      ]
+    },
+    {
+      "id": "fazla-mesai",
+      "label": "Fazla mesai ve puantaj",
+      "query": "fazla mesai puantaj",
+      "expectedCourt": "YARGITAYKARARI",
+      "expectedTerms": [
+        "fazla mesai",
+        "puantaj",
+        "isci"
+      ],
+      "source": "yargitay",
+      "verdict": "uygun",
+      "score": 100,
+      "resultCount": 20,
+      "searchDurationMs": 36333,
+      "documentDurationMs": 0,
+      "totalDurationMs": 36333,
+      "topDecision": {
+        "documentId": "694526400",
+        "daire": "9. Hukuk Dairesi",
+        "esasNo": "2021/9272",
+        "kararNo": "2021/13795",
+        "tarih": "06.10.2021",
+        "source": "yargitay",
+        "resultIndex": 3
+      },
+      "termHits": 3,
+      "sourceHitCount": 5,
+      "relevantTopFiveCount": 5,
+      "documentFetched": true,
+      "documentFetchCount": 5,
+      "documentLength": 6007,
+      "notes": [
+        "ilk 5 icinde beklenen kaynak: 5",
+        "ilk 5 icinde ilgili karar: 5",
+        "karar metni sorguyla guclu eslesiyor"
+      ]
+    },
+    {
+      "id": "uyusturucu",
+      "label": "Uyusturucu madde ticareti TCK 188",
+      "query": "uyusturucu madde ticareti tck 188",
+      "expectedCourt": "YARGITAYKARARI",
+      "expectedTerms": [
+        "uyusturucu",
+        "ticaret",
+        "tck 188"
+      ],
+      "source": "yargitay",
+      "verdict": "uygun",
+      "score": 92,
+      "resultCount": 15,
+      "searchDurationMs": 36628,
+      "documentDurationMs": 0,
+      "totalDurationMs": 36628,
+      "topDecision": {
+        "documentId": "881632300",
+        "daire": "Ceza Genel Kurulu",
+        "esasNo": "2017/576",
+        "kararNo": "2022/548",
+        "tarih": "13.09.2022",
+        "source": "yargitay",
+        "resultIndex": 1
+      },
+      "termHits": 2,
+      "sourceHitCount": 5,
+      "relevantTopFiveCount": 5,
+      "documentFetched": true,
+      "documentFetchCount": 5,
+      "documentLength": 79326,
+      "notes": [
+        "ilk 5 icinde beklenen kaynak: 5",
+        "ilk 5 icinde ilgili karar: 5",
+        "karar metni sorguyla guclu eslesiyor"
+      ]
+    },
+    {
+      "id": "itirazin-iptali",
+      "label": "Itirazin iptali ve icra inkar tazminati",
+      "query": "itirazin iptali icra inkar tazminati",
+      "expectedCourt": "YARGITAYKARARI",
+      "expectedTerms": [
+        "itirazin iptali",
+        "icra",
+        "inkar tazminati"
+      ],
+      "source": "yargitay",
+      "verdict": "uygun",
+      "score": 100,
+      "resultCount": 9,
+      "searchDurationMs": 44325,
+      "documentDurationMs": 0,
+      "totalDurationMs": 44325,
+      "topDecision": {
+        "documentId": "1189893000",
+        "daire": "9. Hukuk Dairesi",
+        "esasNo": "2025/7880",
+        "kararNo": "2025/9495",
+        "tarih": "03.12.2025",
+        "source": "yargitay",
+        "resultIndex": 1
+      },
+      "termHits": 3,
+      "sourceHitCount": 5,
+      "relevantTopFiveCount": 5,
+      "documentFetched": true,
+      "documentFetchCount": 5,
+      "documentLength": 8290,
+      "notes": [
+        "ilk 5 icinde beklenen kaynak: 5",
+        "ilk 5 icinde ilgili karar: 5",
+        "karar metni sorguyla guclu eslesiyor"
+      ]
+    },
+    {
+      "id": "menfi-tespit",
+      "label": "Menfi tespit ve bono",
+      "query": "menfi tespit bono",
+      "expectedCourt": "YARGITAYKARARI",
+      "expectedTerms": [
+        "menfi tespit",
+        "bono",
+        "borclu"
+      ],
+      "source": "yargitay",
+      "verdict": "uygun",
+      "score": 100,
+      "resultCount": 20,
+      "searchDurationMs": 39797,
+      "documentDurationMs": 0,
+      "totalDurationMs": 39797,
+      "topDecision": {
+        "documentId": "506562500",
+        "daire": "23. Hukuk Dairesi",
+        "esasNo": "2016/2509",
+        "kararNo": "2019/2123",
+        "tarih": "20.05.2019",
+        "source": "yargitay",
+        "resultIndex": 2
+      },
+      "termHits": 3,
+      "sourceHitCount": 5,
+      "relevantTopFiveCount": 5,
+      "documentFetched": true,
+      "documentFetchCount": 5,
+      "documentLength": 4409,
+      "notes": [
+        "ilk 5 icinde beklenen kaynak: 5",
+        "ilk 5 icinde ilgili karar: 5",
+        "karar metni sorguyla guclu eslesiyor"
+      ]
+    },
+    {
+      "id": "bosanma",
+      "label": "Bosanma, velayet, nafaka",
+      "query": "bosanma velayet nafaka",
+      "expectedCourt": "YARGITAYKARARI",
+      "expectedTerms": [
+        "bosanma",
+        "velayet",
+        "nafaka"
+      ],
+      "source": "yargitay",
+      "verdict": "uygun",
+      "score": 100,
+      "resultCount": 11,
+      "searchDurationMs": 37517,
+      "documentDurationMs": 0,
+      "totalDurationMs": 37517,
+      "topDecision": {
+        "documentId": "1189710300",
+        "daire": "2. Hukuk Dairesi",
+        "esasNo": "2025/3689",
+        "kararNo": "2025/11784",
+        "tarih": "24.12.2025",
+        "source": "yargitay",
+        "resultIndex": 3
+      },
+      "termHits": 3,
+      "sourceHitCount": 5,
+      "relevantTopFiveCount": 5,
+      "documentFetched": true,
+      "documentFetchCount": 5,
+      "documentLength": 3078,
+      "notes": [
+        "ilk 5 icinde beklenen kaynak: 5",
+        "ilk 5 icinde ilgili karar: 5",
+        "karar metni sorguyla guclu eslesiyor"
+      ]
+    },
+    {
+      "id": "tuketici",
+      "label": "Ayipli mal ve bedel iadesi",
+      "query": "ayipli mal bedel iadesi tuketici",
+      "expectedCourt": "YARGITAYKARARI",
+      "expectedTerms": [
+        "ayipli",
+        "bedel iadesi",
+        "tuketici"
+      ],
+      "source": "yargitay",
+      "verdict": "uygun",
+      "score": 92,
+      "resultCount": 6,
+      "searchDurationMs": 33722,
+      "documentDurationMs": 0,
+      "totalDurationMs": 33722,
+      "topDecision": {
+        "documentId": "514015600",
+        "daire": "13. Hukuk Dairesi",
+        "esasNo": "2017/5124",
+        "kararNo": "2019/3082",
+        "tarih": "11.03.2019",
+        "source": "yargitay",
+        "resultIndex": 2
+      },
+      "termHits": 2,
+      "sourceHitCount": 5,
+      "relevantTopFiveCount": 2,
+      "documentFetched": true,
+      "documentFetchCount": 5,
+      "documentLength": 9816,
+      "notes": [
+        "ilk 5 icinde beklenen kaynak: 5",
+        "ilk 5 icinde ilgili karar: 2",
+        "karar metni sorguyla guclu eslesiyor"
+      ]
+    },
+    {
+      "id": "imar",
+      "label": "Imar para cezasi ve yikim",
+      "query": "imar para cezasi yikim belediye encumeni",
+      "expectedCourt": "DANISTAYKARAR",
+      "expectedTerms": [
+        "imar",
+        "para cezasi",
+        "yikim"
+      ],
+      "source": "danistay",
+      "verdict": "uygun",
+      "score": 100,
+      "resultCount": 7,
+      "searchDurationMs": 37851,
+      "documentDurationMs": 0,
+      "totalDurationMs": 37851,
+      "topDecision": {
+        "documentId": "1191083700",
+        "daire": "İdare Dava Daireleri Kurulu",
+        "esasNo": "2025/2656",
+        "kararNo": "2025/1952",
+        "tarih": "16.10.2025",
+        "source": "danistay",
+        "resultIndex": 3
+      },
+      "termHits": 3,
+      "sourceHitCount": 5,
+      "relevantTopFiveCount": 5,
+      "documentFetched": true,
+      "documentFetchCount": 5,
+      "documentLength": 12134,
+      "notes": [
+        "ilk 5 icinde beklenen kaynak: 5",
+        "ilk 5 icinde ilgili karar: 5",
+        "karar metni sorguyla guclu eslesiyor"
+      ]
+    },
+    {
+      "id": "vergi",
+      "label": "Vergi ziyai cezasi ve sahte fatura",
+      "query": "vergi ziyai cezasi sahte fatura",
+      "expectedCourt": "DANISTAYKARAR",
+      "expectedTerms": [
+        "vergi",
+        "ziyai",
+        "fatura"
+      ],
+      "source": "danistay",
+      "verdict": "uygun",
+      "score": 100,
+      "resultCount": 20,
+      "searchDurationMs": 36909,
+      "documentDurationMs": 0,
+      "totalDurationMs": 36909,
+      "topDecision": {
+        "documentId": "1191273800",
+        "daire": "Vergi Dava Daireleri Kurulu",
+        "esasNo": "2025/194",
+        "kararNo": "2025/890",
+        "tarih": "12.11.2025",
+        "source": "danistay",
+        "resultIndex": 1
+      },
+      "termHits": 3,
+      "sourceHitCount": 5,
+      "relevantTopFiveCount": 5,
+      "documentFetched": true,
+      "documentFetchCount": 5,
+      "documentLength": 12148,
+      "notes": [
+        "ilk 5 icinde beklenen kaynak: 5",
+        "ilk 5 icinde ilgili karar: 5",
+        "karar metni sorguyla guclu eslesiyor"
+      ]
+    },
+    {
+      "id": "sigorta",
+      "label": "Trafik kazasi deger kaybi sigorta",
+      "query": "trafik kazasi deger kaybi sigorta",
+      "expectedCourt": "YARGITAYKARARI",
+      "expectedTerms": [
+        "trafik kazasi",
+        "deger kaybi",
+        "sigorta"
+      ],
+      "source": "yargitay",
+      "verdict": "sinirda",
+      "score": 60,
+      "resultCount": 20,
+      "searchDurationMs": 39358,
+      "documentDurationMs": 0,
+      "totalDurationMs": 39358,
+      "topDecision": {
+        "documentId": "1196492700",
+        "daire": "4. Hukuk Dairesi",
+        "esasNo": "2025/2456",
+        "kararNo": "2026/1304",
+        "tarih": "10.02.2026",
+        "source": "yargitay",
+        "resultIndex": 1
+      },
+      "termHits": 1,
+      "sourceHitCount": 5,
+      "relevantTopFiveCount": 5,
+      "documentFetched": true,
+      "documentFetchCount": 5,
+      "documentLength": 6740,
+      "notes": [
+        "ilk 5 icinde beklenen kaynak: 5",
+        "ilk 5 icinde ilgili karar: 5",
+        "karar metni kismen ilgili"
+      ]
+    }
+  ]
+}

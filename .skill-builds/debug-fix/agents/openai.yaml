@@ -1,0 +1,4 @@
+interface:
+  display_name: "Debug & Fix"
+  short_description: "Find root cause and apply safe fixes"
+  default_prompt: "Use $debug-fix to investigate this error, find the root cause, and apply the smallest safe fix."

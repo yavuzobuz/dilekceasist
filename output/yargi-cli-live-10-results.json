@@ -1,0 +1,1007 @@
+[
+  {
+    "id": "ise-iade",
+    "label": "Ise iade ve gecersiz fesih",
+    "inputText": "Gecersiz nedenle feshedilen is sozlesmesi nedeniyle ise iade, bos gecen sure ucreti ve ise baslatmama tazminati talebi.",
+    "expectedDomain": "is_hukuku",
+    "expectedSource": "YARGITAY",
+    "request": {
+      "source": "all",
+      "keyword": "ise iade gecersiz fesih",
+      "rawQuery": "Gecersiz nedenle feshedilen is sozlesmesi nedeniyle ise iade bos gecen sure ucreti ve ise baslatmama tazminati talebi",
+      "legalSearchPacket": {
+        "primaryDomain": "is_hukuku",
+        "preferredSource": "yargitay",
+        "searchSeedText": "ise iade gecersiz fesih",
+        "requiredConcepts": [
+          "ise iade",
+          "gecersiz fesih"
+        ]
+      },
+      "searchMode": "auto",
+      "filters": {}
+    },
+    "entry": "ui-flow-via-search-decisions-cli",
+    "statusCode": 200,
+    "totalDurationMs": 13482,
+    "resultCount": 3,
+    "detectedDomain": "is_hukuku",
+    "searchedCourts": [],
+    "retrievalDiagnostics": {
+      "backendMode": "simple_bedesten",
+      "queryVariants": [
+        "ise iade gecersiz fesih"
+      ],
+      "fallbackUsed": false,
+      "fallbackReason": null,
+      "upstream": "bedesten",
+      "provider": "cli",
+      "targetSources": [
+        "YARGITAYKARARI"
+      ],
+      "primaryDomain": "is_hukuku",
+      "packetApplied": true,
+      "packetPrimaryDomain": "is_hukuku",
+      "packetCaseType": null,
+      "packetRequiredConceptCount": 2,
+      "birimAdiCandidates": [
+        "H9",
+        "H22"
+      ],
+      "totalCandidates": 10,
+      "finalMatchedCount": 3,
+      "zeroResultReason": null,
+      "compatibilityFilterApplied": false,
+      "compatibilityFilteredOutCount": 0,
+      "contentRerankApplied": true,
+      "contentRerankCount": 10,
+      "simpleQualityScore": 89,
+      "qualityWarnings": [
+        "negative_match_bias",
+        "procedural_bias"
+      ],
+      "strictPrecisionGateApplied": true,
+      "strictPrecisionThreshold": 70,
+      "searchPhrase": "ise iade gecersiz fesih",
+      "searchPhraseSource": "packet_search_seed",
+      "searchVariantMode": null,
+      "selectedQueryVariant": "ise iade gecersiz fesih",
+      "searchVariantAttempts": [
+        {
+          "query": "ise iade gecersiz fesih",
+          "mode": null,
+          "birimAdi": "H9",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 1544,
+          "timeoutMs": 12000
+        }
+      ],
+      "selectedBirimAdi": "H9",
+      "cliVariantLimitApplied": 2,
+      "cliBudgetMs": 30000,
+      "cliElapsedMs": 13449,
+      "cliBudgetExceeded": false
+    },
+    "score": 95,
+    "verdict": "uygun",
+    "reasons": [
+      "results:3",
+      "domain:is_hukuku",
+      "source:YARGITAY",
+      "terms:1/4",
+      "top-hit:true"
+    ],
+    "matchedTerms": [
+      "ise iade"
+    ],
+    "topResults": [
+      {
+        "title": "9. Hukuk Dairesi 2025/9288 E. 2026/16 K.",
+        "daire": "9. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "ndikten sonra dosyadaki belgeler incelenip gereği düşünüldü: I. DAVA 1\\. Davacı vekili asıl dava dilekçesinde; müvekkilinin işe iade talepli olarak açtığı davada, davanın kabulü ile davacının işe iadesine ve 5 aylık iş güvencesi tazminatı i",
+        "relevanceScore": 100,
+        "selectionReason": "Tam metin dogrulamasi: ise iade, ispat yuku, is guvencesi eslesmesi"
+      },
+      {
+        "title": "9. Hukuk Dairesi 2025/9213 E. 2026/76 K.",
+        "daire": "9. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "olarak işten çıkarttığını, işten çıkartıldığı sırada davacının işyeri sendika temsilcisi olduğunu, davacının açtığı işe iade davası sonunda dava kabul edilerek davacının işe iadesine karar verildiğini, kararın istinaf incelemesinden geçerek",
+        "relevanceScore": 100,
+        "selectionReason": "Tam metin dogrulamasi: ise iade eslesmesi"
+      },
+      {
+        "title": "9. Hukuk Dairesi 2025/9214 E. 2026/77 K.",
+        "daire": "9. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "ki temyiz itirazları yerinde görülmemiştir. 2\\. 7036 sayılı İş Mahkemeleri Kanunu'nun (7036 sayılı Kanun) 3/1 hükmünde \"Kanuna, bireysel veya toplu iş sözleşmesine dayanan işçi veya işveren alacağı ve tazminatı ile işe iade talebi ile açıla",
+        "relevanceScore": 100,
+        "selectionReason": "Tam metin dogrulamasi: ise iade eslesmesi"
+      }
+    ],
+    "error": null,
+    "zeroResultMessage": null
+  },
+  {
+    "id": "fazla-mesai",
+    "label": "Fazla mesai ve puantaj",
+    "inputText": "Haftalik 45 saati asan calisma nedeniyle fazla mesai alacagi, puantaj kayitlari ve tanik anlatimlariyla ispat.",
+    "expectedDomain": "is_hukuku",
+    "expectedSource": "YARGITAY",
+    "request": {
+      "source": "all",
+      "keyword": "fazla mesai puantaj",
+      "rawQuery": "Haftalik 45 saati asan calisma nedeniyle fazla mesai alacagi puantaj kayitlari ve tanik anlatimlariyla ispat",
+      "legalSearchPacket": {
+        "primaryDomain": "is_hukuku",
+        "preferredSource": "yargitay",
+        "searchSeedText": "fazla mesai puantaj",
+        "requiredConcepts": [
+          "fazla mesai",
+          "puantaj"
+        ]
+      },
+      "searchMode": "auto",
+      "filters": {}
+    },
+    "entry": "ui-flow-via-search-decisions-cli",
+    "statusCode": 200,
+    "totalDurationMs": 19109,
+    "resultCount": 7,
+    "detectedDomain": "is_hukuku",
+    "searchedCourts": [],
+    "retrievalDiagnostics": {
+      "backendMode": "simple_bedesten",
+      "queryVariants": [
+        "fazla mesai puantaj"
+      ],
+      "fallbackUsed": false,
+      "fallbackReason": null,
+      "upstream": "bedesten",
+      "provider": "cli",
+      "targetSources": [
+        "YARGITAYKARARI"
+      ],
+      "primaryDomain": "is_hukuku",
+      "packetApplied": true,
+      "packetPrimaryDomain": "is_hukuku",
+      "packetCaseType": null,
+      "packetRequiredConceptCount": 2,
+      "birimAdiCandidates": [
+        "H9",
+        "H22"
+      ],
+      "totalCandidates": 10,
+      "finalMatchedCount": 7,
+      "zeroResultReason": null,
+      "compatibilityFilterApplied": false,
+      "compatibilityFilteredOutCount": 0,
+      "contentRerankApplied": true,
+      "contentRerankCount": 10,
+      "simpleQualityScore": 100,
+      "qualityWarnings": [],
+      "strictPrecisionGateApplied": true,
+      "strictPrecisionThreshold": 70,
+      "searchPhrase": "fazla mesai puantaj",
+      "searchPhraseSource": "packet_search_seed",
+      "searchVariantMode": null,
+      "selectedQueryVariant": "fazla mesai puantaj",
+      "searchVariantAttempts": [
+        {
+          "query": "fazla mesai puantaj",
+          "mode": null,
+          "birimAdi": "H9",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 2576,
+          "timeoutMs": 12000
+        }
+      ],
+      "selectedBirimAdi": "H9",
+      "cliVariantLimitApplied": 2,
+      "cliBudgetMs": 30000,
+      "cliElapsedMs": 19095,
+      "cliBudgetExceeded": false
+    },
+    "score": 95,
+    "verdict": "uygun",
+    "reasons": [
+      "results:7",
+      "domain:is_hukuku",
+      "source:YARGITAY",
+      "terms:2/4",
+      "top-hit:true"
+    ],
+    "matchedTerms": [
+      "fazla mesai",
+      "puantaj"
+    ],
+    "topResults": [
+      {
+        "title": "9. Hukuk Dairesi 2025/10187 E. 2026/66 K.",
+        "daire": "9. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "ni sayılacağı içtihat edilmiştir. Somut olayda, İlk Derece Mahkemesince gerekçede, \"Bilirkişi tarafından düzenlenen 27/03/2024 tarihli raporda davacının 2.967,48 TL fazla mesai ücreti alacağı ve 265,36 TL hafta tatili ücreti alacağının hesa",
+        "relevanceScore": 100,
+        "selectionReason": "Tam metin dogrulamasi: fazla mesai, puantaj, bordro eslesmesi | delil sinyalleri: bordro"
+      },
+      {
+        "title": "9. Hukuk Dairesi 2025/10190 E. 2026/69 K.",
+        "daire": "9. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "na geçiş sürecinde imzalanan sözleşmede asgari ücretin belirli oran fazlasına yönelik bir düzenleme bulunmadığı ve ücret bordroları, puantaj kayıtları ile yasal mevzuat dikkate alınarak hazırlanan 27.03.2024 tarihli bilirkişi raporunun dosy",
+        "relevanceScore": 100,
+        "selectionReason": "Tam metin dogrulamasi: puantaj, bordro, ispat eslesmesi | delil sinyalleri: bordro"
+      },
+      {
+        "title": "9. Hukuk Dairesi 2025/10191 E. 2026/70 K.",
+        "daire": "9. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "na geçiş sürecinde imzalanan sözleşmede asgari ücretin belirli oran fazlasına yönelik bir düzenleme bulunmadığı ve ücret bordroları, puantaj kayıtları ile yasal mevzuat dikkate alınarak hazırlanan 27.03.2024 tarihli bilirkişi raporunun dosy",
+        "relevanceScore": 100,
+        "selectionReason": "Tam metin dogrulamasi: puantaj, bordro, ispat eslesmesi | delil sinyalleri: bordro"
+      }
+    ],
+    "error": null,
+    "zeroResultMessage": null
+  },
+  {
+    "id": "uyusturucu",
+    "label": "Uyusturucu madde ticareti TCK 188",
+    "inputText": "Uyusturucu madde bulundurma eyleminin ticari amacla mi, kullanma amaciyla mi yapildigina dair emsal kararlar, delil degeri ve ayirt etme kriterleri.",
+    "expectedDomain": "ceza",
+    "expectedSource": "YARGITAY",
+    "request": {
+      "source": "all",
+      "keyword": "uyusturucu madde ticareti kisisel kullanim ayirt etme emare",
+      "rawQuery": "Uyusturucu madde bulundurma eyleminin ticari amacla mi kullanma amaciyla mi yapildigina dair emsal kararlar delil degeri ve ayirt etme kriterleri",
+      "legalSearchPacket": {
+        "primaryDomain": "ceza",
+        "preferredSource": "yargitay",
+        "searchSeedText": "uyusturucu madde ticareti kisisel kullanim ayirt etme emare",
+        "requiredConcepts": [
+          "uyusturucu madde ticareti",
+          "kisisel kullanim",
+          "ayirt etme",
+          "emare"
+        ],
+        "negativeConcepts": [
+          "icra",
+          "is hukuku"
+        ]
+      },
+      "searchMode": "pro",
+      "filters": {}
+    },
+    "entry": "ui-flow-via-search-decisions-cli",
+    "statusCode": 200,
+    "totalDurationMs": 68737,
+    "resultCount": 8,
+    "detectedDomain": "ceza",
+    "searchedCourts": [],
+    "retrievalDiagnostics": {
+      "backendMode": "legacy_mcp",
+      "queryVariants": [
+        "uyusturucu madde ticareti kisisel kullanim ayirt etme emare",
+        "uyusturucu madde ticareti kisisel kullanim ayirt etme",
+        "uyusturucu madde ticareti kisisel kullanim ayirt"
+      ],
+      "fallbackUsed": true,
+      "fallbackReason": "simple_no_results",
+      "upstream": "legacy_mcp",
+      "targetSources": [
+        "YARGITAYKARARI"
+      ],
+      "finalMatchedCount": 8,
+      "simpleQualityScore": 0,
+      "qualityWarnings": [
+        "no_candidates"
+      ],
+      "packetApplied": true,
+      "packetPrimaryDomain": "ceza",
+      "packetCaseType": null,
+      "packetRequiredConceptCount": 4,
+      "zeroResultReason": null
+    },
+    "score": 70,
+    "verdict": "sinirda",
+    "reasons": [
+      "results:8",
+      "domain:ceza",
+      "source:YARGITAY",
+      "terms:0/5"
+    ],
+    "matchedTerms": [],
+    "topResults": [
+      {
+        "title": "Yargıtay Kararı 1. Ceza Dairesi",
+        "daire": "1. Ceza Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "1. Ceza Dairesi 2025/7763 E. , 2025/9820 K. \"İçtihat Metni\" TALEBİNDE BULUNAN : Yargıtay Cumhuriyet Başsavcılığı TALEPTE BULUNULANİLGİLİ KURUL KARARI : Samsun Bölge Adliye Mahkemesi Ceza Daireleri Başkanlar Kurulunun 20.10.2025 tarih ve 202",
+        "relevanceScore": 77,
+        "selectionReason": "tam metinde anahtar kelimeler: madde, icin"
+      },
+      {
+        "title": "Yargıtay Kararı 1. Ceza Dairesi",
+        "daire": "1. Ceza Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "1. Ceza Dairesi 2024/7219 E. , 2025/9814 K. \"İçtihat Metni\" MAHKEMESİ :Ceza Dairesi SAYISI : 2024/1977 E., 2024/1951 K. SUÇ : Neticesi sebebiyle ağırlaşmış yaralama HÜKÜM : İstinaf başvurularının düzeltilerek esastan reddi TEBLİĞNAME GÖRÜŞÜ",
+        "relevanceScore": 77,
+        "selectionReason": "tam metinde anahtar kelimeler: madde, icin"
+      },
+      {
+        "title": "Yargıtay Kararı 1. Ceza Dairesi",
+        "daire": "1. Ceza Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "1. Ceza Dairesi 2024/7202 E. , 2025/9816 K. \"İçtihat Metni\" MAHKEMESİ :Ceza Dairesi SAYISI : 2023/2768 E., 2024/1503 K. SUÇ : Neticesi sebebiyle ağırlaşmış yaralama HÜKÜM : Mahkûmiyet TEBLİĞNAME GÖRÜŞÜ : Temyiz isteminin esastan reddi ile h",
+        "relevanceScore": 77,
+        "selectionReason": "tam metinde anahtar kelimeler: madde, icin"
+      }
+    ],
+    "error": null,
+    "zeroResultMessage": null
+  },
+  {
+    "id": "itirazin-iptali",
+    "label": "Itirazin iptali ve icra inkar tazminati",
+    "inputText": "Borca itiraz uzerine acilan itirazin iptali davasinda icra takibi, fatura, cari hesap alacagi ve icra inkar tazminati talebi.",
+    "expectedDomain": "icra",
+    "expectedSource": "YARGITAY",
+    "request": {
+      "source": "all",
+      "keyword": "itirazin iptali icra inkar tazminati",
+      "rawQuery": "Borca itiraz uzerine acilan itirazin iptali davasinda icra takibi fatura cari hesap alacagi ve icra inkar tazminati talebi",
+      "legalSearchPacket": {
+        "primaryDomain": "icra",
+        "preferredSource": "yargitay",
+        "searchSeedText": "itirazin iptali icra inkar tazminati",
+        "requiredConcepts": [
+          "itirazin iptali",
+          "icra inkar tazminati"
+        ]
+      },
+      "searchMode": "auto",
+      "filters": {}
+    },
+    "entry": "ui-flow-via-search-decisions-cli",
+    "statusCode": 200,
+    "totalDurationMs": 90864,
+    "resultCount": 20,
+    "detectedDomain": "icra",
+    "searchedCourts": [],
+    "retrievalDiagnostics": {
+      "backendMode": "legacy_mcp",
+      "queryVariants": [
+        "itirazin iptali icra inkar tazminati"
+      ],
+      "fallbackUsed": true,
+      "fallbackReason": "simple_no_results",
+      "upstream": "legacy_mcp",
+      "targetSources": [
+        "YARGITAYKARARI"
+      ],
+      "finalMatchedCount": 20,
+      "simpleQualityScore": 0,
+      "qualityWarnings": [
+        "no_candidates"
+      ],
+      "packetApplied": true,
+      "packetPrimaryDomain": "icra",
+      "packetCaseType": null,
+      "packetRequiredConceptCount": 2,
+      "zeroResultReason": null
+    },
+    "score": 70,
+    "verdict": "sinirda",
+    "reasons": [
+      "results:20",
+      "domain:icra",
+      "source:YARGITAY",
+      "terms:0/4"
+    ],
+    "matchedTerms": [],
+    "topResults": [
+      {
+        "title": "Yargıtay Kararı 12. Hukuk Dairesi",
+        "daire": "12. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "",
+        "relevanceScore": 88,
+        "selectionReason": "MCP arama sonucu"
+      },
+      {
+        "title": "Yargıtay Kararı 12. Hukuk Dairesi",
+        "daire": "12. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "",
+        "relevanceScore": 88,
+        "selectionReason": "MCP arama sonucu"
+      },
+      {
+        "title": "Yargıtay Kararı 12. Hukuk Dairesi",
+        "daire": "12. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "",
+        "relevanceScore": 88,
+        "selectionReason": "MCP arama sonucu"
+      }
+    ],
+    "error": null,
+    "zeroResultMessage": null
+  },
+  {
+    "id": "menfi-tespit",
+    "label": "Menfi tespit ve bono",
+    "inputText": "Borclu olmadiginin tespiti istemiyle acilan menfi tespit davasinda bononun bedelsiz oldugu savunmasi.",
+    "expectedDomain": "icra",
+    "expectedSource": "YARGITAY",
+    "request": {
+      "source": "all",
+      "keyword": "menfi tespit bono bedelsiz",
+      "rawQuery": "Borclu olmadiginin tespiti istemiyle acilan menfi tespit davasinda bononun bedelsiz oldugu savunmasi",
+      "legalSearchPacket": {
+        "primaryDomain": "icra",
+        "preferredSource": "yargitay",
+        "searchSeedText": "menfi tespit bono bedelsiz",
+        "requiredConcepts": [
+          "menfi tespit",
+          "bono"
+        ]
+      },
+      "searchMode": "auto",
+      "filters": {}
+    },
+    "entry": "ui-flow-via-search-decisions-cli",
+    "statusCode": 200,
+    "totalDurationMs": 12286,
+    "resultCount": 2,
+    "detectedDomain": "icra",
+    "searchedCourts": [],
+    "retrievalDiagnostics": {
+      "backendMode": "simple_bedesten",
+      "queryVariants": [
+        "menfi tespit bono bedelsiz",
+        "menfi tespit bono"
+      ],
+      "fallbackUsed": false,
+      "fallbackReason": null,
+      "upstream": "bedesten",
+      "provider": "cli",
+      "targetSources": [
+        "YARGITAYKARARI"
+      ],
+      "primaryDomain": "icra",
+      "packetApplied": true,
+      "packetPrimaryDomain": "icra",
+      "packetCaseType": null,
+      "packetRequiredConceptCount": 2,
+      "birimAdiCandidates": [
+        "H12"
+      ],
+      "totalCandidates": 10,
+      "finalMatchedCount": 2,
+      "zeroResultReason": null,
+      "compatibilityFilterApplied": false,
+      "compatibilityFilteredOutCount": 0,
+      "contentRerankApplied": true,
+      "contentRerankCount": 10,
+      "simpleQualityScore": 69,
+      "qualityWarnings": [
+        "procedural_bias"
+      ],
+      "strictPrecisionGateApplied": true,
+      "strictPrecisionThreshold": 70,
+      "searchPhrase": "menfi tespit bono bedelsiz",
+      "searchPhraseSource": "packet_search_seed",
+      "searchVariantMode": null,
+      "selectedQueryVariant": "menfi tespit bono bedelsiz",
+      "searchVariantAttempts": [
+        {
+          "query": "menfi tespit bono bedelsiz",
+          "mode": null,
+          "birimAdi": "H12",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 718,
+          "timeoutMs": 12000
+        }
+      ],
+      "selectedBirimAdi": "H12",
+      "cliVariantLimitApplied": 2,
+      "cliBudgetMs": 30000,
+      "cliElapsedMs": 12280,
+      "cliBudgetExceeded": false
+    },
+    "score": 95,
+    "verdict": "uygun",
+    "reasons": [
+      "results:2",
+      "domain:icra",
+      "source:YARGITAY",
+      "terms:1/4",
+      "top-hit:true"
+    ],
+    "matchedTerms": [
+      "bono"
+    ],
+    "topResults": [
+      {
+        "title": "12. Hukuk Dairesi 2025/6589 E. 2025/7705 K.",
+        "daire": "12. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "nlendikten ve dosya içerisindeki tüm belgeler okunup incelendikten sonra işin gereği görüşülüp düşünüldü: Bonoya dayalı olarak başlatılan kambiyo senetlerine mahsus haciz yolu ile ilamsız icra takibinin kesinleşmesinden sonra, ciranta ...’ı",
+        "relevanceScore": 100,
+        "selectionReason": "Tam metin dogrulamasi: bono eslesmesi"
+      },
+      {
+        "title": "12. Hukuk Dairesi 2025/6728 E. 2025/7791 K.",
+        "daire": "12. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "yda; alacaklı tarafından, borçlular hakkında kambiyo senetlerine mahsus haciz yoluyla icra takibi yapıldığı, takibe konu bonoda davacıların kefil sıfatıyla imzalarının bulunduğu, borçlulardan ..., ..., ... ve ... tarafından imzaya itiraz ed",
+        "relevanceScore": 100,
+        "selectionReason": "Tam metin dogrulamasi: bono eslesmesi"
+      }
+    ],
+    "error": null,
+    "zeroResultMessage": null
+  },
+  {
+    "id": "bosanma",
+    "label": "Bosanma, velayet, nafaka",
+    "inputText": "Evlilik birliginin temelinden sarsilmasi nedeniyle cekismeli bosanma, velayet ve yoksulluk nafakasi talepleri.",
+    "expectedDomain": "aile",
+    "expectedSource": "YARGITAY",
+    "request": {
+      "source": "all",
+      "keyword": "bosanma velayet nafaka",
+      "rawQuery": "Evlilik birliginin temelinden sarsilmasi nedeniyle cekismeli bosanma velayet ve yoksulluk nafakasi talepleri",
+      "legalSearchPacket": {
+        "primaryDomain": "aile",
+        "preferredSource": "yargitay",
+        "searchSeedText": "bosanma velayet nafaka",
+        "requiredConcepts": [
+          "bosanma",
+          "velayet",
+          "nafaka"
+        ]
+      },
+      "searchMode": "auto",
+      "filters": {}
+    },
+    "entry": "ui-flow-via-search-decisions-cli",
+    "statusCode": 200,
+    "totalDurationMs": 8105,
+    "resultCount": 9,
+    "detectedDomain": "aile",
+    "searchedCourts": [],
+    "retrievalDiagnostics": {
+      "backendMode": "simple_bedesten",
+      "queryVariants": [
+        "bosanma velayet nafaka"
+      ],
+      "fallbackUsed": false,
+      "fallbackReason": null,
+      "upstream": "bedesten",
+      "provider": "cli",
+      "targetSources": [
+        "YARGITAYKARARI"
+      ],
+      "primaryDomain": "aile",
+      "packetApplied": true,
+      "packetPrimaryDomain": "aile",
+      "packetCaseType": null,
+      "packetRequiredConceptCount": 3,
+      "birimAdiCandidates": [
+        "H2"
+      ],
+      "totalCandidates": 10,
+      "finalMatchedCount": 9,
+      "zeroResultReason": null,
+      "compatibilityFilterApplied": false,
+      "compatibilityFilteredOutCount": 0,
+      "contentRerankApplied": true,
+      "contentRerankCount": 10,
+      "simpleQualityScore": 100,
+      "qualityWarnings": [],
+      "strictPrecisionGateApplied": true,
+      "strictPrecisionThreshold": 70,
+      "searchPhrase": "bosanma velayet nafaka",
+      "searchPhraseSource": "packet_search_seed",
+      "searchVariantMode": null,
+      "selectedQueryVariant": "bosanma velayet nafaka",
+      "searchVariantAttempts": [
+        {
+          "query": "bosanma velayet nafaka",
+          "mode": null,
+          "birimAdi": "H2",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 783,
+          "timeoutMs": 12000
+        }
+      ],
+      "selectedBirimAdi": "H2",
+      "cliVariantLimitApplied": 2,
+      "cliBudgetMs": 30000,
+      "cliElapsedMs": 8096,
+      "cliBudgetExceeded": false
+    },
+    "score": 95,
+    "verdict": "uygun",
+    "reasons": [
+      "results:9",
+      "domain:aile",
+      "source:YARGITAY",
+      "terms:2/4",
+      "top-hit:true"
+    ],
+    "matchedTerms": [
+      "velayet",
+      "nafaka"
+    ],
+    "topResults": [
+      {
+        "title": "2. Hukuk Dairesi 2025/4879 E. 2025/12081 K.",
+        "daire": "2. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "erkek vekili tarafından kusur belirlemesi, kadının davasının kabulü, lehine hükmedilen maddi ve manevi miktarları, velayet düzenlemesi ile reddedilen iştirak nafakası talebi yönünden; davalı karşı davacı kadın vekili tarafından ise kusur be",
+        "relevanceScore": 100,
+        "selectionReason": "Tam metin dogrulamasi: velayet, nafaka, kusur eslesmesi"
+      },
+      {
+        "title": "2. Hukuk Dairesi 2025/4805 E. 2025/12036 K.",
+        "daire": "2. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "tarihi ve numarası gösterilen hüküm davalı-davacı erkek vekili tarafından asıl davanın kabulü, kusur belirlemesi, velâyet, kişisel ilişki süreleri, hükmedilen nafaka ve tazminatlar, reddedilen tazminatlar ile ziynet alacağının kabul edilen ",
+        "relevanceScore": 100,
+        "selectionReason": "Tam metin dogrulamasi: velayet, nafaka, kusur eslesmesi"
+      },
+      {
+        "title": "2. Hukuk Dairesi 2025/4770 E. 2025/12030 K.",
+        "daire": "2. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "yukarıda tarihi ve numarası gösterilen hüküm davacı- karşı davalı erkek tarafından kusur belirlemesi, hükmedilen nafaka ve tazminatlar yönünden; davalı- karşı davacı kadın vekili tarafından ise asıl davanın kabulü, kusur belirlemesi, hükmed",
+        "relevanceScore": 100,
+        "selectionReason": "Tam metin dogrulamasi: nafaka, kusur eslesmesi"
+      }
+    ],
+    "error": null,
+    "zeroResultMessage": null
+  },
+  {
+    "id": "tuketici",
+    "label": "Ayipli mal ve bedel iadesi",
+    "inputText": "Ayipli mal satisi nedeniyle bedel iadesi, misli ile degisim ve tuketicinin korunmasina iliskin emsal kararlar.",
+    "expectedDomain": "tuketici",
+    "expectedSource": "YARGITAY",
+    "request": {
+      "source": "all",
+      "keyword": "ayipli mal bedel iadesi",
+      "rawQuery": "Ayipli mal satisi nedeniyle bedel iadesi misli ile degisim ve tuketicinin korunmasina iliskin emsal kararlar",
+      "legalSearchPacket": {
+        "primaryDomain": "tuketici",
+        "preferredSource": "yargitay",
+        "searchSeedText": "ayipli mal bedel iadesi",
+        "requiredConcepts": [
+          "ayipli mal",
+          "bedel iadesi"
+        ]
+      },
+      "searchMode": "auto",
+      "filters": {}
+    },
+    "entry": "ui-flow-via-search-decisions-cli",
+    "statusCode": 200,
+    "totalDurationMs": 94830,
+    "resultCount": 7,
+    "detectedDomain": "hukuk",
+    "searchedCourts": [],
+    "retrievalDiagnostics": {
+      "backendMode": "legacy_mcp",
+      "queryVariants": [
+        "ayipli mal bedel iadesi"
+      ],
+      "fallbackUsed": true,
+      "fallbackReason": "simple_no_results",
+      "upstream": "legacy_mcp",
+      "targetSources": [
+        "YARGITAYKARARI"
+      ],
+      "finalMatchedCount": 7,
+      "simpleQualityScore": 0,
+      "qualityWarnings": [
+        "no_candidates"
+      ],
+      "packetApplied": true,
+      "packetPrimaryDomain": "tuketici",
+      "packetCaseType": null,
+      "packetRequiredConceptCount": 2,
+      "zeroResultReason": null
+    },
+    "score": 70,
+    "verdict": "sinirda",
+    "reasons": [
+      "results:7",
+      "domain-mismatch:hukuk",
+      "source:YARGITAY",
+      "terms:1/4",
+      "top-hit:true"
+    ],
+    "matchedTerms": [
+      "tuketici"
+    ],
+    "topResults": [
+      {
+        "title": "Yargıtay Kararı 1. Hukuk Dairesi",
+        "daire": "1. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "1. Hukuk Dairesi 2025/6795 E. , 2025/6305 K. \"İçtihat Metni\" MAHKEMESİ : Trabzon Bölge Adliye Mahkemesi 1. Hukuk Dairesi SAYISI : 2025/1500 E., 2025/1712 K. İLK DERECE MAHKEMESİ : Trabzon Tüketici Mahkemesi SAYISI : 2022/226 E., 2025/168 K.",
+        "relevanceScore": 66,
+        "selectionReason": "tam metinde anahtar kelimeler: bedel, tuketici"
+      },
+      {
+        "title": "Yargıtay Kararı 1. Hukuk Dairesi",
+        "daire": "1. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "1. Hukuk Dairesi 2025/1531 E. , 2025/6253 K. \"İçtihat Metni\" MAHKEMESİ : Samsun Bölge Adliye Mahkemesi 1. Hukuk Dairesi SAYISI : 2024/3418 E., 2025/114 K. İLK DERECE MAHKEMESİ : Ünye 1. Asliye Hukuk Mahkemesi SAYISI : 2023/42 E., 2024/402 K",
+        "relevanceScore": 60,
+        "selectionReason": "tam metinde anahtar kelimeler: mal, bedel"
+      },
+      {
+        "title": "Yargıtay Kararı 1. Hukuk Dairesi",
+        "daire": "1. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "1. Hukuk Dairesi 2025/1681 E. , 2025/6255 K. \"İçtihat Metni\" MAHKEMESİ : İstanbul Bölge Adliye Mahkemesi 2. Hukuk Dairesi SAYISI : 2023/1583 E., 2025/164 K. İLK DERECE MAHKEMESİ : Büyükçekmece 4. Asliye Hukuk Mahkemesi SAYISI : 2020/62 E., ",
+        "relevanceScore": 60,
+        "selectionReason": "tam metinde anahtar kelimeler: mal, bedel"
+      }
+    ],
+    "error": null,
+    "zeroResultMessage": null
+  },
+  {
+    "id": "imar",
+    "label": "Imar para cezasi ve yikim",
+    "inputText": "Ruhsatsiz yapi nedeniyle belediye encumenince verilen imar para cezasi ile yikim kararinin iptali ve yurutmenin durdurulmasi talebi.",
+    "expectedDomain": "idare",
+    "expectedSource": "DANISTAY",
+    "request": {
+      "source": "all",
+      "keyword": "imar para cezasi yikim yurutmenin durdurulmasi",
+      "rawQuery": "Ruhsatsiz yapi nedeniyle belediye encumenince verilen imar para cezasi ile yikim kararinin iptali ve yurutmenin durdurulmasi talebi",
+      "legalSearchPacket": {
+        "primaryDomain": "idare",
+        "preferredSource": "danistay",
+        "searchSeedText": "imar para cezasi yikim yurutmenin durdurulmasi",
+        "requiredConcepts": [
+          "imar para cezasi",
+          "yikim",
+          "yurutmenin durdurulmasi"
+        ]
+      },
+      "searchMode": "auto",
+      "filters": {}
+    },
+    "entry": "ui-flow-via-search-decisions-cli",
+    "statusCode": 200,
+    "totalDurationMs": 98289,
+    "resultCount": 20,
+    "detectedDomain": "idare",
+    "searchedCourts": [],
+    "retrievalDiagnostics": {
+      "backendMode": "legacy_mcp",
+      "queryVariants": [
+        "imar para cezasi yikim yurutmenin durdurulmasi"
+      ],
+      "fallbackUsed": true,
+      "fallbackReason": "simple_no_results",
+      "upstream": "legacy_mcp",
+      "targetSources": [
+        "DANISTAYKARAR"
+      ],
+      "finalMatchedCount": 20,
+      "simpleQualityScore": 0,
+      "qualityWarnings": [
+        "no_candidates"
+      ],
+      "packetApplied": true,
+      "packetPrimaryDomain": "idare",
+      "packetCaseType": null,
+      "packetRequiredConceptCount": 3,
+      "zeroResultReason": null
+    },
+    "score": 70,
+    "verdict": "sinirda",
+    "reasons": [
+      "results:20",
+      "domain:idare",
+      "source:DANISTAY",
+      "terms:0/5"
+    ],
+    "matchedTerms": [],
+    "topResults": [
+      {
+        "title": "Danıştay Kararı 1. Daire",
+        "daire": "1. Daire",
+        "source": "danistay",
+        "summaryPreview": "",
+        "relevanceScore": 96,
+        "selectionReason": "Anahtar kelimeler: karari"
+      },
+      {
+        "title": "Danıştay Kararı 1. Daire",
+        "daire": "1. Daire",
+        "source": "danistay",
+        "summaryPreview": "",
+        "relevanceScore": 96,
+        "selectionReason": "Anahtar kelimeler: karari"
+      },
+      {
+        "title": "Danıştay Kararı 1. Daire",
+        "daire": "1. Daire",
+        "source": "danistay",
+        "summaryPreview": "",
+        "relevanceScore": 96,
+        "selectionReason": "Anahtar kelimeler: karari"
+      }
+    ],
+    "error": null,
+    "zeroResultMessage": null
+  },
+  {
+    "id": "vergi",
+    "label": "Vergi ziyai cezasi ve sahte fatura",
+    "inputText": "Vergi ziyai cezasi, sahte fatura kullanimi iddiasi ve tarhiyat islemine karsi acilan davaya iliskin emsal kararlar.",
+    "expectedDomain": "vergi",
+    "expectedSource": "DANISTAY",
+    "request": {
+      "source": "all",
+      "keyword": "vergi ziyai cezasi sahte fatura tarhiyat",
+      "rawQuery": "Vergi ziyai cezasi sahte fatura kullanimi iddiasi ve tarhiyat islemine karsi acilan davaya iliskin emsal kararlar",
+      "legalSearchPacket": {
+        "primaryDomain": "vergi",
+        "preferredSource": "danistay",
+        "searchSeedText": "vergi ziyai cezasi sahte fatura tarhiyat",
+        "requiredConcepts": [
+          "vergi ziyai cezasi",
+          "sahte fatura",
+          "tarhiyat"
+        ]
+      },
+      "searchMode": "auto",
+      "filters": {}
+    },
+    "entry": "ui-flow-via-search-decisions-cli",
+    "statusCode": 200,
+    "totalDurationMs": 130968,
+    "resultCount": 0,
+    "detectedDomain": "idare",
+    "searchedCourts": [],
+    "retrievalDiagnostics": {
+      "backendMode": "legacy_mcp",
+      "queryVariants": [
+        "vergi ziyai cezasi sahte fatura tarhiyat"
+      ],
+      "fallbackUsed": true,
+      "fallbackReason": "simple_no_results",
+      "upstream": "legacy_mcp",
+      "targetSources": [
+        "DANISTAYKARAR"
+      ],
+      "finalMatchedCount": 0,
+      "simpleQualityScore": 0,
+      "qualityWarnings": [
+        "no_candidates"
+      ],
+      "packetApplied": true,
+      "packetPrimaryDomain": "vergi",
+      "packetCaseType": null,
+      "packetRequiredConceptCount": 3,
+      "zeroResultReason": "no_candidates"
+    },
+    "score": 20,
+    "verdict": "zayif",
+    "reasons": [
+      "results:0",
+      "domain-mismatch:idare",
+      "source:DANISTAY",
+      "terms:0/4"
+    ],
+    "matchedTerms": [],
+    "topResults": [],
+    "error": null,
+    "zeroResultMessage": null
+  },
+  {
+    "id": "sigorta",
+    "label": "Trafik kazasi deger kaybi sigorta",
+    "inputText": "Trafik kazasi nedeniyle arac deger kaybi, sigorta sirketinin sorumlulugu ve ekspertiz raporunun delil degeri.",
+    "expectedDomain": "ticaret",
+    "expectedSource": "YARGITAY",
+    "request": {
+      "source": "all",
+      "keyword": "trafik kazasi deger kaybi sigorta",
+      "rawQuery": "Trafik kazasi nedeniyle arac deger kaybi sigorta sirketinin sorumlulugu ve ekspertiz raporunun delil degeri",
+      "legalSearchPacket": {
+        "primaryDomain": "ticaret",
+        "preferredSource": "yargitay",
+        "searchSeedText": "trafik kazasi deger kaybi sigorta",
+        "requiredConcepts": [
+          "deger kaybi",
+          "sigorta sirketi",
+          "trafik kazasi"
+        ]
+      },
+      "searchMode": "auto",
+      "filters": {}
+    },
+    "entry": "ui-flow-via-search-decisions-cli",
+    "statusCode": 200,
+    "totalDurationMs": 86980,
+    "resultCount": 8,
+    "detectedDomain": "hukuk",
+    "searchedCourts": [],
+    "retrievalDiagnostics": {
+      "backendMode": "legacy_mcp",
+      "queryVariants": [
+        "trafik kazasi deger kaybi sigorta",
+        "deger kaybi sigorta sirketi trafik kazasi"
+      ],
+      "fallbackUsed": true,
+      "fallbackReason": "simple_no_results",
+      "upstream": "legacy_mcp",
+      "targetSources": [
+        "YARGITAYKARARI"
+      ],
+      "finalMatchedCount": 8,
+      "simpleQualityScore": 0,
+      "qualityWarnings": [
+        "no_candidates"
+      ],
+      "packetApplied": true,
+      "packetPrimaryDomain": "ticaret",
+      "packetCaseType": null,
+      "packetRequiredConceptCount": 3,
+      "zeroResultReason": null
+    },
+    "score": 45,
+    "verdict": "zayif",
+    "reasons": [
+      "results:8",
+      "domain-mismatch:hukuk",
+      "source:YARGITAY",
+      "terms:0/4"
+    ],
+    "matchedTerms": [],
+    "topResults": [
+      {
+        "title": "Yargıtay Kararı 1. Hukuk Dairesi",
+        "daire": "1. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "1. Hukuk Dairesi 2025/1531 E. , 2025/6253 K. \"İçtihat Metni\" MAHKEMESİ : Samsun Bölge Adliye Mahkemesi 1. Hukuk Dairesi SAYISI : 2024/3418 E., 2025/114 K. İLK DERECE MAHKEMESİ : Ünye 1. Asliye Hukuk Mahkemesi SAYISI : 2023/42 E., 2024/402 K",
+        "relevanceScore": 50,
+        "selectionReason": "tam metinde anahtar kelimeler: deger"
+      },
+      {
+        "title": "Yargıtay Kararı 1. Hukuk Dairesi",
+        "daire": "1. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "1. Hukuk Dairesi 2025/1631 E. , 2025/6254 K. \"İçtihat Metni\" MAHKEMESİ : Antalya Bölge Adliye Mahkemesi 1. Hukuk Dairesi SAYISI : 2023/45 E., 2025/107 K. İLK DERECE MAHKEMESİ : Antalya 13. Asliye Hukuk Mahkemesi SAYISI : 2022/260 E., 2022/5",
+        "relevanceScore": 50,
+        "selectionReason": "tam metinde anahtar kelimeler: deger"
+      },
+      {
+        "title": "Yargıtay Kararı 1. Hukuk Dairesi",
+        "daire": "1. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "1. Hukuk Dairesi 2025/6034 E. , 2025/6259 K. \"İçtihat Metni\" MAHKEMESİ :Asliye Hukuk Mahkemesi SAYISI : 2012/107 E., 2012/213 K. Kestel Asliye Hukuk Mahkemesince verilen karar; davalı ... vekili tarafından temyiz edilmekle; kesinlik, süre, ",
+        "relevanceScore": 49,
+        "selectionReason": "tam metinde anahtar kelimeler: deger"
+      }
+    ],
+    "error": null,
+    "zeroResultMessage": null
+  }
+]

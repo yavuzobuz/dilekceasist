@@ -1,0 +1,108 @@
+{
+  "summary": {
+    "runAt": "12.03.2026 01:40:11",
+    "total": 2,
+    "passCount": 2,
+    "borderlineCount": 0,
+    "failCount": 0,
+    "avgDurationMs": 44975
+  },
+  "results": [
+    {
+      "order": 1,
+      "branch": "Idare",
+      "id": "tarim-arazisi-prefabrik-yeni",
+      "label": "Tarim arazisinde prefabrik yapi, encumen cezasi ve yikim",
+      "rawQuery": "Davaci, tarim vasifli tasinmazina gecici oldugunu dusundugu prefabrik bir yapi koyduktan sonra belediye tarafindan ruhsatsiz yapilasma gerekcesiyle encumen karari ile idari para cezasi verildigini, ayrica yikim ve tahliye islemi tesis edildigini, yapinin tarimsal faaliyetle baglantili oldugunu ve islemin olcululuk ile yetki unsuru yonunden hukuka aykiri bulundugunu ileri surerek iptal ve yurutmenin durdurulmasi isteminde bulunmaktadir.",
+      "attempts": [
+        {
+          "attempt": 1,
+          "statusCode": 200,
+          "durationMs": 40448,
+          "error": null,
+          "resultCount": 10
+        }
+      ],
+      "attemptCount": 1,
+      "durationMs": 40448,
+      "statusCode": 200,
+      "verdict": "pass",
+      "aiLegalArea": "idare",
+      "requiredConcepts": [
+        "yıkım kararı",
+        "yıkım ı",
+        "idari para cezası",
+        "tarım arazisi",
+        "belediye encümen ı"
+      ],
+      "supportConcepts": [
+        "prefabrik yapı",
+        "geçici yapı",
+        "ölçülülük ilkesi",
+        "tarım faaliyeti"
+      ],
+      "targetSources": [
+        "danistay"
+      ],
+      "resultCount": 10,
+      "topResult": {
+        "source": "danistay",
+        "title": "Danıştay Kararı 6. Daire",
+        "daire": "6. Daire",
+        "matchedKeywordCount": 5,
+        "semanticScore": 0.712,
+        "retrievalStage": "full_text"
+      },
+      "error": null
+    },
+    {
+      "order": 2,
+      "branch": "Idare",
+      "id": "memur-sosyal-medya-disiplin-yeni",
+      "label": "Memur sosyal medya paylasimi nedeniyle disiplin cezasi",
+      "rawQuery": "Bir kamu gorevlisine, mesai disinda yaptigi sosyal medya paylasimlarinin kurum itibarini zedeledigi gerekcesiyle ayliktan kesme cezasi verilmis, savunmasi alinirken iddialarin somutlastirilmadigi, disiplin amirinin tarafsiz davranmadigi ve paylasimlarin ifade ozgurlugu kapsaminda kaldigi ileri surulerek disiplin cezasinin iptali istenmistir.",
+      "attempts": [
+        {
+          "attempt": 1,
+          "statusCode": 200,
+          "durationMs": 49501,
+          "error": null,
+          "resultCount": 10
+        }
+      ],
+      "attemptCount": 1,
+      "durationMs": 49501,
+      "statusCode": 200,
+      "verdict": "pass",
+      "aiLegalArea": "idare",
+      "requiredConcepts": [
+        "kamu görevlisi",
+        "disiplin cezası",
+        "aylıktan kesme",
+        "ifade özgürlüğü",
+        "kurum itibarı",
+        "disiplin cezası iptali"
+      ],
+      "supportConcepts": [
+        "savunma hakkı",
+        "tarafsızlık",
+        "sosyal medya paylaşımı",
+        "somutlaştırma"
+      ],
+      "targetSources": [
+        "danistay",
+        "anayasa"
+      ],
+      "resultCount": 10,
+      "topResult": {
+        "source": "danistay",
+        "title": "Danıştay Kararı 12. Daire",
+        "daire": "12. Daire",
+        "matchedKeywordCount": 6,
+        "semanticScore": 0.6443,
+        "retrievalStage": "full_text"
+      },
+      "error": null
+    }
+  ]
+}

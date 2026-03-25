@@ -1,0 +1,410 @@
+# Yargi CLI Live Report
+
+## Aile bosanma velayet nafaka
+- batchId: batch-civil-yargitay
+- durationMs: 26494
+- resultCount: 0
+- detectedDomain: aile
+- selectedBirimAdi: H2
+- firstSuccessfulBirimAdi: H2
+- routingMode: hard_primary
+- acceptedTopResultDaireler: n/a
+- compatibilityFilteredOutCount: 0
+- contentRerankApplied: true
+- strictPrecisionGateApplied: true
+- sourceCoverageStatus: no_candidates
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- simpleQualityScore: 0
+- queryVariantCount: 3
+- birimCandidateCount: 1
+- finalMatchedCount: 0
+- encountered429: false
+- cooldownAppliedMs: 5000
+- zeroResultReason: no_candidates
+
+## Borclar kira tahliye artirim
+- batchId: batch-civil-yargitay
+- durationMs: 33337
+- resultCount: 0
+- detectedDomain: borclar
+- selectedBirimAdi: H3
+- firstSuccessfulBirimAdi: H3
+- routingMode: hard_primary
+- acceptedTopResultDaireler: n/a
+- compatibilityFilteredOutCount: 0
+- contentRerankApplied: true
+- strictPrecisionGateApplied: true
+- sourceCoverageStatus: no_candidates
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- simpleQualityScore: 0
+- queryVariantCount: 3
+- birimCandidateCount: 1
+- finalMatchedCount: 0
+- encountered429: false
+- cooldownAppliedMs: 5000
+- zeroResultReason: no_candidates
+
+## Gayrimenkul tapu iptali muris muvazaasi
+- batchId: batch-civil-yargitay
+- durationMs: 23984
+- resultCount: 11
+- detectedDomain: gayrimenkul
+- selectedBirimAdi: H1
+- firstSuccessfulBirimAdi: H1
+- routingMode: hard_primary
+- acceptedTopResultDaireler: 1. Hukuk Dairesi
+- compatibilityFilteredOutCount: 0
+- contentRerankApplied: true
+- strictPrecisionGateApplied: true
+- sourceCoverageStatus: ok
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- simpleQualityScore: 100
+- queryVariantCount: 3
+- birimCandidateCount: 1
+- finalMatchedCount: 11
+- encountered429: false
+- cooldownAppliedMs: 5000
+- zeroResultReason: n/a
+- top: 1. Hukuk Dairesi 2025/6830 E. 2025/6285 K. | 1. Hukuk Dairesi | yargitay
+- top: 1. Hukuk Dairesi 2025/6852 E. 2025/6287 K. | 1. Hukuk Dairesi | yargitay
+- top: 1. Hukuk Dairesi 2025/6785 E. 2025/6282 K. | 1. Hukuk Dairesi | yargitay
+- top: 1. Hukuk Dairesi 2025/6850 E. 2025/6306 K. | 1. Hukuk Dairesi | yargitay
+- top: 1. Hukuk Dairesi 2025/6707 E. 2025/6304 K. | 1. Hukuk Dairesi | yargitay
+
+## Miras tenkis sakli pay
+- batchId: batch-civil-yargitay
+- durationMs: 25069
+- resultCount: 1
+- detectedDomain: miras
+- selectedBirimAdi: H7
+- firstSuccessfulBirimAdi: H7
+- routingMode: hard_primary
+- acceptedTopResultDaireler: 7. Hukuk Dairesi
+- compatibilityFilteredOutCount: 0
+- contentRerankApplied: true
+- strictPrecisionGateApplied: true
+- sourceCoverageStatus: ok
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- simpleQualityScore: 100
+- queryVariantCount: 3
+- birimCandidateCount: 1
+- finalMatchedCount: 1
+- encountered429: false
+- cooldownAppliedMs: 5000
+- zeroResultReason: n/a
+- top: 7. Hukuk Dairesi 2025/1265 E. 2025/5592 K. | 7. Hukuk Dairesi | yargitay
+
+## Tuketici ayipli mal iade degisim
+- batchId: batch-civil-yargitay
+- durationMs: 28492
+- resultCount: 0
+- detectedDomain: tuketici
+- selectedBirimAdi: H3
+- firstSuccessfulBirimAdi: H3
+- routingMode: hard_primary
+- acceptedTopResultDaireler: n/a
+- compatibilityFilteredOutCount: 0
+- contentRerankApplied: true
+- strictPrecisionGateApplied: true
+- sourceCoverageStatus: no_candidates
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- simpleQualityScore: 0
+- queryVariantCount: 3
+- birimCandidateCount: 1
+- finalMatchedCount: 0
+- encountered429: false
+- cooldownAppliedMs: 5000
+- zeroResultReason: no_candidates
+
+## Sigorta trafik deger kaybi tazminat
+- batchId: batch-civil-yargitay
+- durationMs: 26430
+- resultCount: 0
+- detectedDomain: sigorta
+- selectedBirimAdi: H4
+- firstSuccessfulBirimAdi: H4
+- routingMode: hard_primary
+- acceptedTopResultDaireler: n/a
+- compatibilityFilteredOutCount: 0
+- contentRerankApplied: true
+- strictPrecisionGateApplied: true
+- sourceCoverageStatus: no_candidates
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- simpleQualityScore: 0
+- queryVariantCount: 3
+- birimCandidateCount: 1
+- finalMatchedCount: 0
+- encountered429: false
+- cooldownAppliedMs: 22000
+- zeroResultReason: no_candidates
+
+## Ticaret marka tescil iltibas
+- batchId: batch-commercial-icra-yargitay
+- durationMs: 32541
+- resultCount: 5
+- detectedDomain: ticaret
+- selectedBirimAdi: H11
+- firstSuccessfulBirimAdi: H11
+- routingMode: hard_primary
+- acceptedTopResultDaireler: 11. Hukuk Dairesi
+- compatibilityFilteredOutCount: 0
+- contentRerankApplied: true
+- strictPrecisionGateApplied: true
+- sourceCoverageStatus: ok
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- simpleQualityScore: 100
+- queryVariantCount: 3
+- birimCandidateCount: 1
+- finalMatchedCount: 5
+- encountered429: false
+- cooldownAppliedMs: 5000
+- zeroResultReason: n/a
+- top: 11. Hukuk Dairesi 2025/3710 E. 2026/396 K. | 11. Hukuk Dairesi | yargitay
+- top: 11. Hukuk Dairesi 2025/3265 E. 2026/371 K. | 11. Hukuk Dairesi | yargitay
+- top: 11. Hukuk Dairesi 2025/3493 E. 2026/417 K. | 11. Hukuk Dairesi | yargitay
+- top: 11. Hukuk Dairesi 2025/3707 E. 2026/387 K. | 11. Hukuk Dairesi | yargitay
+- top: 11. Hukuk Dairesi 2025/4415 E. 2026/404 K. | 11. Hukuk Dairesi | yargitay
+
+## Ticaret anonim sirket genel kurul iptali
+- batchId: batch-commercial-icra-yargitay
+- durationMs: 27565
+- resultCount: 2
+- detectedDomain: ticaret
+- selectedBirimAdi: H11
+- firstSuccessfulBirimAdi: H11
+- routingMode: hard_primary
+- acceptedTopResultDaireler: 11. Hukuk Dairesi
+- compatibilityFilteredOutCount: 0
+- contentRerankApplied: true
+- strictPrecisionGateApplied: true
+- sourceCoverageStatus: ok
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- simpleQualityScore: 100
+- queryVariantCount: 3
+- birimCandidateCount: 1
+- finalMatchedCount: 2
+- encountered429: false
+- cooldownAppliedMs: 5000
+- zeroResultReason: n/a
+- top: 11. Hukuk Dairesi 2025/3417 E. 2026/373 K. | 11. Hukuk Dairesi | yargitay
+- top: 11. Hukuk Dairesi 2026/520 E. 2026/430 K. | 11. Hukuk Dairesi | yargitay
+
+## Ticaret konkordato iflas sira cetveli
+- batchId: batch-commercial-icra-yargitay
+- durationMs: 29964
+- resultCount: 0
+- detectedDomain: ticaret
+- selectedBirimAdi: H6
+- firstSuccessfulBirimAdi: H6
+- routingMode: hard_primary
+- acceptedTopResultDaireler: n/a
+- compatibilityFilteredOutCount: 0
+- contentRerankApplied: true
+- strictPrecisionGateApplied: true
+- sourceCoverageStatus: no_candidates
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- simpleQualityScore: 0
+- queryVariantCount: 3
+- birimCandidateCount: 1
+- finalMatchedCount: 0
+- encountered429: false
+- cooldownAppliedMs: 5000
+- zeroResultReason: no_candidates
+
+## Icra ticari itirazin iptali IIK 67
+- batchId: batch-commercial-icra-yargitay
+- durationMs: 29217
+- resultCount: 1
+- detectedDomain: icra
+- selectedBirimAdi: H11
+- firstSuccessfulBirimAdi: H11
+- routingMode: hard_primary
+- acceptedTopResultDaireler: 11. Hukuk Dairesi
+- compatibilityFilteredOutCount: 0
+- contentRerankApplied: true
+- strictPrecisionGateApplied: true
+- sourceCoverageStatus: ok
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- simpleQualityScore: 95
+- queryVariantCount: 3
+- birimCandidateCount: 1
+- finalMatchedCount: 1
+- encountered429: false
+- cooldownAppliedMs: 5000
+- zeroResultReason: n/a
+- top: 11. Hukuk Dairesi 2026/581 E. 2026/431 K. | 11. Hukuk Dairesi | yargitay
+
+## Icra prosedur haciz sikayet
+- batchId: batch-commercial-icra-yargitay
+- durationMs: 36555
+- resultCount: 14
+- detectedDomain: icra
+- selectedBirimAdi: H12
+- firstSuccessfulBirimAdi: H12
+- routingMode: hard_primary
+- acceptedTopResultDaireler: 12. Hukuk Dairesi
+- compatibilityFilteredOutCount: 0
+- contentRerankApplied: true
+- strictPrecisionGateApplied: true
+- sourceCoverageStatus: ok
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- simpleQualityScore: 100
+- queryVariantCount: 3
+- birimCandidateCount: 1
+- finalMatchedCount: 14
+- encountered429: false
+- cooldownAppliedMs: 22000
+- zeroResultReason: n/a
+- top: 12. Hukuk Dairesi 2025/6906 E. 2025/8005 K. | 12. Hukuk Dairesi | yargitay
+- top: 12. Hukuk Dairesi 2025/6196 E. 2025/7354 K. | 12. Hukuk Dairesi | yargitay
+- top: 12. Hukuk Dairesi 2025/4680 E. 2025/6736 K. | 12. Hukuk Dairesi | yargitay
+- top: 12. Hukuk Dairesi 2025/3396 E. 2025/5880 K. | 12. Hukuk Dairesi | yargitay
+- top: 12. Hukuk Dairesi 2025/7950 E. 2025/7670 K. | 12. Hukuk Dairesi | yargitay
+
+## Idare imar para cezasi yikim
+- batchId: batch-danistay-anayasa
+- durationMs: 10512
+- resultCount: 0
+- detectedDomain: idare
+- selectedBirimAdi: D6
+- firstSuccessfulBirimAdi: D6
+- routingMode: hard_primary
+- acceptedTopResultDaireler: n/a
+- compatibilityFilteredOutCount: 0
+- contentRerankApplied: true
+- strictPrecisionGateApplied: true
+- sourceCoverageStatus: no_candidates
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- simpleQualityScore: 0
+- queryVariantCount: 3
+- birimCandidateCount: 1
+- finalMatchedCount: 0
+- encountered429: false
+- cooldownAppliedMs: 5000
+- zeroResultReason: no_candidates
+
+## Idare kamu ihale 4734
+- batchId: batch-danistay-anayasa
+- durationMs: 28417
+- resultCount: 0
+- detectedDomain: idare
+- selectedBirimAdi: D13
+- firstSuccessfulBirimAdi: D13
+- routingMode: hard_primary
+- acceptedTopResultDaireler: n/a
+- compatibilityFilteredOutCount: 0
+- contentRerankApplied: true
+- strictPrecisionGateApplied: true
+- sourceCoverageStatus: no_candidates
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- simpleQualityScore: 0
+- queryVariantCount: 3
+- birimCandidateCount: 1
+- finalMatchedCount: 0
+- encountered429: false
+- cooldownAppliedMs: 5000
+- zeroResultReason: no_candidates
+
+## Idare disiplin savunma hakki
+- batchId: batch-danistay-anayasa
+- durationMs: 40190
+- resultCount: 0
+- detectedDomain: idare
+- selectedBirimAdi: D12
+- firstSuccessfulBirimAdi: D12
+- routingMode: hard_primary
+- acceptedTopResultDaireler: n/a
+- compatibilityFilteredOutCount: 0
+- contentRerankApplied: true
+- strictPrecisionGateApplied: true
+- sourceCoverageStatus: rate_limited
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- simpleQualityScore: 0
+- queryVariantCount: 3
+- birimCandidateCount: 1
+- finalMatchedCount: 0
+- encountered429: true
+- cooldownAppliedMs: 45000
+- zeroResultReason: no_candidates
+
+## Vergi KDV sahte fatura tarhiyat
+- batchId: batch-danistay-anayasa
+- durationMs: 16850
+- resultCount: 10
+- detectedDomain: vergi
+- selectedBirimAdi: D3
+- firstSuccessfulBirimAdi: D3
+- routingMode: hard_primary
+- acceptedTopResultDaireler: 3. Daire
+- compatibilityFilteredOutCount: 0
+- contentRerankApplied: true
+- strictPrecisionGateApplied: true
+- sourceCoverageStatus: ok
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- simpleQualityScore: 100
+- queryVariantCount: 3
+- birimCandidateCount: 1
+- finalMatchedCount: 10
+- encountered429: false
+- cooldownAppliedMs: 5000
+- zeroResultReason: n/a
+- top: 3. Daire 2023/6527 E. 2025/4064 K. | 3. Daire | danistay
+- top: 3. Daire 2023/6529 E. 2025/4065 K. | 3. Daire | danistay
+- top: 3. Daire 2023/3210 E. 2025/4060 K. | 3. Daire | danistay
+- top: 3. Daire 2023/7220 E. 2025/4098 K. | 3. Daire | danistay
+- top: 3. Daire 2023/7216 E. 2025/4099 K. | 3. Daire | danistay
+
+## Vergi gumruk otv ithalat
+- batchId: batch-danistay-anayasa
+- durationMs: 13421
+- resultCount: 17
+- detectedDomain: vergi
+- selectedBirimAdi: D7
+- firstSuccessfulBirimAdi: D7
+- routingMode: hard_primary
+- acceptedTopResultDaireler: 7. Daire
+- compatibilityFilteredOutCount: 0
+- contentRerankApplied: true
+- strictPrecisionGateApplied: true
+- sourceCoverageStatus: ok
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- simpleQualityScore: 100
+- queryVariantCount: 3
+- birimCandidateCount: 1
+- finalMatchedCount: 17
+- encountered429: false
+- cooldownAppliedMs: 5000
+- zeroResultReason: n/a
+- top: 7. Daire 2023/3863 E. 2025/2057 K. | 7. Daire | danistay
+- top: 7. Daire 2025/1265 E. 2025/2210 K. | 7. Daire | danistay
+- top: 7. Daire 2025/1390 E. 2025/2211 K. | 7. Daire | danistay
+- top: 7. Daire 2023/3419 E. 2025/2052 K. | 7. Daire | danistay
+- top: 7. Daire 2025/639 E. 2025/2479 K. | 7. Daire | danistay
+
+## Anayasa bireysel basvuru makul sure
+- batchId: batch-danistay-anayasa
+- durationMs: 6839
+- resultCount: 8
+- detectedDomain: anayasa
+- selectedBirimAdi: n/a
+- firstSuccessfulBirimAdi: n/a
+- routingMode: source_first
+- acceptedTopResultDaireler: Anayasa Mahkemesi
+- compatibilityFilteredOutCount: 0
+- contentRerankApplied: true
+- strictPrecisionGateApplied: true
+- sourceCoverageStatus: ok
+- phaseAttemptSummary: {"primary_narrow":{"queryCount":3,"birimCount":0}}
+- simpleQualityScore: 100
+- queryVariantCount: 5
+- birimCandidateCount: 0
+- finalMatchedCount: 8
+- encountered429: false
+- cooldownAppliedMs: 0
+- zeroResultReason: n/a
+- top: Nevriye Kuruç [GK], B. No: 2021/58970, 5/7/2022 | Anayasa Mahkemesi | anayasa
+- top: ♦ (Koray Erdoğan, B. No: 2013/1989, 10/3/2016) | Anayasa Mahkemesi | anayasa
+- top: ♦ (Abbas Emre, B. No: 2014/5005, 6/1/2016) | Anayasa Mahkemesi | anayasa
+- top: ♦ (Güher Ergun ve diğerleri, B. No: 2012/13, 2/7/2013) | Anayasa Mahkemesi | anayasa
+- top: Anayasa Mahkemesi Karari | Anayasa Mahkemesi | anayasa
+

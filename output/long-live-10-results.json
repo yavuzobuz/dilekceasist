@@ -1,0 +1,365 @@
+{
+  "summary": {
+    "runAt": "12.03.2026 01:31:04",
+    "total": 10,
+    "passCount": 10,
+    "borderlineCount": 0,
+    "failCount": 0,
+    "passRate": 100,
+    "avgDurationMs": 32006
+  },
+  "results": [
+    {
+      "order": 1,
+      "branch": "Is Hukuku",
+      "id": "cagri-merkezi-gece",
+      "label": "Gece vardiyasi ve uzun mesai",
+      "rawQuery": "Cagri merkezinde gece vardiyasinda haftada 6 gun 12 saat ?al??t???n?, puantajlarin eksik tutuldugunu ileri suren i??inin fazla mesai ve hafta tatili alaca?? talebi.",
+      "durationMs": 33444,
+      "statusCode": 200,
+      "verdict": "pass",
+      "aiLegalArea": "is_hukuku",
+      "requiredConcepts": [
+        "haklı fesih",
+        "fazla mesai",
+        "hafta tatili",
+        "işçilik alacağı",
+        "puantaj kayıtları"
+      ],
+      "supportConcepts": [
+        "gece çalışması",
+        "çalışma süresi",
+        "ispat yükü",
+        "tanık beyanı"
+      ],
+      "targetSources": [
+        "yargitay"
+      ],
+      "resultCount": 10,
+      "topResult": {
+        "source": "yargitay",
+        "title": "Yargıtay Kararı 9. Hukuk Dairesi",
+        "daire": "9. Hukuk Dairesi",
+        "matchedKeywordCount": 5,
+        "semanticScore": 0.6798,
+        "retrievalStage": "full_text"
+      },
+      "error": null
+    },
+    {
+      "order": 2,
+      "branch": "Is Hukuku",
+      "id": "ise-iade-gecersiz-fesih",
+      "label": "Ise iade ve gecersiz fesih",
+      "rawQuery": "ge?ersiz nedenle feshedilen i? s?zle?mesi nedeniyle i?e iade, bo? ge?en s?re ucreti ve i?e ba?latmama tazminati talebi.",
+      "durationMs": 30336,
+      "statusCode": 200,
+      "verdict": "pass",
+      "aiLegalArea": "is_hukuku",
+      "requiredConcepts": [
+        "işe iade",
+        "iş sözleşmesi",
+        "boş geçen süre ücreti"
+      ],
+      "supportConcepts": [
+        "haklı fesih",
+        "işveren",
+        "fesih bildirimi",
+        "iş güvencesi"
+      ],
+      "targetSources": [
+        "yargitay"
+      ],
+      "resultCount": 8,
+      "topResult": {
+        "source": "yargitay",
+        "title": "Yargıtay Kararı 9. Hukuk Dairesi",
+        "daire": "9. Hukuk Dairesi",
+        "matchedKeywordCount": 3,
+        "semanticScore": 0.7484,
+        "retrievalStage": "full_text"
+      },
+      "error": null
+    },
+    {
+      "order": 3,
+      "branch": "Ceza",
+      "id": "uyusturucu-kullanma-ticaret",
+      "label": "Uyusturucu ticareti mi bulundurma mi",
+      "rawQuery": "san???n ?zerinde ve evinde arama yapilmasina ragmen sat?? bedeline, hassas teraziye ya da paketlenmi? sat?? materyaline rastlanmamasi; ele ge?en miktarin kullanma s?n?rlar? icinde kalmasi ve dosyada baskaca ticaret ili?kisini g?steren somut delil bulunmamasi halinde, uyu?turucu madde ticareti sucu yerine kullanmak icin bulundurma ihtimali g??lenir.",
+      "durationMs": 33621,
+      "statusCode": 200,
+      "verdict": "pass",
+      "aiLegalArea": "ceza",
+      "requiredConcepts": [
+        "uyuşturucu madde",
+        "kullanmak için bulundurma",
+        "somut delil"
+      ],
+      "supportConcepts": [
+        "arama kararı",
+        "uyuşturucu madde ticareti",
+        "paketlenmiş materyal"
+      ],
+      "targetSources": [
+        "yargitay"
+      ],
+      "resultCount": 10,
+      "topResult": {
+        "source": "yargitay",
+        "title": "Yargıtay Kararı Ceza Genel Kurulu",
+        "daire": "Ceza Genel Kurulu",
+        "matchedKeywordCount": 3,
+        "semanticScore": 0.7289,
+        "retrievalStage": "full_text"
+      },
+      "error": null
+    },
+    {
+      "order": 4,
+      "branch": "Ceza",
+      "id": "kamera-goruntusu-hirsizlik",
+      "label": "Kamera goruntusu ve supheden sanik",
+      "rawQuery": "Market guvenlik kamerasi goruntulerine dayali hirsizlik iddiasinda kimlik tespiti kesin degilse ??pheden sanik yararlanir ilkesi uygulanir mi?",
+      "durationMs": 30933,
+      "statusCode": 200,
+      "verdict": "pass",
+      "aiLegalArea": "ceza",
+      "requiredConcepts": [
+        "hırsızlık",
+        "kimlik tespiti",
+        "şüpheden sanık yararlanır",
+        "güvenlik kamerası",
+        "delil yetersizliği"
+      ],
+      "supportConcepts": [
+        "ceza yargılaması",
+        "maddi gerçek",
+        "ispat yükü"
+      ],
+      "targetSources": [
+        "yargitay"
+      ],
+      "resultCount": 10,
+      "topResult": {
+        "source": "yargitay",
+        "title": "Yargıtay Kararı Ceza Genel Kurulu",
+        "daire": "Ceza Genel Kurulu",
+        "matchedKeywordCount": 4,
+        "semanticScore": 0.6505,
+        "retrievalStage": "full_text"
+      },
+      "error": null
+    },
+    {
+      "order": 5,
+      "branch": "Idare",
+      "id": "ruhsatsiz-prefabrik",
+      "label": "Tarim arazisinde prefabrik yapi",
+      "rawQuery": "Tarim arazisine kurulan ruhsats?z prefabrik yap? nedeniyle verilen belediye enc?men para cezasi ve yikim kararinin iptali.",
+      "durationMs": 34394,
+      "statusCode": 200,
+      "verdict": "pass",
+      "aiLegalArea": "idare",
+      "requiredConcepts": [
+        "yıkım kararı",
+        "yıkım ı",
+        "idari para cezası",
+        "tarım arazisi",
+        "imar para cezası",
+        "iptal davası"
+      ],
+      "supportConcepts": [
+        "prefabrik yapı",
+        "yürütmenin durdurulması",
+        "imar kirliliği"
+      ],
+      "targetSources": [
+        "danistay"
+      ],
+      "resultCount": 10,
+      "topResult": {
+        "source": "danistay",
+        "title": "Danıştay Kararı 6. Daire",
+        "daire": "6. Daire",
+        "matchedKeywordCount": 6,
+        "semanticScore": 0.7326,
+        "retrievalStage": "full_text"
+      },
+      "error": null
+    },
+    {
+      "order": 6,
+      "branch": "Idare",
+      "id": "imar-plani-iptal",
+      "label": "Imar plani iptali",
+      "rawQuery": "Parsel bazinda duzenleme yapan imar plani degisikliginin kamu yararina aykiriligi nedeniyle iptali.",
+      "durationMs": 28752,
+      "statusCode": 200,
+      "verdict": "pass",
+      "aiLegalArea": "idare",
+      "requiredConcepts": [
+        "imar planı değişikliği",
+        "iptal davası",
+        "kamu yararı",
+        "parsel bazında"
+      ],
+      "supportConcepts": [
+        "nazım imar planı",
+        "uygulama imar planı",
+        "şehircilik ilkeleri"
+      ],
+      "targetSources": [
+        "danistay"
+      ],
+      "resultCount": 10,
+      "topResult": {
+        "source": "danistay",
+        "title": "Danıştay Kararı 6. Daire",
+        "daire": "6. Daire",
+        "matchedKeywordCount": 4,
+        "semanticScore": 0.7725,
+        "retrievalStage": "full_text"
+      },
+      "error": null
+    },
+    {
+      "order": 7,
+      "branch": "Icra ve Alacak Hukuku",
+      "id": "itirazin-iptali-cari",
+      "label": "Itirazin iptali ve cari hesap",
+      "rawQuery": "Borca itiraz uzerine acilan itiraz?n iptali davasinda icra takibi, fatura, cari hesap alaca?? ve inkar tazminat? talebi.",
+      "durationMs": 30423,
+      "statusCode": 200,
+      "verdict": "pass",
+      "aiLegalArea": "icra",
+      "requiredConcepts": [
+        "itirazın iptali",
+        "icra takibi",
+        "cari hesap alacağı",
+        "icra inkar tazminatı"
+      ],
+      "supportConcepts": [
+        "ticari defter",
+        "faiz"
+      ],
+      "targetSources": [
+        "yargitay"
+      ],
+      "resultCount": 6,
+      "topResult": {
+        "source": "yargitay",
+        "title": "Yargıtay Kararı 11. Hukuk Dairesi",
+        "daire": "11. Hukuk Dairesi",
+        "matchedKeywordCount": 4,
+        "semanticScore": 0.7295,
+        "retrievalStage": "full_text"
+      },
+      "error": null
+    },
+    {
+      "order": 8,
+      "branch": "Icra ve Alacak Hukuku",
+      "id": "e-fatura-bsba",
+      "label": "E-fatura ve BA BS kayitlari",
+      "rawQuery": "E-fatura ve BA BS kayitlariyla ispatlanan ticari alacakta itiraz?n iptali ve icra inkar tazminat? talebi.",
+      "durationMs": 30495,
+      "statusCode": 200,
+      "verdict": "pass",
+      "aiLegalArea": "icra",
+      "requiredConcepts": [
+        "itirazın iptali",
+        "cari hesap alacağı",
+        "icra inkar tazminatı",
+        "ticari defter"
+      ],
+      "supportConcepts": [
+        "ispat",
+        "icra takibi"
+      ],
+      "targetSources": [
+        "yargitay"
+      ],
+      "resultCount": 4,
+      "topResult": {
+        "source": "yargitay",
+        "title": "Yargıtay Kararı 11. Hukuk Dairesi",
+        "daire": "11. Hukuk Dairesi",
+        "matchedKeywordCount": 4,
+        "semanticScore": 0.6925,
+        "retrievalStage": "full_text"
+      },
+      "error": null
+    },
+    {
+      "order": 9,
+      "branch": "Icra ve Alacak Hukuku",
+      "id": "irsaliye-cari-hesap",
+      "label": "Sevk irsaliyesi ve cari hesap",
+      "rawQuery": "Sevk irsaliyesi ve cari hesap ekstresine dayali itiraz?n iptali davasinda alacagin ispat?.",
+      "durationMs": 35084,
+      "statusCode": 200,
+      "verdict": "pass",
+      "aiLegalArea": "icra",
+      "requiredConcepts": [
+        "itirazın iptali",
+        "alacağın ispatı",
+        "sevk irsaliyesi",
+        "cari hesap ekstresi"
+      ],
+      "supportConcepts": [
+        "ticari defter",
+        "cari hesap alacağı",
+        "yazılı delil",
+        "icra takibi"
+      ],
+      "targetSources": [
+        "yargitay"
+      ],
+      "resultCount": 10,
+      "topResult": {
+        "source": "yargitay",
+        "title": "Yargıtay Kararı 11. Hukuk Dairesi",
+        "daire": "11. Hukuk Dairesi",
+        "matchedKeywordCount": 3,
+        "semanticScore": 0.7157,
+        "retrievalStage": "full_text"
+      },
+      "error": null
+    },
+    {
+      "order": 10,
+      "branch": "Icra ve Alacak Hukuku",
+      "id": "teminat-icranin-geri",
+      "label": "Teminatla icranin geri birakilmasi",
+      "rawQuery": "Menfi tespit davasinda ihtiyati tedbir ve teminat karsiliginda icranin geri birakilmasi kosullari.",
+      "durationMs": 32573,
+      "statusCode": 200,
+      "verdict": "pass",
+      "aiLegalArea": "icra",
+      "requiredConcepts": [
+        "menfi tespit",
+        "ihtiyati tedbir",
+        "icranın geri bırakılması",
+        "teminat",
+        "icra takibi"
+      ],
+      "supportConcepts": [
+        "haksız takip"
+      ],
+      "targetSources": [
+        "yargitay"
+      ],
+      "resultCount": 7,
+      "topResult": {
+        "source": "yargitay",
+        "title": "Yargıtay Kararı 12. Hukuk Dairesi",
+        "daire": "12. Hukuk Dairesi",
+        "matchedKeywordCount": 3,
+        "semanticScore": 0.6999,
+        "retrievalStage": "full_text"
+      },
+      "error": null
+    }
+  ]
+}

@@ -1,0 +1,1447 @@
+[
+  {
+    "id": 1,
+    "name": "İş Hukuku — İşe İade (Sendikal Nedenle Fesih)",
+    "expectedDomain": "is_hukuku",
+    "expectedSource": "yargitay",
+    "expectedConcepts": [
+      "işe iade",
+      "sendikal",
+      "fesih",
+      "geçersiz"
+    ],
+    "queryLength": 714,
+    "status": "OK",
+    "planMs": 28276,
+    "searchMs": 25194,
+    "totalMs": 53471,
+    "resultCount": 10,
+    "detectedDomain": "is_hukuku",
+    "domainMatch": true,
+    "targetSources": [
+      "yargitay"
+    ],
+    "queryMode": "long_fact",
+    "retrievalConcepts": [
+      "sendikal tazminat",
+      "ise iade",
+      "sendikal nedenli fesih",
+      "performans dusuklugu"
+    ],
+    "supportConcepts": [
+      "feshin gecersizligi",
+      "is guvencesi",
+      "ispat yukumlulugu"
+    ],
+    "negativeConcepts": [
+      "memur disiplin cezasi",
+      "idari yargi",
+      "sendika yoneticiligi tazminati"
+    ],
+    "searchQuery": "sendikal tazminat, ise iade",
+    "semanticQuery": "Sendikaya uye olan iscinin performans dusuklugu gerekcesiyle isten cikarilmasi ve sendikal tazminat hakki.",
+    "totalCandidates": 10,
+    "summaryPassedCount": 0,
+    "fullTextCheckedCount": 10,
+    "finalMatchedCount": 10,
+    "fallbackUsed": false,
+    "zeroResultReason": null,
+    "selectionMode": "strict",
+    "conceptScore": 100,
+    "conceptHits": [
+      {
+        "concept": "işe iade",
+        "found": true
+      },
+      {
+        "concept": "sendikal",
+        "found": true
+      },
+      {
+        "concept": "fesih",
+        "found": true
+      },
+      {
+        "concept": "geçersiz",
+        "found": true
+      }
+    ],
+    "sourceDistribution": {
+      "yargitay": 10
+    },
+    "primarySourceHit": true,
+    "qualityScore": 100,
+    "clauseRunCount": 1,
+    "clauseRuns": [
+      {
+        "source": "yargitay",
+        "clause": "sendikal tazminat, ise iade",
+        "count": 10,
+        "ok": true
+      }
+    ],
+    "topResults": [
+      {
+        "title": "Yargıtay Kararı 9. Hukuk Dairesi",
+        "daire": "9. Hukuk Dairesi",
+        "tarih": "12.01.2026",
+        "source": "yargitay",
+        "relevanceScore": 81,
+        "semanticScore": 0.6614,
+        "combinedScore": 0.6521,
+        "matchedKeywords": [
+          "sendikal tazminat",
+          "sendikal nedenli fesih",
+          "feshin gecersizligi",
+          "is guvencesi",
+          "ispat yukumlulugu",
+          "performans degerlendirme raporlari",
+          "fesih bildirimi"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.661, cekirdek=2, negatif=1"
+      },
+      {
+        "title": "Yargıtay Kararı 9. Hukuk Dairesi",
+        "daire": "9. Hukuk Dairesi",
+        "tarih": "12.01.2026",
+        "source": "yargitay",
+        "relevanceScore": 87,
+        "semanticScore": 0.6601,
+        "combinedScore": 0.6116,
+        "matchedKeywords": [
+          "sendikal tazminat",
+          "sendikal nedenli fesih",
+          "feshin gecersizligi",
+          "is guvencesi",
+          "ispat yukumlulugu",
+          "performans degerlendirme raporlari",
+          "fesih bildirimi"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.660, cekirdek=2, negatif=2"
+      },
+      {
+        "title": "Yargıtay Kararı 9. Hukuk Dairesi",
+        "daire": "9. Hukuk Dairesi",
+        "tarih": "12.01.2026",
+        "source": "yargitay",
+        "relevanceScore": 88,
+        "semanticScore": 0.6389,
+        "combinedScore": 0.6136,
+        "matchedKeywords": [
+          "sendikal tazminat",
+          "ise iade",
+          "feshin gecersizligi",
+          "is guvencesi",
+          "ispat yukumlulugu",
+          "performans degerlendirme raporlari",
+          "fesih bildirimi",
+          "ihtarname"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.639, cekirdek=2, negatif=2"
+      },
+      {
+        "title": "Yargıtay Kararı 9. Hukuk Dairesi",
+        "daire": "9. Hukuk Dairesi",
+        "tarih": "12.01.2026",
+        "source": "yargitay",
+        "relevanceScore": 82,
+        "semanticScore": 0.6509,
+        "combinedScore": 0.6281,
+        "matchedKeywords": [
+          "sendikal tazminat",
+          "sendikal nedenli fesih",
+          "feshin gecersizligi",
+          "ispat yukumlulugu",
+          "performans degerlendirme raporlari",
+          "fesih bildirimi",
+          "ihtarname"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.651, cekirdek=2, negatif=1"
+      },
+      {
+        "title": "Yargıtay Kararı 9. Hukuk Dairesi",
+        "daire": "9. Hukuk Dairesi",
+        "tarih": "12.01.2026",
+        "source": "yargitay",
+        "relevanceScore": 84,
+        "semanticScore": 0.6472,
+        "combinedScore": 0.5852,
+        "matchedKeywords": [
+          "sendikal tazminat",
+          "sendikal nedenli fesih",
+          "feshin gecersizligi",
+          "ispat yukumlulugu",
+          "performans degerlendirme raporlari",
+          "fesih bildirimi",
+          "ihtarname"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.647, cekirdek=2, negatif=2"
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "name": "Ceza Hukuku — Uyuşturucu Ticareti (Paketlenmiş Madde)",
+    "expectedDomain": "ceza",
+    "expectedSource": "yargitay",
+    "expectedConcepts": [
+      "uyuşturucu",
+      "ticaret",
+      "paketleme",
+      "metamfetamin"
+    ],
+    "queryLength": 738,
+    "status": "OK",
+    "planMs": 33833,
+    "searchMs": 15160,
+    "totalMs": 48994,
+    "resultCount": 0,
+    "detectedDomain": "ceza",
+    "domainMatch": true,
+    "targetSources": [
+      "yargitay"
+    ],
+    "queryMode": "long_fact",
+    "retrievalConcepts": [
+      "uyusturucu madde ticareti",
+      "suc vasfinin belirlenmesi",
+      "kullanmak icin bulundurma"
+    ],
+    "supportConcepts": [
+      "kastin belirlenmesi",
+      "kisisel kullanim siniri",
+      "ticari amac"
+    ],
+    "negativeConcepts": [
+      "uyusturucu kullanma cezasi",
+      "denetimli serbestlik"
+    ],
+    "searchQuery": "uyusturucu madde ticareti, suc vasfinin belirlenmesi",
+    "semanticQuery": "Uyuşturucu madde ticareti suçunda paketleme malzemeleri, HTS kayıtları ve tanık beyanlarının suçun sübutuna etkisi tartışılmaktadır.",
+    "totalCandidates": 10,
+    "summaryPassedCount": 0,
+    "fullTextCheckedCount": 10,
+    "finalMatchedCount": 0,
+    "fallbackUsed": false,
+    "zeroResultReason": "semantic_fallback_empty",
+    "selectionMode": "strict",
+    "conceptScore": 0,
+    "conceptHits": [
+      {
+        "concept": "uyuşturucu",
+        "found": false
+      },
+      {
+        "concept": "ticaret",
+        "found": false
+      },
+      {
+        "concept": "paketleme",
+        "found": false
+      },
+      {
+        "concept": "metamfetamin",
+        "found": false
+      }
+    ],
+    "sourceDistribution": {},
+    "primarySourceHit": false,
+    "qualityScore": 25,
+    "clauseRunCount": 1,
+    "clauseRuns": [
+      {
+        "source": "yargitay",
+        "clause": "uyusturucu madde ticareti, suc vasfinin belirlenmesi",
+        "count": 10,
+        "ok": true
+      }
+    ],
+    "topResults": []
+  },
+  {
+    "id": 3,
+    "name": "İdare Hukuku — İmar İzni İptali (Ruhsat)",
+    "expectedDomain": "idare",
+    "expectedSource": "danistay",
+    "expectedConcepts": [
+      "imar",
+      "ruhsat",
+      "iptal",
+      "yürütmenin durdurulması"
+    ],
+    "queryLength": 659,
+    "status": "OK",
+    "planMs": 31484,
+    "searchMs": 17354,
+    "totalMs": 48839,
+    "resultCount": 8,
+    "detectedDomain": "idare",
+    "domainMatch": true,
+    "targetSources": [
+      "danistay"
+    ],
+    "queryMode": "long_fact",
+    "retrievalConcepts": [
+      "yapı ruhsatı iptali",
+      "imar planı değişikliği",
+      "kazanılmış hak",
+      "geriye yürümezlik ilkesi"
+    ],
+    "supportConcepts": [
+      "inşaatın durdurulması",
+      "belediye encümen ının iptali",
+      "yürütmenin durdurulması"
+    ],
+    "negativeConcepts": [
+      "özel hukuk",
+      "kat karşılığı inşaat sözleşmesi",
+      "tapu iptali",
+      "müdahalenin menni"
+    ],
+    "searchQuery": "yapı ruhsatı iptali, imar planı değişikliği",
+    "semanticQuery": "İmar planı değişikliği nedeniyle ruhsatı iptal edilen ve belirli aşamaya gelmiş inşaatlarda kazanılmış hakların korunması tartışılmaktadır.",
+    "totalCandidates": 10,
+    "summaryPassedCount": 0,
+    "fullTextCheckedCount": 10,
+    "finalMatchedCount": 8,
+    "fallbackUsed": false,
+    "zeroResultReason": null,
+    "selectionMode": "strict",
+    "conceptScore": 100,
+    "conceptHits": [
+      {
+        "concept": "imar",
+        "found": true
+      },
+      {
+        "concept": "ruhsat",
+        "found": true
+      },
+      {
+        "concept": "iptal",
+        "found": true
+      },
+      {
+        "concept": "yürütmenin durdurulması",
+        "found": true
+      }
+    ],
+    "sourceDistribution": {
+      "danistay": 8
+    },
+    "primarySourceHit": true,
+    "qualityScore": 100,
+    "clauseRunCount": 1,
+    "clauseRuns": [
+      {
+        "source": "danistay",
+        "clause": "yapı ruhsatı iptali, imar planı değişikliği",
+        "count": 10,
+        "ok": true
+      }
+    ],
+    "topResults": [
+      {
+        "title": "Danıştay Kararı 6. Daire",
+        "daire": "6. Daire",
+        "tarih": "05.11.2025",
+        "source": "danistay",
+        "relevanceScore": 83,
+        "semanticScore": 0.6698,
+        "combinedScore": 0.7002,
+        "matchedKeywords": [
+          "yapı ruhsatı iptali",
+          "imar planı değişikliği",
+          "geriye yürümezlik ilkesi",
+          "inşaatın durdurulması",
+          "yürütmenin durdurulması",
+          "yapı ruhsatı",
+          "imar planı",
+          "belediye encümen ı"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.670, cekirdek=3, negatif=2"
+      },
+      {
+        "title": "Danıştay Kararı 6. Daire",
+        "daire": "6. Daire",
+        "tarih": "05.11.2025",
+        "source": "danistay",
+        "relevanceScore": 84,
+        "semanticScore": 0.6644,
+        "combinedScore": 0.6982,
+        "matchedKeywords": [
+          "yapı ruhsatı iptali",
+          "imar planı değişikliği",
+          "geriye yürümezlik ilkesi",
+          "inşaatın durdurulması",
+          "yürütmenin durdurulması",
+          "yapı ruhsatı",
+          "imar planı",
+          "belediye encümen ı"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.664, cekirdek=3, negatif=2"
+      },
+      {
+        "title": "Danıştay Kararı 6. Daire",
+        "daire": "6. Daire",
+        "tarih": "13.11.2025",
+        "source": "danistay",
+        "relevanceScore": 85,
+        "semanticScore": 0.6536,
+        "combinedScore": 0.6937,
+        "matchedKeywords": [
+          "yapı ruhsatı iptali",
+          "imar planı değişikliği",
+          "geriye yürümezlik ilkesi",
+          "inşaatın durdurulması",
+          "yürütmenin durdurulması",
+          "yapı ruhsatı",
+          "imar planı",
+          "belediye encümen ı"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.654, cekirdek=3, negatif=2"
+      },
+      {
+        "title": "Danıştay Kararı 6. Daire",
+        "daire": "6. Daire",
+        "tarih": "13.11.2025",
+        "source": "danistay",
+        "relevanceScore": 87,
+        "semanticScore": 0.6765,
+        "combinedScore": 0.6735,
+        "matchedKeywords": [
+          "yapı ruhsatı iptali",
+          "imar planı değişikliği",
+          "geriye yürümezlik ilkesi",
+          "yürütmenin durdurulması",
+          "yapı ruhsatı",
+          "imar planı",
+          "belediye encümen ı"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.676, cekirdek=3, negatif=2"
+      },
+      {
+        "title": "Danıştay Kararı 6. Daire",
+        "daire": "6. Daire",
+        "tarih": "13.11.2025",
+        "source": "danistay",
+        "relevanceScore": 86,
+        "semanticScore": 0.6687,
+        "combinedScore": 0.6389,
+        "matchedKeywords": [
+          "yapı ruhsatı iptali",
+          "imar planı değişikliği",
+          "geriye yürümezlik ilkesi",
+          "yapı ruhsatı",
+          "imar planı",
+          "belediye encümen ı"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.669, cekirdek=3, negatif=2"
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "name": "İcra Hukuku — Menfi Tespit (Kaçak Elektrik Faturası)",
+    "expectedDomain": "icra",
+    "expectedSource": "yargitay",
+    "expectedConcepts": [
+      "menfi tespit",
+      "kaçak elektrik",
+      "icra takibi",
+      "borçlu olmadığı"
+    ],
+    "queryLength": 706,
+    "status": "OK",
+    "planMs": 43483,
+    "searchMs": 12538,
+    "totalMs": 56022,
+    "resultCount": 10,
+    "detectedDomain": "icra",
+    "domainMatch": true,
+    "targetSources": [
+      "yargitay"
+    ],
+    "queryMode": "long_fact",
+    "retrievalConcepts": [
+      "kaçak elektrik kullanımı",
+      "mülk sahibinin sorumluluğu",
+      "menfi tespit davası",
+      "fiili kullanıcı"
+    ],
+    "supportConcepts": [
+      "mühür bozma",
+      "tahakkuk hesaplama yöntemi",
+      "abonelik sözleşmesi",
+      "haksız fiil sorumluluğu"
+    ],
+    "negativeConcepts": [
+      "ceza sorumluluğu",
+      "karşılıksız yararlanma suçu",
+      "idari para cezası"
+    ],
+    "searchQuery": "kaçak elektrik kullanımı, mülk sahibinin sorumluluğu",
+    "semanticQuery": "Taşınmazı fiilen kullanan kiracının kaçak elektrik kullanımından dolayı mülk sahibinin hukuki sorumluluğu ve faturanın iptali talep edilmektedir.",
+    "totalCandidates": 10,
+    "summaryPassedCount": 0,
+    "fullTextCheckedCount": 10,
+    "finalMatchedCount": 10,
+    "fallbackUsed": false,
+    "zeroResultReason": null,
+    "selectionMode": "strict",
+    "conceptScore": 50,
+    "conceptHits": [
+      {
+        "concept": "menfi tespit",
+        "found": true
+      },
+      {
+        "concept": "kaçak elektrik",
+        "found": true
+      },
+      {
+        "concept": "icra takibi",
+        "found": false
+      },
+      {
+        "concept": "borçlu olmadığı",
+        "found": false
+      }
+    ],
+    "sourceDistribution": {
+      "yargitay": 10
+    },
+    "primarySourceHit": true,
+    "qualityScore": 85,
+    "clauseRunCount": 1,
+    "clauseRuns": [
+      {
+        "source": "yargitay",
+        "clause": "kaçak elektrik kullanımı, mülk sahibinin sorumluluğu",
+        "count": 10,
+        "ok": true
+      }
+    ],
+    "topResults": [
+      {
+        "title": "Yargıtay Kararı 11. Hukuk Dairesi",
+        "daire": "11. Hukuk Dairesi",
+        "tarih": "22.01.2026",
+        "source": "yargitay",
+        "relevanceScore": 87,
+        "semanticScore": 0.6035,
+        "combinedScore": 0.6621,
+        "matchedKeywords": [
+          "mülk sahibinin sorumluluğu",
+          "menfi tespit davası",
+          "fiili kullanıcı",
+          "tüketim miktarı",
+          "bilirkişi raporu"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.604, cekirdek=3"
+      },
+      {
+        "title": "Yargıtay Kararı 11. Hukuk Dairesi",
+        "daire": "11. Hukuk Dairesi",
+        "tarih": "22.01.2026",
+        "source": "yargitay",
+        "relevanceScore": 88,
+        "semanticScore": 0.6148,
+        "combinedScore": 0.606,
+        "matchedKeywords": [
+          "menfi tespit davası",
+          "fiili kullanıcı",
+          "abonelik sözleşmesi",
+          "kira sözleşmesi",
+          "bilirkişi raporu"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.615, cekirdek=2"
+      },
+      {
+        "title": "Yargıtay Kararı 11. Hukuk Dairesi",
+        "daire": "11. Hukuk Dairesi",
+        "tarih": "22.01.2026",
+        "source": "yargitay",
+        "relevanceScore": 90,
+        "semanticScore": 0.6035,
+        "combinedScore": 0.6017,
+        "matchedKeywords": [
+          "menfi tespit davası",
+          "fiili kullanıcı",
+          "abonelik sözleşmesi",
+          "kira sözleşmesi",
+          "bilirkişi raporu"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.604, cekirdek=2"
+      },
+      {
+        "title": "Yargıtay Kararı 11. Hukuk Dairesi",
+        "daire": "11. Hukuk Dairesi",
+        "tarih": "22.01.2026",
+        "source": "yargitay",
+        "relevanceScore": 89,
+        "semanticScore": 0.6035,
+        "combinedScore": 0.5782,
+        "matchedKeywords": [
+          "kaçak elektrik kullanımı",
+          "fiili kullanıcı",
+          "tüketim miktarı",
+          "bilirkişi raporu"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.604, cekirdek=2"
+      },
+      {
+        "title": "Yargıtay Kararı 11. Hukuk Dairesi",
+        "daire": "11. Hukuk Dairesi",
+        "tarih": "21.01.2026",
+        "source": "yargitay",
+        "relevanceScore": 86,
+        "semanticScore": 0.6035,
+        "combinedScore": 0.5773,
+        "matchedKeywords": [
+          "mülk sahibinin sorumluluğu",
+          "fiili kullanıcı",
+          "tüketim miktarı",
+          "bilirkişi raporu"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.604, cekirdek=2"
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "name": "Aile Hukuku — Boşanma ve Velayet",
+    "expectedDomain": "aile",
+    "expectedSource": "yargitay",
+    "expectedConcepts": [
+      "boşanma",
+      "velayet",
+      "kusur",
+      "nafaka",
+      "tazminat"
+    ],
+    "queryLength": 651,
+    "status": "OK",
+    "planMs": 29766,
+    "searchMs": 12477,
+    "totalMs": 42243,
+    "resultCount": 10,
+    "detectedDomain": "aile",
+    "domainMatch": true,
+    "targetSources": [
+      "yargitay"
+    ],
+    "queryMode": "long_fact",
+    "retrievalConcepts": [
+      "sadakat yükümlülüğünün ihlali",
+      "zina boşanma",
+      "velayet ve iştirak nafakası",
+      "maddi ve manevi tazminat"
+    ],
+    "supportConcepts": [
+      "evlilik birliğinin temelinden sarsılması",
+      "kusur tespiti",
+      "çocuğun üstün yararı"
+    ],
+    "negativeConcepts": [
+      "iş kazası",
+      "idari işlemin iptali",
+      "alacak davası"
+    ],
+    "searchQuery": "sadakat yükümlülüğünün ihlali, zina boşanma",
+    "semanticQuery": "Sadakat yükümlülüğünün ihlali ve hakaret vakıalarına dayalı boşanma davasında kusur tespiti, tazminat ve velayet talepleri tartışılmaktadır.",
+    "totalCandidates": 10,
+    "summaryPassedCount": 0,
+    "fullTextCheckedCount": 10,
+    "finalMatchedCount": 10,
+    "fallbackUsed": false,
+    "zeroResultReason": null,
+    "selectionMode": "strict",
+    "conceptScore": 60,
+    "conceptHits": [
+      {
+        "concept": "boşanma",
+        "found": true
+      },
+      {
+        "concept": "velayet",
+        "found": false
+      },
+      {
+        "concept": "kusur",
+        "found": true
+      },
+      {
+        "concept": "nafaka",
+        "found": false
+      },
+      {
+        "concept": "tazminat",
+        "found": true
+      }
+    ],
+    "sourceDistribution": {
+      "yargitay": 10
+    },
+    "primarySourceHit": true,
+    "qualityScore": 88,
+    "clauseRunCount": 1,
+    "clauseRuns": [
+      {
+        "source": "yargitay",
+        "clause": "sadakat yükümlülüğünün ihlali, zina boşanma",
+        "count": 10,
+        "ok": true
+      }
+    ],
+    "topResults": [
+      {
+        "title": "Yargıtay Kararı 2. Hukuk Dairesi",
+        "daire": "2. Hukuk Dairesi",
+        "tarih": "25.12.2025",
+        "source": "yargitay",
+        "relevanceScore": 81,
+        "semanticScore": 0.6734,
+        "combinedScore": 0.5734,
+        "matchedKeywords": [
+          "zina boşanma",
+          "maddi ve manevi tazminat",
+          "kusur tespiti"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.673, cekirdek=2, negatif=1"
+      },
+      {
+        "title": "Yargıtay Kararı 2. Hukuk Dairesi",
+        "daire": "2. Hukuk Dairesi",
+        "tarih": "25.12.2025",
+        "source": "yargitay",
+        "relevanceScore": 82,
+        "semanticScore": 0.6674,
+        "combinedScore": 0.5711,
+        "matchedKeywords": [
+          "zina boşanma",
+          "maddi ve manevi tazminat",
+          "kusur tespiti"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.667, cekirdek=2, negatif=1"
+      },
+      {
+        "title": "Yargıtay Kararı 2. Hukuk Dairesi",
+        "daire": "2. Hukuk Dairesi",
+        "tarih": "25.12.2025",
+        "source": "yargitay",
+        "relevanceScore": 84,
+        "semanticScore": 0.6543,
+        "combinedScore": 0.5352,
+        "matchedKeywords": [
+          "zina boşanma",
+          "maddi ve manevi tazminat",
+          "kusur tespiti",
+          "tanık beyanları"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.654, cekirdek=2, negatif=2"
+      },
+      {
+        "title": "Yargıtay Kararı 2. Hukuk Dairesi",
+        "daire": "2. Hukuk Dairesi",
+        "tarih": "29.12.2025",
+        "source": "yargitay",
+        "relevanceScore": 90,
+        "semanticScore": 0.6525,
+        "combinedScore": 0.5669,
+        "matchedKeywords": [
+          "zina boşanma",
+          "maddi ve manevi tazminat",
+          "kusur tespiti"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.652, cekirdek=2, negatif=1"
+      },
+      {
+        "title": "Yargıtay Kararı 2. Hukuk Dairesi",
+        "daire": "2. Hukuk Dairesi",
+        "tarih": "29.12.2025",
+        "source": "yargitay",
+        "relevanceScore": 89,
+        "semanticScore": 0.6676,
+        "combinedScore": 0.5424,
+        "matchedKeywords": [
+          "zina boşanma",
+          "maddi ve manevi tazminat"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.668, cekirdek=2, negatif=1"
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "name": "Ticaret Hukuku — Haksız Rekabet (Ticari Sır)",
+    "expectedDomain": "ticaret",
+    "expectedSource": "yargitay",
+    "expectedConcepts": [
+      "haksız rekabet",
+      "ticari sır",
+      "rekabet yasağı",
+      "müşteri listesi"
+    ],
+    "queryLength": 681,
+    "status": "OK",
+    "planMs": 31585,
+    "searchMs": 15712,
+    "totalMs": 47297,
+    "resultCount": 0,
+    "detectedDomain": "ticaret",
+    "domainMatch": true,
+    "targetSources": [
+      "yargitay"
+    ],
+    "queryMode": "long_fact",
+    "retrievalConcepts": [
+      "rekabet yasağı ihlali",
+      "haksız rekabetin tespiti",
+      "ticari sırların korunması",
+      "sadakat borcuna aykırılık"
+    ],
+    "supportConcepts": [
+      "müşteri çevresinin kullanımı",
+      "rakip firma kurma",
+      "tazminatın belirlenmesi"
+    ],
+    "negativeConcepts": [
+      "işe iade",
+      "kıdem tazminatı",
+      "iş kazası",
+      "sendikal tazminat"
+    ],
+    "searchQuery": "rekabet yasağı ihlali, haksız rekabetin tespiti",
+    "semanticQuery": "İş sözleşmesindeki rekabet yasağı ve gizlilik hükümlerine aykırı hareket edilmesi nedeniyle haksız rekabet tazminatı talebi.",
+    "totalCandidates": 10,
+    "summaryPassedCount": 0,
+    "fullTextCheckedCount": 10,
+    "finalMatchedCount": 0,
+    "fallbackUsed": false,
+    "zeroResultReason": "semantic_fallback_empty",
+    "selectionMode": "strict",
+    "conceptScore": 0,
+    "conceptHits": [
+      {
+        "concept": "haksız rekabet",
+        "found": false
+      },
+      {
+        "concept": "ticari sır",
+        "found": false
+      },
+      {
+        "concept": "rekabet yasağı",
+        "found": false
+      },
+      {
+        "concept": "müşteri listesi",
+        "found": false
+      }
+    ],
+    "sourceDistribution": {},
+    "primarySourceHit": false,
+    "qualityScore": 25,
+    "clauseRunCount": 1,
+    "clauseRuns": [
+      {
+        "source": "yargitay",
+        "clause": "rekabet yasağı ihlali, haksız rekabetin tespiti",
+        "count": 10,
+        "ok": true
+      }
+    ],
+    "topResults": []
+  },
+  {
+    "id": 7,
+    "name": "Ceza Hukuku — Dolandırıcılık (Bilişim Yoluyla)",
+    "expectedDomain": "ceza",
+    "expectedSource": "yargitay",
+    "expectedConcepts": [
+      "dolandırıcılık",
+      "bilişim",
+      "nitelikli",
+      "banka hesabı"
+    ],
+    "queryLength": 780,
+    "status": "OK",
+    "planMs": 306299,
+    "searchMs": 15181,
+    "totalMs": 321489,
+    "resultCount": 1,
+    "detectedDomain": "ceza",
+    "domainMatch": true,
+    "targetSources": [
+      "yargitay"
+    ],
+    "queryMode": "long_fact",
+    "retrievalConcepts": [
+      "nitelikli dolandırıcılık",
+      "bilişim sistemlerinin araç olarak kullanılması",
+      "resmi belgede sahtecilik"
+    ],
+    "supportConcepts": [
+      "sahte ilan",
+      "kapora dolandırıcılığı",
+      "haksız menfaat temini"
+    ],
+    "negativeConcepts": [
+      "basit dolandırıcılık",
+      "özel belgede sahtecilik",
+      "hırsızlık",
+      "güveni kötüye kullanma"
+    ],
+    "searchQuery": "nitelikli dolandırıcılık, bilişim sistemlerinin araç",
+    "semanticQuery": "İnternet üzerinden sahte ilan ve belgelerle kapora alınması suretiyle nitelikli dolandırıcılık ve resmi belgede sahtecilik suçlarının oluşumu tartışılmaktadır.",
+    "totalCandidates": 10,
+    "summaryPassedCount": 0,
+    "fullTextCheckedCount": 10,
+    "finalMatchedCount": 1,
+    "fallbackUsed": false,
+    "zeroResultReason": null,
+    "selectionMode": "strict",
+    "conceptScore": 50,
+    "conceptHits": [
+      {
+        "concept": "dolandırıcılık",
+        "found": true
+      },
+      {
+        "concept": "bilişim",
+        "found": false
+      },
+      {
+        "concept": "nitelikli",
+        "found": true
+      },
+      {
+        "concept": "banka hesabı",
+        "found": false
+      }
+    ],
+    "sourceDistribution": {
+      "yargitay": 1
+    },
+    "primarySourceHit": true,
+    "qualityScore": 85,
+    "clauseRunCount": 1,
+    "clauseRuns": [
+      {
+        "source": "yargitay",
+        "clause": "nitelikli dolandırıcılık, bilişim sistemlerinin araç",
+        "count": 10,
+        "ok": true
+      }
+    ],
+    "topResults": [
+      {
+        "title": "Yargıtay Kararı 4. Hukuk Dairesi",
+        "daire": "4. Hukuk Dairesi",
+        "tarih": "10.02.2026",
+        "source": "yargitay",
+        "relevanceScore": 89,
+        "semanticScore": 0.6042,
+        "combinedScore": 0.5,
+        "matchedKeywords": [
+          "nitelikli dolandırıcılık"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.604, cekirdek=1"
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "name": "Vergi Hukuku — KDV İadesi Reddi",
+    "expectedDomain": "vergi",
+    "expectedSource": "danistay",
+    "expectedConcepts": [
+      "KDV",
+      "iade",
+      "sahte fatura",
+      "vergi ziyaı"
+    ],
+    "queryLength": 743,
+    "status": "OK",
+    "planMs": 323635,
+    "searchMs": 28909,
+    "totalMs": 352560,
+    "resultCount": 0,
+    "detectedDomain": "vergi",
+    "domainMatch": true,
+    "targetSources": [
+      "danistay"
+    ],
+    "queryMode": "long_fact",
+    "retrievalConcepts": [
+      "KDV iadesi",
+      "vergi tekniği raporu",
+      "ekonomik gerçeklik ilkesi",
+      "alt mükellef"
+    ],
+    "supportConcepts": [
+      "işlemin gerçekliği",
+      "ispat yükü",
+      "VUK 3/B"
+    ],
+    "negativeConcepts": [
+      "kurumlar vergisi",
+      "gelir vergisi",
+      "gümrük vergisi"
+    ],
+    "searchQuery": "KDV iadesi, vergi tekniği raporu",
+    "semanticQuery": "Alt mükellef hakkındaki vergi tekniği raporu gerekçe gösterilerek KDV iade talebinin reddedilmesinin hukuka uygunluğu tartışılmaktadır.",
+    "totalCandidates": 10,
+    "summaryPassedCount": 0,
+    "fullTextCheckedCount": 10,
+    "finalMatchedCount": 0,
+    "fallbackUsed": false,
+    "zeroResultReason": "semantic_fallback_empty",
+    "selectionMode": "strict",
+    "conceptScore": 0,
+    "conceptHits": [
+      {
+        "concept": "KDV",
+        "found": false
+      },
+      {
+        "concept": "iade",
+        "found": false
+      },
+      {
+        "concept": "sahte fatura",
+        "found": false
+      },
+      {
+        "concept": "vergi ziyaı",
+        "found": false
+      }
+    ],
+    "sourceDistribution": {},
+    "primarySourceHit": false,
+    "qualityScore": 25,
+    "clauseRunCount": 4,
+    "clauseRuns": [
+      {
+        "source": "danistay",
+        "clause": "KDV iadesi, vergi tekniği raporu",
+        "count": 0,
+        "ok": true
+      },
+      {
+        "source": "danistay",
+        "clause": "\"KDV iadesi\" \"vergi tekniği raporu\"",
+        "count": 0,
+        "ok": true
+      },
+      {
+        "source": "danistay",
+        "clause": "+KDV +iadesi +vergi +tekniği",
+        "count": 0,
+        "ok": true
+      },
+      {
+        "source": "danistay",
+        "clause": "KDV iadesi vergi tekniği raporu ekonomik gerçeklik ilkesi",
+        "count": 10,
+        "ok": true
+      }
+    ],
+    "topResults": []
+  },
+  {
+    "id": 9,
+    "name": "İş Hukuku — Kıdem Tazminatı (Mobbing Nedeniyle Haklı Fesih)",
+    "expectedDomain": "is_hukuku",
+    "expectedSource": "yargitay",
+    "expectedConcepts": [
+      "kıdem tazminatı",
+      "mobbing",
+      "haklı fesih",
+      "psikolojik baskı"
+    ],
+    "queryLength": 815,
+    "status": "OK",
+    "planMs": 567923,
+    "searchMs": 20882,
+    "totalMs": 588809,
+    "resultCount": 10,
+    "detectedDomain": "is_hukuku",
+    "domainMatch": true,
+    "targetSources": [
+      "yargitay"
+    ],
+    "queryMode": "long_fact",
+    "retrievalConcepts": [
+      "mobbing",
+      "psikolojik taciz",
+      "haklı nedenle fesih",
+      "manevi tazminat"
+    ],
+    "supportConcepts": [
+      "performans notu düşürülmesi",
+      "işverenin gözetme borcu",
+      "kişilik haklarının ihlali"
+    ],
+    "negativeConcepts": [
+      "istifa",
+      "belirli süreli iş sözleşmesi",
+      "ikale"
+    ],
+    "searchQuery": "mobbing, psikolojik taciz",
+    "semanticQuery": "Sistematik mobbing ve performans baskısına maruz kalan işçinin haklı nedenle feshi ve manevi tazminat hakkı tartışılmaktadır.",
+    "totalCandidates": 10,
+    "summaryPassedCount": 0,
+    "fullTextCheckedCount": 10,
+    "finalMatchedCount": 10,
+    "fallbackUsed": false,
+    "zeroResultReason": null,
+    "selectionMode": "strict",
+    "conceptScore": 25,
+    "conceptHits": [
+      {
+        "concept": "kıdem tazminatı",
+        "found": false
+      },
+      {
+        "concept": "mobbing",
+        "found": true
+      },
+      {
+        "concept": "haklı fesih",
+        "found": false
+      },
+      {
+        "concept": "psikolojik baskı",
+        "found": false
+      }
+    ],
+    "sourceDistribution": {
+      "yargitay": 10
+    },
+    "primarySourceHit": true,
+    "qualityScore": 78,
+    "clauseRunCount": 1,
+    "clauseRuns": [
+      {
+        "source": "yargitay",
+        "clause": "mobbing, psikolojik taciz",
+        "count": 10,
+        "ok": true
+      }
+    ],
+    "topResults": [
+      {
+        "title": "Yargıtay Kararı 9. Hukuk Dairesi",
+        "daire": "9. Hukuk Dairesi",
+        "tarih": "24.12.2025",
+        "source": "yargitay",
+        "relevanceScore": 85,
+        "semanticScore": 0.7468,
+        "combinedScore": 0.8005,
+        "matchedKeywords": [
+          "mobbing",
+          "psikolojik taciz",
+          "haklı nedenle fesih",
+          "manevi tazminat",
+          "performans notu düşürülmesi",
+          "kişilik haklarının ihlali",
+          "anksiyete tanısı",
+          "sağlık raporu",
+          "tanık beyanları",
+          "performans değerlendirme formları"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.747, cekirdek=4, negatif=2"
+      },
+      {
+        "title": "Yargıtay Kararı 9. Hukuk Dairesi",
+        "daire": "9. Hukuk Dairesi",
+        "tarih": "24.12.2025",
+        "source": "yargitay",
+        "relevanceScore": 86,
+        "semanticScore": 0.7025,
+        "combinedScore": 0.7306,
+        "matchedKeywords": [
+          "mobbing",
+          "psikolojik taciz",
+          "haklı nedenle fesih",
+          "manevi tazminat",
+          "performans notu düşürülmesi",
+          "işverenin gözetme borcu",
+          "sağlık raporu",
+          "e-posta yazışmaları",
+          "performans değerlendirme formları"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.703, cekirdek=4, negatif=3"
+      },
+      {
+        "title": "Yargıtay Kararı 9. Hukuk Dairesi",
+        "daire": "9. Hukuk Dairesi",
+        "tarih": "29.12.2025",
+        "source": "yargitay",
+        "relevanceScore": 87,
+        "semanticScore": 0.6889,
+        "combinedScore": 0.7359,
+        "matchedKeywords": [
+          "mobbing",
+          "psikolojik taciz",
+          "haklı nedenle fesih",
+          "manevi tazminat",
+          "kişilik haklarının ihlali",
+          "anksiyete tanısı",
+          "sağlık raporu",
+          "tanık beyanları"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.689, cekirdek=4, negatif=2"
+      },
+      {
+        "title": "Yargıtay Kararı 9. Hukuk Dairesi",
+        "daire": "9. Hukuk Dairesi",
+        "tarih": "16.12.2025",
+        "source": "yargitay",
+        "relevanceScore": 81,
+        "semanticScore": 0.6726,
+        "combinedScore": 0.7358,
+        "matchedKeywords": [
+          "mobbing",
+          "psikolojik taciz",
+          "haklı nedenle fesih",
+          "manevi tazminat",
+          "işverenin gözetme borcu",
+          "anksiyete tanısı",
+          "sağlık raporu",
+          "tanık beyanları",
+          "e-posta yazışmaları"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.673, cekirdek=4, negatif=2"
+      },
+      {
+        "title": "Yargıtay Kararı 9. Hukuk Dairesi",
+        "daire": "9. Hukuk Dairesi",
+        "tarih": "12.01.2026",
+        "source": "yargitay",
+        "relevanceScore": 89,
+        "semanticScore": 0.7435,
+        "combinedScore": 0.7386,
+        "matchedKeywords": [
+          "mobbing",
+          "psikolojik taciz",
+          "haklı nedenle fesih",
+          "manevi tazminat",
+          "anksiyete tanısı",
+          "sağlık raporu",
+          "tanık beyanları",
+          "e-posta yazışmaları"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.744, cekirdek=4, negatif=2"
+      }
+    ]
+  },
+  {
+    "id": 10,
+    "name": "Ceza Hukuku — Kasten Yaralama (Kemik Kırığı + Meşru Savunma İddiası)",
+    "expectedDomain": "ceza",
+    "expectedSource": "yargitay",
+    "expectedConcepts": [
+      "kasten yaralama",
+      "kemik kırığı",
+      "meşru savunma",
+      "haksız tahrik"
+    ],
+    "queryLength": 752,
+    "status": "OK",
+    "planMs": 29120,
+    "searchMs": 14639,
+    "totalMs": 43759,
+    "resultCount": 10,
+    "detectedDomain": "ceza",
+    "domainMatch": true,
+    "targetSources": [
+      "yargitay"
+    ],
+    "queryMode": "long_fact",
+    "retrievalConcepts": [
+      "kasten yaralama",
+      "meşru müdafaa",
+      "neticesi sebebiyle agirlasmis yaralama"
+    ],
+    "supportConcepts": [
+      "haksiz saldiri",
+      "hayati tehlike",
+      "kemik kirigi"
+    ],
+    "negativeConcepts": [
+      "taksirle yaralama",
+      "meşru müdafaada sinirin asilmasi"
+    ],
+    "searchQuery": "kasten yaralama, meşru müdafaa",
+    "semanticQuery": "Kasten yaralama suçunda ilk haksız saldırının sanıktan gelmesi durumunda meşru müdafaa ve neticesi sebebiyle ağırlaşmış yaralama hükümleri tartışılmaktadır.",
+    "totalCandidates": 10,
+    "summaryPassedCount": 0,
+    "fullTextCheckedCount": 10,
+    "finalMatchedCount": 10,
+    "fallbackUsed": false,
+    "zeroResultReason": null,
+    "selectionMode": "strict",
+    "conceptScore": 50,
+    "conceptHits": [
+      {
+        "concept": "kasten yaralama",
+        "found": true
+      },
+      {
+        "concept": "kemik kırığı",
+        "found": true
+      },
+      {
+        "concept": "meşru savunma",
+        "found": false
+      },
+      {
+        "concept": "haksız tahrik",
+        "found": false
+      }
+    ],
+    "sourceDistribution": {
+      "yargitay": 10
+    },
+    "primarySourceHit": true,
+    "qualityScore": 85,
+    "clauseRunCount": 1,
+    "clauseRuns": [
+      {
+        "source": "yargitay",
+        "clause": "kasten yaralama, meşru müdafaa",
+        "count": 10,
+        "ok": true
+      }
+    ],
+    "topResults": [
+      {
+        "title": "Yargıtay Kararı 4. Ceza Dairesi",
+        "daire": "4. Ceza Dairesi",
+        "tarih": "02.02.2026",
+        "source": "yargitay",
+        "relevanceScore": 86,
+        "semanticScore": 0.6795,
+        "combinedScore": 0.7701,
+        "matchedKeywords": [
+          "kasten yaralama",
+          "meşru müdafaa",
+          "neticesi sebebiyle agirlasmis yaralama",
+          "haksiz saldiri",
+          "kamera kayitlari",
+          "tanik beyanlari",
+          "adli tip raporu",
+          "olay yeri inceleme"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.679, cekirdek=3, negatif=1"
+      },
+      {
+        "title": "Yargıtay Kararı 4. Ceza Dairesi",
+        "daire": "4. Ceza Dairesi",
+        "tarih": "03.02.2026",
+        "source": "yargitay",
+        "relevanceScore": 88,
+        "semanticScore": 0.6782,
+        "combinedScore": 0.7368,
+        "matchedKeywords": [
+          "kasten yaralama",
+          "meşru müdafaa",
+          "neticesi sebebiyle agirlasmis yaralama",
+          "haksiz saldiri",
+          "adli tip raporu"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.678, cekirdek=3, negatif=1"
+      },
+      {
+        "title": "Yargıtay Kararı 4. Ceza Dairesi",
+        "daire": "4. Ceza Dairesi",
+        "tarih": "02.02.2026",
+        "source": "yargitay",
+        "relevanceScore": 84,
+        "semanticScore": 0.6057,
+        "combinedScore": 0.7148,
+        "matchedKeywords": [
+          "kasten yaralama",
+          "meşru müdafaa",
+          "neticesi sebebiyle agirlasmis yaralama",
+          "hayati tehlike",
+          "tanik beyanlari",
+          "olay yeri inceleme"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.606, cekirdek=3, negatif=1"
+      },
+      {
+        "title": "Yargıtay Kararı 4. Ceza Dairesi",
+        "daire": "4. Ceza Dairesi",
+        "tarih": "02.02.2026",
+        "source": "yargitay",
+        "relevanceScore": 83,
+        "semanticScore": 0.602,
+        "combinedScore": 0.7128,
+        "matchedKeywords": [
+          "kasten yaralama",
+          "meşru müdafaa",
+          "neticesi sebebiyle agirlasmis yaralama",
+          "hayati tehlike",
+          "tanik beyanlari",
+          "olay yeri inceleme"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.602, cekirdek=3, negatif=1"
+      },
+      {
+        "title": "Yargıtay Kararı 3. Hukuk Dairesi",
+        "daire": "3. Hukuk Dairesi",
+        "tarih": "21.01.2026",
+        "source": "yargitay",
+        "relevanceScore": 81,
+        "semanticScore": 0.6307,
+        "combinedScore": 0.6654,
+        "matchedKeywords": [
+          "kasten yaralama",
+          "neticesi sebebiyle agirlasmis yaralama",
+          "haksiz saldiri",
+          "kemik kirigi",
+          "kamera kayitlari",
+          "tanik beyanlari",
+          "adli tip raporu",
+          "olay yeri inceleme"
+        ],
+        "matchStage": "full_text",
+        "selectionReason": "Tam metin dogrulamasi gecti. mode=long_fact, semantic=0.631, cekirdek=2, negatif=1"
+      }
+    ]
+  }
+]

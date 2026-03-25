@@ -1,0 +1,5379 @@
+{
+  "generatedAt": "2026-03-24T09:51:30.630Z",
+  "summary": {
+    "total": 34,
+    "evaluatedTotal": 27,
+    "excludedRateLimitedCount": 7,
+    "passCount": 4,
+    "partialCount": 29,
+    "failCount": 1,
+    "domainAccuracy": 0.7037037037037037,
+    "birimAccuracy": 0.7777777777777778,
+    "familyAccuracy": 0.9259259259259259,
+    "allMustCoveredRate": 0.18518518518518517,
+    "avgMustHitRate": 0.4074074074074074,
+    "forbiddenLeakRate": 0,
+    "rateLimitedRate": 0.20588235294117646,
+    "zeroResultRate": 0.037037037037037035,
+    "byDomain": [
+      {
+        "domain": "aile",
+        "total": 2,
+        "evaluated": 0,
+        "pass": 0,
+        "partial": 2,
+        "fail": 0,
+        "domainPass": 0,
+        "birimPass": 0,
+        "familyPass": 0,
+        "allMustCovered": 0,
+        "forbiddenLeak": 0,
+        "rateLimited": 2,
+        "zeroResults": 0,
+        "avgMustHitRate": 0
+      },
+      {
+        "domain": "anayasa",
+        "total": 2,
+        "evaluated": 2,
+        "pass": 1,
+        "partial": 0,
+        "fail": 1,
+        "domainPass": 1,
+        "birimPass": 2,
+        "familyPass": 1,
+        "allMustCovered": 1,
+        "forbiddenLeak": 0,
+        "rateLimited": 0,
+        "zeroResults": 1,
+        "avgMustHitRate": 0.5
+      },
+      {
+        "domain": "borclar",
+        "total": 3,
+        "evaluated": 2,
+        "pass": 0,
+        "partial": 3,
+        "fail": 0,
+        "domainPass": 0,
+        "birimPass": 0,
+        "familyPass": 2,
+        "allMustCovered": 0,
+        "forbiddenLeak": 0,
+        "rateLimited": 1,
+        "zeroResults": 0,
+        "avgMustHitRate": 0
+      },
+      {
+        "domain": "ceza",
+        "total": 3,
+        "evaluated": 3,
+        "pass": 0,
+        "partial": 3,
+        "fail": 0,
+        "domainPass": 2,
+        "birimPass": 2,
+        "familyPass": 3,
+        "allMustCovered": 0,
+        "forbiddenLeak": 0,
+        "rateLimited": 0,
+        "zeroResults": 0,
+        "avgMustHitRate": 0.4444444444444444
+      },
+      {
+        "domain": "gayrimenkul",
+        "total": 2,
+        "evaluated": 2,
+        "pass": 0,
+        "partial": 2,
+        "fail": 0,
+        "domainPass": 1,
+        "birimPass": 2,
+        "familyPass": 2,
+        "allMustCovered": 1,
+        "forbiddenLeak": 0,
+        "rateLimited": 0,
+        "zeroResults": 0,
+        "avgMustHitRate": 0.8333333333333333
+      },
+      {
+        "domain": "icra",
+        "total": 4,
+        "evaluated": 4,
+        "pass": 0,
+        "partial": 4,
+        "fail": 0,
+        "domainPass": 2,
+        "birimPass": 2,
+        "familyPass": 3,
+        "allMustCovered": 0,
+        "forbiddenLeak": 0,
+        "rateLimited": 0,
+        "zeroResults": 0,
+        "avgMustHitRate": 0.16666666666666666
+      },
+      {
+        "domain": "idare",
+        "total": 4,
+        "evaluated": 4,
+        "pass": 1,
+        "partial": 3,
+        "fail": 0,
+        "domainPass": 4,
+        "birimPass": 4,
+        "familyPass": 4,
+        "allMustCovered": 1,
+        "forbiddenLeak": 0,
+        "rateLimited": 0,
+        "zeroResults": 0,
+        "avgMustHitRate": 0.41666666666666663
+      },
+      {
+        "domain": "is_hukuku",
+        "total": 4,
+        "evaluated": 2,
+        "pass": 1,
+        "partial": 3,
+        "fail": 0,
+        "domainPass": 2,
+        "birimPass": 2,
+        "familyPass": 2,
+        "allMustCovered": 1,
+        "forbiddenLeak": 0,
+        "rateLimited": 2,
+        "zeroResults": 0,
+        "avgMustHitRate": 0.6666666666666666
+      },
+      {
+        "domain": "miras",
+        "total": 2,
+        "evaluated": 1,
+        "pass": 1,
+        "partial": 1,
+        "fail": 0,
+        "domainPass": 1,
+        "birimPass": 1,
+        "familyPass": 1,
+        "allMustCovered": 1,
+        "forbiddenLeak": 0,
+        "rateLimited": 1,
+        "zeroResults": 0,
+        "avgMustHitRate": 1
+      },
+      {
+        "domain": "ticaret",
+        "total": 4,
+        "evaluated": 4,
+        "pass": 0,
+        "partial": 4,
+        "fail": 0,
+        "domainPass": 3,
+        "birimPass": 3,
+        "familyPass": 4,
+        "allMustCovered": 0,
+        "forbiddenLeak": 0,
+        "rateLimited": 0,
+        "zeroResults": 0,
+        "avgMustHitRate": 0.3333333333333333
+      },
+      {
+        "domain": "tuketici",
+        "total": 1,
+        "evaluated": 0,
+        "pass": 0,
+        "partial": 1,
+        "fail": 0,
+        "domainPass": 0,
+        "birimPass": 0,
+        "familyPass": 0,
+        "allMustCovered": 0,
+        "forbiddenLeak": 0,
+        "rateLimited": 1,
+        "zeroResults": 0,
+        "avgMustHitRate": 0
+      },
+      {
+        "domain": "vergi",
+        "total": 3,
+        "evaluated": 3,
+        "pass": 0,
+        "partial": 3,
+        "fail": 0,
+        "domainPass": 3,
+        "birimPass": 3,
+        "familyPass": 3,
+        "allMustCovered": 0,
+        "forbiddenLeak": 0,
+        "rateLimited": 0,
+        "zeroResults": 0,
+        "avgMustHitRate": 0.3333333333333333
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "ceza-uyusturucu-fiziki-takip",
+      "query": "Uyuşturucu madde ticareti, fiziki takip, hassas terazi, kullanıcı tanık beyanı",
+      "expected": {
+        "domain": "ceza",
+        "birim": "C10",
+        "family": "10. Ceza Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 37121,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": "ceza",
+      "retrievalDiagnostics": {
+        "primaryDomain": "ceza",
+        "selectedBirimAdi": "C10",
+        "acceptedTopResultDaireler": [
+          "10. Ceza Dairesi"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "beraat",
+        "uyusturucu madde ticareti",
+        "arama karari",
+        "beraat",
+        "beraat",
+        "uyusturucu madde ticareti",
+        "arama karari",
+        "beraat",
+        "beraat",
+        "uyusturucu madde ticareti",
+        "arama karari",
+        "beraat",
+        "beraat",
+        "uyusturucu madde ticareti",
+        "arama karari",
+        "beraat",
+        "beraat",
+        "uyusturucu madde ticareti",
+        "fiziki takip",
+        "beraat",
+        "fiziki takip"
+      ],
+      "resultCount": 12,
+      "topResults": [
+        {
+          "title": "10. Ceza Dairesi 2025/7937 E. 2026/813 K.",
+          "daire": "10. Ceza Dairesi",
+          "source": "yargitay",
+          "contentScore": 1447,
+          "contentMergedScore": 0.325575,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "beraat",
+            "uyusturucu madde ticareti",
+            "arama karari"
+          ],
+          "contentMatchedFactPattern": [
+            "beraat"
+          ],
+          "summaryPreview": "verilmiştir. II. TEMYİZ SEBEPLERİ A. Sanık ... müdafiinin temyiz sebepleri özetle; 1\\. Yeterli delil bulunmadığına, beraat kararı verilmesi gerektiğine, 2\\. Eylemin kullanmak için uyuşturucu madde bulundurma suçunu oluşturacağına, 3\\. Delil"
+        },
+        {
+          "title": "10. Ceza Dairesi 2025/8078 E. 2026/817 K.",
+          "daire": "10. Ceza Dairesi",
+          "source": "yargitay",
+          "contentScore": 1417,
+          "contentMergedScore": 0.318825,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "beraat",
+            "uyusturucu madde ticareti",
+            "arama karari"
+          ],
+          "contentMatchedFactPattern": [
+            "beraat"
+          ],
+          "summaryPreview": "İ Sanık ... müdafiinin temyiz sebepleri özetle; 1\\. Suçun unsurlarının oluşmadığına, 2\\. Yeterli delil bulunmadığına, beraat kararı verilmesi gerektiğine, 3\\. Eylemin kullanmak için uyuşturucu madde bulundurma suçunu oluşturacağına, 4\\. Kar"
+        },
+        {
+          "title": "10. Ceza Dairesi 2025/8071 E. 2026/815 K.",
+          "daire": "10. Ceza Dairesi",
+          "source": "yargitay",
+          "contentScore": 1417,
+          "contentMergedScore": 0.318825,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "beraat",
+            "uyusturucu madde ticareti",
+            "arama karari"
+          ],
+          "contentMatchedFactPattern": [
+            "beraat"
+          ],
+          "summaryPreview": "A. Sanık ... müdafiinin temyiz sebepleri özetle; 1\\. Suçun unsurlarının oluşmadığına, 2\\. Yeterli delil bulunmadığına, beraat kararı verilmesi gerektiğine, 3\\. Eylemin kullanmak için uyuşturucu madde bulundurma suçunu oluşturacağına, 4\\. Ar"
+        },
+        {
+          "title": "10. Ceza Dairesi 2025/8074 E. 2026/816 K.",
+          "daire": "10. Ceza Dairesi",
+          "source": "yargitay",
+          "contentScore": 1327,
+          "contentMergedScore": 0.298575,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "beraat",
+            "uyusturucu madde ticareti",
+            "arama karari"
+          ],
+          "contentMatchedFactPattern": [
+            "beraat"
+          ],
+          "summaryPreview": "Elazığ 3. Ağır Ceza Mahkemesince sanık ...'nın uyuşturucu madde ticareti yapma suçundan mahkûmiyetine, sanık ...'ın beraatine karar verilmiştir. B. Diyarbakır Bölge Adliye Mahkemesi 3. Ceza Dairesinin yukarıda belirtilen kararı ile sanıklar"
+        },
+        {
+          "title": "10. Ceza Dairesi 2025/6185 E. 2026/821 K.",
+          "daire": "10. Ceza Dairesi",
+          "source": "yargitay",
+          "contentScore": 1279,
+          "contentMergedScore": 0.287775,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "beraat",
+            "uyusturucu madde ticareti",
+            "fiziki takip"
+          ],
+          "contentMatchedFactPattern": [
+            "beraat",
+            "fiziki takip"
+          ],
+          "summaryPreview": "ERİ Sanık müdafiinin temyiz sebepleri özetle; 1\\. Suçun unsurlarının oluşmadığına, 2\\. Yeterli delil bulunmadığına, beraat kararı verilmesi gerektiğine, 3\\. Eylemin kullanmak için uyuşturucu madde bulundurma suçunu oluşturacağına, 4\\. Sanık"
+        }
+      ],
+      "mustConcepts": [
+        "uyusturucu",
+        "fiziki takip",
+        "hassas terazi"
+      ],
+      "mustHits": [
+        "uyusturucu",
+        "fiziki takip"
+      ],
+      "mustHitRate": 0.6666666666666666,
+      "forbiddenConcepts": [
+        "hukuk dairesi",
+        "danistay",
+        "vergi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "ceza-uyusturucu-kullanma-savunmasi",
+      "query": "Uyuşturucu ticareti, kullanmak için bulundurma savunması, kişisel kullanım sınırı",
+      "expected": {
+        "domain": "ceza",
+        "birim": "C10",
+        "family": "10. Ceza Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 97555,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": null,
+      "retrievalDiagnostics": {
+        "primaryDomain": null,
+        "selectedBirimAdi": null,
+        "acceptedTopResultDaireler": [],
+        "sourceCoverageStatus": null,
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 0
+      },
+      "top5MatchedSignals": [],
+      "resultCount": 10,
+      "topResults": [
+        {
+          "title": "Yargıtay Kararı 10. Ceza Dairesi",
+          "daire": "10. Ceza Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "10. Ceza Dairesi 2025/8142 E. , 2026/809 K. \"İçtihat Metni\" MAHKEMESİ:Ceza Dairesi SAYISI: 2025/2739 E., 2025/1820 K. SUÇ: Uyuşturucu madde ticareti yapma HÜKÜM: İstinaf başvurusunun esastan reddi TEBLİĞNAME GÖRÜŞÜ: Temyiz isteminin esastan"
+        },
+        {
+          "title": "Yargıtay Kararı 10. Ceza Dairesi",
+          "daire": "10. Ceza Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "10. Ceza Dairesi 2025/8078 E. , 2026/817 K. \"İçtihat Metni\" MAHKEMESİ:Ceza Dairesi SAYISI: 2025/2605 E., 2025/1639 K. SUÇ: Uyuşturucu madde ticareti yapma HÜKÜMLER: İstinaf başvurularının esastan reddi TEBLİĞNAME GÖRÜŞÜ: Temyiz istemlerinin"
+        },
+        {
+          "title": "Yargıtay Kararı 10. Ceza Dairesi",
+          "daire": "10. Ceza Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "10. Ceza Dairesi 2025/6185 E. , 2026/821 K. \"İçtihat Metni\" MAHKEMESİ:Ceza Dairesi SAYISI: 2025/2226 E., 2025/2142 K. SUÇ: Uyuşturucu madde ticareti yapma HÜKÜM: İstinaf başvurusunun esastan reddi TEBLİĞNAME GÖRÜŞÜ: Bozma Sanık hakkında kur"
+        },
+        {
+          "title": "Yargıtay Kararı 10. Ceza Dairesi",
+          "daire": "10. Ceza Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "10. Ceza Dairesi 2025/7937 E. , 2026/813 K. \"İçtihat Metni\" MAHKEMESİ:Ceza Dairesi SAYISI: 2025/2349 E., 2025/2536 K. SUÇ: Uyuşturucu madde ticareti yapma HÜKÜMLER: İstinaf başvurularının esastan reddi TEBLİĞNAME GÖRÜŞÜ: Temyiz istemlerinin"
+        },
+        {
+          "title": "Yargıtay Kararı 10. Ceza Dairesi",
+          "daire": "10. Ceza Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "10. Ceza Dairesi 2025/8145 E. , 2026/808 K. \"İçtihat Metni\" MAHKEMESİ:Ceza Dairesi SAYISI: 2025/3069 E., 2025/2817 K. SUÇ: Uyuşturucu madde ticareti yapma HÜKÜM: İstinaf başvurusunun esastan reddi TEBLİĞNAME GÖRÜŞÜ: Temyiz isteminin esastan"
+        }
+      ],
+      "mustConcepts": [
+        "uyusturucu",
+        "kullanmak icin bulundurma",
+        "kisisel kullanim"
+      ],
+      "mustHits": [],
+      "mustHitRate": 0,
+      "forbiddenConcepts": [
+        "hukuk dairesi",
+        "danistay",
+        "vergi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": false,
+        "birimPass": false,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "ceza-uyusturucu-paketleme",
+      "query": "TCK 188 kapsamında uyuşturucu satışı, paketleme, ele geçirilen madde miktarı",
+      "expected": {
+        "domain": "ceza",
+        "birim": "C10",
+        "family": "10. Ceza Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 28334,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": "ceza",
+      "retrievalDiagnostics": {
+        "primaryDomain": "ceza",
+        "selectedBirimAdi": "C10",
+        "acceptedTopResultDaireler": [
+          "10. Ceza Dairesi"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "uyusturucu madde ticareti",
+        "supheden sanik yararlanir",
+        "hassas terazi",
+        "hassas terazi",
+        "uyusturucu madde ticareti",
+        "ele gecirildi",
+        "uyusturucu madde ticareti",
+        "fiziki takip",
+        "fiziki takip",
+        "uyusturucu madde ticareti",
+        "uyusturucu madde ticareti"
+      ],
+      "resultCount": 7,
+      "topResults": [
+        {
+          "title": "10. Ceza Dairesi 2025/8145 E. 2026/808 K.",
+          "daire": "10. Ceza Dairesi",
+          "source": "yargitay",
+          "contentScore": 1102,
+          "contentMergedScore": 0.24795000000000003,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "uyusturucu madde ticareti",
+            "supheden sanik yararlanir",
+            "hassas terazi"
+          ],
+          "contentMatchedFactPattern": [
+            "hassas terazi"
+          ],
+          "summaryPreview": "45 E. , 2026/808 K.** **\"İçtihat Metni\"** MAHKEMESİ:Ceza Dairesi SAYISI: 2025/3069 E., 2025/2817 K. SUÇ: Uyuşturucu madde ticareti yapma HÜKÜM: İstinaf başvurusunun esastan reddi TEBLİĞNAME GÖRÜŞÜ: Temyiz isteminin esastan reddiyle hükmün o"
+        },
+        {
+          "title": "10. Ceza Dairesi 2021/9386 E. 2026/824 K.",
+          "daire": "10. Ceza Dairesi",
+          "source": "yargitay",
+          "contentScore": 853,
+          "contentMergedScore": 0.191925,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "uyusturucu madde ticareti"
+          ],
+          "contentMatchedFactPattern": [
+            "ele gecirildi"
+          ],
+          "summaryPreview": ". , 2026/824 K.** **\"İçtihat Metni\"** MAHKEMESİ:Ağır Ceza Mahkemesi SAYISI: 2016/61 E., 2016/181 K. SUÇ: Uyuşturucu madde ticareti yapma HÜKÜM: Mahkûmiyet TEBLİĞNAME GÖRÜŞÜ: Düzeltilerek onama Yapılan ön inceleme neticesinde; sanık hakkında"
+        },
+        {
+          "title": "10. Ceza Dairesi 2025/6185 E. 2026/821 K.",
+          "daire": "10. Ceza Dairesi",
+          "source": "yargitay",
+          "contentScore": 826,
+          "contentMergedScore": 0.18585,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "uyusturucu madde ticareti",
+            "fiziki takip"
+          ],
+          "contentMatchedFactPattern": [
+            "fiziki takip"
+          ],
+          "summaryPreview": "85 E. , 2026/821 K.** **\"İçtihat Metni\"** MAHKEMESİ:Ceza Dairesi SAYISI: 2025/2226 E., 2025/2142 K. SUÇ: Uyuşturucu madde ticareti yapma HÜKÜM: İstinaf başvurusunun esastan reddi TEBLİĞNAME GÖRÜŞÜ: Bozma Sanık hakkında kurulan hükmün yapıla"
+        },
+        {
+          "title": "10. Ceza Dairesi 2026/1212 E. 2026/800 K.",
+          "daire": "10. Ceza Dairesi",
+          "source": "yargitay",
+          "contentScore": 781,
+          "contentMergedScore": 0.17572500000000002,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "uyusturucu madde ticareti"
+          ],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "K.** **\"İçtihat Metni\"** MAHKEMESİ:Ağır Ceza Mahkemesi SAYISI: 2015/231 E., 2016/153 K. HÜKÜMLÜ : ... SUÇ: Uyuşturucu madde ticareti yapma HÜKÜM: Memnu hakların iadesi talebinin reddi TEBLİĞNAME GÖRÜŞÜ: İncelenmeksizin mahalline iadesi Diya"
+        },
+        {
+          "title": "10. Ceza Dairesi 2026/1240 E. 2026/801 K.",
+          "daire": "10. Ceza Dairesi",
+          "source": "yargitay",
+          "contentScore": 781,
+          "contentMergedScore": 0.17572500000000002,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "uyusturucu madde ticareti"
+          ],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "801 K.** **\"İçtihat Metni\"** MAHKEMESİ:Ağır Ceza Mahkemesi SAYISI: 2012/135 E., 2012/224 K. HÜKÜMLÜ : SUÇ: Uyuşturucu madde ticareti yapma HÜKÜM: Memnu hakların iadesi talebinin reddi TEBLİĞNAME GÖRÜŞÜ: İncelenmeksizin mahalline iadesi Mers"
+        }
+      ],
+      "mustConcepts": [
+        "uyusturucu",
+        "paketleme",
+        "ticaret"
+      ],
+      "mustHits": [
+        "uyusturucu",
+        "ticaret"
+      ],
+      "mustHitRate": 0.6666666666666666,
+      "forbiddenConcepts": [
+        "hukuk dairesi",
+        "danistay",
+        "vergi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "is-fazla-mesai-puantaj",
+      "query": "Fazla mesai ücreti, puantaj kayıtları, bordro ihtirazi kayıt",
+      "expected": {
+        "domain": "is_hukuku",
+        "birim": "H9",
+        "family": "9. Hukuk Dairesi"
+      },
+      "statusCode": 200,
+      "status": "pass",
+      "durationMs": 42491,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": "is_hukuku",
+      "retrievalDiagnostics": {
+        "primaryDomain": "is_hukuku",
+        "selectedBirimAdi": "H9",
+        "acceptedTopResultDaireler": [
+          "9. Hukuk Dairesi"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "fazla mesai",
+        "fazla calisma",
+        "puantaj",
+        "bordro",
+        "ucret alacagi",
+        "hafta tatili",
+        "bordro",
+        "puantaj",
+        "fazla calisma",
+        "puantaj",
+        "bordro",
+        "ispat",
+        "hafta tatili",
+        "bordro",
+        "puantaj",
+        "ispat",
+        "fazla calisma",
+        "puantaj",
+        "bordro",
+        "ispat",
+        "hafta tatili",
+        "bordro",
+        "puantaj",
+        "ispat",
+        "fazla calisma",
+        "puantaj",
+        "bordro",
+        "ispat",
+        "hafta tatili",
+        "bordro",
+        "puantaj",
+        "ispat",
+        "fazla calisma",
+        "puantaj",
+        "bordro",
+        "ispat",
+        "hafta tatili",
+        "bordro",
+        "puantaj",
+        "ispat"
+      ],
+      "resultCount": 18,
+      "topResults": [
+        {
+          "title": "9. Hukuk Dairesi 2025/10187 E. 2026/66 K.",
+          "daire": "9. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 3046,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "fazla mesai",
+            "fazla calisma",
+            "puantaj",
+            "bordro",
+            "ucret alacagi",
+            "hafta tatili"
+          ],
+          "contentMatchedFactPattern": [
+            "bordro",
+            "puantaj"
+          ],
+          "summaryPreview": "ni sayılacağı içtihat edilmiştir. Somut olayda, İlk Derece Mahkemesince gerekçede, \"Bilirkişi tarafından düzenlenen 27/03/2024 tarihli raporda davacının 2.967,48 TL fazla mesai ücreti alacağı ve 265,36 TL hafta tatili ücreti alacağının hesa"
+        },
+        {
+          "title": "9. Hukuk Dairesi 2025/10190 E. 2026/69 K.",
+          "daire": "9. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 2760,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "fazla calisma",
+            "puantaj",
+            "bordro",
+            "ispat",
+            "hafta tatili"
+          ],
+          "contentMatchedFactPattern": [
+            "bordro",
+            "puantaj",
+            "ispat"
+          ],
+          "summaryPreview": "lge çerçevesinde 7, 10... 'er günlük nöbetler ile gece gündüz yirmidört saat kapalı sistem çalıştığını, bu çalışma şeklinde fazla çalışma yaptığını ve ulusal bayram ve genel tatil günleri ile hafta tatili günlerinde çalıştığını, gece çalışm"
+        },
+        {
+          "title": "9. Hukuk Dairesi 2025/10191 E. 2026/70 K.",
+          "daire": "9. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 2760,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "fazla calisma",
+            "puantaj",
+            "bordro",
+            "ispat",
+            "hafta tatili"
+          ],
+          "contentMatchedFactPattern": [
+            "bordro",
+            "puantaj",
+            "ispat"
+          ],
+          "summaryPreview": "lge çerçevesinde 7, 10... 'er günlük nöbetler ile gece gündüz yirmidört saat kapalı sistem çalıştığını, bu çalışma şeklinde fazla çalışma yaptığını ve ulusal bayram ve genel tatil günleri ile hafta tatili günlerinde çalıştığını, gece çalışm"
+        },
+        {
+          "title": "9. Hukuk Dairesi 2025/10188 E. 2026/67 K.",
+          "daire": "9. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 2760,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "fazla calisma",
+            "puantaj",
+            "bordro",
+            "ispat",
+            "hafta tatili"
+          ],
+          "contentMatchedFactPattern": [
+            "bordro",
+            "puantaj",
+            "ispat"
+          ],
+          "summaryPreview": "lge çerçevesinde 7, 10... 'er günlük nöbetler ile gece gündüz yirmidört saat kapalı sistem çalıştığını, bu çalışma şeklinde fazla çalışma yaptığını ve ulusal bayram ve genel tatil günleri ile hafta tatili günlerinde çalıştığını, gece çalışm"
+        },
+        {
+          "title": "9. Hukuk Dairesi 2025/10189 E. 2026/68 K.",
+          "daire": "9. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 2760,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "fazla calisma",
+            "puantaj",
+            "bordro",
+            "ispat",
+            "hafta tatili"
+          ],
+          "contentMatchedFactPattern": [
+            "bordro",
+            "puantaj",
+            "ispat"
+          ],
+          "summaryPreview": "lge çerçevesinde 7, 10... 'er günlük nöbetler ile gece gündüz yirmidört saat kapalı sistem çalıştığını, bu çalışma şeklinde fazla çalışma yaptığını ve ulusal bayram ve genel tatil günleri ile hafta tatili günlerinde çalıştığını, gece çalışm"
+        }
+      ],
+      "mustConcepts": [
+        "fazla mesai",
+        "puantaj",
+        "bordro"
+      ],
+      "mustHits": [
+        "fazla mesai",
+        "puantaj",
+        "bordro"
+      ],
+      "mustHitRate": 1,
+      "forbiddenConcepts": [
+        "sgk",
+        "hizmet tespiti",
+        "ceza dairesi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": true
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "is-fazla-calisma-270-saat",
+      "query": "Fazla çalışma alacağı, 270 saat sınırı, işçinin onayı ve serbest zaman",
+      "expected": {
+        "domain": "is_hukuku",
+        "birim": "H9",
+        "family": "9. Hukuk Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 24877,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": "is_hukuku",
+      "retrievalDiagnostics": {
+        "primaryDomain": "is_hukuku",
+        "selectedBirimAdi": "H9",
+        "acceptedTopResultDaireler": [
+          "9. Hukuk Dairesi"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "fazla mesai",
+        "fazla calisma",
+        "puantaj",
+        "bordro",
+        "ucret alacagi",
+        "hafta tatili",
+        "bordro",
+        "puantaj",
+        "fazla calisma",
+        "puantaj",
+        "bordro",
+        "ispat",
+        "hafta tatili",
+        "bordro",
+        "puantaj",
+        "ispat",
+        "fazla calisma",
+        "puantaj",
+        "bordro",
+        "ispat",
+        "hafta tatili",
+        "bordro",
+        "puantaj",
+        "ispat",
+        "fazla calisma",
+        "puantaj",
+        "bordro",
+        "ispat",
+        "hafta tatili",
+        "bordro",
+        "puantaj",
+        "ispat",
+        "fazla calisma",
+        "puantaj",
+        "bordro",
+        "ispat",
+        "hafta tatili",
+        "bordro",
+        "puantaj",
+        "ispat"
+      ],
+      "resultCount": 18,
+      "topResults": [
+        {
+          "title": "9. Hukuk Dairesi 2025/10187 E. 2026/66 K.",
+          "daire": "9. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 3046,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "fazla mesai",
+            "fazla calisma",
+            "puantaj",
+            "bordro",
+            "ucret alacagi",
+            "hafta tatili"
+          ],
+          "contentMatchedFactPattern": [
+            "bordro",
+            "puantaj"
+          ],
+          "summaryPreview": "ni sayılacağı içtihat edilmiştir. Somut olayda, İlk Derece Mahkemesince gerekçede, \"Bilirkişi tarafından düzenlenen 27/03/2024 tarihli raporda davacının 2.967,48 TL fazla mesai ücreti alacağı ve 265,36 TL hafta tatili ücreti alacağının hesa"
+        },
+        {
+          "title": "9. Hukuk Dairesi 2025/10190 E. 2026/69 K.",
+          "daire": "9. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 2778,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "fazla calisma",
+            "puantaj",
+            "bordro",
+            "ispat",
+            "hafta tatili"
+          ],
+          "contentMatchedFactPattern": [
+            "bordro",
+            "puantaj",
+            "ispat"
+          ],
+          "summaryPreview": "lge çerçevesinde 7, 10... 'er günlük nöbetler ile gece gündüz yirmidört saat kapalı sistem çalıştığını, bu çalışma şeklinde fazla çalışma yaptığını ve ulusal bayram ve genel tatil günleri ile hafta tatili günlerinde çalıştığını, gece çalışm"
+        },
+        {
+          "title": "9. Hukuk Dairesi 2025/10191 E. 2026/70 K.",
+          "daire": "9. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 2778,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "fazla calisma",
+            "puantaj",
+            "bordro",
+            "ispat",
+            "hafta tatili"
+          ],
+          "contentMatchedFactPattern": [
+            "bordro",
+            "puantaj",
+            "ispat"
+          ],
+          "summaryPreview": "lge çerçevesinde 7, 10... 'er günlük nöbetler ile gece gündüz yirmidört saat kapalı sistem çalıştığını, bu çalışma şeklinde fazla çalışma yaptığını ve ulusal bayram ve genel tatil günleri ile hafta tatili günlerinde çalıştığını, gece çalışm"
+        },
+        {
+          "title": "9. Hukuk Dairesi 2025/10188 E. 2026/67 K.",
+          "daire": "9. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 2778,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "fazla calisma",
+            "puantaj",
+            "bordro",
+            "ispat",
+            "hafta tatili"
+          ],
+          "contentMatchedFactPattern": [
+            "bordro",
+            "puantaj",
+            "ispat"
+          ],
+          "summaryPreview": "lge çerçevesinde 7, 10... 'er günlük nöbetler ile gece gündüz yirmidört saat kapalı sistem çalıştığını, bu çalışma şeklinde fazla çalışma yaptığını ve ulusal bayram ve genel tatil günleri ile hafta tatili günlerinde çalıştığını, gece çalışm"
+        },
+        {
+          "title": "9. Hukuk Dairesi 2025/10189 E. 2026/68 K.",
+          "daire": "9. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 2778,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "fazla calisma",
+            "puantaj",
+            "bordro",
+            "ispat",
+            "hafta tatili"
+          ],
+          "contentMatchedFactPattern": [
+            "bordro",
+            "puantaj",
+            "ispat"
+          ],
+          "summaryPreview": "lge çerçevesinde 7, 10... 'er günlük nöbetler ile gece gündüz yirmidört saat kapalı sistem çalıştığını, bu çalışma şeklinde fazla çalışma yaptığını ve ulusal bayram ve genel tatil günleri ile hafta tatili günlerinde çalıştığını, gece çalışm"
+        }
+      ],
+      "mustConcepts": [
+        "fazla calisma",
+        "270 saat",
+        "iscinin onayi"
+      ],
+      "mustHits": [
+        "fazla calisma"
+      ],
+      "mustHitRate": 0.3333333333333333,
+      "forbiddenConcepts": [
+        "sgk",
+        "hizmet tespiti",
+        "ceza dairesi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "is-hizmet-tespiti-sgk",
+      "query": "Hizmet tespiti davası, sigortalılık başlangıcı, SGK bildirimi eksik çalışma",
+      "expected": {
+        "domain": "is_hukuku",
+        "birim": "H10",
+        "family": "10. Hukuk Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 29603,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": "is_hukuku",
+      "retrievalDiagnostics": {
+        "primaryDomain": "is_hukuku",
+        "selectedBirimAdi": "H10",
+        "acceptedTopResultDaireler": [
+          "10. Hukuk Dairesi"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "hizmet tespiti",
+        "sgk",
+        "prim",
+        "bordro",
+        "sgk",
+        "prim",
+        "bordro",
+        "hizmet tespiti",
+        "sgk",
+        "prim",
+        "sgk",
+        "prim",
+        "hizmet tespiti",
+        "calisma olgusu",
+        "calisma olgusu",
+        "hizmet tespiti",
+        "calisma olgusu",
+        "calisma olgusu",
+        "hizmet tespiti",
+        "calisma olgusu",
+        "calisma olgusu"
+      ],
+      "resultCount": 8,
+      "topResults": [
+        {
+          "title": "10. Hukuk Dairesi 2025/12193 E. 2026/202 K.",
+          "daire": "10. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1816,
+          "contentMergedScore": 0.5902000000000001,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "hizmet tespiti",
+            "sgk",
+            "prim",
+            "bordro"
+          ],
+          "contentMatchedFactPattern": [
+            "sgk",
+            "prim",
+            "bordro"
+          ],
+          "summaryPreview": "; davanın reddine karar verilmesi gerektiğini belirterek kararın bozulmasını istemiştir. B. Değerlendirme ve Gerekçe Uyuşmazlık, hizmet tespiti istemine ilişkindir. Bölge adliye mahkemelerinin nihai kararlarının bozulması 6100 sayılı Kanun'"
+        },
+        {
+          "title": "10. Hukuk Dairesi 2025/11974 E. 2026/227 K.",
+          "daire": "10. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1531,
+          "contentMergedScore": 0.497575,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "hizmet tespiti",
+            "sgk",
+            "prim"
+          ],
+          "contentMatchedFactPattern": [
+            "sgk",
+            "prim"
+          ],
+          "summaryPreview": "ını yaptığını savunarak davanın reddine karar verilmesini talep etmiştir. 2.Fer'i müdahil vekili; dava her ne kadar Kurum yönünden hizmet tespiti olarak açılmış ise de davacının şahsi sicil dosyası incelendiğinde iddia edilenin aksine \"02.0"
+        },
+        {
+          "title": "10. Hukuk Dairesi 2025/2084 E. 2026/447 K.",
+          "daire": "10. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 973,
+          "contentMergedScore": 0.316225,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "hizmet tespiti",
+            "calisma olgusu"
+          ],
+          "contentMatchedFactPattern": [
+            "calisma olgusu"
+          ],
+          "summaryPreview": "ılmadığını, hak düşürücü süre geçmediğini belirterek kararın bozulmasını talep etmiştir. C. Değerlendirme ve Gerekçe Uyuşmazlık, hizmet tespiti istemine ilişkindir. Bölge adliye mahkemelerinin nihai kararlarının bozulması 6100 sayılı Kanun'"
+        },
+        {
+          "title": "10. Hukuk Dairesi 2025/5053 E. 2026/448 K.",
+          "daire": "10. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 973,
+          "contentMergedScore": 0.316225,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "hizmet tespiti",
+            "calisma olgusu"
+          ],
+          "contentMatchedFactPattern": [
+            "calisma olgusu"
+          ],
+          "summaryPreview": "ğını, hak düşürücü süre geçmediğini belirterek kararın bozulmasını talep etmiştir. C. Değerlendirme ve Gerekçe Uyuşmazlık, hizmet tespiti istemine ilişkindir. Bölge adliye mahkemelerinin nihai kararlarının bozulması 6100 sayılı Kanun'un 371"
+        },
+        {
+          "title": "10. Hukuk Dairesi 2025/5063 E. 2026/461 K.",
+          "daire": "10. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 973,
+          "contentMergedScore": 0.316225,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "hizmet tespiti",
+            "calisma olgusu"
+          ],
+          "contentMatchedFactPattern": [
+            "calisma olgusu"
+          ],
+          "summaryPreview": "ğını, hak düşürücü süre geçmediğini belirterek kararın bozulmasını talep etmiştir. C. Değerlendirme ve Gerekçe Uyuşmazlık, hizmet tespiti istemine ilişkindir. Bölge adliye mahkemelerinin nihai kararlarının bozulması 6100 sayılı Kanun'un 371"
+        }
+      ],
+      "mustConcepts": [
+        "hizmet tespiti",
+        "sgk",
+        "sigortalilik"
+      ],
+      "mustHits": [
+        "hizmet tespiti",
+        "sgk"
+      ],
+      "mustHitRate": 0.6666666666666666,
+      "forbiddenConcepts": [
+        "fazla mesai",
+        "ceza dairesi",
+        "danistay"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": true,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": [
+        "[YARGI_CLI] spawn:error {\"pid\":6788,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[YARGI_CLI] spawn:error {\"pid\":16812,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[YARGI_CLI] spawn:error {\"pid\":16928,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[throttle] 429 attempt=1 delay=1374ms",
+        "[YARGI_CLI] spawn:error {\"pid\":11500,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[YARGI_CLI] spawn:error {\"pid\":14312,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[throttle] 429 attempt=1 delay=1250ms"
+      ]
+    },
+    {
+      "id": "is-kazasi-rucu",
+      "query": "İş kazası, meslek hastalığı, SGK rücu alacağı ve kusur oranı",
+      "expected": {
+        "domain": "is_hukuku",
+        "birim": "H10",
+        "family": "10. Hukuk Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 48308,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": "is_hukuku",
+      "retrievalDiagnostics": {
+        "primaryDomain": "is_hukuku",
+        "selectedBirimAdi": "H10",
+        "acceptedTopResultDaireler": [
+          "10. Hukuk Dairesi"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "is kazasi",
+        "meslek hastaligi",
+        "rucu",
+        "rucu",
+        "is kazasi",
+        "meslek hastaligi",
+        "rucu",
+        "rucu",
+        "is kazasi",
+        "meslek hastaligi",
+        "rucu",
+        "rucu",
+        "is kazasi",
+        "meslek hastaligi",
+        "rucu",
+        "rucu",
+        "is kazasi",
+        "meslek hastaligi",
+        "rucu",
+        "rucu"
+      ],
+      "resultCount": 9,
+      "topResults": [
+        {
+          "title": "10. Hukuk Dairesi 2025/19438 E. 2026/469 K.",
+          "daire": "10. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1890,
+          "contentMergedScore": 0.61425,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "is kazasi",
+            "meslek hastaligi",
+            "rucu"
+          ],
+          "contentMatchedFactPattern": [
+            "rucu"
+          ],
+          "summaryPreview": "sigortalısının ve bakmakla yükümlü olduğu kişilerin sağlıklı kalmalarını; hastalanmaları halinde sağlıklarını kazanmalarını; iş kazası ile meslek hastalığı, hastalık ve analık sonucu tıbben gerekli görülen sağlık hizmetlerinin karşılanmasın"
+        },
+        {
+          "title": "10. Hukuk Dairesi 2025/19290 E. 2026/470 K.",
+          "daire": "10. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1890,
+          "contentMergedScore": 0.61425,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "is kazasi",
+            "meslek hastaligi",
+            "rucu"
+          ],
+          "contentMatchedFactPattern": [
+            "rucu"
+          ],
+          "summaryPreview": "sigortalısının ve bakmakla yükümlü olduğu kişilerin sağlıklı kalmalarını; hastalanmaları halinde sağlıklarını kazanmalarını; iş kazası ile meslek hastalığı, hastalık ve analık sonucu tıbben gerekli görülen sağlık hizmetlerinin karşılanmasın"
+        },
+        {
+          "title": "10. Hukuk Dairesi 2025/19957 E. 2026/473 K.",
+          "daire": "10. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1890,
+          "contentMergedScore": 0.61425,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "is kazasi",
+            "meslek hastaligi",
+            "rucu"
+          ],
+          "contentMatchedFactPattern": [
+            "rucu"
+          ],
+          "summaryPreview": "sigortalısının ve bakmakla yükümlü olduğu kişilerin sağlıklı kalmalarını; hastalanmaları halinde sağlıklarını kazanmalarını; iş kazası ile meslek hastalığı, hastalık ve analık sonucu tıbben gerekli görülen sağlık hizmetlerinin karşılanmasın"
+        },
+        {
+          "title": "10. Hukuk Dairesi 2025/19289 E. 2026/467 K.",
+          "daire": "10. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1878,
+          "contentMergedScore": 0.61035,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "is kazasi",
+            "meslek hastaligi",
+            "rucu"
+          ],
+          "contentMatchedFactPattern": [
+            "rucu"
+          ],
+          "summaryPreview": "sigortalısının ve bakmakla yükümlü olduğu kişilerin sağlıklı kalmalarını; hastalanmaları halinde sağlıklarını kazanmalarını; iş kazası ile meslek hastalığı, hastalık ve analık sonucu tıbben gerekli görülen sağlık hizmetlerinin karşılanmasın"
+        },
+        {
+          "title": "10. Hukuk Dairesi 2025/20605 E. 2026/475 K.",
+          "daire": "10. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1878,
+          "contentMergedScore": 0.61035,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "is kazasi",
+            "meslek hastaligi",
+            "rucu"
+          ],
+          "contentMatchedFactPattern": [
+            "rucu"
+          ],
+          "summaryPreview": "sigortalısının ve bakmakla yükümlü olduğu kişilerin sağlıklı kalmalarını; hastalanmaları halinde sağlıklarını kazanmalarını; iş kazası ile meslek hastalığı, hastalık ve analık sonucu tıbben gerekli görülen sağlık hizmetlerinin karşılanmasın"
+        }
+      ],
+      "mustConcepts": [
+        "is kazasi",
+        "sgk",
+        "rucu"
+      ],
+      "mustHits": [
+        "is kazasi",
+        "rucu"
+      ],
+      "mustHitRate": 0.6666666666666666,
+      "forbiddenConcepts": [
+        "fazla mesai",
+        "ceza dairesi",
+        "danistay"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": true,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": [
+        "[YARGI_CLI] spawn:error {\"pid\":11448,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[throttle] 429 attempt=1 delay=1438ms",
+        "[YARGI_CLI] spawn:error {\"pid\":13792,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[throttle] 429 attempt=2 delay=2082ms",
+        "[YARGI_CLI] spawn:error {\"pid\":14168,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[throttle] 429 attempt=3 delay=4498ms",
+        "[YARGI_CLI] spawn:error {\"pid\":16600,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[throttle] 429 attempt=1 delay=1176ms"
+      ]
+    },
+    {
+      "id": "aile-6284-uzaklastirma",
+      "query": "6284 sayılı Kanun kapsamında uzaklaştırma tedbiri, ortak konut, tedbir ihlali",
+      "expected": {
+        "domain": "aile",
+        "birim": "H2",
+        "family": "2. Hukuk Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 49652,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": "aile",
+      "retrievalDiagnostics": {
+        "primaryDomain": "aile",
+        "selectedBirimAdi": "H2",
+        "acceptedTopResultDaireler": [
+          "2. Hukuk Dairesi"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "6284 sayili kanun",
+        "ihlal",
+        "bosanma",
+        "nafaka",
+        "ihlal",
+        "ortak konut",
+        "nafaka"
+      ],
+      "resultCount": 1,
+      "topResults": [
+        {
+          "title": "2. Hukuk Dairesi 2025/3299 E. 2025/10122 K.",
+          "daire": "2. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1813,
+          "contentMergedScore": 0.589225,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "6284 sayili kanun",
+            "ihlal",
+            "bosanma",
+            "nafaka"
+          ],
+          "contentMatchedFactPattern": [
+            "ihlal",
+            "ortak konut",
+            "nafaka"
+          ],
+          "summaryPreview": "se kabulüne karar verilmesinin hatalı olduğu, tanık H. Ş.'ün beyanlarında geçen eylemlerin kadının açtığı dava sonrasında gerçekleştiği gibi 6284 sayılı kanun uyarınca işlem yapılmasına sebebiyet verilen olayların da yine kadının açtığı dav"
+        }
+      ],
+      "mustConcepts": [
+        "6284",
+        "uzaklastirma",
+        "ortak konut"
+      ],
+      "mustHits": [
+        "6284",
+        "ortak konut"
+      ],
+      "mustHitRate": 0.6666666666666666,
+      "forbiddenConcepts": [
+        "ceza dairesi",
+        "danistay",
+        "vergi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": true,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": [
+        "[YARGI_CLI] spawn:error {\"pid\":268,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[throttle] 429 attempt=1 delay=1077ms",
+        "[YARGI_CLI] spawn:error {\"pid\":16472,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[throttle] 429 attempt=1 delay=1022ms",
+        "[YARGI_CLI] spawn:error {\"pid\":13884,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[throttle] 429 attempt=2 delay=2331ms",
+        "[YARGI_CLI] spawn:error {\"pid\":13128,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[throttle] 429 attempt=3 delay=4477ms"
+      ]
+    },
+    {
+      "id": "aile-zorlama-hapsi",
+      "query": "6284 zorlama hapsi, koruyucu tedbir, şiddet mağduru eş",
+      "expected": {
+        "domain": "aile",
+        "birim": "H2",
+        "family": "2. Hukuk Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 111920,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": "aile",
+      "retrievalDiagnostics": {
+        "primaryDomain": "aile",
+        "selectedBirimAdi": "H2",
+        "acceptedTopResultDaireler": [
+          "2. Hukuk Dairesi"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "6284 sayili kanun",
+        "ihlal",
+        "bosanma",
+        "nafaka",
+        "ihlal",
+        "ortak konut",
+        "nafaka"
+      ],
+      "resultCount": 1,
+      "topResults": [
+        {
+          "title": "2. Hukuk Dairesi 2025/3299 E. 2025/10122 K.",
+          "daire": "2. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1777,
+          "contentMergedScore": 0.577525,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "6284 sayili kanun",
+            "ihlal",
+            "bosanma",
+            "nafaka"
+          ],
+          "contentMatchedFactPattern": [
+            "ihlal",
+            "ortak konut",
+            "nafaka"
+          ],
+          "summaryPreview": "se kabulüne karar verilmesinin hatalı olduğu, tanık H. Ş.'ün beyanlarında geçen eylemlerin kadının açtığı dava sonrasında gerçekleştiği gibi 6284 sayılı kanun uyarınca işlem yapılmasına sebebiyet verilen olayların da yine kadının açtığı dav"
+        }
+      ],
+      "mustConcepts": [
+        "6284",
+        "zorlama hapsi",
+        "koruyucu tedbir"
+      ],
+      "mustHits": [
+        "6284"
+      ],
+      "mustHitRate": 0.3333333333333333,
+      "forbiddenConcepts": [
+        "ceza dairesi",
+        "danistay",
+        "vergi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": true,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": [
+        "[YARGI_CLI] spawn:error {\"pid\":17292,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[throttle] 429 attempt=1 delay=1225ms",
+        "[YARGI_CLI] spawn:error {\"pid\":13632,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[throttle] 429 attempt=2 delay=2350ms",
+        "[YARGI_CLI] spawn:error {\"pid\":16104,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[throttle] 429 attempt=1 delay=1145ms",
+        "[YARGI_CLI] spawn:error {\"pid\":10484,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[throttle] 429 attempt=1 delay=1081ms"
+      ]
+    },
+    {
+      "id": "borclar-kira-temerrut",
+      "query": "Kiracı kira bedelini ödemiyor, temerrüt nedeniyle tahliye ve TBK 315",
+      "expected": {
+        "domain": "borclar",
+        "birim": "H3",
+        "family": "3. Hukuk Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 132118,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": null,
+      "retrievalDiagnostics": {
+        "primaryDomain": null,
+        "selectedBirimAdi": null,
+        "acceptedTopResultDaireler": [],
+        "sourceCoverageStatus": null,
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 0
+      },
+      "top5MatchedSignals": [],
+      "resultCount": 9,
+      "topResults": [
+        {
+          "title": "Yargıtay Kararı 3. Hukuk Dairesi",
+          "daire": "3. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "3. Hukuk Dairesi 2025/4378 E. , 2026/294 K. \"İçtihat Metni\" MAHKEMESİ :Ticaret Mahkemesi SAYISI : 2024/189 E., 2025/652 K. Mahkemece bozmaya uyularak verilen karar taraf vekillerince temyiz edilmekle; kesinlik, süre, temyiz şartı ve diğer u"
+        },
+        {
+          "title": "Yargıtay Kararı 3. Hukuk Dairesi",
+          "daire": "3. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "3. Hukuk Dairesi 2025/4001 E. , 2026/293 K. \"İçtihat Metni\" MAHKEMESİ :Sulh Hukuk Mahkemesi SAYISI : 2024/938 E., 2025/774 K. İlk Derece Mahkemesince bozmaya uyularak verilen karar, davalı vekili tarafından temyiz edilmekle; kesinlik, süre,"
+        },
+        {
+          "title": "Yargıtay Kararı 3. Hukuk Dairesi",
+          "daire": "3. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "3. Hukuk Dairesi 2025/3333 E. , 2026/274 K. \"İçtihat Metni\" MAHKEMESİ : Ankara Bölge Adliye Mahkemesi 24. Hukuk Dairesi SAYISI : 2024/1294 E., 2024/1753 K. İLK DERECE MAHKEMESİ : Ankara Batı 1. Tüketici Mahkemesi SAYISI : 2023/174 E., 2023/"
+        },
+        {
+          "title": "Yargıtay Kararı 3. Hukuk Dairesi",
+          "daire": "3. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "3. Hukuk Dairesi 2025/5290 E. , 2026/300 K. \"İçtihat Metni\" MAHKEMESİ : İzmir Bölge Adliye Mahkemesi 20. Hukuk Dairesi SAYISI : 2022/602 E., 2024/1606 K. İLK DERECE MAHKEMESİ : Tire 2. Asliye Hukuk Mahkemesi SAYISI : 2018/183 E., 2021/547 K"
+        },
+        {
+          "title": "Yargıtay Kararı 3. Hukuk Dairesi",
+          "daire": "3. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "3. Hukuk Dairesi 2025/3242 E. , 2026/289 K. \"İçtihat Metni\" MAHKEMESİ : Diyarbakır Bölge Adliye Mahkemesi 4. Hukuk Dairesi SAYISI : 2022/3091 E., 2025/549 K. İLK DERECE MAHKEMESİ : Mardin 2. Asliye Hukuk Mahkemesi SAYISI : 2019/322 E., 2022"
+        }
+      ],
+      "mustConcepts": [
+        "kira",
+        "tahliye",
+        "tbk 315"
+      ],
+      "mustHits": [],
+      "mustHitRate": 0,
+      "forbiddenConcepts": [
+        "ceza dairesi",
+        "danistay",
+        "marka"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": false,
+        "birimPass": false,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": true,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": [
+        "[YARGI_CLI] spawn:error {\"pid\":14120,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[throttle] 429 attempt=1 delay=1239ms",
+        "[YARGI_CLI] spawn:error {\"pid\":15568,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[throttle] 429 attempt=1 delay=1493ms",
+        "[YARGI_CLI] spawn:error {\"pid\":16796,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[throttle] 429 attempt=2 delay=2136ms",
+        "[YARGI_CLI] spawn:error {\"pid\":14928,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[throttle] 429 attempt=1 delay=1063ms"
+      ]
+    },
+    {
+      "id": "borclar-kira-ihtiyac",
+      "query": "İhtiyaç nedeniyle tahliye, kiralananın tahliyesi, TBK 350",
+      "expected": {
+        "domain": "borclar",
+        "birim": "H3",
+        "family": "3. Hukuk Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 96331,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": null,
+      "retrievalDiagnostics": {
+        "primaryDomain": null,
+        "selectedBirimAdi": null,
+        "acceptedTopResultDaireler": [],
+        "sourceCoverageStatus": null,
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 0
+      },
+      "top5MatchedSignals": [],
+      "resultCount": 11,
+      "topResults": [
+        {
+          "title": "Yargıtay Kararı 3. Hukuk Dairesi",
+          "daire": "3. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "3. Hukuk Dairesi 2025/4378 E. , 2026/294 K. \"İçtihat Metni\" MAHKEMESİ :Ticaret Mahkemesi SAYISI : 2024/189 E., 2025/652 K. Mahkemece bozmaya uyularak verilen karar taraf vekillerince temyiz edilmekle; kesinlik, süre, temyiz şartı ve diğer u"
+        },
+        {
+          "title": "Yargıtay Kararı 3. Hukuk Dairesi",
+          "daire": "3. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "3. Hukuk Dairesi 2025/4001 E. , 2026/293 K. \"İçtihat Metni\" MAHKEMESİ :Sulh Hukuk Mahkemesi SAYISI : 2024/938 E., 2025/774 K. İlk Derece Mahkemesince bozmaya uyularak verilen karar, davalı vekili tarafından temyiz edilmekle; kesinlik, süre,"
+        },
+        {
+          "title": "Yargıtay Kararı 3. Hukuk Dairesi",
+          "daire": "3. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "3. Hukuk Dairesi 2025/3333 E. , 2026/274 K. \"İçtihat Metni\" MAHKEMESİ : Ankara Bölge Adliye Mahkemesi 24. Hukuk Dairesi SAYISI : 2024/1294 E., 2024/1753 K. İLK DERECE MAHKEMESİ : Ankara Batı 1. Tüketici Mahkemesi SAYISI : 2023/174 E., 2023/"
+        },
+        {
+          "title": "Yargıtay Kararı 3. Hukuk Dairesi",
+          "daire": "3. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "3. Hukuk Dairesi 2025/3083 E. , 2026/273 K. \"İçtihat Metni\" MAHKEMESİ : İstanbul Bölge Adliye Mahkemesi 37. Hukuk Dairesi SAYISI : 2025/235 E., 2025/1123 K. İLK DERECE MAHKEMESİ : İstanbul 20. Asliye Hukuk Mahkemesi SAYISI : 2018/15 E., 201"
+        },
+        {
+          "title": "Yargıtay Kararı 3. Hukuk Dairesi",
+          "daire": "3. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "3. Hukuk Dairesi 2025/1657 E. , 2026/257 K. \"İçtihat Metni\" MAHKEMESİ : Antalya Bölge Adliye Mahkemesi 3. Hukuk Dairesi SAYISI : 2023/1911 E., 2025/285 K. İLK DERECE MAHKEMESİ : Bucak 1. Asliye Hukuk Mahkemesi SAYISI : 2023/171 E., 2023/265"
+        }
+      ],
+      "mustConcepts": [
+        "ihtiyac nedeniyle tahliye",
+        "kiralanan",
+        "tbk 350"
+      ],
+      "mustHits": [],
+      "mustHitRate": 0,
+      "forbiddenConcepts": [
+        "ceza dairesi",
+        "danistay",
+        "marka"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": false,
+        "birimPass": false,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "borclar-eser-arsa-payi",
+      "query": "Arsa payı karşılığı inşaat, eksik ifa, ayıplı iş ve gecikme tazminatı",
+      "expected": {
+        "domain": "borclar",
+        "birim": "H6",
+        "family": "6. Hukuk Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 65755,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": null,
+      "retrievalDiagnostics": {
+        "primaryDomain": null,
+        "selectedBirimAdi": null,
+        "acceptedTopResultDaireler": [],
+        "sourceCoverageStatus": null,
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 0
+      },
+      "top5MatchedSignals": [],
+      "resultCount": 8,
+      "topResults": [
+        {
+          "title": "12. Hukuk Dairesi - Esas: 2006/10799 - Karar: 2006/13163 - Tarih: 2005-09-20",
+          "daire": "12. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "Hukuk Dairesi 2006 10799 E , 2006 13163 K \"İçtihat Metni\" MAHKEMESİ : Sincan İcra Mahkemesi Yukarıda tarih ve numarası yazılı mahkeme kararının müddeti içinde temyizen tetkiki borçlu vekili tarafından istenmesi üzerine bu işle ilgili dosya "
+        },
+        {
+          "title": "4. Hukuk Dairesi - Esas: 2026/1847 - Karar: 2026/2038 - Tarih: 2025-06-26",
+          "daire": "4. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "Hukuk Dairesi 2026 1847 E , 2026 2038 K \"İçtihat Metni\" MAHKEMESİ :Asliye Hukuk Mahkemesi SAYISI : 2015 102 E , 2016 113 K 2797 sayılı Yargıtay Kanunu nun (2797 sayılı Kanun) 40 ıncı ve Yargıtay İç Yönetmeliği nin 18 inci maddeleri uyarınca"
+        },
+        {
+          "title": "Yargıtay Kararı 6. Hukuk Dairesi",
+          "daire": "6. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "6. Hukuk Dairesi 2025/154 E. , 2025/4160 K. \"İçtihat Metni\" MAHKEMESİ :Asliye Hukuk Mahkemesi SAYISI : 2024/321 E., 2024/250 K. İlk Derece Mahkemesince bozmaya uyularak verilen kararı davacı vekili tarafından duruşma istemli temyiz edilmekl"
+        },
+        {
+          "title": "Yargıtay Kararı 6. Hukuk Dairesi",
+          "daire": "6. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "6. Hukuk Dairesi 2025/1788 E. , 2025/4134 K. \"İçtihat Metni\" MAHKEMESİ : Konya Bölge Adliye Mahkemesi 5. Hukuk Dairesi SAYISI : 2024/602 E., 2025/520 K. İLK DERECE MAHKEMESİ : Aksaray 1. Asliye Hukuk Mahkemesi SAYISI : 2023/108 E., 2024/12 "
+        },
+        {
+          "title": "Yargıtay Kararı 6. Hukuk Dairesi",
+          "daire": "6. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "6. Hukuk Dairesi 2025/132 E. , 2025/4143 K. \"İçtihat Metni\" MAHKEMESİ :Asliye Hukuk Mahkemesi SAYISI : 2024/245 E., 2024/196 K. Mahkeme kararı davacı vekili tarafından temyiz edilmekle; kesinlik, süre, temyiz şartı ve diğer usul eksiklikler"
+        }
+      ],
+      "mustConcepts": [
+        "arsa payi karsiligi insaat",
+        "ayipli is",
+        "gecikme tazminati"
+      ],
+      "mustHits": [],
+      "mustHitRate": 0,
+      "forbiddenConcepts": [
+        "ceza dairesi",
+        "danistay",
+        "muris muvazaasi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": false,
+        "birimPass": false,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "gayrimenkul-tapu-muris",
+      "query": "Muris muvazaası nedeniyle tapu iptali ve tescil, bedelsiz devir, miras bırakanın gerçek iradesi",
+      "expected": {
+        "domain": "gayrimenkul",
+        "birim": "H1",
+        "family": "1. Hukuk Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 28217,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": "miras",
+      "retrievalDiagnostics": {
+        "primaryDomain": "miras",
+        "selectedBirimAdi": "H1",
+        "acceptedTopResultDaireler": [
+          "1. Hukuk Dairesi"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "muris muvazaasi",
+        "tapu iptali",
+        "miras",
+        "sakli pay",
+        "tescil",
+        "cek",
+        "sakli pay",
+        "tescil",
+        "muris muvazaasi",
+        "mirasbirakan",
+        "olunceye kadar bakma",
+        "bedel",
+        "muris muvazaasi",
+        "tapu iptali",
+        "miras",
+        "tescil",
+        "tenkis",
+        "tereke",
+        "cek",
+        "tescil",
+        "muris muvazaasi",
+        "mirasbirakan",
+        "tereke",
+        "bedel",
+        "muris muvazaasi",
+        "tapu iptali",
+        "miras",
+        "tescil",
+        "cek",
+        "tescil",
+        "muris muvazaasi",
+        "mirasbirakan",
+        "bedel",
+        "muris muvazaasi",
+        "tapu iptali",
+        "miras",
+        "tescil",
+        "cek",
+        "tescil",
+        "muris muvazaasi",
+        "mirasbirakan",
+        "bedel",
+        "muris muvazaasi",
+        "tapu iptali",
+        "miras",
+        "tescil",
+        "tenkis",
+        "cek",
+        "tescil",
+        "muris muvazaasi",
+        "mirasbirakan"
+      ],
+      "resultCount": 23,
+      "topResults": [
+        {
+          "title": "1. Hukuk Dairesi 2025/2117 E. 2025/6265 K.",
+          "daire": "1. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 3625,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "muris muvazaasi",
+            "tapu iptali",
+            "miras",
+            "sakli pay",
+            "tescil",
+            "cek"
+          ],
+          "contentMatchedFactPattern": [
+            "sakli pay",
+            "tescil",
+            "muris muvazaasi",
+            "mirasbirakan",
+            "olunceye kadar bakma",
+            "bedel"
+          ],
+          "summaryPreview": "rı olduğunu belirterek Bölge Adliye Mahkemesi kararının kaldırılmasını, İlk Derece Mahkemesi kararının bozulmasını istemiştir. B.Değerlendirme ve Gerekçe Dava, muris muvazaası hukuki sebebine dayalı pay oranında tapu iptali ve tescil istemi"
+        },
+        {
+          "title": "1. Hukuk Dairesi 2025/1784 E. 2025/6160 K.",
+          "daire": "1. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 3448,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "muris muvazaasi",
+            "tapu iptali",
+            "miras",
+            "tescil",
+            "tenkis",
+            "tereke",
+            "cek"
+          ],
+          "contentMatchedFactPattern": [
+            "tescil",
+            "muris muvazaasi",
+            "mirasbirakan",
+            "tereke",
+            "bedel"
+          ],
+          "summaryPreview": "ğını, davanın reddine karar verilmesi gerektiğini belirterek kararın bozulmasını bozulmasını talep etmiştir. B. Değerlendirme ve Gerekçe Dava, muris muvazaası hukuki nedenine dayalı tapu iptali ve tescil, olmadığı takdirde tenkis istemine i"
+        },
+        {
+          "title": "1. Hukuk Dairesi 2025/6161 E. 2025/6201 K.",
+          "daire": "1. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 3220,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "muris muvazaasi",
+            "tapu iptali",
+            "miras",
+            "tescil",
+            "cek"
+          ],
+          "contentMatchedFactPattern": [
+            "tescil",
+            "muris muvazaasi",
+            "mirasbirakan",
+            "bedel"
+          ],
+          "summaryPreview": "celeme ve araştırma sonucunda karar verildiğini, kararın hukuka aykırı olduğunu ileri sürerek bozulmasını istemiştir. B. Değerlendirme ve Gerekçe Dava, muris muvazaası hukuksal nedenine dayalı tapu iptali ve tescil istemine ilişkindir. Temy"
+        },
+        {
+          "title": "1. Hukuk Dairesi 2025/2890 E. 2025/6177 K.",
+          "daire": "1. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 3196,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "muris muvazaasi",
+            "tapu iptali",
+            "miras",
+            "tescil",
+            "cek"
+          ],
+          "contentMatchedFactPattern": [
+            "tescil",
+            "muris muvazaasi",
+            "mirasbirakan",
+            "bedel"
+          ],
+          "summaryPreview": "ünden bu yana dava açılmayıp sonrasında kötüniyetli olarak dava açtıklarını belirterek kararın bozulmasını istemiştir. B. Değerlendirme ve Gerekçe Dava, muris muvazaası hukuki nedenine dayalı tapu iptali ve tescil isteğine ilişkindir. Dosya"
+        },
+        {
+          "title": "1. Hukuk Dairesi 2025/2619 E. 2025/6249 K.",
+          "daire": "1. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 3154,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "muris muvazaasi",
+            "tapu iptali",
+            "miras",
+            "tescil",
+            "tenkis",
+            "cek"
+          ],
+          "contentMatchedFactPattern": [
+            "tescil",
+            "muris muvazaasi",
+            "mirasbirakan"
+          ],
+          "summaryPreview": "diklerinden yeniden inceleme yapılması gerektiğini belirterek kararın bozulmasını talep etmişlerdir. B. Değerlendirme ve Gerekçe Dava, muris muvazaası hukuki sebebine dayalı tapu iptali ve tescil, olmazsa tenkis istemine ilişkindir. Dosya i"
+        }
+      ],
+      "mustConcepts": [
+        "muris muvazaasi",
+        "tapu iptali",
+        "tescil"
+      ],
+      "mustHits": [
+        "muris muvazaasi",
+        "tapu iptali",
+        "tescil"
+      ],
+      "mustHitRate": 1,
+      "forbiddenConcepts": [
+        "ceza dairesi",
+        "danistay",
+        "marka"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": false,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": true
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "gayrimenkul-ortakligin-giderilmesi",
+      "query": "Ortaklığın giderilmesi, aynen taksim, izalei şuyu ve paylı mülkiyet",
+      "expected": {
+        "domain": "gayrimenkul",
+        "birim": "H7",
+        "family": "7. Hukuk Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 46382,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": "gayrimenkul",
+      "retrievalDiagnostics": {
+        "primaryDomain": "gayrimenkul",
+        "selectedBirimAdi": "H7",
+        "acceptedTopResultDaireler": [
+          "7. Hukuk Dairesi"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "payli mulkiyet",
+        "tapu iptali ve tescil",
+        "mulkiyet hakki",
+        "tasinmaz",
+        "paydas",
+        "ortakligin giderilmesi",
+        "payli mulkiyet",
+        "ecrimisil",
+        "tasinmaz",
+        "paydas"
+      ],
+      "resultCount": 2,
+      "topResults": [
+        {
+          "title": "7. Hukuk Dairesi 2025/5371 E. 2025/5601 K.",
+          "daire": "7. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1384,
+          "contentMergedScore": 0.4498,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "payli mulkiyet",
+            "tapu iptali ve tescil",
+            "mulkiyet hakki"
+          ],
+          "contentMatchedFactPattern": [
+            "tasinmaz",
+            "paydas"
+          ],
+          "summaryPreview": "intikal işlemi ile kazandığını, öncesinde ise başkaca bir payı bulunmadığını, müvekkilinin taşınmazdaki paylarını, davacının paylı mülkiyet hakkını tapuda tescil ettirmesinden çok daha önce satın almış olduğunu, davacının aktif husumet ehli"
+        },
+        {
+          "title": "7. Hukuk Dairesi 2025/5291 E. 2025/5608 K.",
+          "daire": "7. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1264,
+          "contentMergedScore": 0.4108,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "ortakligin giderilmesi",
+            "payli mulkiyet",
+            "ecrimisil"
+          ],
+          "contentMatchedFactPattern": [
+            "tasinmaz",
+            "paydas"
+          ],
+          "summaryPreview": "91, 99, 100, 101, 1009, 1012, 1013, 1016, 1018, 1020, 1032, 1034, 1035, 1036, 10 37... parsel olmak üzere toplam 16 parça taşınmaza yönelik ortaklığın giderilmesi davası açıldığı, bu taşınmazlar yönünden dava tarihi itibariyle intifadan men"
+        }
+      ],
+      "mustConcepts": [
+        "ortakligin giderilmesi",
+        "aynen taksim",
+        "paydas"
+      ],
+      "mustHits": [
+        "ortakligin giderilmesi",
+        "paydas"
+      ],
+      "mustHitRate": 0.6666666666666666,
+      "forbiddenConcepts": [
+        "ceza dairesi",
+        "danistay",
+        "marka"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "miras-muris-muvazaasi",
+      "query": "Miras bırakanın mal kaçırması, muris muvazaası, ölünceye kadar bakma sözleşmesi",
+      "expected": {
+        "domain": "miras",
+        "birim": "H1",
+        "family": "1. Hukuk Dairesi"
+      },
+      "statusCode": 200,
+      "status": "pass",
+      "durationMs": 46194,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": "miras",
+      "retrievalDiagnostics": {
+        "primaryDomain": "miras",
+        "selectedBirimAdi": "H1",
+        "acceptedTopResultDaireler": [
+          "1. Hukuk Dairesi"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "muris muvazaasi",
+        "tapu iptali",
+        "miras",
+        "sakli pay",
+        "tescil",
+        "tenkis",
+        "sakli pay",
+        "tescil",
+        "mirasbirakan",
+        "muris muvazaasi",
+        "muris muvazaasi",
+        "tapu iptali",
+        "miras",
+        "sakli pay",
+        "tescil",
+        "sakli pay",
+        "tescil",
+        "mirasbirakan",
+        "olunceye kadar bakma",
+        "muris muvazaasi",
+        "muris muvazaasi",
+        "tapu iptali",
+        "miras",
+        "tescil",
+        "tescil",
+        "mirasbirakan",
+        "muris muvazaasi",
+        "muris muvazaasi",
+        "tapu iptali",
+        "miras",
+        "tescil",
+        "tescil",
+        "muris muvazaasi",
+        "muris muvazaasi",
+        "tapu iptali",
+        "tescil",
+        "tenkis",
+        "tescil",
+        "muris muvazaasi"
+      ],
+      "resultCount": 24,
+      "topResults": [
+        {
+          "title": "1. Hukuk Dairesi 2025/3087 E. 2025/6197 K.",
+          "daire": "1. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 3499,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "muris muvazaasi",
+            "tapu iptali",
+            "miras",
+            "sakli pay",
+            "tescil",
+            "tenkis"
+          ],
+          "contentMatchedFactPattern": [
+            "sakli pay",
+            "tescil",
+            "mirasbirakan",
+            "muris muvazaasi"
+          ],
+          "summaryPreview": "n doğru olduğu, 13 48... parsel sayılı taşınmazların bağış suretiyle davalılara devredildiği, davacıların tenkis istemi de bulunmadığı için muris muvazaası iddiasının dinlenme olanağı olmadığı gerekçesiyle başvurunun kabulü ile hükmün kaldı"
+        },
+        {
+          "title": "1. Hukuk Dairesi 2025/2117 E. 2025/6265 K.",
+          "daire": "1. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 3469,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "muris muvazaasi",
+            "tapu iptali",
+            "miras",
+            "sakli pay",
+            "tescil"
+          ],
+          "contentMatchedFactPattern": [
+            "sakli pay",
+            "tescil",
+            "mirasbirakan",
+            "olunceye kadar bakma",
+            "muris muvazaasi"
+          ],
+          "summaryPreview": "rı olduğunu belirterek Bölge Adliye Mahkemesi kararının kaldırılmasını, İlk Derece Mahkemesi kararının bozulmasını istemiştir. B.Değerlendirme ve Gerekçe Dava, muris muvazaası hukuki sebebine dayalı pay oranında tapu iptali ve tescil istemi"
+        },
+        {
+          "title": "1. Hukuk Dairesi 2025/6161 E. 2025/6201 K.",
+          "daire": "1. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 2860,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "muris muvazaasi",
+            "tapu iptali",
+            "miras",
+            "tescil"
+          ],
+          "contentMatchedFactPattern": [
+            "tescil",
+            "mirasbirakan",
+            "muris muvazaasi"
+          ],
+          "summaryPreview": "celeme ve araştırma sonucunda karar verildiğini, kararın hukuka aykırı olduğunu ileri sürerek bozulmasını istemiştir. B. Değerlendirme ve Gerekçe Dava, muris muvazaası hukuksal nedenine dayalı tapu iptali ve tescil istemine ilişkindir. Temy"
+        },
+        {
+          "title": "1. Hukuk Dairesi 2025/1531 E. 2025/6253 K.",
+          "daire": "1. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 2776,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "muris muvazaasi",
+            "tapu iptali",
+            "miras",
+            "tescil"
+          ],
+          "contentMatchedFactPattern": [
+            "tescil",
+            "muris muvazaasi"
+          ],
+          "summaryPreview": "si için satın aldığını belirterek Bölge Adliye Mahkemesi kararının bozulmasını talep etmiştir. B. Değerlendirme ve Gerekçe Asıl ve birleştirilen dava, muris muvazaasına dayalı tapu iptali ve tescil istemine ilişkindir. Bölge adliye mahkemel"
+        },
+        {
+          "title": "1. Hukuk Dairesi 2025/6830 E. 2025/6285 K.",
+          "daire": "1. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 2403,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "muris muvazaasi",
+            "tapu iptali",
+            "tescil",
+            "tenkis"
+          ],
+          "contentMatchedFactPattern": [
+            "tescil",
+            "muris muvazaasi"
+          ],
+          "summaryPreview": "rgıtay Kanunu’nun 40. ve Yargıtay İç Yönetmeliği’nin 18. maddeleri uyarınca yapılan ön incelemede; davanın muris muvazaası hukuki nedenine dayalı tapu iptali ve tescil olmazsa tenkis istemiyle açıldığı, İlk Derece Mahkemesince muris muvazaa"
+        }
+      ],
+      "mustConcepts": [
+        "muris muvazaasi",
+        "miras",
+        "tescil"
+      ],
+      "mustHits": [
+        "muris muvazaasi",
+        "miras",
+        "tescil"
+      ],
+      "mustHitRate": 1,
+      "forbiddenConcepts": [
+        "ceza dairesi",
+        "danistay",
+        "marka"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": true
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "miras-tenkis-sakli-pay",
+      "query": "Tenkis davası, saklı pay ihlali, miras payı ve tasarruf nisabı",
+      "expected": {
+        "domain": "miras",
+        "birim": "H7",
+        "family": "7. Hukuk Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 31380,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": "miras",
+      "retrievalDiagnostics": {
+        "primaryDomain": "miras",
+        "selectedBirimAdi": "H7",
+        "acceptedTopResultDaireler": [
+          "7. Hukuk Dairesi"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "tenkis",
+        "sakli pay",
+        "mirasci",
+        "bagis",
+        "vasiyetname",
+        "tereke",
+        "veraset ilami",
+        "ihlal",
+        "mirasci",
+        "bagis",
+        "mirasbirakan",
+        "tereke",
+        "sakli pay",
+        "vasiyetname",
+        "tenkis",
+        "sakli pay",
+        "mirasci",
+        "bagis",
+        "vasiyetname",
+        "tereke",
+        "veraset ilami",
+        "fiil ehliyeti",
+        "ihlal",
+        "mirasci",
+        "bagis",
+        "mirasbirakan",
+        "tereke",
+        "sakli pay",
+        "vasiyetname",
+        "tenkis",
+        "sakli pay",
+        "mirasci",
+        "vasiyetname",
+        "tereke",
+        "olume bagli tasarruf",
+        "fiil ehliyeti",
+        "ihlal",
+        "mirasci",
+        "tereke",
+        "sakli pay",
+        "vasiyetname",
+        "tenkis",
+        "sakli pay",
+        "mirasci",
+        "muris muvazaasi",
+        "vasiyetname",
+        "tereke",
+        "mirasci",
+        "mirasbirakan",
+        "tereke",
+        "sakli pay",
+        "vasiyetname",
+        "muris muvazaasi",
+        "tenkis",
+        "sakli pay",
+        "bagis",
+        "tereke",
+        "ihlal",
+        "bagis",
+        "tereke",
+        "sakli pay"
+      ],
+      "resultCount": 5,
+      "topResults": [
+        {
+          "title": "7. Hukuk Dairesi 2025/2177 E. 2025/5432 K.",
+          "daire": "7. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 3079,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "tenkis",
+            "sakli pay",
+            "mirasci",
+            "bagis",
+            "vasiyetname",
+            "tereke",
+            "veraset ilami",
+            "ihlal"
+          ],
+          "contentMatchedFactPattern": [
+            "mirasci",
+            "bagis",
+            "mirasbirakan",
+            "tereke",
+            "sakli pay",
+            "vasiyetname"
+          ],
+          "summaryPreview": "mağdur olduklarını ileri sürerek öncelikle vasiyetnamenin iptaline olmadığı takdirde ise tasarruf nisabının aşılması nedeniyle tenkisine karar verilmesini talep etmiştir. II. CEVAP Bir kısım davalılar vekili cevap dilekçesinde; vasiyetnamen"
+        },
+        {
+          "title": "7. Hukuk Dairesi 2025/670 E. 2025/5188 K.",
+          "daire": "7. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 3067,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "tenkis",
+            "sakli pay",
+            "mirasci",
+            "bagis",
+            "vasiyetname",
+            "tereke",
+            "veraset ilami",
+            "fiil ehliyeti",
+            "ihlal"
+          ],
+          "contentMatchedFactPattern": [
+            "mirasci",
+            "bagis",
+            "mirasbirakan",
+            "tereke",
+            "sakli pay",
+            "vasiyetname"
+          ],
+          "summaryPreview": "e, eğer vasiyetnamenin iptali mümkün olmaz ise müvekkilinin mahfuz hissesini aşan vasiyetmamenin müvekkilinin mahfuz hissesi oranında tenkisine karar verilmesini talep etmiştir. II. CEVAP Davalı vekili cevap dilekçesinde özetle; davacı tara"
+        },
+        {
+          "title": "7. Hukuk Dairesi 2025/1265 E. 2025/5592 K.",
+          "daire": "7. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 2692,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "tenkis",
+            "sakli pay",
+            "mirasci",
+            "vasiyetname",
+            "tereke",
+            "olume bagli tasarruf",
+            "fiil ehliyeti",
+            "ihlal"
+          ],
+          "contentMatchedFactPattern": [
+            "mirasci",
+            "tereke",
+            "sakli pay",
+            "vasiyetname"
+          ],
+          "summaryPreview": "ğlı tasarruf ile dava konusu 9 adet taşınmazın davalılara vasiyet edildiğini iddia ederek; vasiyetnamenin iptaline, olmazsa tenkisine karar verilmesini talep etmiştir. II. CEVAP Davalılar vekili cevap dilekçesinde özetle; davacıların, muris"
+        },
+        {
+          "title": "7. Hukuk Dairesi 2025/2753 E. 2025/5382 K.",
+          "daire": "7. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 2554,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "tenkis",
+            "sakli pay",
+            "mirasci",
+            "muris muvazaasi",
+            "vasiyetname",
+            "tereke"
+          ],
+          "contentMatchedFactPattern": [
+            "mirasci",
+            "mirasbirakan",
+            "tereke",
+            "sakli pay",
+            "vasiyetname",
+            "muris muvazaasi"
+          ],
+          "summaryPreview": "nkleştirme anındaki değerine göre davacılara sebepsiz zenginleşme hükümlerine göre iadesine bu taleplerinin de kabul edilmemesi hâlinde tenkis hükümleri uygulanarak dava konusu Şirketin hisselerinin müvekkillerinin saklı payı oranında iades"
+        },
+        {
+          "title": "7. Hukuk Dairesi 2025/2121 E. 2025/5279 K.",
+          "daire": "7. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 2002,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "tenkis",
+            "sakli pay",
+            "bagis",
+            "tereke",
+            "ihlal"
+          ],
+          "contentMatchedFactPattern": [
+            "bagis",
+            "tereke",
+            "sakli pay"
+          ],
+          "summaryPreview": "asını davalıya verdiğini ileri sürerek kazandırmaların mirasta denkleştirme hükümleri gereğince iadesini terditli tenkisini istemiştir. II. CEVAP Davalı vekili cevap dilekçesinde; murisin maddi durumunun kötü olduğunu, eşi ve kendisinin has"
+        }
+      ],
+      "mustConcepts": [
+        "tenkis",
+        "sakli pay",
+        "miras payi"
+      ],
+      "mustHits": [
+        "tenkis",
+        "sakli pay"
+      ],
+      "mustHitRate": 0.6666666666666666,
+      "forbiddenConcepts": [
+        "ceza dairesi",
+        "danistay",
+        "marka"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": true,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": [
+        "[YARGI_CLI] spawn:error {\"pid\":14632,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[YARGI_CLI] spawn:error {\"pid\":18392,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[YARGI_CLI] spawn:error {\"pid\":5148,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[YARGI_CLI] spawn:error {\"pid\":18376,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[YARGI_CLI] spawn:error {\"pid\":14564,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[YARGI_CLI] spawn:error {\"pid\":18088,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}"
+      ]
+    },
+    {
+      "id": "tuketici-ayipli-mal",
+      "query": "Ayıplı mal, seçimlik haklar, bedel iadesi ve ücretsiz onarım",
+      "expected": {
+        "domain": "tuketici",
+        "birim": "H3",
+        "family": "3. Hukuk Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 84841,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": null,
+      "retrievalDiagnostics": {
+        "primaryDomain": null,
+        "selectedBirimAdi": null,
+        "acceptedTopResultDaireler": [],
+        "sourceCoverageStatus": null,
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 0
+      },
+      "top5MatchedSignals": [],
+      "resultCount": 7,
+      "topResults": [
+        {
+          "title": "12. Hukuk Dairesi - Esas: 2007/268 - Karar: 2007/2305 - Tarih: 2007-02-15",
+          "daire": "12. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "Hukuk Dairesi 2007 268 E , 2007 2305 K \"İçtihat Metni\" MAHKEMESİ : Nazilli İcra Mahkemesi Yukarıda tarih ve numarası yazılı mahkeme kararının müddeti içinde temyizen tetkiki davacı vekili tarafından istenmesi üzerine bu işle ilgili dosya ma"
+        },
+        {
+          "title": "Yargıtay Kararı 3. Hukuk Dairesi",
+          "daire": "3. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "3. Hukuk Dairesi 2025/3366 E. , 2026/342 K. \"İçtihat Metni\" MAHKEMESİ : Ankara Bölge Adliye Mahkemesi 4. Hukuk Dairesi SAYISI : 2024/305 E., 2025/734 K. İLK DERECE MAHKEMESİ : Ankara 3. Asliye Hukuk Mahkemesi SAYISI : 2019/965 E., 2023/526 "
+        },
+        {
+          "title": "Yargıtay Kararı 3. Hukuk Dairesi",
+          "daire": "3. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "3. Hukuk Dairesi 2025/3007 E. , 2026/340 K. \"İçtihat Metni\" MAHKEMESİ : İstanbul Bölge Adliye Mahkemesi 9. Hukuk Dairesi SAYISI : 2023/2382 E., 2025/132 K. İLK DERECE MAHKEMESİ : Bakırköy 11. Asliye Hukuk Mahkemesi SAYISI : 2022/246 E., 202"
+        },
+        {
+          "title": "Yargıtay Kararı 3. Hukuk Dairesi",
+          "daire": "3. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "3. Hukuk Dairesi 2025/2456 E. , 2026/336 K. \"İçtihat Metni\" MAHKEMESİ :Asliye Hukuk Mahkemesi SAYISI : 2019/221 E., 2025/41 K. Mahkemece bozmaya uyularak verilen karar, davacı vekili tarafından temyiz edilmekle; kesinlik, süre, temyiz şartı"
+        },
+        {
+          "title": "Yargıtay Kararı 3. Hukuk Dairesi",
+          "daire": "3. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "3. Hukuk Dairesi 2025/4268 E. , 2026/337 K. \"İçtihat Metni\" MAHKEMESİ :Asliye Hukuk Mahkemesi SAYISI : 2024/13 E., 2025/2 K. Mahkemece bozmaya uyularak verilen karar, taraf vekilleri tarafından temyiz edilmekle; kesinlik, süre, temyiz şartı"
+        }
+      ],
+      "mustConcepts": [
+        "ayipli mal",
+        "bedel iadesi",
+        "ucretsiz onarim"
+      ],
+      "mustHits": [],
+      "mustHitRate": 0,
+      "forbiddenConcepts": [
+        "ceza dairesi",
+        "danistay",
+        "marka"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": false,
+        "birimPass": false,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": true,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": [
+        "[YARGI_CLI] spawn:error {\"pid\":4040,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[throttle] 429 attempt=1 delay=1494ms",
+        "[YARGI_CLI] spawn:error {\"pid\":14068,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[throttle] 429 attempt=1 delay=1204ms",
+        "[YARGI_CLI] spawn:error {\"pid\":17132,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[throttle] 429 attempt=2 delay=2155ms",
+        "[YARGI_CLI] spawn:error {\"pid\":17564,\"code\":\"yargi_cli_command_failed\",\"message\":\"HTTP 429: Too Many Requests\",\"stdoutChunks\":1,\"stderrChunks\":0,\"stdoutPreview\":\"{ \\\"error\\\": \\\"HTTP 429: Too Many Requests\\\" }\",\"stderrPreview\":\"\"}",
+        "[throttle] 429 attempt=1 delay=1211ms"
+      ]
+    },
+    {
+      "id": "ticaret-marka-iltibas",
+      "query": "Marka hakkına tecavüz, iltibas, karıştırılma ihtimali ve haksız rekabet",
+      "expected": {
+        "domain": "ticaret",
+        "birim": "H11",
+        "family": "11. Hukuk Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 22984,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": "ticaret",
+      "retrievalDiagnostics": {
+        "primaryDomain": "ticaret",
+        "selectedBirimAdi": "H11",
+        "acceptedTopResultDaireler": [
+          "11. Hukuk Dairesi"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "marka",
+        "tescil",
+        "hukumsuzluk",
+        "karistirilma ihtimali",
+        "cek",
+        "tescil",
+        "hukumsuzluk",
+        "karistirilma ihtimali",
+        "marka",
+        "tescil",
+        "hukumsuzluk",
+        "karistirilma ihtimali",
+        "cek",
+        "tescil",
+        "hukumsuzluk",
+        "karistirilma ihtimali",
+        "marka",
+        "tescil",
+        "tecavuz",
+        "haksiz rekabet",
+        "cek",
+        "ticari faiz",
+        "tescil",
+        "tecavuz",
+        "marka",
+        "tescil",
+        "hukumsuzluk",
+        "haksiz rekabet",
+        "cek",
+        "tescil",
+        "hukumsuzluk",
+        "marka",
+        "tescil",
+        "hukumsuzluk",
+        "cek",
+        "tescil",
+        "hukumsuzluk"
+      ],
+      "resultCount": 11,
+      "topResults": [
+        {
+          "title": "11. Hukuk Dairesi 2025/3220 E. 2026/536 K.",
+          "daire": "11. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1456,
+          "contentMergedScore": 0.4732,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "marka",
+            "tescil",
+            "hukumsuzluk",
+            "karistirilma ihtimali",
+            "cek"
+          ],
+          "contentMatchedFactPattern": [
+            "tescil",
+            "hukumsuzluk",
+            "karistirilma ihtimali"
+          ],
+          "summaryPreview": "p gereği düşünüldü: KARAR I. DAVA Davacı vekili dava dilekçesinde; davalı tarafından 2018/116622 başvuru numaralı \"...\" markasının 16., 35. ve 41, sınıflarda tescilinin talep edildiğini, müvekkilinin başvuruya yönelik itirazının Yeniden İnc"
+        },
+        {
+          "title": "11. Hukuk Dairesi 2025/5785 E. 2026/543 K.",
+          "daire": "11. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1456,
+          "contentMergedScore": 0.4732,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "marka",
+            "tescil",
+            "hukumsuzluk",
+            "karistirilma ihtimali",
+            "cek"
+          ],
+          "contentMatchedFactPattern": [
+            "tescil",
+            "hukumsuzluk",
+            "karistirilma ihtimali"
+          ],
+          "summaryPreview": "Davacı vekili dava dilekçesinde; davalının yiyecek sektöründe faaliyet gösterdiğini, ... numaralı \"... ... + Şekil\" markasını aralarında \"çaylar, buzlu çaylar ve bitki çayları\" emtialarının da bulunduğu bir kısım gıda maddeleri için tescil "
+        },
+        {
+          "title": "11. Hukuk Dairesi 2025/3348 E. 2026/538 K.",
+          "daire": "11. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1450,
+          "contentMergedScore": 0.47125,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "marka",
+            "tescil",
+            "tecavuz",
+            "haksiz rekabet",
+            "cek",
+            "ticari faiz"
+          ],
+          "contentMatchedFactPattern": [
+            "tescil",
+            "tecavuz"
+          ],
+          "summaryPreview": "onra dosyadaki belgeler incelenip gereği düşünüldü: KARAR I. DAVA Davacı vekili dava dilekçesinde; müvekkili şirketin marka ve tasarım haklarına önem veren, kendi sektöründe tanınmış, sürekli tasarımlar geliştiren ve bu tasarımların üretiml"
+        },
+        {
+          "title": "11. Hukuk Dairesi 2025/3624 E. 2026/528 K.",
+          "daire": "11. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1294,
+          "contentMergedScore": 0.42055000000000003,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "marka",
+            "tescil",
+            "hukumsuzluk",
+            "haksiz rekabet",
+            "cek"
+          ],
+          "contentMatchedFactPattern": [
+            "tescil",
+            "hukumsuzluk"
+          ],
+          "summaryPreview": "uğunu, Avrupa ve Amerika'da olduğu gibi Türkiye'de de tüketici nezdinde özellikle şekerleme deyince ilk akla gelen markanın \"...\" olduğunu ve her yaş grubundan oluşan yüksek tanınmışlığa ulaştığını, \"...\" markasının tamamen müvekkili tarafı"
+        },
+        {
+          "title": "11. Hukuk Dairesi 2025/3214 E. 2026/537 K.",
+          "daire": "11. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1258,
+          "contentMergedScore": 0.40885,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "marka",
+            "tescil",
+            "hukumsuzluk",
+            "cek"
+          ],
+          "contentMatchedFactPattern": [
+            "tescil",
+            "hukumsuzluk"
+          ],
+          "summaryPreview": "a dosyadaki belgeler incelenip gereği düşünüldü: I. DAVA Davacı vekili dava dilekçesinde; davalı şirketin “...” ibareli marka başvurusunun yayımına müvekkili tarafından itiraz edildiğini, davalı şirket tarafından itiraza karşı görüş bildiri"
+        }
+      ],
+      "mustConcepts": [
+        "marka",
+        "iltibas",
+        "haksiz rekabet"
+      ],
+      "mustHits": [
+        "marka",
+        "haksiz rekabet"
+      ],
+      "mustHitRate": 0.6666666666666666,
+      "forbiddenConcepts": [
+        "tapu",
+        "muris muvazaasi",
+        "ceza dairesi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "ticaret-marka-e-ticaret",
+      "query": "Tescilli marka, e-ticaret satışı, logo benzerliği ve karıştırılma ihtimali",
+      "expected": {
+        "domain": "ticaret",
+        "birim": "H11",
+        "family": "11. Hukuk Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 20716,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": "ticaret",
+      "retrievalDiagnostics": {
+        "primaryDomain": "ticaret",
+        "selectedBirimAdi": "H11",
+        "acceptedTopResultDaireler": [
+          "11. Hukuk Dairesi"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "marka",
+        "tescil",
+        "hukumsuzluk",
+        "karistirilma ihtimali",
+        "cek",
+        "tescil",
+        "hukumsuzluk",
+        "karistirilma ihtimali",
+        "marka",
+        "tescil",
+        "hukumsuzluk",
+        "karistirilma ihtimali",
+        "cek",
+        "tescil",
+        "hukumsuzluk",
+        "karistirilma ihtimali",
+        "marka",
+        "tescil",
+        "tecavuz",
+        "haksiz rekabet",
+        "cek",
+        "ticari faiz",
+        "tescil",
+        "tecavuz",
+        "marka",
+        "tescil",
+        "hukumsuzluk",
+        "haksiz rekabet",
+        "cek",
+        "tescil",
+        "hukumsuzluk",
+        "marka",
+        "tescil",
+        "hukumsuzluk",
+        "cek",
+        "tescil",
+        "hukumsuzluk"
+      ],
+      "resultCount": 11,
+      "topResults": [
+        {
+          "title": "11. Hukuk Dairesi 2025/3220 E. 2026/536 K.",
+          "daire": "11. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1456,
+          "contentMergedScore": 0.4732,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "marka",
+            "tescil",
+            "hukumsuzluk",
+            "karistirilma ihtimali",
+            "cek"
+          ],
+          "contentMatchedFactPattern": [
+            "tescil",
+            "hukumsuzluk",
+            "karistirilma ihtimali"
+          ],
+          "summaryPreview": "p gereği düşünüldü: KARAR I. DAVA Davacı vekili dava dilekçesinde; davalı tarafından 2018/116622 başvuru numaralı \"...\" markasının 16., 35. ve 41, sınıflarda tescilinin talep edildiğini, müvekkilinin başvuruya yönelik itirazının Yeniden İnc"
+        },
+        {
+          "title": "11. Hukuk Dairesi 2025/5785 E. 2026/543 K.",
+          "daire": "11. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1456,
+          "contentMergedScore": 0.4732,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "marka",
+            "tescil",
+            "hukumsuzluk",
+            "karistirilma ihtimali",
+            "cek"
+          ],
+          "contentMatchedFactPattern": [
+            "tescil",
+            "hukumsuzluk",
+            "karistirilma ihtimali"
+          ],
+          "summaryPreview": "Davacı vekili dava dilekçesinde; davalının yiyecek sektöründe faaliyet gösterdiğini, ... numaralı \"... ... + Şekil\" markasını aralarında \"çaylar, buzlu çaylar ve bitki çayları\" emtialarının da bulunduğu bir kısım gıda maddeleri için tescil "
+        },
+        {
+          "title": "11. Hukuk Dairesi 2025/3348 E. 2026/538 K.",
+          "daire": "11. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1450,
+          "contentMergedScore": 0.47125,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "marka",
+            "tescil",
+            "tecavuz",
+            "haksiz rekabet",
+            "cek",
+            "ticari faiz"
+          ],
+          "contentMatchedFactPattern": [
+            "tescil",
+            "tecavuz"
+          ],
+          "summaryPreview": "onra dosyadaki belgeler incelenip gereği düşünüldü: KARAR I. DAVA Davacı vekili dava dilekçesinde; müvekkili şirketin marka ve tasarım haklarına önem veren, kendi sektöründe tanınmış, sürekli tasarımlar geliştiren ve bu tasarımların üretiml"
+        },
+        {
+          "title": "11. Hukuk Dairesi 2025/3624 E. 2026/528 K.",
+          "daire": "11. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1294,
+          "contentMergedScore": 0.42055000000000003,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "marka",
+            "tescil",
+            "hukumsuzluk",
+            "haksiz rekabet",
+            "cek"
+          ],
+          "contentMatchedFactPattern": [
+            "tescil",
+            "hukumsuzluk"
+          ],
+          "summaryPreview": "uğunu, Avrupa ve Amerika'da olduğu gibi Türkiye'de de tüketici nezdinde özellikle şekerleme deyince ilk akla gelen markanın \"...\" olduğunu ve her yaş grubundan oluşan yüksek tanınmışlığa ulaştığını, \"...\" markasının tamamen müvekkili tarafı"
+        },
+        {
+          "title": "11. Hukuk Dairesi 2025/3214 E. 2026/537 K.",
+          "daire": "11. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1258,
+          "contentMergedScore": 0.40885,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "marka",
+            "tescil",
+            "hukumsuzluk",
+            "cek"
+          ],
+          "contentMatchedFactPattern": [
+            "tescil",
+            "hukumsuzluk"
+          ],
+          "summaryPreview": "a dosyadaki belgeler incelenip gereği düşünüldü: I. DAVA Davacı vekili dava dilekçesinde; davalı şirketin “...” ibareli marka başvurusunun yayımına müvekkili tarafından itiraz edildiğini, davalı şirket tarafından itiraza karşı görüş bildiri"
+        }
+      ],
+      "mustConcepts": [
+        "tescilli marka",
+        "karistirilma ihtimali",
+        "logo"
+      ],
+      "mustHits": [
+        "karistirilma ihtimali"
+      ],
+      "mustHitRate": 0.3333333333333333,
+      "forbiddenConcepts": [
+        "tapu",
+        "muris muvazaasi",
+        "ceza dairesi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "ticaret-genel-kurul-iptal",
+      "query": "Anonim şirket genel kurul kararı iptali, çağrı usulsüzlüğü, pay sahipliği",
+      "expected": {
+        "domain": "ticaret",
+        "birim": "H11",
+        "family": "11. Hukuk Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 45952,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": "ticaret",
+      "retrievalDiagnostics": {
+        "primaryDomain": "ticaret",
+        "selectedBirimAdi": "H11",
+        "acceptedTopResultDaireler": [
+          "11. Hukuk Dairesi"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "genel kurul",
+        "anonim sirket",
+        "cek",
+        "anonim sirket",
+        "genel kurul"
+      ],
+      "resultCount": 1,
+      "topResults": [
+        {
+          "title": "11. Hukuk Dairesi 2025/3650 E. 2026/529 K.",
+          "daire": "11. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1669,
+          "contentMergedScore": 0.542425,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "genel kurul",
+            "anonim sirket",
+            "cek"
+          ],
+          "contentMatchedFactPattern": [
+            "anonim sirket",
+            "genel kurul"
+          ],
+          "summaryPreview": "ı olduğu davalı şirkette 19.04.2013 tarihinde esas sermaye değişikliği yapıldığını, değişiklik taslağının tümünün genel kurul öncesi gerekli yerlerde ilan edilmediğini, ayrıca yapılan değişikliğin 6102 sayılı Türk Ticaret Kanunu'nun ( TTK) "
+        }
+      ],
+      "mustConcepts": [
+        "genel kurul",
+        "pay sahipligi",
+        "cagri usulsuzlugu"
+      ],
+      "mustHits": [
+        "genel kurul"
+      ],
+      "mustHitRate": 0.3333333333333333,
+      "forbiddenConcepts": [
+        "tapu",
+        "marka",
+        "ceza dairesi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "ticaret-konkordato-komiser",
+      "query": "Konkordato komiseri, mühlet kararı, alacaklılar kurulu ve tasdik şartları",
+      "expected": {
+        "domain": "ticaret",
+        "birim": "H6",
+        "family": "6. Hukuk Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 102488,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": null,
+      "retrievalDiagnostics": {
+        "primaryDomain": null,
+        "selectedBirimAdi": null,
+        "acceptedTopResultDaireler": [],
+        "sourceCoverageStatus": null,
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 0
+      },
+      "top5MatchedSignals": [],
+      "resultCount": 10,
+      "topResults": [
+        {
+          "title": "Yargıtay Kararı 6. Hukuk Dairesi",
+          "daire": "6. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "6. Hukuk Dairesi 2025/2442 E. , 2025/4147 K. \"İçtihat Metni\" MAHKEMESİ : Konya Bölge Adliye Mahkemesi 3. Hukuk Dairesi SAYISI : 2025/993 E., 2025/1133 K. İLK DERECE MAHKEMESİ : Afyonkarahisar 3. Asliye Hukuk Mahkemesi (Asliye Ticaret Mahkem"
+        },
+        {
+          "title": "Yargıtay Kararı 6. Hukuk Dairesi",
+          "daire": "6. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "6. Hukuk Dairesi 2025/3647 E. , 2025/4149 K. \"İçtihat Metni\" MAHKEMESİ : Ankara Bölge Adliye 23. Hukuk Dairesi SAYISI : 2025/418 E., 2025/291 K., İLK DERECE MAHKEMESİ : Ankara 2. Asliye Ticaret Mahkemesi SAYISI : 2023/859 E., 2025/50 K. Kon"
+        },
+        {
+          "title": "Yargıtay Kararı 6. Hukuk Dairesi",
+          "daire": "6. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "6. Hukuk Dairesi 2025/2233 E. , 2025/4084 K. \"İçtihat Metni\" MAHKEMESİ: İzmir Bölge Adliye Mahkemesi 17. Hukuk Dairesi SAYISI : 2021/1220 E., 2025/291 K. Bölge Adliye Mahkemesi kararı davacı vekili tarafından duruşma istemli temyiz edilmekl"
+        },
+        {
+          "title": "Yargıtay Kararı 6. Hukuk Dairesi",
+          "daire": "6. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "6. Hukuk Dairesi 2025/3383 E. , 2025/4049 K. \"İçtihat Metni\" MAHKEMESİ : Ankara Bölge Adliye Mahkemesi 23. Hukuk Dairesi SAYISI : 2025/1133 E., 2025/726 K. İLK DERECE MAHKEMESİ: Eskişehir Asliye Ticaret Mahkemesi SAYISI : 2024/127 E., 2024/"
+        },
+        {
+          "title": "Yargıtay Kararı 6. Hukuk Dairesi",
+          "daire": "6. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "6. Hukuk Dairesi 2025/3750 E. , 2025/4031 K. \"İçtihat Metni\" MAHKEMESİ : Samsun Bölge Adliye Mahkemesi 3. Hukuk Dairesi SAYISI : 2025/1538 E., 2025/1587 K. İLK DERECE MAHKEMESİ: Amasya 3. Asliye Hukuk Mahkemesi SAYISI : 2025/54 E., 2025/183"
+        }
+      ],
+      "mustConcepts": [
+        "konkordato",
+        "komiser",
+        "muhlet"
+      ],
+      "mustHits": [],
+      "mustHitRate": 0,
+      "forbiddenConcepts": [
+        "marka",
+        "tapu",
+        "ceza dairesi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": false,
+        "birimPass": false,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "icra-itirazin-iptali",
+      "query": "İİK 67 itirazın iptali, cari hesap alacağı, ticari defterler",
+      "expected": {
+        "domain": "icra",
+        "birim": "H11",
+        "family": "11. Hukuk Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 32600,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": "icra",
+      "retrievalDiagnostics": {
+        "primaryDomain": "icra",
+        "selectedBirimAdi": "H11",
+        "acceptedTopResultDaireler": [
+          "11. Hukuk Dairesi"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "itirazin iptali",
+        "cari hesap",
+        "icra inkar tazminati",
+        "cari hesap",
+        "takip"
+      ],
+      "resultCount": 1,
+      "topResults": [
+        {
+          "title": "11. Hukuk Dairesi 2025/4661 E. 2026/503 K.",
+          "daire": "11. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1645,
+          "contentMergedScore": 0.534625,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "itirazin iptali",
+            "cari hesap",
+            "icra inkar tazminati"
+          ],
+          "contentMatchedFactPattern": [
+            "cari hesap",
+            "takip"
+          ],
+          "summaryPreview": "bu ödemeden sonra müvekkilinin takibe devam etmek ve tahsilat sağlarsa bunu KGF'ye ödemek zorunda olduğunu ileri sürerek itirazın iptali ile icra inkâr tazminatının tahsilini talep etmiştir. II. CEVAP Davalı vekili cevap dilekçesinde; müvek"
+        }
+      ],
+      "mustConcepts": [
+        "itirazin iptali",
+        "iik 67",
+        "cari hesap"
+      ],
+      "mustHits": [
+        "itirazin iptali",
+        "cari hesap"
+      ],
+      "mustHitRate": 0.6666666666666666,
+      "forbiddenConcepts": [
+        "ceza dairesi",
+        "danistay",
+        "muris muvazaasi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "icra-menfi-tespit",
+      "query": "Menfi tespit, istirdat, icra takibine konu borcun bulunmadığı iddiası",
+      "expected": {
+        "domain": "icra",
+        "birim": "H11",
+        "family": "11. Hukuk Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 32954,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": "icra",
+      "retrievalDiagnostics": {
+        "primaryDomain": "icra",
+        "selectedBirimAdi": "H11",
+        "acceptedTopResultDaireler": [
+          "11. Hukuk Dairesi"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "itirazin iptali",
+        "cari hesap",
+        "icra inkar tazminati",
+        "cari hesap",
+        "takip"
+      ],
+      "resultCount": 1,
+      "topResults": [
+        {
+          "title": "11. Hukuk Dairesi 2025/4661 E. 2026/503 K.",
+          "daire": "11. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": 1627,
+          "contentMergedScore": 0.528775,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "itirazin iptali",
+            "cari hesap",
+            "icra inkar tazminati"
+          ],
+          "contentMatchedFactPattern": [
+            "cari hesap",
+            "takip"
+          ],
+          "summaryPreview": "bu ödemeden sonra müvekkilinin takibe devam etmek ve tahsilat sağlarsa bunu KGF'ye ödemek zorunda olduğunu ileri sürerek itirazın iptali ile icra inkâr tazminatının tahsilini talep etmiştir. II. CEVAP Davalı vekili cevap dilekçesinde; müvek"
+        }
+      ],
+      "mustConcepts": [
+        "menfi tespit",
+        "istirdat",
+        "icra takibi"
+      ],
+      "mustHits": [],
+      "mustHitRate": 0,
+      "forbiddenConcepts": [
+        "ceza dairesi",
+        "danistay",
+        "muris muvazaasi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "icra-haciz-meskeniyet",
+      "query": "Haczedilmezlik şikayeti, meskeniyet, icra mahkemesi kararı",
+      "expected": {
+        "domain": "icra",
+        "birim": "H12",
+        "family": "12. Hukuk Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 79952,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": null,
+      "retrievalDiagnostics": {
+        "primaryDomain": null,
+        "selectedBirimAdi": null,
+        "acceptedTopResultDaireler": [],
+        "sourceCoverageStatus": null,
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 0
+      },
+      "top5MatchedSignals": [],
+      "resultCount": 1,
+      "topResults": [
+        {
+          "title": "Yargıtay Kararı 12. Hukuk Dairesi",
+          "daire": "12. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "12. Hukuk Dairesi 2025/8625 E. , 2025/8335 K. \"İçtihat Metni\" MAHKEMESİ :İcra Hukuk Mahkemesi Yukarıda tarih ve numarası yazılı mahkeme kararının müddeti içinde temyizen tetkiki davalı tarafından istenmesi üzerine bu işle ilgili dosya mahal"
+        }
+      ],
+      "mustConcepts": [
+        "haczedilmezlik",
+        "meskeniyet",
+        "icra mahkemesi"
+      ],
+      "mustHits": [],
+      "mustHitRate": 0,
+      "forbiddenConcepts": [
+        "ceza dairesi",
+        "danistay",
+        "marka"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": false,
+        "birimPass": false,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "icra-ihalenin-feshi",
+      "query": "İhalenin feshi, satış ilanı usulsüzlüğü, kıymet takdiri ve haciz",
+      "expected": {
+        "domain": "icra",
+        "birim": "H12",
+        "family": "12. Hukuk Dairesi"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 65012,
+      "cooldownAppliedMs": 1200,
+      "detectedDomain": null,
+      "retrievalDiagnostics": {
+        "primaryDomain": null,
+        "selectedBirimAdi": null,
+        "acceptedTopResultDaireler": [],
+        "sourceCoverageStatus": null,
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 0
+      },
+      "top5MatchedSignals": [],
+      "resultCount": 18,
+      "topResults": [
+        {
+          "title": "11. Hukuk Dairesi - Esas: 2025/3437 - Karar: 2026/511 - Tarih: 2019-12-08",
+          "daire": "11. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "Hukuk Dairesi 2025 3437 E , 2026 511 K \"İçtihat Metni\" MAHKEMESİ : İstanbul Bölge Adliye Mahkemesi 17 Hukuk Dairesi SAYISI : 2025 119 Esas, 2025 382 Karar HÜKÜM : Esastan Ret İLK DERECE MAHKEMESİ : Bakırköy 6 Asliye Ticaret Mahkemesi SAYISI"
+        },
+        {
+          "title": "4. Hukuk Dairesi - Esas: 2026/1358 - Karar: 2026/1346 - Tarih: 2025-06-26",
+          "daire": "4. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "Hukuk Dairesi 2026 1358 E , 2026 1346 K \"İçtihat Metni\" İNCELENEN KARARIN MAHKEMESİ : Konya Bölge Adliye Mahkemesi 3 Hukuk Dairesi SAYISI : 2025 1774 E , 2025 2572 K İLK DERECE MAHKEMESİ : Konya 5 Asliye Hukuk Mahkemesi SAYISI : 2024 184-20"
+        },
+        {
+          "title": "4. Hukuk Dairesi - Esas: 2026/1773 - Karar: 2026/1361 - Tarih: 2025-06-26",
+          "daire": "4. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "Hukuk Dairesi 2026 1773 E , 2026 1361 K \"İçtihat Metni\" MAHKEMESİ : Adana Bölge Adliye Mahkemesi 3 Hukuk Dairesi SAYISI : 2022 1651 E , 2024 972 K İLK DERECE MAHKEMESİ : İskenderun 2 Asliye Hukuk Mahkemesi SAYISI : 2021 42-2022 47 2797 sayı"
+        },
+        {
+          "title": "4. Hukuk Dairesi - Esas: 2026/1476 - Karar: 2026/1350 - Tarih: 2025-06-26",
+          "daire": "4. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "Hukuk Dairesi 2026 1476 E , 2026 1350 K \"İçtihat Metni\" MAHKEMESİ : İstanbul Bölge Adliye Mahkemesi 4 Hukuk Dairesi SAYISI : 2024 4246 E , 2026 91 K İLK DERECE MAHKEMESİ : Bakırköy 3 Asliye Ticaret Mahkemesi SAYISI : 2020 726-2024 319 2797 "
+        },
+        {
+          "title": "4. Hukuk Dairesi - Esas: 2026/1737 - Karar: 2026/1357 - Tarih: 2025-06-26",
+          "daire": "4. Hukuk Dairesi",
+          "source": "yargitay",
+          "contentScore": null,
+          "contentMergedScore": null,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [],
+          "contentMatchedFactPattern": [],
+          "summaryPreview": "Hukuk Dairesi 2026 1737 E , 2026 1357 K \"İçtihat Metni\" MAHKEMESİ : Ankara Bölge Adliye Mahkemesi 23 Hukuk Dairesi SAYISI : 2021 2338 E , 2025 1203 K İLK DERECE MAHKEMESİ : Ankara 19 Asliye Hukuk Mahkemesi SAYISI : 2021 68-2021 494 2797 say"
+        }
+      ],
+      "mustConcepts": [
+        "ihalenin feshi",
+        "kiymet takdiri",
+        "haciz"
+      ],
+      "mustHits": [],
+      "mustHitRate": 0,
+      "forbiddenConcepts": [
+        "ceza dairesi",
+        "danistay",
+        "marka"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": false,
+        "birimPass": false,
+        "familyPass": false,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "idare-imar-yikim",
+      "query": "İmar planı iptali, yıkım kararı, yapı ruhsatı ve kazanılmış hak",
+      "expected": {
+        "domain": "idare",
+        "birim": "D6",
+        "family": "6. Daire"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 40496,
+      "cooldownAppliedMs": 3500,
+      "detectedDomain": "idare",
+      "retrievalDiagnostics": {
+        "primaryDomain": "idare",
+        "selectedBirimAdi": "D6",
+        "acceptedTopResultDaireler": [
+          "6. Daire"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "imar para cezasi",
+        "ruhsata aykiri yapi",
+        "imar plani",
+        "hukuki guvenlik",
+        "idari para cezasi",
+        "belediye encumeni",
+        "imar plani",
+        "encumen karari",
+        "ruhsat",
+        "imar para cezasi",
+        "ruhsata aykiri yapi",
+        "imar plani",
+        "hukuki guvenlik",
+        "idari para cezasi",
+        "belediye encumeni",
+        "imar plani",
+        "encumen karari",
+        "ruhsat",
+        "imar para cezasi",
+        "ruhsata aykiri yapi",
+        "hukuki guvenlik",
+        "idari para cezasi",
+        "belediye encumeni",
+        "encumen karari",
+        "ruhsat",
+        "imar para cezasi",
+        "imar plani",
+        "idari para cezasi",
+        "belediye encumeni",
+        "imar plani",
+        "ruhsat",
+        "orantililik",
+        "imar plani",
+        "idari islem",
+        "olcululuk",
+        "sebep unsuru",
+        "mulkiyet hakki ihlali",
+        "orantililik",
+        "imar plani"
+      ],
+      "resultCount": 19,
+      "topResults": [
+        {
+          "title": "6. Daire 2022/8817 E. 2025/5011 K.",
+          "daire": "6. Daire",
+          "source": "danistay",
+          "contentScore": 2817,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "imar para cezasi",
+            "ruhsata aykiri yapi",
+            "imar plani",
+            "hukuki guvenlik",
+            "idari para cezasi",
+            "belediye encumeni"
+          ],
+          "contentMatchedFactPattern": [
+            "imar plani",
+            "encumen karari",
+            "ruhsat"
+          ],
+          "summaryPreview": "lar yapıldığından bahisle 3194 sayılı İmar Kanununun 42. maddesinin 2.fıkrasının (a), (c) ve (ç) bendi uyarınca toplam 1.038.039,11-TL imar para cezası verilmesine ilişkin ... tarih ve ... sayılı Kemer Belediye Encümeni kararı ile bu karara"
+        },
+        {
+          "title": "6. Daire 2022/9242 E. 2025/5012 K.",
+          "daire": "6. Daire",
+          "source": "danistay",
+          "contentScore": 2817,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "imar para cezasi",
+            "ruhsata aykiri yapi",
+            "imar plani",
+            "hukuki guvenlik",
+            "idari para cezasi",
+            "belediye encumeni"
+          ],
+          "contentMatchedFactPattern": [
+            "imar plani",
+            "encumen karari",
+            "ruhsat"
+          ],
+          "summaryPreview": "lar yapıldığından bahisle 3194 sayılı İmar Kanununun 42. maddesinin 2.fıkrasının (a), (c) ve (ç) bendi uyarınca toplam 1.452.146,53-TL imar para cezası verilmesine ilişkin ... tarih ve ... sayılı Kemer Belediye Encümeni kararı ile bu karara"
+        },
+        {
+          "title": "6. Daire 2024/7703 E. 2025/5010 K.",
+          "daire": "6. Daire",
+          "source": "danistay",
+          "contentScore": 2424,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "imar para cezasi",
+            "ruhsata aykiri yapi",
+            "hukuki guvenlik",
+            "idari para cezasi",
+            "belediye encumeni"
+          ],
+          "contentMatchedFactPattern": [
+            "encumen karari",
+            "ruhsat"
+          ],
+          "summaryPreview": "ararının ardından 30 gün içinde aykırılığın giderilmediğinden bahisle 42. maddesinin 2. fıkrasının (ç) bendi uyarınca 1.572.835,00 TL imar para cezası verilmesine ilişkin ... tarih ve ... sayılı Üsküdar Belediye Encümeni kararının iptali is"
+        },
+        {
+          "title": "6. Daire 2022/9250 E. 2025/5201 K.",
+          "daire": "6. Daire",
+          "source": "danistay",
+          "contentScore": 1918,
+          "contentMergedScore": 0.62335,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "imar para cezasi",
+            "imar plani",
+            "idari para cezasi",
+            "belediye encumeni"
+          ],
+          "contentMatchedFactPattern": [
+            "imar plani",
+            "ruhsat"
+          ],
+          "summaryPreview": "amamasıdır. Anayasanın 38. maddesinde idari ve adli cezalar arasında bir ayrım yapılmadığından idari para cezaları da bu maddede öngörülen ilkelere tabidir. HUKUKİ DEĞERLENDİRME: Cezaların şahsiliği ilkesi uyarınca, imar para cezasının ruhs"
+        },
+        {
+          "title": "6. Daire 2025/199 E. 2025/5242 K.",
+          "daire": "6. Daire",
+          "source": "danistay",
+          "contentScore": 1465,
+          "contentMergedScore": 0.476125,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "orantililik",
+            "imar plani",
+            "idari islem",
+            "olcululuk",
+            "sebep unsuru",
+            "mulkiyet hakki ihlali"
+          ],
+          "contentMatchedFactPattern": [
+            "orantililik",
+            "imar plani"
+          ],
+          "summaryPreview": "emelere yer verilmiş ve mülkiyet hakkı korunması gereken temel insan hakları arasında sayılmıştır. Mülkiyet hakkına müdahalelerin de olabileceği hükme bağlanarak bu müdahalelerde kamu yararı, kanuni düzenleme ve ölçülülük ya da orantılılık "
+        }
+      ],
+      "mustConcepts": [
+        "imar plani",
+        "yapi ruhsati",
+        "kazanilmis hak"
+      ],
+      "mustHits": [
+        "imar plani"
+      ],
+      "mustHitRate": 0.3333333333333333,
+      "forbiddenConcepts": [
+        "hukuk dairesi",
+        "ceza dairesi",
+        "anayasa mahkemesi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "idare-imar-para-cezasi",
+      "query": "İmar para cezası, orantılılık, ruhsatsız yapı ve iptal davası",
+      "expected": {
+        "domain": "idare",
+        "birim": "D6",
+        "family": "6. Daire"
+      },
+      "statusCode": 200,
+      "status": "pass",
+      "durationMs": 42702,
+      "cooldownAppliedMs": 3500,
+      "detectedDomain": "idare",
+      "retrievalDiagnostics": {
+        "primaryDomain": "idare",
+        "selectedBirimAdi": "D6",
+        "acceptedTopResultDaireler": [
+          "6. Daire"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "imar para cezasi",
+        "ruhsata aykiri yapi",
+        "imar plani",
+        "hukuki guvenlik",
+        "idari para cezasi",
+        "belediye encumeni",
+        "imar plani",
+        "encumen karari",
+        "ruhsat",
+        "imar para cezasi",
+        "ruhsata aykiri yapi",
+        "imar plani",
+        "hukuki guvenlik",
+        "idari para cezasi",
+        "belediye encumeni",
+        "imar plani",
+        "encumen karari",
+        "ruhsat",
+        "imar para cezasi",
+        "ruhsata aykiri yapi",
+        "hukuki guvenlik",
+        "idari para cezasi",
+        "belediye encumeni",
+        "encumen karari",
+        "ruhsat",
+        "imar para cezasi",
+        "imar plani",
+        "idari para cezasi",
+        "belediye encumeni",
+        "imar plani",
+        "ruhsat",
+        "orantililik",
+        "imar plani",
+        "idari islem",
+        "olcululuk",
+        "sebep unsuru",
+        "mulkiyet hakki ihlali",
+        "orantililik",
+        "imar plani"
+      ],
+      "resultCount": 18,
+      "topResults": [
+        {
+          "title": "6. Daire 2022/8817 E. 2025/5011 K.",
+          "daire": "6. Daire",
+          "source": "danistay",
+          "contentScore": 2817,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "imar para cezasi",
+            "ruhsata aykiri yapi",
+            "imar plani",
+            "hukuki guvenlik",
+            "idari para cezasi",
+            "belediye encumeni"
+          ],
+          "contentMatchedFactPattern": [
+            "imar plani",
+            "encumen karari",
+            "ruhsat"
+          ],
+          "summaryPreview": "lar yapıldığından bahisle 3194 sayılı İmar Kanununun 42. maddesinin 2.fıkrasının (a), (c) ve (ç) bendi uyarınca toplam 1.038.039,11-TL imar para cezası verilmesine ilişkin ... tarih ve ... sayılı Kemer Belediye Encümeni kararı ile bu karara"
+        },
+        {
+          "title": "6. Daire 2022/9242 E. 2025/5012 K.",
+          "daire": "6. Daire",
+          "source": "danistay",
+          "contentScore": 2817,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "imar para cezasi",
+            "ruhsata aykiri yapi",
+            "imar plani",
+            "hukuki guvenlik",
+            "idari para cezasi",
+            "belediye encumeni"
+          ],
+          "contentMatchedFactPattern": [
+            "imar plani",
+            "encumen karari",
+            "ruhsat"
+          ],
+          "summaryPreview": "lar yapıldığından bahisle 3194 sayılı İmar Kanununun 42. maddesinin 2.fıkrasının (a), (c) ve (ç) bendi uyarınca toplam 1.452.146,53-TL imar para cezası verilmesine ilişkin ... tarih ve ... sayılı Kemer Belediye Encümeni kararı ile bu karara"
+        },
+        {
+          "title": "6. Daire 2024/7703 E. 2025/5010 K.",
+          "daire": "6. Daire",
+          "source": "danistay",
+          "contentScore": 2424,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "imar para cezasi",
+            "ruhsata aykiri yapi",
+            "hukuki guvenlik",
+            "idari para cezasi",
+            "belediye encumeni"
+          ],
+          "contentMatchedFactPattern": [
+            "encumen karari",
+            "ruhsat"
+          ],
+          "summaryPreview": "ararının ardından 30 gün içinde aykırılığın giderilmediğinden bahisle 42. maddesinin 2. fıkrasının (ç) bendi uyarınca 1.572.835,00 TL imar para cezası verilmesine ilişkin ... tarih ve ... sayılı Üsküdar Belediye Encümeni kararının iptali is"
+        },
+        {
+          "title": "6. Daire 2022/9250 E. 2025/5201 K.",
+          "daire": "6. Daire",
+          "source": "danistay",
+          "contentScore": 1918,
+          "contentMergedScore": 0.62335,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "imar para cezasi",
+            "imar plani",
+            "idari para cezasi",
+            "belediye encumeni"
+          ],
+          "contentMatchedFactPattern": [
+            "imar plani",
+            "ruhsat"
+          ],
+          "summaryPreview": "amamasıdır. Anayasanın 38. maddesinde idari ve adli cezalar arasında bir ayrım yapılmadığından idari para cezaları da bu maddede öngörülen ilkelere tabidir. HUKUKİ DEĞERLENDİRME: Cezaların şahsiliği ilkesi uyarınca, imar para cezasının ruhs"
+        },
+        {
+          "title": "6. Daire 2025/199 E. 2025/5242 K.",
+          "daire": "6. Daire",
+          "source": "danistay",
+          "contentScore": 1465,
+          "contentMergedScore": 0.476125,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "orantililik",
+            "imar plani",
+            "idari islem",
+            "olcululuk",
+            "sebep unsuru",
+            "mulkiyet hakki ihlali"
+          ],
+          "contentMatchedFactPattern": [
+            "orantililik",
+            "imar plani"
+          ],
+          "summaryPreview": "emelere yer verilmiş ve mülkiyet hakkı korunması gereken temel insan hakları arasında sayılmıştır. Mülkiyet hakkına müdahalelerin de olabileceği hükme bağlanarak bu müdahalelerde kamu yararı, kanuni düzenleme ve ölçülülük ya da orantılılık "
+        }
+      ],
+      "mustConcepts": [
+        "imar",
+        "para cezasi",
+        "orantililik"
+      ],
+      "mustHits": [
+        "imar",
+        "para cezasi",
+        "orantililik"
+      ],
+      "mustHitRate": 1,
+      "forbiddenConcepts": [
+        "hukuk dairesi",
+        "ceza dairesi",
+        "anayasa mahkemesi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": true
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "idare-kamu-ihale-asiri-dusuk",
+      "query": "Kamu ihalesi, aşırı düşük teklif sorgulaması, teklif değerlendirme dışı bırakma",
+      "expected": {
+        "domain": "idare",
+        "birim": "D13",
+        "family": "13. Daire"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 65572,
+      "cooldownAppliedMs": 3500,
+      "detectedDomain": "idare",
+      "retrievalDiagnostics": {
+        "primaryDomain": "idare",
+        "selectedBirimAdi": "D13",
+        "acceptedTopResultDaireler": [
+          "13. Daire"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "kamu ihale",
+        "ihale iptal",
+        "4734",
+        "usul",
+        "rekabet",
+        "usul",
+        "rekabet",
+        "ihale komisyonu",
+        "kamu ihale",
+        "4734",
+        "usul",
+        "rekabet",
+        "idari islem",
+        "yetki unsuru",
+        "konu unsuru",
+        "usul",
+        "rekabet",
+        "4734",
+        "usul",
+        "idari islem",
+        "idari para cezasi",
+        "usul",
+        "usul",
+        "olcululuk",
+        "idari para cezasi",
+        "kazanilmis hak",
+        "usul",
+        "ihale komisyonu",
+        "ruhsat",
+        "imar plani",
+        "kamu ihale",
+        "usul",
+        "rekabet",
+        "yurutmenin durdurulmasi",
+        "usul",
+        "rekabet"
+      ],
+      "resultCount": 19,
+      "topResults": [
+        {
+          "title": "13. Daire 2025/710 E. 2025/3228 K.",
+          "daire": "13. Daire",
+          "source": "danistay",
+          "contentScore": 2751,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "kamu ihale",
+            "ihale iptal",
+            "4734",
+            "usul",
+            "rekabet"
+          ],
+          "contentMatchedFactPattern": [
+            "usul",
+            "rekabet",
+            "ihale komisyonu"
+          ],
+          "summaryPreview": "hkeme kararının bozulması ve 2577 sayılı İdari Yargılama Usulü Kanunu'nun 15. maddesinin 1. fıkrasının (e) bendi ile 20/A maddesi uyarınca, dava dilekçesinin Kamu İhale Kurumuna tevdiine karar verilmesi gerektiği düşünülmektedir. TÜRK MİLLE"
+        },
+        {
+          "title": "13. Daire 2025/2310 E. 2025/2950 K.",
+          "daire": "13. Daire",
+          "source": "danistay",
+          "contentScore": 2308,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "kamu ihale",
+            "4734",
+            "usul",
+            "rekabet",
+            "idari islem",
+            "yetki unsuru",
+            "konu unsuru"
+          ],
+          "contentMatchedFactPattern": [
+            "usul",
+            "rekabet"
+          ],
+          "summaryPreview": "nilmektedir. YARGILAMA SÜRECİ : Dava konusu istem: Toprak Mahsulleri Ofisi Genel Müdürlüğü Mardin Başmüdürlüğünce 4734 sayılı Kamu İhale Kanunu'nun 3. maddesinin (g) bendi uyarınca istisna kapsamında ... tarihinde gerçekleştirilen ... ihale"
+        },
+        {
+          "title": "13. Daire 2022/213 E. 2025/2994 K.",
+          "daire": "13. Daire",
+          "source": "danistay",
+          "contentScore": 1726,
+          "contentMergedScore": 0.5609500000000001,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "4734",
+            "usul",
+            "idari islem",
+            "idari para cezasi"
+          ],
+          "contentMatchedFactPattern": [
+            "usul"
+          ],
+          "summaryPreview": "ı yatırımlar hariç olmak üzere, şebekeye ilişkin yatırımlarının (baz istasyonu, anahtarlama, yönlendirici gibi ürünlerle sınırlı olmaksızın şebekeye ve haberleşme hizmetlerine ilişkin donanım ve yazılım ürünleri); yetkilendirilmesini müteak"
+        },
+        {
+          "title": "13. Daire 2022/3800 E. 2025/3023 K.",
+          "daire": "13. Daire",
+          "source": "danistay",
+          "contentScore": 1477,
+          "contentMergedScore": 0.48002500000000003,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "usul",
+            "olcululuk",
+            "idari para cezasi",
+            "kazanilmis hak"
+          ],
+          "contentMatchedFactPattern": [
+            "usul",
+            "ihale komisyonu",
+            "ruhsat",
+            "imar plani"
+          ],
+          "summaryPreview": "lkişilerle ortak olarak veya doğrudan gerçek ve tüzelkişiler eliyle yapılması, kanunun açık iznine bağlıdır. Bu durumda gerçek ve tüzelkişilerin uyması gereken şartlar ve Devletçe yapılacak gözetim, denetim usul ve esasları ve müeyyideler k"
+        },
+        {
+          "title": "13. Daire 2025/1700 E. 2025/2920 K.",
+          "daire": "13. Daire",
+          "source": "danistay",
+          "contentScore": 1231,
+          "contentMergedScore": 0.40007500000000007,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "kamu ihale",
+            "usul",
+            "rekabet",
+            "yurutmenin durdurulmasi"
+          ],
+          "contentMatchedFactPattern": [
+            "usul",
+            "rekabet"
+          ],
+          "summaryPreview": "halesinin dokümanına yönelik olarak yapılan itirazen şikayet başvurusunun reddine ilişkin 08/01/2025 tarih ve 2025/UH.II-138 sayılı Kamu İhale Kurulu (Kurul) kararının iptali istenilmiştir. İlk Derece Mahkemesi kararının özeti: ... İdare Ma"
+        }
+      ],
+      "mustConcepts": [
+        "kamu ihalesi",
+        "asiri dusuk teklif",
+        "degerlendirme disi"
+      ],
+      "mustHits": [],
+      "mustHitRate": 0,
+      "forbiddenConcepts": [
+        "hukuk dairesi",
+        "ceza dairesi",
+        "anayasa mahkemesi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "idare-disiplin-savunma-hakki",
+      "query": "Disiplin cezası, savunma hakkı, kademe ilerlemesinin durdurulması",
+      "expected": {
+        "domain": "idare",
+        "birim": "D12",
+        "family": "12. Daire"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 55341,
+      "cooldownAppliedMs": 3500,
+      "detectedDomain": "idare",
+      "retrievalDiagnostics": {
+        "primaryDomain": "idare",
+        "selectedBirimAdi": "D12",
+        "acceptedTopResultDaireler": [
+          "12. Daire"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "disiplin cezasi",
+        "iptal",
+        "memurluk",
+        "olcululuk",
+        "memurluk",
+        "olcululuk",
+        "disiplin kurulu",
+        "disiplin cezasi",
+        "iptal",
+        "memurluk",
+        "idari islem",
+        "yurutmenin durdurulmasi",
+        "memurluk",
+        "disiplin kurulu",
+        "iptal",
+        "olcululuk",
+        "idari islem",
+        "hukuki guvenlik",
+        "sekil unsuru",
+        "olcululuk",
+        "disiplin cezasi",
+        "iptal",
+        "memurluk",
+        "memurluk",
+        "disiplin kurulu",
+        "iptal",
+        "memurluk",
+        "yurutmenin durdurulmasi",
+        "memurluk"
+      ],
+      "resultCount": 5,
+      "topResults": [
+        {
+          "title": "12. Daire 2022/357 E. 2025/4214 K.",
+          "daire": "12. Daire",
+          "source": "danistay",
+          "contentScore": 2131,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "disiplin cezasi",
+            "iptal",
+            "memurluk",
+            "olcululuk"
+          ],
+          "contentMatchedFactPattern": [
+            "memurluk",
+            "olcululuk",
+            "disiplin kurulu"
+          ],
+          "summaryPreview": "deniyle davalı idare tarafından yeniden bir değerlendirme yapılarak tipiklik, elverişlilik ve orantılılık ilkeleri de gözetilerek eyleminin karşılığı olan disiplin cezasının verilebileceği gerekçesiyle, dava konusu işlemin iptaline, işlem n"
+        },
+        {
+          "title": "12. Daire 2023/2621 E. 2025/4006 K.",
+          "daire": "12. Daire",
+          "source": "danistay",
+          "contentScore": 1984,
+          "contentMergedScore": 0.6448,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "disiplin cezasi",
+            "iptal",
+            "memurluk",
+            "idari islem",
+            "yurutmenin durdurulmasi"
+          ],
+          "contentMatchedFactPattern": [
+            "memurluk",
+            "disiplin kurulu"
+          ],
+          "summaryPreview": "irtilmiştir. Aynı Kanun'un 131. maddesinde, \"Aynı olaydan dolayı memur hakkında ceza mahkemesinde kovuşturmaya başlanmış olması disiplin kovuşturmasını geciktiremez. Memurun ceza kanununa göre mahkum olması veya olmaması halleri, ayrıca dis"
+        },
+        {
+          "title": "12. Daire 2023/700 E. 2025/4108 K.",
+          "daire": "12. Daire",
+          "source": "danistay",
+          "contentScore": 1798,
+          "contentMergedScore": 0.58435,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "iptal",
+            "olcululuk",
+            "idari islem",
+            "hukuki guvenlik",
+            "sekil unsuru"
+          ],
+          "contentMatchedFactPattern": [
+            "olcululuk"
+          ],
+          "summaryPreview": "ddesi ve Uzman Erbaş Yönetmeliği'nin 13. maddesi uyarınca sözleşmesinin feshedilmesine ilişkin ... tarih ve ... sayılı işlemin iptali ile özlük haklarının yasal faiziyle birlikte iadesine karar verilmesi istenilmiştir. İlk Derece Mahkemesi "
+        },
+        {
+          "title": "12. Daire 2023/2617 E. 2025/4019 K.",
+          "daire": "12. Daire",
+          "source": "danistay",
+          "contentScore": 1519,
+          "contentMergedScore": 0.493675,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "disiplin cezasi",
+            "iptal",
+            "memurluk"
+          ],
+          "contentMatchedFactPattern": [
+            "memurluk",
+            "disiplin kurulu"
+          ],
+          "summaryPreview": "Çevre ve Şehircilik Bakanlığı Yüksek Disiplin Kurulunun ... tarih ve ... sayılı tesis edilmesi üzerine, temyizen incelenen davanın açıldığı anlaşılmaktadır. Öte yandan, davacının disiplin cezasına konu eylemleri nedeniyle yargılandığı davad"
+        },
+        {
+          "title": "12. Daire 2022/3539 E. 2025/4027 K.",
+          "daire": "12. Daire",
+          "source": "danistay",
+          "contentScore": 1399,
+          "contentMergedScore": 0.454675,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "iptal",
+            "memurluk",
+            "yurutmenin durdurulmasi"
+          ],
+          "contentMatchedFactPattern": [
+            "memurluk"
+          ],
+          "summaryPreview": "addesinin birinci fıkrasının (b) bendi ile aynı Kanun'un 48. maddesinin birinci fıkrasının (B) bendinin (2) numaralı alt bendi uyarınca atamasının iptal edilmesine ilişkin Balıkesir Valiliği İl Milli Eğitim Müdürlüğünün ... tarih ve E... sa"
+        }
+      ],
+      "mustConcepts": [
+        "disiplin cezasi",
+        "savunma hakki",
+        "kademe ilerlemesi"
+      ],
+      "mustHits": [
+        "disiplin cezasi"
+      ],
+      "mustHitRate": 0.3333333333333333,
+      "forbiddenConcepts": [
+        "hukuk dairesi",
+        "ceza dairesi",
+        "anayasa mahkemesi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "vergi-kdv-sahte-fatura",
+      "query": "Sahte fatura, KDV indirimi, vergi inceleme raporu ve vergi ziyaı",
+      "expected": {
+        "domain": "vergi",
+        "birim": "D3",
+        "family": "3. Daire"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 42189,
+      "cooldownAppliedMs": 3500,
+      "detectedDomain": "vergi",
+      "retrievalDiagnostics": {
+        "primaryDomain": "vergi",
+        "selectedBirimAdi": "D3",
+        "acceptedTopResultDaireler": [
+          "3. Daire"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "sahte fatura",
+        "vergi ziya",
+        "inceleme raporu",
+        "tarhiyat",
+        "sahte belge",
+        "muhteviyati itibariyla yaniltici belge",
+        "kurumlar vergisi",
+        "inceleme raporu",
+        "tarhiyat",
+        "vergi ziyai cezasi",
+        "fatura",
+        "sahte belge",
+        "vergi ziya",
+        "inceleme raporu",
+        "tarhiyat",
+        "sahte belge",
+        "kurumlar vergisi",
+        "gelir vergisi",
+        "inceleme raporu",
+        "tarhiyat",
+        "vergi ziyai cezasi",
+        "fatura",
+        "sahte belge",
+        "vergi ziya",
+        "ispat yuku",
+        "inceleme raporu",
+        "tarhiyat",
+        "kurumlar vergisi",
+        "gelir vergisi",
+        "ispat yuku",
+        "inceleme raporu",
+        "tarhiyat",
+        "vergi ziyai cezasi",
+        "sahte fatura",
+        "vergi ziya",
+        "inceleme raporu",
+        "tarhiyat",
+        "sahte belge",
+        "muhteviyati itibariyla yaniltici belge",
+        "inceleme raporu",
+        "tarhiyat",
+        "vergi ziyai cezasi",
+        "fatura",
+        "sahte belge",
+        "vergi ziya",
+        "inceleme raporu",
+        "tarhiyat",
+        "gelir vergisi",
+        "bosanma",
+        "inceleme raporu",
+        "tarhiyat"
+      ],
+      "resultCount": 23,
+      "topResults": [
+        {
+          "title": "3. Daire 2025/872 E. 2025/3812 K.",
+          "daire": "3. Daire",
+          "source": "danistay",
+          "contentScore": 2839,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "sahte fatura",
+            "vergi ziya",
+            "inceleme raporu",
+            "tarhiyat",
+            "sahte belge",
+            "muhteviyati itibariyla yaniltici belge",
+            "kurumlar vergisi"
+          ],
+          "contentMatchedFactPattern": [
+            "inceleme raporu",
+            "tarhiyat",
+            "vergi ziyai cezasi",
+            "fatura",
+            "sahte belge"
+          ],
+          "summaryPreview": "izen incelenerek bozulması istenilmektedir. YARGILAMA SÜRECİ : Dava konusu istem: Davacı adına, alımlarının bir kısmını sahte faturalarla belgelendirdiği, faturaların bir kısmını komisyon karşılığı düzenlediği yolundaki saptamaları içeren v"
+        },
+        {
+          "title": "3. Daire 2023/7220 E. 2025/4098 K.",
+          "daire": "3. Daire",
+          "source": "danistay",
+          "contentScore": 2719,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "vergi ziya",
+            "inceleme raporu",
+            "tarhiyat",
+            "sahte belge",
+            "kurumlar vergisi",
+            "gelir vergisi"
+          ],
+          "contentMatchedFactPattern": [
+            "inceleme raporu",
+            "tarhiyat",
+            "vergi ziyai cezasi",
+            "fatura",
+            "sahte belge"
+          ],
+          "summaryPreview": "Ocak dönemi için re'sen salınan katma değer vergisi ile tekerrür hükümleri uygulanmak suretiyle artırılarak kesilen bir kat vergi ziyaı cezasının kaldırılması istemine ilişkindir. İlk Derece Mahkemesi kararının özeti: Dava konusu tarhiyatın"
+        },
+        {
+          "title": "3. Daire 2023/1763 E. 2025/4068 K.",
+          "daire": "3. Daire",
+          "source": "danistay",
+          "contentScore": 2674,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "vergi ziya",
+            "ispat yuku",
+            "inceleme raporu",
+            "tarhiyat",
+            "kurumlar vergisi",
+            "gelir vergisi"
+          ],
+          "contentMatchedFactPattern": [
+            "ispat yuku",
+            "inceleme raporu",
+            "tarhiyat",
+            "vergi ziyai cezasi"
+          ],
+          "summaryPreview": "nılarak adına 2017 yılı için re'sen salınan kurumlar vergisi ve tekerrür hükümleri uyarınca artırılarak kesilen bir kat vergi ziyaı cezası ile 213 sayılı Vergi Usul Kanunu'nun 353. maddesinin 1. bendi gereğince kesilen özel usulsüzlük cezas"
+        },
+        {
+          "title": "3. Daire 2024/5896 E. 2025/3173 K.",
+          "daire": "3. Daire",
+          "source": "danistay",
+          "contentScore": 2659,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "sahte fatura",
+            "vergi ziya",
+            "inceleme raporu",
+            "tarhiyat",
+            "sahte belge",
+            "muhteviyati itibariyla yaniltici belge"
+          ],
+          "contentMatchedFactPattern": [
+            "inceleme raporu",
+            "tarhiyat",
+            "vergi ziyai cezasi",
+            "fatura",
+            "sahte belge"
+          ],
+          "summaryPreview": "zen incelenerek bozulması istenilmektedir. YARGILAMA SÜRECİ: Dava konusu istem: Davacı adına, alımlarının bir kısmını sahte faturalarla belgelendirdiğinden bahisle sözü edilen faturalara konu indirimlerin reddi suretiyle yeniden oluşturulan"
+        },
+        {
+          "title": "3. Daire 2023/1196 E. 2025/3858 K.",
+          "daire": "3. Daire",
+          "source": "danistay",
+          "contentScore": 2610,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "vergi ziya",
+            "inceleme raporu",
+            "tarhiyat",
+            "gelir vergisi",
+            "bosanma"
+          ],
+          "contentMatchedFactPattern": [
+            "inceleme raporu",
+            "tarhiyat"
+          ],
+          "summaryPreview": "eri içeren vergi tekniği raporuna dayanılarak düzenlenen vergi inceleme raporu uyarınca 2018 yılı için re’sen salınan bir kat vergi ziyaı cezalı gelir vergisi ile tüm dönemler için re'sen salınan bir kat vergi ziyaı geçici vergilerin kaldır"
+        }
+      ],
+      "mustConcepts": [
+        "sahte fatura",
+        "kdv indirimi",
+        "vergi ziya"
+      ],
+      "mustHits": [
+        "sahte fatura",
+        "vergi ziya"
+      ],
+      "mustHitRate": 0.6666666666666666,
+      "forbiddenConcepts": [
+        "hukuk dairesi",
+        "ceza dairesi",
+        "anayasa mahkemesi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "vergi-miyb-resen-tarhiyat",
+      "query": "Muhteviyatı itibarıyla yanıltıcı belge, re'sen tarhiyat, ispat yükü",
+      "expected": {
+        "domain": "vergi",
+        "birim": "D3",
+        "family": "3. Daire"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 29282,
+      "cooldownAppliedMs": 3500,
+      "detectedDomain": "vergi",
+      "retrievalDiagnostics": {
+        "primaryDomain": "vergi",
+        "selectedBirimAdi": "D3",
+        "acceptedTopResultDaireler": [
+          "3. Daire"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "vergi ziya",
+        "ispat yuku",
+        "inceleme raporu",
+        "tarhiyat",
+        "kurumlar vergisi",
+        "gelir vergisi",
+        "ispat yuku",
+        "inceleme raporu",
+        "tarhiyat",
+        "vergi ziyai cezasi",
+        "vergi ziya",
+        "inceleme raporu",
+        "tarhiyat",
+        "sahte belge",
+        "kurumlar vergisi",
+        "gelir vergisi",
+        "inceleme raporu",
+        "tarhiyat",
+        "vergi ziyai cezasi",
+        "sahte belge",
+        "vergi ziya",
+        "inceleme raporu",
+        "tarhiyat",
+        "sahte belge",
+        "kurumlar vergisi",
+        "inceleme raporu",
+        "tarhiyat",
+        "vergi ziyai cezasi",
+        "sahte belge",
+        "vergi ziya",
+        "inceleme raporu",
+        "tarhiyat",
+        "kurumlar vergisi",
+        "gelir vergisi",
+        "inceleme raporu",
+        "tarhiyat",
+        "vergi ziyai cezasi",
+        "sahte fatura",
+        "vergi ziya",
+        "inceleme raporu",
+        "tarhiyat",
+        "inceleme raporu",
+        "tarhiyat"
+      ],
+      "resultCount": 10,
+      "topResults": [
+        {
+          "title": "3. Daire 2023/1763 E. 2025/4068 K.",
+          "daire": "3. Daire",
+          "source": "danistay",
+          "contentScore": 2674,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "vergi ziya",
+            "ispat yuku",
+            "inceleme raporu",
+            "tarhiyat",
+            "kurumlar vergisi",
+            "gelir vergisi"
+          ],
+          "contentMatchedFactPattern": [
+            "ispat yuku",
+            "inceleme raporu",
+            "tarhiyat",
+            "vergi ziyai cezasi"
+          ],
+          "summaryPreview": "nılarak adına 2017 yılı için re'sen salınan kurumlar vergisi ve tekerrür hükümleri uyarınca artırılarak kesilen bir kat vergi ziyaı cezası ile 213 sayılı Vergi Usul Kanunu'nun 353. maddesinin 1. bendi gereğince kesilen özel usulsüzlük cezas"
+        },
+        {
+          "title": "3. Daire 2023/7220 E. 2025/4098 K.",
+          "daire": "3. Daire",
+          "source": "danistay",
+          "contentScore": 2599,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "vergi ziya",
+            "inceleme raporu",
+            "tarhiyat",
+            "sahte belge",
+            "kurumlar vergisi",
+            "gelir vergisi"
+          ],
+          "contentMatchedFactPattern": [
+            "inceleme raporu",
+            "tarhiyat",
+            "vergi ziyai cezasi",
+            "sahte belge"
+          ],
+          "summaryPreview": "Ocak dönemi için re'sen salınan katma değer vergisi ile tekerrür hükümleri uygulanmak suretiyle artırılarak kesilen bir kat vergi ziyaı cezasının kaldırılması istemine ilişkindir. İlk Derece Mahkemesi kararının özeti: Dava konusu tarhiyatın"
+        },
+        {
+          "title": "3. Daire 2023/7216 E. 2025/4099 K.",
+          "daire": "3. Daire",
+          "source": "danistay",
+          "contentScore": 2443,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "vergi ziya",
+            "inceleme raporu",
+            "tarhiyat",
+            "sahte belge",
+            "kurumlar vergisi"
+          ],
+          "contentMatchedFactPattern": [
+            "inceleme raporu",
+            "tarhiyat",
+            "vergi ziyai cezasi",
+            "sahte belge"
+          ],
+          "summaryPreview": "0 yılının Temmuz dönemi için re’sen salınan katma değer vergisi ile tekerrür hükümleri uyarınca artırılarak kesilen bir kat vergi ziyaı cezasının kaldırılması istemine ilişkindir. İlk Derece Mahkemesi kararının özeti: Davacının, 2019 yılına"
+        },
+        {
+          "title": "3. Daire 2023/8539 E. 2025/4094 K.",
+          "daire": "3. Daire",
+          "source": "danistay",
+          "contentScore": 2221,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "vergi ziya",
+            "inceleme raporu",
+            "tarhiyat",
+            "kurumlar vergisi",
+            "gelir vergisi"
+          ],
+          "contentMatchedFactPattern": [
+            "inceleme raporu",
+            "tarhiyat",
+            "vergi ziyai cezasi"
+          ],
+          "summaryPreview": "an tablosuna göre adına, 2018 yılı için re’sen salınan kurumlar vergisi ve tekerrür hükümleri uyarınca artırılarak kesilen bir kat vergi ziyaı cezasının kaldırılması ile üstelenilen projenin, ihale dokümanına uygun bir şekilde tamamlandığı "
+        },
+        {
+          "title": "3. Daire 2023/6527 E. 2025/4064 K.",
+          "daire": "3. Daire",
+          "source": "danistay",
+          "contentScore": 2023,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "sahte fatura",
+            "vergi ziya",
+            "inceleme raporu",
+            "tarhiyat"
+          ],
+          "contentMatchedFactPattern": [
+            "inceleme raporu",
+            "tarhiyat"
+          ],
+          "summaryPreview": "zulması istenilmektedir. YARGILAMA SÜRECİ: Dava konusu istem: Motorlu araç alım satımıyla uğraşan davacı şirket adına, sahte fatura düzenlemek suretiyle paravan firmalara ilk iktisap kapsamında satışını yaptığı araçların özel tüketim vergis"
+        }
+      ],
+      "mustConcepts": [
+        "yaniltici belge",
+        "resen tarhiyat",
+        "ispat yuku"
+      ],
+      "mustHits": [
+        "ispat yuku"
+      ],
+      "mustHitRate": 0.3333333333333333,
+      "forbiddenConcepts": [
+        "hukuk dairesi",
+        "ceza dairesi",
+        "anayasa mahkemesi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "vergi-gumruk-royalti",
+      "query": "Gümrük kıymeti, royalti ödemesi, ithalat vergileri ve ÖTV",
+      "expected": {
+        "domain": "vergi",
+        "birim": "D7",
+        "family": "7. Daire"
+      },
+      "statusCode": 200,
+      "status": "partial",
+      "durationMs": 29636,
+      "cooldownAppliedMs": 3500,
+      "detectedDomain": "vergi",
+      "retrievalDiagnostics": {
+        "primaryDomain": "vergi",
+        "selectedBirimAdi": "D7",
+        "acceptedTopResultDaireler": [
+          "7. Daire"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "gumruk",
+        "tarhiyat",
+        "vergi ziyai",
+        "inceleme raporu",
+        "kurumlar vergisi",
+        "tarhiyat",
+        "inceleme raporu",
+        "vergi ziya",
+        "otv",
+        "tarhiyat",
+        "vergi ziyai",
+        "inceleme raporu",
+        "tarhiyat",
+        "inceleme raporu",
+        "vergi ziya",
+        "gider vergileri",
+        "tarhiyat",
+        "vergi ziyai",
+        "inceleme raporu",
+        "gider vergileri",
+        "tarhiyat",
+        "inceleme raporu",
+        "vergi ziya",
+        "gumruk",
+        "tarhiyat",
+        "vergi cezasi",
+        "tarhiyat",
+        "gumruk",
+        "tarhiyat",
+        "vergi cezasi",
+        "tarhiyat"
+      ],
+      "resultCount": 15,
+      "topResults": [
+        {
+          "title": "7. Daire 2023/3863 E. 2025/2057 K.",
+          "daire": "7. Daire",
+          "source": "danistay",
+          "contentScore": 2068,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "gumruk",
+            "tarhiyat",
+            "vergi ziyai",
+            "inceleme raporu",
+            "kurumlar vergisi"
+          ],
+          "contentMatchedFactPattern": [
+            "tarhiyat",
+            "inceleme raporu",
+            "vergi ziya"
+          ],
+          "summaryPreview": "onunun \"Diğerleri\" kategorisinde yer aldığından bahisle yapılan kısmı yönünden, 27/07/2005 tarihli Resmi Gazetede yayımı ile yürürlüğe giren 8 Seri Nolu Gümrük Genel Tebliği eki sınıflandırma kararında, 1+1, 1+3, 1+4 veya 1+7 koltuklu, şofö"
+        },
+        {
+          "title": "7. Daire 2023/3419 E. 2025/2052 K.",
+          "daire": "7. Daire",
+          "source": "danistay",
+          "contentScore": 1882,
+          "contentMergedScore": 0.61165,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "otv",
+            "tarhiyat",
+            "vergi ziyai",
+            "inceleme raporu"
+          ],
+          "contentMatchedFactPattern": [
+            "tarhiyat",
+            "inceleme raporu",
+            "vergi ziya"
+          ],
+          "summaryPreview": "Mahkemesi kararının özeti: Gelir İdaresi Başkanlığının... tarih ve ... sayılı yazısının ekindeki listenin incelenmesinden, İzmir ilinde ÖTV (I) sayılı liste mükelleflerine ilişkin tüm iş ve işlemler bakımından Hasan Tahsin Vergi Dairesi Müd"
+        },
+        {
+          "title": "7. Daire 2023/3656 E. 2025/2115 K.",
+          "daire": "7. Daire",
+          "source": "danistay",
+          "contentScore": 1456,
+          "contentMergedScore": 0.4732,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "gider vergileri",
+            "tarhiyat",
+            "vergi ziyai",
+            "inceleme raporu"
+          ],
+          "contentMatchedFactPattern": [
+            "gider vergileri",
+            "tarhiyat",
+            "inceleme raporu",
+            "vergi ziya"
+          ],
+          "summaryPreview": "Ocak ilâ Aralık dönemleri için ikmalen tarh edilen bir kat vergi ziyaı cezalı banka ve sigorta muameleleri vergilerinin iptali istemiyle dava açılmıştır. İLGİLİ MEVZUAT: 6802 sayılı Gider Vergileri Kanunu'nun 28. maddesinde, banka ve sigort"
+        },
+        {
+          "title": "7. Daire 2025/1265 E. 2025/2210 K.",
+          "daire": "7. Daire",
+          "source": "danistay",
+          "contentScore": 1387,
+          "contentMergedScore": 0.45077500000000004,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "gumruk",
+            "tarhiyat",
+            "vergi cezasi"
+          ],
+          "contentMatchedFactPattern": [
+            "tarhiyat"
+          ],
+          "summaryPreview": "emleri gerçekleştirenlerin, bu işlemlerden önce özel tüketim vergisinin ödendiğini gösteren belgeleri aramak zorunda oldukları, bu mecburiyete uymamak suretiyle gerekli verginin ödenmesinden önce işlem yapan gümrük memurları, kayıt ve tesci"
+        },
+        {
+          "title": "7. Daire 2025/1390 E. 2025/2211 K.",
+          "daire": "7. Daire",
+          "source": "danistay",
+          "contentScore": 1387,
+          "contentMergedScore": 0.45077500000000004,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "gumruk",
+            "tarhiyat",
+            "vergi cezasi"
+          ],
+          "contentMatchedFactPattern": [
+            "tarhiyat"
+          ],
+          "summaryPreview": "şlemleri gerçekleştirenlerin, bu işlemlerden önce özel tüketim vergisinin ödendiğini gösteren belgeleri aramak zorunda oldukları, bu mecburiyete uymamak suretiyle gerekli verginin ödenmesinden önce işlem yapan gümrük memurları, kayıt ve tes"
+        }
+      ],
+      "mustConcepts": [
+        "gumruk kiymeti",
+        "royalti",
+        "ithalat"
+      ],
+      "mustHits": [],
+      "mustHitRate": 0,
+      "forbiddenConcepts": [
+        "hukuk dairesi",
+        "ceza dairesi",
+        "anayasa mahkemesi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "anayasa-bireysel-makul-sure",
+      "query": "Bireysel başvuru, makul sürede yargılanma hakkı, manevi tazminat",
+      "expected": {
+        "domain": "anayasa",
+        "family": "Anayasa Mahkemesi"
+      },
+      "statusCode": 200,
+      "status": "pass",
+      "durationMs": 17024,
+      "cooldownAppliedMs": 5000,
+      "detectedDomain": "anayasa",
+      "retrievalDiagnostics": {
+        "primaryDomain": "anayasa",
+        "selectedBirimAdi": null,
+        "acceptedTopResultDaireler": [
+          "Anayasa Mahkemesi"
+        ],
+        "sourceCoverageStatus": "ok",
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": null,
+        "simpleQualityScore": 100
+      },
+      "top5MatchedSignals": [
+        "makul sure",
+        "anayasa mahkemesi",
+        "adil yargilanma hakki",
+        "manevi tazminat",
+        "yeniden yargilama",
+        "bireysel basvuru",
+        "ihlal",
+        "ifade ozgurlugu",
+        "mulkiyet hakki",
+        "anayasa mahkemesi",
+        "adil yargilanma hakki",
+        "manevi tazminat",
+        "yeniden yargilama",
+        "basvurucu",
+        "makul sure",
+        "kabul edilebilirlik",
+        "norm denetimi",
+        "makul sure",
+        "anayasa mahkemesi",
+        "adil yargilanma hakki",
+        "manevi tazminat",
+        "yeniden yargilama",
+        "bireysel basvuru",
+        "ihlal",
+        "ifade ozgurlugu",
+        "mulkiyet hakki",
+        "anayasa mahkemesi",
+        "adil yargilanma hakki",
+        "manevi tazminat",
+        "yeniden yargilama",
+        "basvurucu",
+        "hak ihlali",
+        "makul sure",
+        "kabul edilebilirlik",
+        "itiraz yoluyla",
+        "norm denetimi",
+        "makul sure",
+        "anayasa mahkemesi",
+        "adil yargilanma hakki",
+        "manevi tazminat",
+        "yeniden yargilama",
+        "bireysel basvuru",
+        "ihlal",
+        "ifade ozgurlugu",
+        "mulkiyet hakki",
+        "anayasa mahkemesi",
+        "adil yargilanma hakki",
+        "manevi tazminat",
+        "yeniden yargilama",
+        "basvurucu",
+        "hak ihlali",
+        "makul sure",
+        "kabul edilebilirlik",
+        "norm denetimi",
+        "makul sure",
+        "anayasa mahkemesi",
+        "adil yargilanma hakki",
+        "manevi tazminat",
+        "yeniden yargilama",
+        "bireysel basvuru",
+        "ihlal",
+        "ifade ozgurlugu",
+        "mulkiyet hakki",
+        "anayasa mahkemesi",
+        "adil yargilanma hakki",
+        "manevi tazminat",
+        "yeniden yargilama",
+        "basvurucu",
+        "hak ihlali",
+        "makul sure",
+        "kabul edilebilirlik",
+        "norm denetimi",
+        "makul sure",
+        "anayasa mahkemesi",
+        "adil yargilanma hakki",
+        "manevi tazminat",
+        "yeniden yargilama",
+        "bireysel basvuru",
+        "ihlal",
+        "ifade ozgurlugu",
+        "mulkiyet hakki",
+        "anayasa mahkemesi",
+        "adil yargilanma hakki",
+        "manevi tazminat",
+        "yeniden yargilama",
+        "basvurucu",
+        "makul sure",
+        "kabul edilebilirlik",
+        "norm denetimi"
+      ],
+      "resultCount": 8,
+      "topResults": [
+        {
+          "title": "Nevriye Kuruç [GK], B. No: 2021/58970, 5/7/2022",
+          "daire": "Anayasa Mahkemesi",
+          "source": "anayasa",
+          "contentScore": 3999,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "makul sure",
+            "anayasa mahkemesi",
+            "adil yargilanma hakki",
+            "manevi tazminat",
+            "yeniden yargilama",
+            "bireysel basvuru",
+            "ihlal",
+            "ifade ozgurlugu",
+            "mulkiyet hakki"
+          ],
+          "contentMatchedFactPattern": [
+            "anayasa mahkemesi",
+            "adil yargilanma hakki",
+            "manevi tazminat",
+            "yeniden yargilama",
+            "basvurucu",
+            "makul sure",
+            "kabul edilebilirlik",
+            "norm denetimi"
+          ],
+          "summaryPreview": "Kötü muamele (genel) Kötü muamele etkili soruşturma (delillerin nesnel ve tarafsız değerlendirilmemesi) Kötü muamele etkili soruşturma (delillerin toplanmasında özensizlik) Kötü muamele etkili soruşturma (kamu görevlisi hakkında soruşturma "
+        },
+        {
+          "title": "♦ (Abbas Emre, B. No: 2014/5005, 6/1/2016)",
+          "daire": "Anayasa Mahkemesi",
+          "source": "anayasa",
+          "contentScore": 3622,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "makul sure",
+            "anayasa mahkemesi",
+            "adil yargilanma hakki",
+            "manevi tazminat",
+            "yeniden yargilama",
+            "bireysel basvuru",
+            "ihlal",
+            "ifade ozgurlugu",
+            "mulkiyet hakki"
+          ],
+          "contentMatchedFactPattern": [
+            "anayasa mahkemesi",
+            "adil yargilanma hakki",
+            "manevi tazminat",
+            "yeniden yargilama",
+            "basvurucu",
+            "hak ihlali",
+            "makul sure",
+            "kabul edilebilirlik",
+            "itiraz yoluyla",
+            "norm denetimi"
+          ],
+          "summaryPreview": "Kötü muamele (genel) Kötü muamele etkili soruşturma (delillerin nesnel ve tarafsız değerlendirilmemesi) Kötü muamele etkili soruşturma (delillerin toplanmasında özensizlik) Kötü muamele etkili soruşturma (kamu görevlisi hakkında soruşturma "
+        },
+        {
+          "title": "♦ (Güher Ergun ve diğerleri, B. No: 2012/13, 2/7/2013)",
+          "daire": "Anayasa Mahkemesi",
+          "source": "anayasa",
+          "contentScore": 3550,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "makul sure",
+            "anayasa mahkemesi",
+            "adil yargilanma hakki",
+            "manevi tazminat",
+            "yeniden yargilama",
+            "bireysel basvuru",
+            "ihlal",
+            "ifade ozgurlugu",
+            "mulkiyet hakki"
+          ],
+          "contentMatchedFactPattern": [
+            "anayasa mahkemesi",
+            "adil yargilanma hakki",
+            "manevi tazminat",
+            "yeniden yargilama",
+            "basvurucu",
+            "hak ihlali",
+            "makul sure",
+            "kabul edilebilirlik",
+            "norm denetimi"
+          ],
+          "summaryPreview": "Kötü muamele (genel) Kötü muamele etkili soruşturma (delillerin nesnel ve tarafsız değerlendirilmemesi) Kötü muamele etkili soruşturma (delillerin toplanmasında özensizlik) Kötü muamele etkili soruşturma (kamu görevlisi hakkında soruşturma "
+        },
+        {
+          "title": "♦ (İnan Gök, B. No: 2018/1936, 28/1/2021)",
+          "daire": "Anayasa Mahkemesi",
+          "source": "anayasa",
+          "contentScore": 3520,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "makul sure",
+            "anayasa mahkemesi",
+            "adil yargilanma hakki",
+            "manevi tazminat",
+            "yeniden yargilama",
+            "bireysel basvuru",
+            "ihlal",
+            "ifade ozgurlugu",
+            "mulkiyet hakki"
+          ],
+          "contentMatchedFactPattern": [
+            "anayasa mahkemesi",
+            "adil yargilanma hakki",
+            "manevi tazminat",
+            "yeniden yargilama",
+            "basvurucu",
+            "hak ihlali",
+            "makul sure",
+            "kabul edilebilirlik",
+            "norm denetimi"
+          ],
+          "summaryPreview": "Kötü muamele (genel) Kötü muamele etkili soruşturma (delillerin nesnel ve tarafsız değerlendirilmemesi) Kötü muamele etkili soruşturma (delillerin toplanmasında özensizlik) Kötü muamele etkili soruşturma (kamu görevlisi hakkında soruşturma "
+        },
+        {
+          "title": "♦ (Koray Erdoğan, B. No: 2013/1989, 10/3/2016)",
+          "daire": "Anayasa Mahkemesi",
+          "source": "anayasa",
+          "contentScore": 3508,
+          "contentMergedScore": 0.65,
+          "contentEmbeddingScore": null,
+          "contentMatchedSubstantive": [
+            "makul sure",
+            "anayasa mahkemesi",
+            "adil yargilanma hakki",
+            "manevi tazminat",
+            "yeniden yargilama",
+            "bireysel basvuru",
+            "ihlal",
+            "ifade ozgurlugu",
+            "mulkiyet hakki"
+          ],
+          "contentMatchedFactPattern": [
+            "anayasa mahkemesi",
+            "adil yargilanma hakki",
+            "manevi tazminat",
+            "yeniden yargilama",
+            "basvurucu",
+            "makul sure",
+            "kabul edilebilirlik",
+            "norm denetimi"
+          ],
+          "summaryPreview": "Kötü muamele (genel) Kötü muamele etkili soruşturma (delillerin nesnel ve tarafsız değerlendirilmemesi) Kötü muamele etkili soruşturma (delillerin toplanmasında özensizlik) Kötü muamele etkili soruşturma (kamu görevlisi hakkında soruşturma "
+        }
+      ],
+      "mustConcepts": [
+        "bireysel basvuru",
+        "makul sure",
+        "hak ihlali"
+      ],
+      "mustHits": [
+        "bireysel basvuru",
+        "makul sure",
+        "hak ihlali"
+      ],
+      "mustHitRate": 1,
+      "forbiddenConcepts": [
+        "yargitay",
+        "danistay",
+        "hukuk dairesi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": true,
+        "birimPass": true,
+        "familyPass": true,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": true,
+        "allMustCovered": true
+      },
+      "capturedRateLimitSignals": []
+    },
+    {
+      "id": "anayasa-norm-denetimi",
+      "query": "Anayasaya aykırılık itirazı, norm denetimi, eşitlik ve belirlilik ilkesi",
+      "expected": {
+        "domain": "anayasa",
+        "family": "Anayasa Mahkemesi"
+      },
+      "statusCode": 200,
+      "status": "fail",
+      "durationMs": 61274,
+      "cooldownAppliedMs": 5000,
+      "detectedDomain": null,
+      "retrievalDiagnostics": {
+        "primaryDomain": null,
+        "selectedBirimAdi": null,
+        "acceptedTopResultDaireler": [],
+        "sourceCoverageStatus": null,
+        "rateLimitedAttemptCount": 0,
+        "zeroResultReason": "no_candidates",
+        "simpleQualityScore": 0
+      },
+      "top5MatchedSignals": [],
+      "resultCount": 0,
+      "topResults": [],
+      "mustConcepts": [
+        "anayasaya aykirilik",
+        "norm denetimi",
+        "esitlik ilkesi"
+      ],
+      "mustHits": [],
+      "mustHitRate": 0,
+      "forbiddenConcepts": [
+        "yargitay",
+        "danistay",
+        "hukuk dairesi"
+      ],
+      "forbiddenHits": [],
+      "checks": {
+        "domainPass": false,
+        "birimPass": true,
+        "familyPass": false,
+        "forbiddenLeak": false,
+        "rateLimited": false,
+        "hasResults": false,
+        "allMustCovered": false
+      },
+      "capturedRateLimitSignals": []
+    }
+  ]
+}

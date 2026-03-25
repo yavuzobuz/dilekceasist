@@ -1,0 +1,153 @@
+{
+  "reportType": "smoke_probe",
+  "scopeLabel": "smoke_test",
+  "generatedAt": "2026-03-16T10:33:32.345Z",
+  "caseTimeoutMs": 60000,
+  "batchSize": 1,
+  "pauseMs": 1500,
+  "retryCount": 2,
+  "retryBackoffMs": 2500,
+  "totalCases": 3,
+  "requestedIds": [
+    "ceza",
+    "is_hukuku",
+    "icra"
+  ],
+  "averageScore": 61.67,
+  "results": [
+    {
+      "id": "ceza",
+      "label": "Ceza",
+      "expectedSkill": "ceza",
+      "expectedSource": "yargitay",
+      "durationMs": 16730,
+      "wordCount": 413,
+      "resultCount": 4,
+      "searchMode": "pro",
+      "detectedSkill": null,
+      "skillDiagnostics": null,
+      "topResults": [
+        {
+          "source": "yargitay",
+          "title": "Ceza Genel Kurulu 2019/341 E. 2020/474 K.",
+          "daire": "Ceza Genel Kurulu",
+          "matchedKeywordCount": 0,
+          "matchedKeywords": [],
+          "matchedRequiredConcepts": [
+            "uyusturucu madde ticareti"
+          ],
+          "selectionReason": "Tam metin dogrulamasi: uyusturucu madde ticareti eslesmesi | delil sinyalleri: tanik",
+          "retrievalStage": "full_text",
+          "summaryPreview": "i\"** Kararı Veren Yargıtay Dairesi : (Kapatılan) 20. Ceza Dairesi Mahkemesi :Ceza Dairesi Sayısı : 2346-2511 Uyuşturucu madde ticareti yapma suçundan sanık ...'ın, 5237 sayılı TCK'nın 188/3, 62, 52, 53, 54, 58 ve 63. mad"
+        },
+        {
+          "source": "yargitay",
+          "title": "20. Ceza Dairesi 2019/265 E. 2019/1502 K.",
+          "daire": "20. Ceza Dairesi",
+          "matchedKeywordCount": 0,
+          "matchedKeywords": [],
+          "matchedRequiredConcepts": [
+            "uyusturucu madde ticareti"
+          ],
+          "selectionReason": "Tam metin dogrulamasi: uyusturucu madde ticareti eslesmesi | delil sinyalleri: tanik",
+          "retrievalStage": "full_text",
+          "summaryPreview": "2019/265 E. , 2019/1502 K.** - **\"İçtihat Metni\"** Mahkeme : Bölge Adliye Mahkemesi 4. Ceza Dairesi Suç : Uyuşturucu madde ticareti yapma Hükümler : Mahkûmiyet; İstanbul Bölge Adliye Mahkemesi 4. Ceza Dairesi'nin 25/10/2"
+        },
+        {
+          "source": "yargitay",
+          "title": "20. Ceza Dairesi 2018/5728 E. 2019/1431 K.",
+          "daire": "20. Ceza Dairesi",
+          "matchedKeywordCount": 0,
+          "matchedKeywords": [],
+          "matchedRequiredConcepts": [
+            "uyusturucu madde ticareti"
+          ],
+          "selectionReason": "Tam metin dogrulamasi: uyusturucu madde ticareti eslesmesi | delil sinyalleri: tanik",
+          "retrievalStage": "summary",
+          "summaryPreview": "8/5728 E. , 2019/1431 K.** - **\"İçtihat Metni\"** Mahkeme : Bölge Adliye Mahkemesi 5. Ceza Mahkemesi Suç : Uyuşturucu madde ticareti yapma Hüküm : 1-Mahkûmiyet; Kocaeli 3. Ağır Ceza Mahkemesi'nin 02/12/2017 tarih, 2017/37"
+        }
+      ],
+      "error": null,
+      "score": 65,
+      "attempts": 1
+    },
+    {
+      "id": "is_hukuku",
+      "label": "İş Hukuku",
+      "expectedSkill": "is_hukuku",
+      "expectedSource": "yargitay",
+      "durationMs": 18300,
+      "wordCount": 410,
+      "resultCount": 10,
+      "searchMode": "pro",
+      "detectedSkill": null,
+      "skillDiagnostics": null,
+      "topResults": [
+        {
+          "source": "yargitay",
+          "title": "Yargıtay Kararı 9. Hukuk Dairesi",
+          "daire": "9. Hukuk Dairesi",
+          "matchedKeywordCount": 0,
+          "matchedKeywords": [],
+          "matchedRequiredConcepts": [],
+          "selectionReason": "MCP arama sonucu",
+          "retrievalStage": "summary",
+          "summaryPreview": ""
+        },
+        {
+          "source": "yargitay",
+          "title": "Yargıtay Kararı 9. Hukuk Dairesi",
+          "daire": "9. Hukuk Dairesi",
+          "matchedKeywordCount": 0,
+          "matchedKeywords": [],
+          "matchedRequiredConcepts": [],
+          "selectionReason": "MCP arama sonucu",
+          "retrievalStage": "summary",
+          "summaryPreview": ""
+        },
+        {
+          "source": "yargitay",
+          "title": "Yargıtay Kararı 9. Hukuk Dairesi",
+          "daire": "9. Hukuk Dairesi",
+          "matchedKeywordCount": 0,
+          "matchedKeywords": [],
+          "matchedRequiredConcepts": [],
+          "selectionReason": "MCP arama sonucu",
+          "retrievalStage": "summary",
+          "summaryPreview": ""
+        }
+      ],
+      "error": null,
+      "score": 65,
+      "attempts": 1
+    },
+    {
+      "id": "icra",
+      "label": "İcra Hukuku",
+      "expectedSkill": "icra",
+      "expectedSource": "yargitay",
+      "durationMs": 22665,
+      "wordCount": 410,
+      "resultCount": 1,
+      "searchMode": "pro",
+      "detectedSkill": null,
+      "skillDiagnostics": null,
+      "topResults": [
+        {
+          "source": "yargitay",
+          "title": "Yargıtay Kararı 12. Hukuk Dairesi",
+          "daire": "12. Hukuk Dairesi",
+          "matchedKeywordCount": 0,
+          "matchedKeywords": [],
+          "matchedRequiredConcepts": [],
+          "selectionReason": "MCP arama sonucu",
+          "retrievalStage": "summary",
+          "summaryPreview": ""
+        }
+      ],
+      "error": null,
+      "score": 55,
+      "attempts": 1
+    }
+  ]
+}

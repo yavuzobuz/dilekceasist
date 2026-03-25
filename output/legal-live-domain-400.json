@@ -1,0 +1,556 @@
+{
+  "generatedAt": "2026-03-14T09:54:58.227Z",
+  "totalCases": 12,
+  "averageScore": 46.25,
+  "results": [
+    {
+      "id": "ceza",
+      "label": "Ceza",
+      "expectedSkill": "ceza",
+      "detectedSkill": "ceza",
+      "expectedSource": "yargitay",
+      "durationMs": 20381,
+      "wordCount": 413,
+      "resultCount": 0,
+      "score": 35,
+      "searchMode": "pro",
+      "skillDiagnostics": {
+        "active": true,
+        "skillId": "turk-hukuku-karar-arama",
+        "primaryDomain": "ceza",
+        "domainLabel": "Ceza",
+        "queryMode": "long_fact",
+        "sourceTargets": [
+          "yargitay"
+        ],
+        "strategyOrder": [
+          "A",
+          "B",
+          "C"
+        ],
+        "selectedStrategy": null,
+        "attemptedStrategies": [
+          "A",
+          "B",
+          "C"
+        ],
+        "fallbackAttempted": true,
+        "zeroResultReason": "skill_no_match",
+        "zeroResultMessage": "Ceza skill dogru alani aradi ama uygun karar bulamadi. Kontrollu fallback denendi, alakasiz karar gosterilmedi.",
+        "coreIssue": "Uyusturucu madde ticareti ile kullanmak icin bulundurma ayrimi ve ticaret kastinin belirlenmesi"
+      },
+      "aiSearchPlan": null,
+      "topResults": [],
+      "error": null
+    },
+    {
+      "id": "is_hukuku",
+      "label": "İş Hukuku",
+      "expectedSkill": "is_hukuku",
+      "detectedSkill": "is_hukuku",
+      "expectedSource": "yargitay",
+      "durationMs": 75832,
+      "wordCount": 421,
+      "resultCount": 0,
+      "score": 35,
+      "searchMode": "pro",
+      "skillDiagnostics": {
+        "active": true,
+        "skillId": "turk-hukuku-karar-arama",
+        "primaryDomain": "is_hukuku",
+        "domainLabel": "Is hukuku",
+        "queryMode": "long_fact",
+        "sourceTargets": [
+          "uyap",
+          "yargitay"
+        ],
+        "strategyOrder": [
+          "A",
+          "B",
+          "C"
+        ],
+        "selectedStrategy": null,
+        "attemptedStrategies": [
+          "A",
+          "B",
+          "C"
+        ],
+        "fallbackAttempted": true,
+        "zeroResultReason": "skill_no_match",
+        "zeroResultMessage": "Is hukuku skill dogru alani aradi ama uygun karar bulamadi. Kontrollu fallback denendi, alakasiz karar gosterilmedi.",
+        "coreIssue": "Iscilik alacaklari ve fesih nedenlerinin ispatla birlikte degerlendirilmesi"
+      },
+      "aiSearchPlan": null,
+      "topResults": [],
+      "error": null
+    },
+    {
+      "id": "aile",
+      "label": "Aile Hukuku",
+      "expectedSkill": "aile",
+      "detectedSkill": "aile",
+      "expectedSource": "yargitay",
+      "durationMs": 8312,
+      "wordCount": 400,
+      "resultCount": 0,
+      "score": 35,
+      "searchMode": "pro",
+      "skillDiagnostics": {
+        "active": true,
+        "skillId": "turk-hukuku-karar-arama",
+        "primaryDomain": "aile",
+        "domainLabel": "Aile hukuku",
+        "queryMode": "long_fact",
+        "sourceTargets": [
+          "uyap",
+          "yargitay"
+        ],
+        "strategyOrder": [
+          "A",
+          "B",
+          "C"
+        ],
+        "selectedStrategy": null,
+        "attemptedStrategies": [
+          "A",
+          "B",
+          "C"
+        ],
+        "fallbackAttempted": true,
+        "zeroResultReason": "skill_no_match",
+        "zeroResultMessage": "Aile hukuku skill dogru alani aradi ama uygun karar bulamadi. Kontrollu fallback denendi, alakasiz karar gosterilmedi.",
+        "coreIssue": "Bosanma davasinda kusur, cekilmezlik ve evlilik birliginin sarsilmasinin degerlendirilmesi"
+      },
+      "aiSearchPlan": null,
+      "topResults": [],
+      "error": null
+    },
+    {
+      "id": "icra",
+      "label": "İcra Hukuku",
+      "expectedSkill": "icra",
+      "detectedSkill": "icra",
+      "expectedSource": "yargitay",
+      "durationMs": 8977,
+      "wordCount": 408,
+      "resultCount": 0,
+      "score": 35,
+      "searchMode": "pro",
+      "skillDiagnostics": {
+        "active": true,
+        "skillId": "turk-hukuku-karar-arama",
+        "primaryDomain": "icra",
+        "domainLabel": "Icra hukuku",
+        "queryMode": "long_fact",
+        "sourceTargets": [
+          "uyap",
+          "yargitay"
+        ],
+        "strategyOrder": [
+          "A",
+          "B",
+          "C"
+        ],
+        "selectedStrategy": null,
+        "attemptedStrategies": [
+          "A",
+          "B",
+          "C"
+        ],
+        "fallbackAttempted": true,
+        "zeroResultReason": "skill_no_match",
+        "zeroResultMessage": "Icra hukuku skill dogru alani aradi ama uygun karar bulamadi. Kontrollu fallback denendi, alakasiz karar gosterilmedi.",
+        "coreIssue": "Itirazin iptali davasinda alacagin ispat ve icra inkar tazminati kosullarinin degerlendirilmesi"
+      },
+      "aiSearchPlan": null,
+      "topResults": [],
+      "error": null
+    },
+    {
+      "id": "borclar",
+      "label": "Borçlar Hukuku",
+      "expectedSkill": "borclar",
+      "detectedSkill": "borclar",
+      "expectedSource": "yargitay",
+      "durationMs": 9110,
+      "wordCount": 415,
+      "resultCount": 0,
+      "score": 35,
+      "searchMode": "pro",
+      "skillDiagnostics": {
+        "active": true,
+        "skillId": "turk-hukuku-karar-arama",
+        "primaryDomain": "borclar",
+        "domainLabel": "Borclar hukuku",
+        "queryMode": "long_fact",
+        "sourceTargets": [
+          "uyap",
+          "yargitay"
+        ],
+        "strategyOrder": [
+          "A",
+          "B",
+          "C"
+        ],
+        "selectedStrategy": null,
+        "attemptedStrategies": [
+          "A",
+          "B",
+          "C"
+        ],
+        "fallbackAttempted": true,
+        "zeroResultReason": "skill_no_match",
+        "zeroResultMessage": "Borclar hukuku skill dogru alani aradi ama uygun karar bulamadi. Kontrollu fallback denendi, alakasiz karar gosterilmedi.",
+        "coreIssue": "Haksiz fiil sorumlulugunda kusur, zarar ve nedensellik baginin degerlendirilmesi"
+      },
+      "aiSearchPlan": null,
+      "topResults": [],
+      "error": null
+    },
+    {
+      "id": "ticaret",
+      "label": "Ticaret Hukuku",
+      "expectedSkill": "ticaret",
+      "detectedSkill": "ticaret",
+      "expectedSource": "yargitay",
+      "durationMs": 19323,
+      "wordCount": 407,
+      "resultCount": 0,
+      "score": 35,
+      "searchMode": "pro",
+      "skillDiagnostics": {
+        "active": true,
+        "skillId": "turk-hukuku-karar-arama",
+        "primaryDomain": "ticaret",
+        "domainLabel": "Ticaret hukuku",
+        "queryMode": "long_fact",
+        "sourceTargets": [
+          "uyap",
+          "yargitay"
+        ],
+        "strategyOrder": [
+          "A",
+          "B",
+          "C"
+        ],
+        "selectedStrategy": null,
+        "attemptedStrategies": [
+          "A",
+          "B",
+          "C"
+        ],
+        "fallbackAttempted": true,
+        "zeroResultReason": "skill_no_match",
+        "zeroResultMessage": "Ticaret hukuku skill dogru alani aradi ama uygun karar bulamadi. Kontrollu fallback denendi, alakasiz karar gosterilmedi.",
+        "coreIssue": "Sirketler ve ticari organizasyon uyusmazliklarinda organ karari ile sorumluluk denetiminin degerlendirilmesi"
+      },
+      "aiSearchPlan": null,
+      "topResults": [],
+      "error": null
+    },
+    {
+      "id": "idare",
+      "label": "İdare Hukuku",
+      "expectedSkill": "idare",
+      "detectedSkill": "idare",
+      "expectedSource": "danistay",
+      "durationMs": 14675,
+      "wordCount": 417,
+      "resultCount": 10,
+      "score": 80,
+      "searchMode": "pro",
+      "skillDiagnostics": {
+        "active": true,
+        "skillId": "turk-hukuku-karar-arama",
+        "primaryDomain": "idare",
+        "domainLabel": "Idare hukuku",
+        "queryMode": "long_fact",
+        "sourceTargets": [
+          "danistay",
+          "uyap"
+        ],
+        "strategyOrder": [
+          "A",
+          "B",
+          "C"
+        ],
+        "selectedStrategy": "A",
+        "attemptedStrategies": [
+          "A"
+        ],
+        "fallbackAttempted": false,
+        "zeroResultReason": null,
+        "zeroResultMessage": null,
+        "coreIssue": "Idare hukukunda tam yargi veya imar etkili islemlerde tazmin ve orantililik denetiminin degerlendirilmesi"
+      },
+      "aiSearchPlan": null,
+      "topResults": [
+        {
+          "source": "danistay",
+          "title": "Danıştay Kararı 8. Daire",
+          "daire": "8. Daire",
+          "matchedKeywordCount": 0,
+          "matchedKeywords": []
+        },
+        {
+          "source": "danistay",
+          "title": "Danıştay Kararı 8. Daire",
+          "daire": "8. Daire",
+          "matchedKeywordCount": 0,
+          "matchedKeywords": []
+        },
+        {
+          "source": "danistay",
+          "title": "Danıştay Kararı 8. Daire",
+          "daire": "8. Daire",
+          "matchedKeywordCount": 0,
+          "matchedKeywords": []
+        }
+      ],
+      "error": null
+    },
+    {
+      "id": "vergi",
+      "label": "Vergi Hukuku",
+      "expectedSkill": "vergi",
+      "detectedSkill": "vergi",
+      "expectedSource": "danistay",
+      "durationMs": 21405,
+      "wordCount": 418,
+      "resultCount": 10,
+      "score": 80,
+      "searchMode": "pro",
+      "skillDiagnostics": {
+        "active": true,
+        "skillId": "turk-hukuku-karar-arama",
+        "primaryDomain": "vergi",
+        "domainLabel": "Vergi hukuku",
+        "queryMode": "long_fact",
+        "sourceTargets": [
+          "danistay"
+        ],
+        "strategyOrder": [
+          "A",
+          "B",
+          "C"
+        ],
+        "selectedStrategy": "A",
+        "attemptedStrategies": [
+          "A"
+        ],
+        "fallbackAttempted": false,
+        "zeroResultReason": null,
+        "zeroResultMessage": null,
+        "coreIssue": "Vergi uyusmazliginda tarhiyat, sahte fatura ve ceza dayanaklarinin degerlendirilmesi"
+      },
+      "aiSearchPlan": null,
+      "topResults": [
+        {
+          "source": "danistay",
+          "title": "Danıştay Kararı 8. Daire",
+          "daire": "8. Daire",
+          "matchedKeywordCount": 0,
+          "matchedKeywords": []
+        },
+        {
+          "source": "danistay",
+          "title": "Danıştay Kararı 8. Daire",
+          "daire": "8. Daire",
+          "matchedKeywordCount": 0,
+          "matchedKeywords": []
+        },
+        {
+          "source": "danistay",
+          "title": "Danıştay Kararı 8. Daire",
+          "daire": "8. Daire",
+          "matchedKeywordCount": 0,
+          "matchedKeywords": []
+        }
+      ],
+      "error": null
+    },
+    {
+      "id": "tuketici",
+      "label": "Tüketici Hukuku",
+      "expectedSkill": "tuketici",
+      "detectedSkill": "tuketici",
+      "expectedSource": "yargitay",
+      "durationMs": 44949,
+      "wordCount": 416,
+      "resultCount": 0,
+      "score": 35,
+      "searchMode": "pro",
+      "skillDiagnostics": {
+        "active": true,
+        "skillId": "turk-hukuku-karar-arama",
+        "primaryDomain": "tuketici",
+        "domainLabel": "Tuketici hukuku",
+        "queryMode": "long_fact",
+        "sourceTargets": [
+          "uyap",
+          "yargitay"
+        ],
+        "strategyOrder": [
+          "A",
+          "B",
+          "C"
+        ],
+        "selectedStrategy": null,
+        "attemptedStrategies": [
+          "A",
+          "B",
+          "C"
+        ],
+        "fallbackAttempted": true,
+        "zeroResultReason": "skill_no_match",
+        "zeroResultMessage": "Tuketici hukuku skill dogru alani aradi ama uygun karar bulamadi. Kontrollu fallback denendi, alakasiz karar gosterilmedi.",
+        "coreIssue": "Tuketici hukukunda ayip, iade ve bedel taleplerinin degerlendirilmesi"
+      },
+      "aiSearchPlan": null,
+      "topResults": [],
+      "error": null
+    },
+    {
+      "id": "sigorta",
+      "label": "Sigorta Hukuku",
+      "expectedSkill": "sigorta",
+      "detectedSkill": "sigorta",
+      "expectedSource": "yargitay",
+      "durationMs": 8128,
+      "wordCount": 411,
+      "resultCount": 0,
+      "score": 35,
+      "searchMode": "pro",
+      "skillDiagnostics": {
+        "active": true,
+        "skillId": "turk-hukuku-karar-arama",
+        "primaryDomain": "sigorta",
+        "domainLabel": "Sigorta hukuku",
+        "queryMode": "long_fact",
+        "sourceTargets": [
+          "uyap",
+          "yargitay"
+        ],
+        "strategyOrder": [
+          "A",
+          "B",
+          "C"
+        ],
+        "selectedStrategy": null,
+        "attemptedStrategies": [
+          "A",
+          "B",
+          "C"
+        ],
+        "fallbackAttempted": true,
+        "zeroResultReason": "skill_no_match",
+        "zeroResultMessage": "Sigorta hukuku skill dogru alani aradi ama uygun karar bulamadi. Kontrollu fallback denendi, alakasiz karar gosterilmedi.",
+        "coreIssue": "Sigorta iliskisinde rizikonun gerceklesmesi, teminat kapsami ve tazmin sorumlulugunun degerlendirilmesi"
+      },
+      "aiSearchPlan": null,
+      "topResults": [],
+      "error": null
+    },
+    {
+      "id": "miras",
+      "label": "Miras Hukuku",
+      "expectedSkill": "miras",
+      "detectedSkill": "miras",
+      "expectedSource": "yargitay",
+      "durationMs": 8513,
+      "wordCount": 415,
+      "resultCount": 0,
+      "score": 35,
+      "searchMode": "pro",
+      "skillDiagnostics": {
+        "active": true,
+        "skillId": "turk-hukuku-karar-arama",
+        "primaryDomain": "miras",
+        "domainLabel": "Miras hukuku",
+        "queryMode": "long_fact",
+        "sourceTargets": [
+          "uyap",
+          "yargitay"
+        ],
+        "strategyOrder": [
+          "A",
+          "B",
+          "C"
+        ],
+        "selectedStrategy": null,
+        "attemptedStrategies": [
+          "A",
+          "B",
+          "C"
+        ],
+        "fallbackAttempted": true,
+        "zeroResultReason": "skill_no_match",
+        "zeroResultMessage": "Miras hukuku skill dogru alani aradi ama uygun karar bulamadi. Kontrollu fallback denendi, alakasiz karar gosterilmedi.",
+        "coreIssue": "Miras uyusmazliginda sakli pay, tenkis ve muris tasarruflarinin gecerliliginin degerlendirilmesi"
+      },
+      "aiSearchPlan": null,
+      "topResults": [],
+      "error": null
+    },
+    {
+      "id": "anayasa",
+      "label": "Anayasa Hukuku",
+      "expectedSkill": "anayasa",
+      "detectedSkill": "anayasa",
+      "expectedSource": "anayasa",
+      "durationMs": 15415,
+      "wordCount": 413,
+      "resultCount": 10,
+      "score": 80,
+      "searchMode": "pro",
+      "skillDiagnostics": {
+        "active": true,
+        "skillId": "turk-hukuku-karar-arama",
+        "primaryDomain": "anayasa",
+        "domainLabel": "Anayasa hukuku",
+        "queryMode": "long_fact",
+        "sourceTargets": [
+          "anayasa"
+        ],
+        "strategyOrder": [
+          "A",
+          "B",
+          "C"
+        ],
+        "selectedStrategy": "A",
+        "attemptedStrategies": [
+          "A"
+        ],
+        "fallbackAttempted": false,
+        "zeroResultReason": null,
+        "zeroResultMessage": null,
+        "coreIssue": "Anayasa mahkemesi bireysel basvurusunda temel hak ihlali ve orantililik denetiminin degerlendirilmesi"
+      },
+      "aiSearchPlan": null,
+      "topResults": [
+        {
+          "source": "anayasa",
+          "title": "E.2024/75, K.2025/134",
+          "daire": "Anayasa Mahkemesi Norm Denetimi",
+          "matchedKeywordCount": 0,
+          "matchedKeywords": []
+        },
+        {
+          "source": "anayasa",
+          "title": "E.2023/168, K.2025/132",
+          "daire": "Anayasa Mahkemesi Norm Denetimi",
+          "matchedKeywordCount": 0,
+          "matchedKeywords": []
+        },
+        {
+          "source": "anayasa",
+          "title": "E.2024/163, K.2025/41",
+          "daire": "Anayasa Mahkemesi Norm Denetimi",
+          "matchedKeywordCount": 0,
+          "matchedKeywords": []
+        }
+      ],
+      "error": null
+    }
+  ]
+}

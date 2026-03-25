@@ -1,0 +1,1906 @@
+[
+  {
+    "id": "aile-bosanma",
+    "label": "Aile bosanma velayet nafaka",
+    "batchId": "batch-civil-yargitay",
+    "scenarioIndexInBatch": 0,
+    "startedAt": "2026-03-19T15:21:20.140Z",
+    "finishedAt": "2026-03-19T15:21:46.634Z",
+    "durationMs": 26494,
+    "cooldownAppliedMs": 5000,
+    "encountered429": false,
+    "resultCount": 0,
+    "detectedDomain": "aile",
+    "retrievalDiagnostics": {
+      "backendMode": "simple_bedesten",
+      "queryVariants": [
+        "+\"bosanma\" +\"evlilik birligi\" +\"cekilmezlik\"",
+        "+\"ziynet esyasi\" +\"iade\" +\"bosanma\"",
+        "bosanma velayet nafaka kisisel iliski cocugun ustun yarari"
+      ],
+      "fallbackUsed": false,
+      "fallbackReason": null,
+      "upstream": "bedesten",
+      "provider": "cli",
+      "targetSources": [
+        "YARGITAYKARARI"
+      ],
+      "primaryDomain": "aile",
+      "packetApplied": true,
+      "packetPrimaryDomain": "aile",
+      "packetCaseType": "aile_bosanma",
+      "packetRequiredConceptCount": 3,
+      "routingMode": "hard_primary",
+      "birimAdiCandidates": [
+        "H2"
+      ],
+      "totalCandidates": 29,
+      "finalMatchedCount": 0,
+      "zeroResultReason": "no_candidates",
+      "compatibilityFilterApplied": true,
+      "compatibilityFilteredOutCount": 0,
+      "contentRerankApplied": true,
+      "contentRerankCount": 25,
+      "simpleQualityScore": 0,
+      "qualityWarnings": [
+        "no_candidates"
+      ],
+      "strictPrecisionGateApplied": true,
+      "strictPrecisionThreshold": 70,
+      "searchPhrase": "+\"bosanma\" +\"evlilik birligi\" +\"cekilmezlik\"",
+      "searchPhraseSource": "packet_search_variant",
+      "searchVariantMode": "registry_case_type",
+      "selectedQueryVariant": "+\"bosanma\" +\"evlilik birligi\" +\"cekilmezlik\"",
+      "searchVariantAttempts": [
+        {
+          "query": "+\"bosanma\" +\"evlilik birligi\" +\"cekilmezlik\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H2",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 1108,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "+\"ziynet esyasi\" +\"iade\" +\"bosanma\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H2",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 999,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "bosanma velayet nafaka kisisel iliski cocugun ustun yarari",
+          "mode": "required_concepts:primary",
+          "birimAdi": "H2",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 995,
+          "timeoutMs": 12000
+        }
+      ],
+      "selectedBirimAdi": "H2",
+      "firstSuccessfulBirimAdi": "H2",
+      "acceptedTopResultDaireler": [],
+      "rejectionReasons": [
+        "no_candidates"
+      ],
+      "sourceCoverageStatus": "no_candidates",
+      "phaseAttemptSummary": {
+        "primaryAttemptCount": 3,
+        "secondaryAttemptCount": 0
+      },
+      "rateLimitedAttemptCount": 0,
+      "cliVariantLimitApplied": 3,
+      "cliBudgetMs": 30000,
+      "cliElapsedMs": 26413,
+      "cliBudgetExceeded": false
+    },
+    "topResults": [],
+    "zeroResultMessage": null,
+    "error": null
+  },
+  {
+    "id": "borclar-kira",
+    "label": "Borclar kira tahliye artirim",
+    "batchId": "batch-civil-yargitay",
+    "scenarioIndexInBatch": 1,
+    "startedAt": "2026-03-19T15:21:51.643Z",
+    "finishedAt": "2026-03-19T15:22:24.980Z",
+    "durationMs": 33337,
+    "cooldownAppliedMs": 5000,
+    "encountered429": false,
+    "resultCount": 0,
+    "detectedDomain": "borclar",
+    "retrievalDiagnostics": {
+      "backendMode": "simple_bedesten",
+      "queryVariants": [
+        "+\"kira tahliye\" +\"ihtiyac\" +\"TBK 350\"",
+        "+\"kira artisi\" +\"TUFE\" +\"TBK 344\"",
+        "kira sozlesmesi tahliye kira artisi itirazin kaldirilmasi"
+      ],
+      "fallbackUsed": false,
+      "fallbackReason": null,
+      "upstream": "bedesten",
+      "provider": "cli",
+      "targetSources": [
+        "YARGITAYKARARI"
+      ],
+      "primaryDomain": "borclar",
+      "packetApplied": true,
+      "packetPrimaryDomain": "borclar",
+      "packetCaseType": "borclar_kira",
+      "packetRequiredConceptCount": 2,
+      "routingMode": "hard_primary",
+      "birimAdiCandidates": [
+        "H3"
+      ],
+      "totalCandidates": 21,
+      "finalMatchedCount": 0,
+      "zeroResultReason": "no_candidates",
+      "compatibilityFilterApplied": true,
+      "compatibilityFilteredOutCount": 0,
+      "contentRerankApplied": true,
+      "contentRerankCount": 21,
+      "simpleQualityScore": 0,
+      "qualityWarnings": [
+        "no_candidates"
+      ],
+      "strictPrecisionGateApplied": true,
+      "strictPrecisionThreshold": 70,
+      "searchPhrase": "+\"kira tahliye\" +\"ihtiyac\" +\"TBK 350\"",
+      "searchPhraseSource": "packet_search_variant",
+      "searchVariantMode": "registry_case_type",
+      "selectedQueryVariant": "+\"kira tahliye\" +\"ihtiyac\" +\"TBK 350\"",
+      "searchVariantAttempts": [
+        {
+          "query": "+\"kira tahliye\" +\"ihtiyac\" +\"TBK 350\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H3",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 5121,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "+\"kira artisi\" +\"TUFE\" +\"TBK 344\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H3",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 3380,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "kira sozlesmesi tahliye kira artisi itirazin kaldirilmasi",
+          "mode": "required_concepts:primary",
+          "birimAdi": "H3",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 2130,
+          "timeoutMs": 12000
+        }
+      ],
+      "selectedBirimAdi": "H3",
+      "firstSuccessfulBirimAdi": "H3",
+      "acceptedTopResultDaireler": [],
+      "rejectionReasons": [
+        "no_candidates"
+      ],
+      "sourceCoverageStatus": "no_candidates",
+      "phaseAttemptSummary": {
+        "primaryAttemptCount": 3,
+        "secondaryAttemptCount": 0
+      },
+      "rateLimitedAttemptCount": 0,
+      "cliVariantLimitApplied": 3,
+      "cliBudgetMs": 30000,
+      "cliElapsedMs": 33165,
+      "cliBudgetExceeded": false
+    },
+    "topResults": [],
+    "zeroResultMessage": null,
+    "error": null
+  },
+  {
+    "id": "gayrimenkul-tapu",
+    "label": "Gayrimenkul tapu iptali muris muvazaasi",
+    "batchId": "batch-civil-yargitay",
+    "scenarioIndexInBatch": 2,
+    "startedAt": "2026-03-19T15:22:29.994Z",
+    "finishedAt": "2026-03-19T15:22:53.978Z",
+    "durationMs": 23984,
+    "cooldownAppliedMs": 5000,
+    "encountered429": false,
+    "resultCount": 11,
+    "detectedDomain": "gayrimenkul",
+    "retrievalDiagnostics": {
+      "backendMode": "simple_bedesten",
+      "queryVariants": [
+        "+\"muris muvazaasi\" +\"tapu iptali\" +\"tescil\"",
+        "+\"miras birakanin gercek iradesi\" +\"muvazaali devir\" +\"tapu\"",
+        "+\"yolsuz tescil\" +\"tapu kaydi\" +\"mulkiyet\""
+      ],
+      "fallbackUsed": false,
+      "fallbackReason": null,
+      "upstream": "bedesten",
+      "provider": "cli",
+      "targetSources": [
+        "YARGITAYKARARI"
+      ],
+      "primaryDomain": "gayrimenkul",
+      "packetApplied": true,
+      "packetPrimaryDomain": "gayrimenkul",
+      "packetCaseType": "gayrimenkul_tapu",
+      "packetRequiredConceptCount": 3,
+      "routingMode": "hard_primary",
+      "birimAdiCandidates": [
+        "H1"
+      ],
+      "totalCandidates": 12,
+      "finalMatchedCount": 11,
+      "zeroResultReason": null,
+      "compatibilityFilterApplied": true,
+      "compatibilityFilteredOutCount": 0,
+      "contentRerankApplied": true,
+      "contentRerankCount": 12,
+      "simpleQualityScore": 100,
+      "qualityWarnings": [],
+      "strictPrecisionGateApplied": true,
+      "strictPrecisionThreshold": 70,
+      "searchPhrase": "+\"muris muvazaasi\" +\"tapu iptali\" +\"tescil\"",
+      "searchPhraseSource": "packet_search_variant",
+      "searchVariantMode": "registry_case_type",
+      "selectedQueryVariant": "+\"muris muvazaasi\" +\"tapu iptali\" +\"tescil\"",
+      "searchVariantAttempts": [
+        {
+          "query": "+\"muris muvazaasi\" +\"tapu iptali\" +\"tescil\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H1",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 3664,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "+\"miras birakanin gercek iradesi\" +\"muvazaali devir\" +\"tapu\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H1",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 2537,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "+\"yolsuz tescil\" +\"tapu kaydi\" +\"mulkiyet\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H1",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 1795,
+          "timeoutMs": 12000
+        }
+      ],
+      "selectedBirimAdi": "H1",
+      "firstSuccessfulBirimAdi": "H1",
+      "acceptedTopResultDaireler": [
+        "1. Hukuk Dairesi"
+      ],
+      "rejectionReasons": [],
+      "sourceCoverageStatus": "ok",
+      "phaseAttemptSummary": {
+        "primaryAttemptCount": 3,
+        "secondaryAttemptCount": 0
+      },
+      "rateLimitedAttemptCount": 0,
+      "cliVariantLimitApplied": 3,
+      "cliBudgetMs": 30000,
+      "cliElapsedMs": 23819,
+      "cliBudgetExceeded": false
+    },
+    "topResults": [
+      {
+        "title": "1. Hukuk Dairesi 2025/6830 E. 2025/6285 K.",
+        "daire": "1. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "netmeliği’nin 18. maddeleri uyarınca yapılan ön incelemede; davanın muris muvazaası hukuki nedenine dayalı tapu iptali ve tescil olmazsa tenkis istemiyle açıldığı, İlk Derece Mahkemesince muris muvazaası yönünden davanın"
+      },
+      {
+        "title": "1. Hukuk Dairesi 2025/6852 E. 2025/6287 K.",
+        "daire": "1. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "maddeleri uyarınca yapılan ön incelemede; davanın hata ve gabin nedeniyle miras taksim sözleşmesinin iptali ile tapu iptali ve tescil istemlerine ilişkin olduğu anlaşılmaktadır. Yargıtay Büyük Genel Kurulunun dairelerin "
+      },
+      {
+        "title": "1. Hukuk Dairesi 2025/6785 E. 2025/6282 K.",
+        "daire": "1. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "un 40. ve Yargıtay İç Yönetmeliği’nin 18. maddeleri uyarınca yapılan ön incelemede; davanın, harici satışa dayalı tapu iptali ve tescil, ikinci kademede tazminat istemine ilişkin olduğu anlaşılmaktadır. Yargıtay Büyük Ge"
+      },
+      {
+        "title": "1. Hukuk Dairesi 2025/6850 E. 2025/6306 K.",
+        "daire": "1. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "rınca yapılan ön incelemede; davanın yüklenicinin temlikine dayalı harici satış sözleşmesinden kaynaklanan tapu iptali ve tescil ikinci kademede tazminat talebine ilişkin olduğu anlaşılmaktadır. Yargıtay Büyük Genel Kuru"
+      },
+      {
+        "title": "1. Hukuk Dairesi 2025/6707 E. 2025/6304 K.",
+        "daire": "1. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "n 18. maddeleri uyarınca yapılan ön incelemede; davanın, arsa payı karşılığı inşaat sözleşmesinden kaynaklı tapu iptali ve tescil ile terditli tazminat istemine ilişkin olduğu anlaşılmıştır. Yargıtay Büyük Genel Kurulunu"
+      }
+    ],
+    "zeroResultMessage": null,
+    "error": null
+  },
+  {
+    "id": "miras-tenkis",
+    "label": "Miras tenkis sakli pay",
+    "batchId": "batch-civil-yargitay",
+    "scenarioIndexInBatch": 3,
+    "startedAt": "2026-03-19T15:22:58.991Z",
+    "finishedAt": "2026-03-19T15:23:24.060Z",
+    "durationMs": 25069,
+    "cooldownAppliedMs": 5000,
+    "encountered429": false,
+    "resultCount": 1,
+    "detectedDomain": "miras",
+    "retrievalDiagnostics": {
+      "backendMode": "simple_bedesten",
+      "queryVariants": [
+        "+\"tenkis\" +\"sakli pay\" +\"TMK 560\"",
+        "+\"sakli pay\" +\"mirasci\" +\"tenkis\"",
+        "tenkis sakli pay miras paylasma miras payi"
+      ],
+      "fallbackUsed": false,
+      "fallbackReason": null,
+      "upstream": "bedesten",
+      "provider": "cli",
+      "targetSources": [
+        "YARGITAYKARARI"
+      ],
+      "primaryDomain": "miras",
+      "packetApplied": true,
+      "packetPrimaryDomain": "miras",
+      "packetCaseType": "miras_tenkis",
+      "packetRequiredConceptCount": 2,
+      "routingMode": "hard_primary",
+      "birimAdiCandidates": [
+        "H7"
+      ],
+      "totalCandidates": 11,
+      "finalMatchedCount": 1,
+      "zeroResultReason": null,
+      "compatibilityFilterApplied": true,
+      "compatibilityFilteredOutCount": 0,
+      "contentRerankApplied": true,
+      "contentRerankCount": 11,
+      "simpleQualityScore": 100,
+      "qualityWarnings": [],
+      "strictPrecisionGateApplied": true,
+      "strictPrecisionThreshold": 70,
+      "searchPhrase": "+\"tenkis\" +\"sakli pay\" +\"TMK 560\"",
+      "searchPhraseSource": "packet_search_variant",
+      "searchVariantMode": "registry_case_type",
+      "selectedQueryVariant": "+\"tenkis\" +\"sakli pay\" +\"TMK 560\"",
+      "searchVariantAttempts": [
+        {
+          "query": "+\"tenkis\" +\"sakli pay\" +\"TMK 560\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H7",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 2000,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "+\"sakli pay\" +\"mirasci\" +\"tenkis\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H7",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 5171,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "tenkis sakli pay miras paylasma miras payi",
+          "mode": "required_concepts:primary",
+          "birimAdi": "H7",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 1917,
+          "timeoutMs": 12000
+        }
+      ],
+      "selectedBirimAdi": "H7",
+      "firstSuccessfulBirimAdi": "H7",
+      "acceptedTopResultDaireler": [
+        "7. Hukuk Dairesi"
+      ],
+      "rejectionReasons": [],
+      "sourceCoverageStatus": "ok",
+      "phaseAttemptSummary": {
+        "primaryAttemptCount": 3,
+        "secondaryAttemptCount": 0
+      },
+      "rateLimitedAttemptCount": 0,
+      "cliVariantLimitApplied": 3,
+      "cliBudgetMs": 30000,
+      "cliElapsedMs": 25011,
+      "cliBudgetExceeded": false
+    },
+    "topResults": [
+      {
+        "title": "7. Hukuk Dairesi 2025/1265 E. 2025/5592 K.",
+        "daire": "7. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "ğlı tasarruf ile dava konusu 9 adet taşınmazın davalılara vasiyet edildiğini iddia ederek; vasiyetnamenin iptaline, olmazsa tenkisine karar verilmesini talep etmiştir. II. CEVAP Davalılar vekili cevap dilekçesinde özetle"
+      }
+    ],
+    "zeroResultMessage": null,
+    "error": null
+  },
+  {
+    "id": "tuketici-ayipli-mal",
+    "label": "Tuketici ayipli mal iade degisim",
+    "batchId": "batch-civil-yargitay",
+    "scenarioIndexInBatch": 4,
+    "startedAt": "2026-03-19T15:23:29.083Z",
+    "finishedAt": "2026-03-19T15:23:57.575Z",
+    "durationMs": 28492,
+    "cooldownAppliedMs": 5000,
+    "encountered429": false,
+    "resultCount": 0,
+    "detectedDomain": "tuketici",
+    "retrievalDiagnostics": {
+      "backendMode": "simple_bedesten",
+      "queryVariants": [
+        "+\"ayipli mal\" +\"TKHK 11\" +\"iade\"",
+        "+\"ayipli mal\" +\"garanti\" +\"degisim\"",
+        "ayipli mal bedel iadesi degisim garanti"
+      ],
+      "fallbackUsed": false,
+      "fallbackReason": null,
+      "upstream": "bedesten",
+      "provider": "cli",
+      "targetSources": [
+        "YARGITAYKARARI"
+      ],
+      "primaryDomain": "tuketici",
+      "packetApplied": true,
+      "packetPrimaryDomain": "tuketici",
+      "packetCaseType": "tuketici_ayipli_mal",
+      "packetRequiredConceptCount": 2,
+      "routingMode": "hard_primary",
+      "birimAdiCandidates": [
+        "H3"
+      ],
+      "totalCandidates": 24,
+      "finalMatchedCount": 0,
+      "zeroResultReason": "no_candidates",
+      "compatibilityFilterApplied": true,
+      "compatibilityFilteredOutCount": 0,
+      "contentRerankApplied": true,
+      "contentRerankCount": 24,
+      "simpleQualityScore": 0,
+      "qualityWarnings": [
+        "no_candidates"
+      ],
+      "strictPrecisionGateApplied": true,
+      "strictPrecisionThreshold": 70,
+      "searchPhrase": "+\"ayipli mal\" +\"TKHK 11\" +\"iade\"",
+      "searchPhraseSource": "packet_search_variant",
+      "searchVariantMode": "registry_case_type",
+      "selectedQueryVariant": "+\"ayipli mal\" +\"TKHK 11\" +\"iade\"",
+      "searchVariantAttempts": [
+        {
+          "query": "+\"ayipli mal\" +\"TKHK 11\" +\"iade\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H3",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 2432,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "+\"ayipli mal\" +\"garanti\" +\"degisim\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H3",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 1915,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "ayipli mal bedel iadesi degisim garanti",
+          "mode": "required_concepts:primary",
+          "birimAdi": "H3",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 1883,
+          "timeoutMs": 12000
+        }
+      ],
+      "selectedBirimAdi": "H3",
+      "firstSuccessfulBirimAdi": "H3",
+      "acceptedTopResultDaireler": [],
+      "rejectionReasons": [
+        "no_candidates"
+      ],
+      "sourceCoverageStatus": "no_candidates",
+      "phaseAttemptSummary": {
+        "primaryAttemptCount": 3,
+        "secondaryAttemptCount": 0
+      },
+      "rateLimitedAttemptCount": 0,
+      "cliVariantLimitApplied": 3,
+      "cliBudgetMs": 30000,
+      "cliElapsedMs": 28448,
+      "cliBudgetExceeded": false
+    },
+    "topResults": [],
+    "zeroResultMessage": null,
+    "error": null
+  },
+  {
+    "id": "sigorta-trafik",
+    "label": "Sigorta trafik deger kaybi tazminat",
+    "batchId": "batch-civil-yargitay",
+    "scenarioIndexInBatch": 5,
+    "startedAt": "2026-03-19T15:24:02.580Z",
+    "finishedAt": "2026-03-19T15:24:29.010Z",
+    "durationMs": 26430,
+    "cooldownAppliedMs": 22000,
+    "encountered429": false,
+    "resultCount": 0,
+    "detectedDomain": "sigorta",
+    "retrievalDiagnostics": {
+      "backendMode": "simple_bedesten",
+      "queryVariants": [
+        "+\"deger kaybi\" +\"trafik kazasi\" +\"tazminat\"",
+        "+\"sigorta\" +\"trafik kazasi\" +\"kusur\"",
+        "trafik kazasi sigorta tazminati deger kaybi destekten yoksun kalma"
+      ],
+      "fallbackUsed": false,
+      "fallbackReason": null,
+      "upstream": "bedesten",
+      "provider": "cli",
+      "targetSources": [
+        "YARGITAYKARARI"
+      ],
+      "primaryDomain": "sigorta",
+      "packetApplied": true,
+      "packetPrimaryDomain": "sigorta",
+      "packetCaseType": "sigorta_deger_kaybi",
+      "packetRequiredConceptCount": 2,
+      "routingMode": "hard_primary",
+      "birimAdiCandidates": [
+        "H4"
+      ],
+      "totalCandidates": 18,
+      "finalMatchedCount": 0,
+      "zeroResultReason": "no_candidates",
+      "compatibilityFilterApplied": true,
+      "compatibilityFilteredOutCount": 0,
+      "contentRerankApplied": true,
+      "contentRerankCount": 18,
+      "simpleQualityScore": 0,
+      "qualityWarnings": [
+        "no_candidates"
+      ],
+      "strictPrecisionGateApplied": true,
+      "strictPrecisionThreshold": 70,
+      "searchPhrase": "+\"deger kaybi\" +\"trafik kazasi\" +\"tazminat\"",
+      "searchPhraseSource": "packet_search_variant",
+      "searchVariantMode": "registry_case_type",
+      "selectedQueryVariant": "+\"deger kaybi\" +\"trafik kazasi\" +\"tazminat\"",
+      "searchVariantAttempts": [
+        {
+          "query": "+\"deger kaybi\" +\"trafik kazasi\" +\"tazminat\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H4",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 4176,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "+\"sigorta\" +\"trafik kazasi\" +\"kusur\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H4",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 2249,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "trafik kazasi sigorta tazminati deger kaybi destekten yoksun kalma",
+          "mode": "required_concepts:primary",
+          "birimAdi": "H4",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 1741,
+          "timeoutMs": 12000
+        }
+      ],
+      "selectedBirimAdi": "H4",
+      "firstSuccessfulBirimAdi": "H4",
+      "acceptedTopResultDaireler": [],
+      "rejectionReasons": [
+        "no_candidates"
+      ],
+      "sourceCoverageStatus": "no_candidates",
+      "phaseAttemptSummary": {
+        "primaryAttemptCount": 3,
+        "secondaryAttemptCount": 0
+      },
+      "rateLimitedAttemptCount": 0,
+      "cliVariantLimitApplied": 3,
+      "cliBudgetMs": 30000,
+      "cliElapsedMs": 26190,
+      "cliBudgetExceeded": false
+    },
+    "topResults": [],
+    "zeroResultMessage": null,
+    "error": null
+  },
+  {
+    "id": "ticaret-marka-tescil",
+    "label": "Ticaret marka tescil iltibas",
+    "batchId": "batch-commercial-icra-yargitay",
+    "scenarioIndexInBatch": 0,
+    "startedAt": "2026-03-19T15:24:51.025Z",
+    "finishedAt": "2026-03-19T15:25:23.566Z",
+    "durationMs": 32541,
+    "cooldownAppliedMs": 5000,
+    "encountered429": false,
+    "resultCount": 5,
+    "detectedDomain": "ticaret",
+    "retrievalDiagnostics": {
+      "backendMode": "simple_bedesten",
+      "queryVariants": [
+        "+\"marka\" +\"karistirilma ihtimali\" +\"haksiz rekabet\"",
+        "+\"marka hakkina tecavuz\" +\"tescilli marka\" +\"iltibas\"",
+        "+\"marka\" +\"ayirt edilemeyecek benzerlik\" +\"tescil\""
+      ],
+      "fallbackUsed": false,
+      "fallbackReason": null,
+      "upstream": "bedesten",
+      "provider": "cli",
+      "targetSources": [
+        "YARGITAYKARARI"
+      ],
+      "primaryDomain": "ticaret",
+      "packetApplied": true,
+      "packetPrimaryDomain": "ticaret",
+      "packetCaseType": "ticaret_marka_iltibas",
+      "packetRequiredConceptCount": 3,
+      "routingMode": "hard_primary",
+      "birimAdiCandidates": [
+        "H11"
+      ],
+      "totalCandidates": 16,
+      "finalMatchedCount": 5,
+      "zeroResultReason": null,
+      "compatibilityFilterApplied": true,
+      "compatibilityFilteredOutCount": 0,
+      "contentRerankApplied": true,
+      "contentRerankCount": 16,
+      "simpleQualityScore": 100,
+      "qualityWarnings": [],
+      "strictPrecisionGateApplied": true,
+      "strictPrecisionThreshold": 70,
+      "searchPhrase": "+\"marka\" +\"karistirilma ihtimali\" +\"haksiz rekabet\"",
+      "searchPhraseSource": "packet_search_variant",
+      "searchVariantMode": "registry_case_type",
+      "selectedQueryVariant": "+\"marka\" +\"karistirilma ihtimali\" +\"haksiz rekabet\"",
+      "searchVariantAttempts": [
+        {
+          "query": "+\"marka\" +\"karistirilma ihtimali\" +\"haksiz rekabet\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H11",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 5874,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "+\"marka hakkina tecavuz\" +\"tescilli marka\" +\"iltibas\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H11",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 2482,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "+\"marka\" +\"ayirt edilemeyecek benzerlik\" +\"tescil\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H11",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 2628,
+          "timeoutMs": 12000
+        }
+      ],
+      "selectedBirimAdi": "H11",
+      "firstSuccessfulBirimAdi": "H11",
+      "acceptedTopResultDaireler": [
+        "11. Hukuk Dairesi"
+      ],
+      "rejectionReasons": [],
+      "sourceCoverageStatus": "ok",
+      "phaseAttemptSummary": {
+        "primaryAttemptCount": 3,
+        "secondaryAttemptCount": 0
+      },
+      "rateLimitedAttemptCount": 0,
+      "cliVariantLimitApplied": 3,
+      "cliBudgetMs": 30000,
+      "cliElapsedMs": 32357,
+      "cliBudgetExceeded": false
+    },
+    "topResults": [
+      {
+        "title": "11. Hukuk Dairesi 2025/3710 E. 2026/396 K.",
+        "daire": "11. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "arkasının yalnızca bu sitede değil hepsiburada.com, n11.com gibi e-ticaret sitelerinde de satışa konu edildiğini, müvekkili tarafından davacı tarafa marka hakkına tecavüzün durdurulması ve haksız rekabete son verilmesini"
+      },
+      {
+        "title": "11. Hukuk Dairesi 2025/3265 E. 2026/371 K.",
+        "daire": "11. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "ilinçli tüketici kitlesinin hedeflendiği, davalı markalarının toplumda belli bir tanınmışlık seviyesine ulaştığı da dikkate alındığında tarafların ticari işaretleri arasında karıştırılma ihtimalinin bulunmadığı, iltibas "
+      },
+      {
+        "title": "11. Hukuk Dairesi 2025/3493 E. 2026/417 K.",
+        "daire": "11. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "i marka başvurusu ile davacıya ait \"...\" ibareli tescilli markalar arasında biçim, düzenleme ve tertip tarzı itibariyle görsel ve sesçil olarak ortalama tüketicileri iltibasa düşürecek derecede benzerlik bulunduğu, zira "
+      },
+      {
+        "title": "11. Hukuk Dairesi 2025/3707 E. 2026/387 K.",
+        "daire": "11. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "hibi olduğunu, ortalama gıda tüketicisinin dava konusu markaları benzer olarak algılayacağını, gıda ürünlerindeki karar süresinin iltibası artırdığını, bu ürünlerin tüketicilerinin çok büyük kısmını da çocukların oluştur"
+      },
+      {
+        "title": "11. Hukuk Dairesi 2025/4415 E. 2026/404 K.",
+        "daire": "11. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "l, işitsel yönden benzerlik bulunmadığı, ortalama alıcılar nezdinde seri marka algısı oluşturma potansiyeli taşımadığı ve iltibasa yol açma ihtimalinin bulunmadığı kanaati ile davacı vekilinin temyiz itirazlarının reddi "
+      }
+    ],
+    "zeroResultMessage": null,
+    "error": null
+  },
+  {
+    "id": "ticaret-genel-kurul",
+    "label": "Ticaret anonim sirket genel kurul iptali",
+    "batchId": "batch-commercial-icra-yargitay",
+    "scenarioIndexInBatch": 1,
+    "startedAt": "2026-03-19T15:25:28.574Z",
+    "finishedAt": "2026-03-19T15:25:56.139Z",
+    "durationMs": 27565,
+    "cooldownAppliedMs": 5000,
+    "encountered429": false,
+    "resultCount": 2,
+    "detectedDomain": "ticaret",
+    "retrievalDiagnostics": {
+      "backendMode": "simple_bedesten",
+      "queryVariants": [
+        "+\"genel kurul karari\" +\"iptal\" +\"TTK 445\"",
+        "+\"genel kurul\" +\"cagri usulsuzlugu\" +\"pay sahipligi\"",
+        "+\"genel kurul\" +\"butlan\" +\"TTK 446\""
+      ],
+      "fallbackUsed": false,
+      "fallbackReason": null,
+      "upstream": "bedesten",
+      "provider": "cli",
+      "targetSources": [
+        "YARGITAYKARARI"
+      ],
+      "primaryDomain": "ticaret",
+      "packetApplied": true,
+      "packetPrimaryDomain": "ticaret",
+      "packetCaseType": "ticaret_genel_kurul",
+      "packetRequiredConceptCount": 3,
+      "routingMode": "hard_primary",
+      "birimAdiCandidates": [
+        "H11"
+      ],
+      "totalCandidates": 11,
+      "finalMatchedCount": 2,
+      "zeroResultReason": null,
+      "compatibilityFilterApplied": true,
+      "compatibilityFilteredOutCount": 0,
+      "contentRerankApplied": true,
+      "contentRerankCount": 11,
+      "simpleQualityScore": 100,
+      "qualityWarnings": [],
+      "strictPrecisionGateApplied": true,
+      "strictPrecisionThreshold": 70,
+      "searchPhrase": "+\"genel kurul karari\" +\"iptal\" +\"TTK 445\"",
+      "searchPhraseSource": "packet_search_variant",
+      "searchVariantMode": "registry_case_type",
+      "selectedQueryVariant": "+\"genel kurul karari\" +\"iptal\" +\"TTK 445\"",
+      "searchVariantAttempts": [
+        {
+          "query": "+\"genel kurul karari\" +\"iptal\" +\"TTK 445\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H11",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 4172,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "+\"genel kurul\" +\"cagri usulsuzlugu\" +\"pay sahipligi\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H11",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 3261,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "+\"genel kurul\" +\"butlan\" +\"TTK 446\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H11",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 1928,
+          "timeoutMs": 12000
+        }
+      ],
+      "selectedBirimAdi": "H11",
+      "firstSuccessfulBirimAdi": "H11",
+      "acceptedTopResultDaireler": [
+        "11. Hukuk Dairesi"
+      ],
+      "rejectionReasons": [],
+      "sourceCoverageStatus": "ok",
+      "phaseAttemptSummary": {
+        "primaryAttemptCount": 3,
+        "secondaryAttemptCount": 0
+      },
+      "rateLimitedAttemptCount": 0,
+      "cliVariantLimitApplied": 3,
+      "cliBudgetMs": 30000,
+      "cliElapsedMs": 27465,
+      "cliBudgetExceeded": false
+    },
+    "topResults": [
+      {
+        "title": "11. Hukuk Dairesi 2025/3417 E. 2026/373 K.",
+        "daire": "11. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "ykırı olarak tasdik işlemlerini gerçekleştirdiğini, şirkete yeni bir karar ve ortaklık pay defteri tasdikini sağladıktan sonra genel kurul toplantı ve müzakere defterini tasdik ettirildiğini, pay devreden görülen müvekki"
+      },
+      {
+        "title": "11. Hukuk Dairesi 2026/520 E. 2026/430 K.",
+        "daire": "11. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "un, dernek yöneticilerinin derneğe verdikleri zararın tazmini talebine ilişkin olduğu anlaşılmıştır. Yargıtay Büyük Genel Kurulunun dairelerin iş bölümüne ilişkin 26.06.2025 tarihli ve 2025/1 sayılı kararı uyarınca dosya"
+      }
+    ],
+    "zeroResultMessage": null,
+    "error": null
+  },
+  {
+    "id": "ticaret-konkordato",
+    "label": "Ticaret konkordato iflas sira cetveli",
+    "batchId": "batch-commercial-icra-yargitay",
+    "scenarioIndexInBatch": 2,
+    "startedAt": "2026-03-19T15:26:01.139Z",
+    "finishedAt": "2026-03-19T15:26:31.103Z",
+    "durationMs": 29964,
+    "cooldownAppliedMs": 5000,
+    "encountered429": false,
+    "resultCount": 0,
+    "detectedDomain": "ticaret",
+    "retrievalDiagnostics": {
+      "backendMode": "simple_bedesten",
+      "queryVariants": [
+        "+\"konkordato\" +\"alacakli\" +\"tasdik\"",
+        "+\"iflas\" +\"masaya dahil\" +\"sira cetveli\"",
+        "konkordato iflas sira cetveli kayit kabul"
+      ],
+      "fallbackUsed": false,
+      "fallbackReason": null,
+      "upstream": "bedesten",
+      "provider": "cli",
+      "targetSources": [
+        "YARGITAYKARARI"
+      ],
+      "primaryDomain": "ticaret",
+      "packetApplied": true,
+      "packetPrimaryDomain": "ticaret",
+      "packetCaseType": "ticaret_konkordato_iflas",
+      "packetRequiredConceptCount": 2,
+      "routingMode": "hard_primary",
+      "birimAdiCandidates": [
+        "H6"
+      ],
+      "totalCandidates": 27,
+      "finalMatchedCount": 0,
+      "zeroResultReason": "no_candidates",
+      "compatibilityFilterApplied": true,
+      "compatibilityFilteredOutCount": 0,
+      "contentRerankApplied": true,
+      "contentRerankCount": 25,
+      "simpleQualityScore": 0,
+      "qualityWarnings": [
+        "no_candidates"
+      ],
+      "strictPrecisionGateApplied": true,
+      "strictPrecisionThreshold": 70,
+      "searchPhrase": "+\"konkordato\" +\"alacakli\" +\"tasdik\"",
+      "searchPhraseSource": "packet_search_variant",
+      "searchVariantMode": "registry_case_type",
+      "selectedQueryVariant": "+\"konkordato\" +\"alacakli\" +\"tasdik\"",
+      "searchVariantAttempts": [
+        {
+          "query": "+\"konkordato\" +\"alacakli\" +\"tasdik\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H6",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 2418,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "+\"iflas\" +\"masaya dahil\" +\"sira cetveli\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H6",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 1938,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "konkordato iflas sira cetveli kayit kabul",
+          "mode": "required_concepts:primary",
+          "birimAdi": "H6",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 2072,
+          "timeoutMs": 12000
+        }
+      ],
+      "selectedBirimAdi": "H6",
+      "firstSuccessfulBirimAdi": "H6",
+      "acceptedTopResultDaireler": [],
+      "rejectionReasons": [
+        "no_candidates"
+      ],
+      "sourceCoverageStatus": "no_candidates",
+      "phaseAttemptSummary": {
+        "primaryAttemptCount": 3,
+        "secondaryAttemptCount": 0
+      },
+      "rateLimitedAttemptCount": 0,
+      "cliVariantLimitApplied": 3,
+      "cliBudgetMs": 30000,
+      "cliElapsedMs": 29906,
+      "cliBudgetExceeded": false
+    },
+    "topResults": [],
+    "zeroResultMessage": null,
+    "error": null
+  },
+  {
+    "id": "icra-itirazin-iptali",
+    "label": "Icra ticari itirazin iptali IIK 67",
+    "batchId": "batch-commercial-icra-yargitay",
+    "scenarioIndexInBatch": 3,
+    "startedAt": "2026-03-19T15:26:36.279Z",
+    "finishedAt": "2026-03-19T15:27:05.496Z",
+    "durationMs": 29217,
+    "cooldownAppliedMs": 5000,
+    "encountered429": false,
+    "resultCount": 1,
+    "detectedDomain": "icra",
+    "retrievalDiagnostics": {
+      "backendMode": "simple_bedesten",
+      "queryVariants": [
+        "+\"cari hesap\" +\"itirazin iptali\" +\"IIK 67\"",
+        "+\"ticari defter\" +\"fatura\" +\"icra inkar tazminati\"",
+        "+\"mutabakat\" +\"cari hesap\" +\"alacagin likit olmasi\""
+      ],
+      "fallbackUsed": false,
+      "fallbackReason": null,
+      "upstream": "bedesten",
+      "provider": "cli",
+      "targetSources": [
+        "YARGITAYKARARI"
+      ],
+      "primaryDomain": "icra",
+      "packetApplied": true,
+      "packetPrimaryDomain": "icra",
+      "packetCaseType": "icra_ticari_itirazin_iptali",
+      "packetRequiredConceptCount": 3,
+      "routingMode": "hard_primary",
+      "birimAdiCandidates": [
+        "H11"
+      ],
+      "totalCandidates": 22,
+      "finalMatchedCount": 1,
+      "zeroResultReason": null,
+      "compatibilityFilterApplied": true,
+      "compatibilityFilteredOutCount": 0,
+      "contentRerankApplied": true,
+      "contentRerankCount": 22,
+      "simpleQualityScore": 95,
+      "qualityWarnings": [],
+      "strictPrecisionGateApplied": true,
+      "strictPrecisionThreshold": 70,
+      "searchPhrase": "+\"cari hesap\" +\"itirazin iptali\" +\"IIK 67\"",
+      "searchPhraseSource": "packet_search_variant",
+      "searchVariantMode": "registry_case_type",
+      "selectedQueryVariant": "+\"cari hesap\" +\"itirazin iptali\" +\"IIK 67\"",
+      "searchVariantAttempts": [
+        {
+          "query": "+\"cari hesap\" +\"itirazin iptali\" +\"IIK 67\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H11",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 5611,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "+\"ticari defter\" +\"fatura\" +\"icra inkar tazminati\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H11",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 1068,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "+\"mutabakat\" +\"cari hesap\" +\"alacagin likit olmasi\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H11",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 895,
+          "timeoutMs": 12000
+        }
+      ],
+      "selectedBirimAdi": "H11",
+      "firstSuccessfulBirimAdi": "H11",
+      "acceptedTopResultDaireler": [
+        "11. Hukuk Dairesi"
+      ],
+      "rejectionReasons": [],
+      "sourceCoverageStatus": "ok",
+      "phaseAttemptSummary": {
+        "primaryAttemptCount": 3,
+        "secondaryAttemptCount": 0
+      },
+      "rateLimitedAttemptCount": 0,
+      "cliVariantLimitApplied": 3,
+      "cliBudgetMs": 30000,
+      "cliElapsedMs": 28580,
+      "cliBudgetExceeded": false
+    },
+    "topResults": [
+      {
+        "title": "11. Hukuk Dairesi 2026/581 E. 2026/431 K.",
+        "daire": "11. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "teliği ve temyizin kapsamının, ödünç sözleşmesinden kaynaklanan alacağın tahsili için başlatılan icra takibine vaki itirazın iptali istemine ilişkin olduğu, tarafların tacir sıfatının bulunmadığı ve Asliye Hukuk Mahkemes"
+      }
+    ],
+    "zeroResultMessage": null,
+    "error": null
+  },
+  {
+    "id": "icra-haciz",
+    "label": "Icra prosedur haciz sikayet",
+    "batchId": "batch-commercial-icra-yargitay",
+    "scenarioIndexInBatch": 4,
+    "startedAt": "2026-03-19T15:27:10.510Z",
+    "finishedAt": "2026-03-19T15:27:47.065Z",
+    "durationMs": 36555,
+    "cooldownAppliedMs": 22000,
+    "encountered429": false,
+    "resultCount": 14,
+    "detectedDomain": "icra",
+    "retrievalDiagnostics": {
+      "backendMode": "simple_bedesten",
+      "queryVariants": [
+        "+\"haciz\" +\"haczedilemezlik\" +\"IIK 82\"",
+        "+\"maas haczi\" +\"sinir\" +\"dortte bir\"",
+        "haciz sikayet icra mahkemesi itirazin kaldirilmasi kambiyo takibi"
+      ],
+      "fallbackUsed": false,
+      "fallbackReason": null,
+      "upstream": "bedesten",
+      "provider": "cli",
+      "targetSources": [
+        "YARGITAYKARARI"
+      ],
+      "primaryDomain": "icra",
+      "packetApplied": true,
+      "packetPrimaryDomain": "icra",
+      "packetCaseType": "icra_haciz",
+      "packetRequiredConceptCount": 3,
+      "routingMode": "hard_primary",
+      "birimAdiCandidates": [
+        "H12"
+      ],
+      "totalCandidates": 30,
+      "finalMatchedCount": 14,
+      "zeroResultReason": null,
+      "compatibilityFilterApplied": true,
+      "compatibilityFilteredOutCount": 0,
+      "contentRerankApplied": true,
+      "contentRerankCount": 25,
+      "simpleQualityScore": 100,
+      "qualityWarnings": [],
+      "strictPrecisionGateApplied": true,
+      "strictPrecisionThreshold": 70,
+      "searchPhrase": "+\"haciz\" +\"haczedilemezlik\" +\"IIK 82\"",
+      "searchPhraseSource": "packet_search_variant",
+      "searchVariantMode": "registry_case_type",
+      "selectedQueryVariant": "+\"haciz\" +\"haczedilemezlik\" +\"IIK 82\"",
+      "searchVariantAttempts": [
+        {
+          "query": "+\"haciz\" +\"haczedilemezlik\" +\"IIK 82\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H12",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 8855,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "+\"maas haczi\" +\"sinir\" +\"dortte bir\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "H12",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 2169,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "haciz sikayet icra mahkemesi itirazin kaldirilmasi kambiyo takibi",
+          "mode": "required_concepts:primary",
+          "birimAdi": "H12",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 1834,
+          "timeoutMs": 12000
+        }
+      ],
+      "selectedBirimAdi": "H12",
+      "firstSuccessfulBirimAdi": "H12",
+      "acceptedTopResultDaireler": [
+        "12. Hukuk Dairesi"
+      ],
+      "rejectionReasons": [],
+      "sourceCoverageStatus": "ok",
+      "phaseAttemptSummary": {
+        "primaryAttemptCount": 3,
+        "secondaryAttemptCount": 0
+      },
+      "rateLimitedAttemptCount": 0,
+      "cliVariantLimitApplied": 3,
+      "cliBudgetMs": 30000,
+      "cliElapsedMs": 36172,
+      "cliBudgetExceeded": false
+    },
+    "topResults": [
+      {
+        "title": "12. Hukuk Dairesi 2025/6906 E. 2025/8005 K.",
+        "daire": "12. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "ten sonra işin gereği görüşülüp düşünüldü: Örnek 10 kambiyo takibinde 3. kişi şikayet edenin İİK 89/1 ve 89/2 haciz ihbarnamelerinin iptali istemi ile icra mahkemesine başvurduğu, icra mahkemesince şikâyetin kabulü ile h"
+      },
+      {
+        "title": "12. Hukuk Dairesi 2025/6196 E. 2025/7354 K.",
+        "daire": "12. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "rihinde oy çokluğuyla karar verildi. Üye Dr. ...'in Karşı Oy Yazısı; Şikayetçi üçüncü kişi kendisine gönderilen haciz ihbarnamelerinin iptali ile dosyadaki borçlu kaydının silinmesi için şikayet yolu ile icra mahkemesine"
+      },
+      {
+        "title": "12. Hukuk Dairesi 2025/4680 E. 2025/6736 K.",
+        "daire": "12. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "arak borçlunun bankadaki alacaklarına, döner sermaye alacaklarına ve alacaklı olduğu icra takip dosyalarına haciz konulması ve haciz ihbarnamesi gönderilmesini talep ettiği, icra müdürlüğünce 27.06.20 24... .07.2024 tari"
+      },
+      {
+        "title": "12. Hukuk Dairesi 2025/3396 E. 2025/5880 K.",
+        "daire": "12. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "veya dava dosyası muameleden kaldırılıp da bir ay içinde dava yenilenmezse veya davasında HAKSIZ çıkarsa ihtiyati haciz hükümsüz kalır ve alâkadarlar isterse lâzım gelenlere bildirilir.” şeklinde düzenlenmiştir. İcra ve "
+      },
+      {
+        "title": "12. Hukuk Dairesi 2025/7950 E. 2025/7670 K.",
+        "daire": "12. Hukuk Dairesi",
+        "source": "yargitay",
+        "summaryPreview": "kapsadığı nazara alınarak, İİK’nın 45. maddesine aykırı olarak takip başlatıldığı gerekçesiyle şikayete konu genel haciz yoluyla ilamsız icra takibinin iptaline hükmedilmesi gerekirken, yanılgılı değerlendirme ve eksik i"
+      }
+    ],
+    "zeroResultMessage": null,
+    "error": null
+  },
+  {
+    "id": "idare-imar",
+    "label": "Idare imar para cezasi yikim",
+    "batchId": "batch-danistay-anayasa",
+    "scenarioIndexInBatch": 0,
+    "startedAt": "2026-03-19T15:28:09.073Z",
+    "finishedAt": "2026-03-19T15:28:19.585Z",
+    "durationMs": 10512,
+    "cooldownAppliedMs": 5000,
+    "encountered429": false,
+    "resultCount": 0,
+    "detectedDomain": "idare",
+    "retrievalDiagnostics": {
+      "backendMode": "simple_bedesten",
+      "queryVariants": [
+        "+\"imar para cezasi\" +\"orantililik\" +\"iptal\"",
+        "+\"imar plani\" +\"iptal\" +\"kazanilmis hak\"",
+        "imar para cezasi yikim karari ruhsat iptali kazanilmis hak"
+      ],
+      "fallbackUsed": false,
+      "fallbackReason": null,
+      "upstream": "bedesten",
+      "provider": "cli",
+      "targetSources": [
+        "DANISTAYKARAR"
+      ],
+      "primaryDomain": "idare",
+      "packetApplied": true,
+      "packetPrimaryDomain": "idare",
+      "packetCaseType": "idare_imar",
+      "packetRequiredConceptCount": 2,
+      "routingMode": "hard_primary",
+      "birimAdiCandidates": [
+        "D6"
+      ],
+      "totalCandidates": 10,
+      "finalMatchedCount": 0,
+      "zeroResultReason": "no_candidates",
+      "compatibilityFilterApplied": true,
+      "compatibilityFilteredOutCount": 0,
+      "contentRerankApplied": true,
+      "contentRerankCount": 10,
+      "simpleQualityScore": 0,
+      "qualityWarnings": [
+        "no_candidates"
+      ],
+      "strictPrecisionGateApplied": true,
+      "strictPrecisionThreshold": 70,
+      "searchPhrase": "+\"imar para cezasi\" +\"orantililik\" +\"iptal\"",
+      "searchPhraseSource": "packet_search_variant",
+      "searchVariantMode": "registry_case_type",
+      "selectedQueryVariant": "+\"imar para cezasi\" +\"orantililik\" +\"iptal\"",
+      "searchVariantAttempts": [
+        {
+          "query": "+\"imar para cezasi\" +\"orantililik\" +\"iptal\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "D6",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 812,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "+\"imar plani\" +\"iptal\" +\"kazanilmis hak\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "D6",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 799,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "imar para cezasi yikim karari ruhsat iptali kazanilmis hak",
+          "mode": "required_concepts:primary",
+          "birimAdi": "D6",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 854,
+          "timeoutMs": 12000
+        }
+      ],
+      "selectedBirimAdi": "D6",
+      "firstSuccessfulBirimAdi": "D6",
+      "acceptedTopResultDaireler": [],
+      "rejectionReasons": [
+        "no_candidates"
+      ],
+      "sourceCoverageStatus": "no_candidates",
+      "phaseAttemptSummary": {
+        "primaryAttemptCount": 3,
+        "secondaryAttemptCount": 0
+      },
+      "rateLimitedAttemptCount": 0,
+      "cliVariantLimitApplied": 3,
+      "cliBudgetMs": 30000,
+      "cliElapsedMs": 10481,
+      "cliBudgetExceeded": false
+    },
+    "topResults": [],
+    "zeroResultMessage": null,
+    "error": null
+  },
+  {
+    "id": "idare-kamu-ihale",
+    "label": "Idare kamu ihale 4734",
+    "batchId": "batch-danistay-anayasa",
+    "scenarioIndexInBatch": 1,
+    "startedAt": "2026-03-19T15:28:24.588Z",
+    "finishedAt": "2026-03-19T15:28:53.005Z",
+    "durationMs": 28417,
+    "cooldownAppliedMs": 5000,
+    "encountered429": false,
+    "resultCount": 0,
+    "detectedDomain": "idare",
+    "retrievalDiagnostics": {
+      "backendMode": "simple_bedesten",
+      "queryVariants": [
+        "+\"ihale iptal\" +\"kamu ihale\" +\"usul\"",
+        "+\"4734\" +\"rekabet\" +\"iptal\"",
+        "kamu ihale 4734 ihale iptal rekabet"
+      ],
+      "fallbackUsed": false,
+      "fallbackReason": null,
+      "upstream": "bedesten",
+      "provider": "cli",
+      "targetSources": [
+        "DANISTAYKARAR"
+      ],
+      "primaryDomain": "idare",
+      "packetApplied": true,
+      "packetPrimaryDomain": "idare",
+      "packetCaseType": "idare_kamu_ihale",
+      "packetRequiredConceptCount": 2,
+      "routingMode": "hard_primary",
+      "birimAdiCandidates": [
+        "D13"
+      ],
+      "totalCandidates": 10,
+      "finalMatchedCount": 0,
+      "zeroResultReason": "no_candidates",
+      "compatibilityFilterApplied": true,
+      "compatibilityFilteredOutCount": 0,
+      "contentRerankApplied": true,
+      "contentRerankCount": 10,
+      "simpleQualityScore": 0,
+      "qualityWarnings": [
+        "no_candidates"
+      ],
+      "strictPrecisionGateApplied": true,
+      "strictPrecisionThreshold": 70,
+      "searchPhrase": "+\"ihale iptal\" +\"kamu ihale\" +\"usul\"",
+      "searchPhraseSource": "packet_search_variant",
+      "searchVariantMode": "registry_case_type",
+      "selectedQueryVariant": "+\"ihale iptal\" +\"kamu ihale\" +\"usul\"",
+      "searchVariantAttempts": [
+        {
+          "query": "+\"ihale iptal\" +\"kamu ihale\" +\"usul\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "D13",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 1098,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "+\"4734\" +\"rekabet\" +\"iptal\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "D13",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 908,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "kamu ihale 4734 ihale iptal rekabet",
+          "mode": "required_concepts:primary",
+          "birimAdi": "D13",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 3401,
+          "timeoutMs": 12000
+        }
+      ],
+      "selectedBirimAdi": "D13",
+      "firstSuccessfulBirimAdi": "D13",
+      "acceptedTopResultDaireler": [],
+      "rejectionReasons": [
+        "no_candidates"
+      ],
+      "sourceCoverageStatus": "no_candidates",
+      "phaseAttemptSummary": {
+        "primaryAttemptCount": 3,
+        "secondaryAttemptCount": 0
+      },
+      "rateLimitedAttemptCount": 0,
+      "cliVariantLimitApplied": 3,
+      "cliBudgetMs": 30000,
+      "cliElapsedMs": 28393,
+      "cliBudgetExceeded": false
+    },
+    "topResults": [],
+    "zeroResultMessage": null,
+    "error": null
+  },
+  {
+    "id": "idare-disiplin",
+    "label": "Idare disiplin savunma hakki",
+    "batchId": "batch-danistay-anayasa",
+    "scenarioIndexInBatch": 2,
+    "startedAt": "2026-03-19T15:28:58.039Z",
+    "finishedAt": "2026-03-19T15:29:38.229Z",
+    "durationMs": 40190,
+    "cooldownAppliedMs": 45000,
+    "encountered429": true,
+    "resultCount": 0,
+    "detectedDomain": "idare",
+    "retrievalDiagnostics": {
+      "backendMode": "simple_bedesten",
+      "queryVariants": [
+        "+\"disiplin cezasi\" +\"savunma hakki\" +\"iptal\"",
+        "+\"memurluk\" +\"disiplin\" +\"olcululuk\"",
+        "disiplin cezasi savunma hakki ihrac memurluk"
+      ],
+      "fallbackUsed": false,
+      "fallbackReason": null,
+      "upstream": "bedesten",
+      "provider": "cli",
+      "targetSources": [
+        "DANISTAYKARAR"
+      ],
+      "primaryDomain": "idare",
+      "packetApplied": true,
+      "packetPrimaryDomain": "idare",
+      "packetCaseType": "idare_disiplin",
+      "packetRequiredConceptCount": 2,
+      "routingMode": "hard_primary",
+      "birimAdiCandidates": [
+        "D12"
+      ],
+      "totalCandidates": 14,
+      "finalMatchedCount": 0,
+      "zeroResultReason": "no_candidates",
+      "compatibilityFilterApplied": true,
+      "compatibilityFilteredOutCount": 0,
+      "contentRerankApplied": true,
+      "contentRerankCount": 14,
+      "simpleQualityScore": 0,
+      "qualityWarnings": [
+        "no_candidates"
+      ],
+      "strictPrecisionGateApplied": true,
+      "strictPrecisionThreshold": 70,
+      "searchPhrase": "+\"disiplin cezasi\" +\"savunma hakki\" +\"iptal\"",
+      "searchPhraseSource": "packet_search_variant",
+      "searchVariantMode": "registry_case_type",
+      "selectedQueryVariant": "+\"disiplin cezasi\" +\"savunma hakki\" +\"iptal\"",
+      "searchVariantAttempts": [
+        {
+          "query": "+\"disiplin cezasi\" +\"savunma hakki\" +\"iptal\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "D12",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 10665,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "+\"memurluk\" +\"disiplin\" +\"olcululuk\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "D12",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 5356,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "disiplin cezasi savunma hakki ihrac memurluk",
+          "mode": "required_concepts:primary",
+          "birimAdi": "D12",
+          "resultCount": 0,
+          "status": "rate_limited",
+          "durationMs": 5905,
+          "timeoutMs": 12000,
+          "errorCode": "yargi_cli_command_failed",
+          "errorMessage": "HTTP 429: Too Many Requests"
+        }
+      ],
+      "selectedBirimAdi": "D12",
+      "firstSuccessfulBirimAdi": "D12",
+      "acceptedTopResultDaireler": [],
+      "rejectionReasons": [
+        "rate_limited"
+      ],
+      "sourceCoverageStatus": "rate_limited",
+      "phaseAttemptSummary": {
+        "primaryAttemptCount": 3,
+        "secondaryAttemptCount": 0
+      },
+      "rateLimitedAttemptCount": 1,
+      "cliVariantLimitApplied": 3,
+      "cliBudgetMs": 30000,
+      "cliElapsedMs": 39971,
+      "cliBudgetExceeded": false
+    },
+    "topResults": [],
+    "zeroResultMessage": null,
+    "error": null
+  },
+  {
+    "id": "vergi-kdv",
+    "label": "Vergi KDV sahte fatura tarhiyat",
+    "batchId": "batch-danistay-anayasa",
+    "scenarioIndexInBatch": 3,
+    "startedAt": "2026-03-19T15:30:23.246Z",
+    "finishedAt": "2026-03-19T15:30:40.096Z",
+    "durationMs": 16850,
+    "cooldownAppliedMs": 5000,
+    "encountered429": false,
+    "resultCount": 10,
+    "detectedDomain": "vergi",
+    "retrievalDiagnostics": {
+      "backendMode": "simple_bedesten",
+      "queryVariants": [
+        "+\"sahte fatura\" +\"KDV indirimi\" +\"vergi ziya\"",
+        "+\"re'sen tarhiyat\" +\"ispat yuku\" +\"mukellef\"",
+        "+\"vergi inceleme raporu\" +\"sahte belge\" +\"KDV\""
+      ],
+      "fallbackUsed": false,
+      "fallbackReason": null,
+      "upstream": "bedesten",
+      "provider": "cli",
+      "targetSources": [
+        "DANISTAYKARAR"
+      ],
+      "primaryDomain": "vergi",
+      "packetApplied": true,
+      "packetPrimaryDomain": "vergi",
+      "packetCaseType": "vergi_kdv_sahte_fatura",
+      "packetRequiredConceptCount": 3,
+      "routingMode": "hard_primary",
+      "birimAdiCandidates": [
+        "D3"
+      ],
+      "totalCandidates": 10,
+      "finalMatchedCount": 10,
+      "zeroResultReason": null,
+      "compatibilityFilterApplied": true,
+      "compatibilityFilteredOutCount": 0,
+      "contentRerankApplied": true,
+      "contentRerankCount": 10,
+      "simpleQualityScore": 100,
+      "qualityWarnings": [],
+      "strictPrecisionGateApplied": true,
+      "strictPrecisionThreshold": 70,
+      "searchPhrase": "+\"sahte fatura\" +\"KDV indirimi\" +\"vergi ziya\"",
+      "searchPhraseSource": "packet_search_variant",
+      "searchVariantMode": "registry_case_type",
+      "selectedQueryVariant": "+\"sahte fatura\" +\"KDV indirimi\" +\"vergi ziya\"",
+      "searchVariantAttempts": [
+        {
+          "query": "+\"sahte fatura\" +\"KDV indirimi\" +\"vergi ziya\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "D3",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 2808,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "+\"re'sen tarhiyat\" +\"ispat yuku\" +\"mukellef\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "D3",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 6450,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "+\"vergi inceleme raporu\" +\"sahte belge\" +\"KDV\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "D3",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 851,
+          "timeoutMs": 12000
+        }
+      ],
+      "selectedBirimAdi": "D3",
+      "firstSuccessfulBirimAdi": "D3",
+      "acceptedTopResultDaireler": [
+        "3. Daire"
+      ],
+      "rejectionReasons": [],
+      "sourceCoverageStatus": "ok",
+      "phaseAttemptSummary": {
+        "primaryAttemptCount": 3,
+        "secondaryAttemptCount": 0
+      },
+      "rateLimitedAttemptCount": 0,
+      "cliVariantLimitApplied": 3,
+      "cliBudgetMs": 30000,
+      "cliElapsedMs": 16814,
+      "cliBudgetExceeded": false
+    },
+    "topResults": [
+      {
+        "title": "3. Daire 2023/6527 E. 2025/4064 K.",
+        "daire": "3. Daire",
+        "source": "danistay",
+        "summaryPreview": "zulması istenilmektedir. YARGILAMA SÜRECİ: Dava konusu istem: Motorlu araç alım satımıyla uğraşan davacı şirket adına, sahte fatura düzenlemek suretiyle paravan firmalara ilk iktisap kapsamında satışını yaptığı araçların"
+      },
+      {
+        "title": "3. Daire 2023/6529 E. 2025/4065 K.",
+        "daire": "3. Daire",
+        "source": "danistay",
+        "summaryPreview": "ilmektedir. YARGILAMA SÜRECİ: Dava konusu istem: Motorlu araç alım satımıyla uğraşan davacı şirket adına, 2017 yılında sahte fatura düzenlemek suretiyle paravan firmalara ilk iktisap kapsamında satışını yaptığı araçların"
+      },
+      {
+        "title": "3. Daire 2023/3210 E. 2025/4060 K.",
+        "daire": "3. Daire",
+        "source": "danistay",
+        "summaryPreview": "kapsamında %50 kesinti yapmak suretiyle beyan ettiği tahakkuklara ilişkin olduğu, sözü edilen şirket hakkında komisyon karşılığı sahte fatura düzenlediğinden bahisle 2018 yılının Mart ila Aralık dönemleri için re'sen sal"
+      },
+      {
+        "title": "3. Daire 2023/7220 E. 2025/4098 K.",
+        "daire": "3. Daire",
+        "source": "danistay",
+        "summaryPreview": "Ocak dönemi için re'sen salınan katma değer vergisi ile tekerrür hükümleri uygulanmak suretiyle artırılarak kesilen bir kat vergi ziyaı cezasının kaldırılması istemine ilişkindir. İlk Derece Mahkemesi kararının özeti: Da"
+      },
+      {
+        "title": "3. Daire 2023/7216 E. 2025/4099 K.",
+        "daire": "3. Daire",
+        "source": "danistay",
+        "summaryPreview": "0 yılının Temmuz dönemi için re’sen salınan katma değer vergisi ile tekerrür hükümleri uyarınca artırılarak kesilen bir kat vergi ziyaı cezasının kaldırılması istemine ilişkindir. İlk Derece Mahkemesi kararının özeti: Da"
+      }
+    ],
+    "zeroResultMessage": null,
+    "error": null
+  },
+  {
+    "id": "vergi-gumruk",
+    "label": "Vergi gumruk otv ithalat",
+    "batchId": "batch-danistay-anayasa",
+    "scenarioIndexInBatch": 4,
+    "startedAt": "2026-03-19T15:30:45.099Z",
+    "finishedAt": "2026-03-19T15:30:58.520Z",
+    "durationMs": 13421,
+    "cooldownAppliedMs": 5000,
+    "encountered429": false,
+    "resultCount": 17,
+    "detectedDomain": "vergi",
+    "retrievalDiagnostics": {
+      "backendMode": "simple_bedesten",
+      "queryVariants": [
+        "+\"gumruk\" +\"otv\" +\"tarhiyat\"",
+        "+\"ithalat\" +\"kdv\" +\"gumruk\"",
+        "gumruk otv ithalat tarhiyat"
+      ],
+      "fallbackUsed": false,
+      "fallbackReason": null,
+      "upstream": "bedesten",
+      "provider": "cli",
+      "targetSources": [
+        "DANISTAYKARAR"
+      ],
+      "primaryDomain": "vergi",
+      "packetApplied": true,
+      "packetPrimaryDomain": "vergi",
+      "packetCaseType": "vergi_gumruk_otv",
+      "packetRequiredConceptCount": 2,
+      "routingMode": "hard_primary",
+      "birimAdiCandidates": [
+        "D7"
+      ],
+      "totalCandidates": 20,
+      "finalMatchedCount": 17,
+      "zeroResultReason": null,
+      "compatibilityFilterApplied": true,
+      "compatibilityFilteredOutCount": 0,
+      "contentRerankApplied": true,
+      "contentRerankCount": 20,
+      "simpleQualityScore": 100,
+      "qualityWarnings": [],
+      "strictPrecisionGateApplied": true,
+      "strictPrecisionThreshold": 70,
+      "searchPhrase": "+\"gumruk\" +\"otv\" +\"tarhiyat\"",
+      "searchPhraseSource": "packet_search_variant",
+      "searchVariantMode": "registry_case_type",
+      "selectedQueryVariant": "+\"gumruk\" +\"otv\" +\"tarhiyat\"",
+      "searchVariantAttempts": [
+        {
+          "query": "+\"gumruk\" +\"otv\" +\"tarhiyat\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "D7",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 1470,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "+\"ithalat\" +\"kdv\" +\"gumruk\"",
+          "mode": "registry_case_type:primary",
+          "birimAdi": "D7",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 1209,
+          "timeoutMs": 12000
+        },
+        {
+          "query": "gumruk otv ithalat tarhiyat",
+          "mode": "required_concepts:primary",
+          "birimAdi": "D7",
+          "resultCount": 10,
+          "status": "ok",
+          "durationMs": 804,
+          "timeoutMs": 12000
+        }
+      ],
+      "selectedBirimAdi": "D7",
+      "firstSuccessfulBirimAdi": "D7",
+      "acceptedTopResultDaireler": [
+        "7. Daire"
+      ],
+      "rejectionReasons": [],
+      "sourceCoverageStatus": "ok",
+      "phaseAttemptSummary": {
+        "primaryAttemptCount": 3,
+        "secondaryAttemptCount": 0
+      },
+      "rateLimitedAttemptCount": 0,
+      "cliVariantLimitApplied": 3,
+      "cliBudgetMs": 30000,
+      "cliElapsedMs": 13391,
+      "cliBudgetExceeded": false
+    },
+    "topResults": [
+      {
+        "title": "7. Daire 2023/3863 E. 2025/2057 K.",
+        "daire": "7. Daire",
+        "source": "danistay",
+        "summaryPreview": "onunun \"Diğerleri\" kategorisinde yer aldığından bahisle yapılan kısmı yönünden, 27/07/2005 tarihli Resmi Gazetede yayımı ile yürürlüğe giren 8 Seri Nolu Gümrük Genel Tebliği eki sınıflandırma kararında, 1+1, 1+3, 1+4 vey"
+      },
+      {
+        "title": "7. Daire 2025/1265 E. 2025/2210 K.",
+        "daire": "7. Daire",
+        "source": "danistay",
+        "summaryPreview": "emleri gerçekleştirenlerin, bu işlemlerden önce özel tüketim vergisinin ödendiğini gösteren belgeleri aramak zorunda oldukları, bu mecburiyete uymamak suretiyle gerekli verginin ödenmesinden önce işlem yapan gümrük memur"
+      },
+      {
+        "title": "7. Daire 2025/1390 E. 2025/2211 K.",
+        "daire": "7. Daire",
+        "source": "danistay",
+        "summaryPreview": "şlemleri gerçekleştirenlerin, bu işlemlerden önce özel tüketim vergisinin ödendiğini gösteren belgeleri aramak zorunda oldukları, bu mecburiyete uymamak suretiyle gerekli verginin ödenmesinden önce işlem yapan gümrük mem"
+      },
+      {
+        "title": "7. Daire 2023/3419 E. 2025/2052 K.",
+        "daire": "7. Daire",
+        "source": "danistay",
+        "summaryPreview": "Mahkemesi kararının özeti: Gelir İdaresi Başkanlığının... tarih ve ... sayılı yazısının ekindeki listenin incelenmesinden, İzmir ilinde ÖTV (I) sayılı liste mükelleflerine ilişkin tüm iş ve işlemler bakımından Hasan Tahs"
+      },
+      {
+        "title": "7. Daire 2025/639 E. 2025/2479 K.",
+        "daire": "7. Daire",
+        "source": "danistay",
+        "summaryPreview": "639 Karar No : 2025/2479 TEMYİZ EDEN (DAVACI) : ... VEKİLİ : Av. ... KARŞI TARAF (DAVALI) : ... Bakanlığı adına ... Gümrük Müdürlüğü VEKİLİ : Av. ... İSTEMİN KONUSU : ... Bölge İdare Mahkemesi ... Vergi Dava Dairesinin ."
+      }
+    ],
+    "zeroResultMessage": null,
+    "error": null
+  },
+  {
+    "id": "anayasa-bireysel-basvuru",
+    "label": "Anayasa bireysel basvuru makul sure",
+    "batchId": "batch-danistay-anayasa",
+    "scenarioIndexInBatch": 5,
+    "startedAt": "2026-03-19T15:31:03.528Z",
+    "finishedAt": "2026-03-19T15:31:10.367Z",
+    "durationMs": 6839,
+    "cooldownAppliedMs": 0,
+    "encountered429": false,
+    "resultCount": 8,
+    "detectedDomain": "anayasa",
+    "retrievalDiagnostics": {
+      "backendMode": "simple_bedesten",
+      "queryVariants": [
+        "+\"bireysel basvuru\" +\"makul sure\" +\"adil yargilanma\"",
+        "+\"bireysel basvuru\" +\"makul sure\" +ihlal",
+        "+\"mahkemesi bireysel basvurusunda\" +\"tazminat denetimi bireysel\" +\"anayasa mahkemesi bireysel\"",
+        "+\"bireysel basvuru\" +\"makul sure\" +\"hak ihlali\"",
+        "+\"makul surede yargilanma\" +\"manevi tazminat\" +\"ihlal\""
+      ],
+      "fallbackUsed": false,
+      "fallbackReason": null,
+      "upstream": "bedesten",
+      "provider": "http",
+      "targetSources": [
+        "ANAYASA"
+      ],
+      "primaryDomain": "anayasa",
+      "packetApplied": true,
+      "packetPrimaryDomain": "anayasa",
+      "packetCaseType": "anayasa_bireysel_basvuru_makul_sure",
+      "packetRequiredConceptCount": 3,
+      "routingMode": "source_first",
+      "birimAdiCandidates": [],
+      "totalCandidates": 8,
+      "finalMatchedCount": 8,
+      "zeroResultReason": null,
+      "compatibilityFilterApplied": false,
+      "compatibilityFilteredOutCount": 0,
+      "contentRerankApplied": true,
+      "contentRerankCount": 8,
+      "simpleQualityScore": 100,
+      "qualityWarnings": [
+        "negative_match_bias"
+      ],
+      "strictPrecisionGateApplied": true,
+      "strictPrecisionThreshold": 70,
+      "searchPhrase": "+\"bireysel basvuru\" +\"makul sure\" +\"adil yargilanma\"",
+      "searchPhraseSource": null,
+      "searchVariantMode": null,
+      "selectedQueryVariant": "+\"bireysel basvuru\" +\"makul sure\" +\"adil yargilanma\"",
+      "searchVariantAttempts": [],
+      "selectedBirimAdi": null,
+      "firstSuccessfulBirimAdi": null,
+      "acceptedTopResultDaireler": [
+        "Anayasa Mahkemesi"
+      ],
+      "rejectionReasons": [],
+      "sourceCoverageStatus": "ok",
+      "phaseAttemptSummary": {
+        "primary_narrow": {
+          "queryCount": 3,
+          "birimCount": 0
+        }
+      },
+      "rateLimitedAttemptCount": 0,
+      "cliBudgetExceeded": false
+    },
+    "topResults": [
+      {
+        "title": "Nevriye Kuruç [GK], B. No: 2021/58970, 5/7/2022",
+        "daire": "Anayasa Mahkemesi",
+        "source": "anayasa",
+        "summaryPreview": "T.C. Anayasa Mahkemesi - - - **- Norm Denetimi - Bireysel Başvuru - Yüce Divan - Siyasi Parti Kapatma, İhtar , Mali Denetim ve Değişik İşler - Yasama Dokunulmazlığı ve Milletvekilliğinin Düşmesi FİLTRELER - KELİME ARA Ke"
+      },
+      {
+        "title": "♦ (Koray Erdoğan, B. No: 2013/1989, 10/3/2016)",
+        "daire": "Anayasa Mahkemesi",
+        "source": "anayasa",
+        "summaryPreview": "T.C. Anayasa Mahkemesi - - - **- Norm Denetimi - Bireysel Başvuru - Yüce Divan - Siyasi Parti Kapatma, İhtar , Mali Denetim ve Değişik İşler - Yasama Dokunulmazlığı ve Milletvekilliğinin Düşmesi FİLTRELER - KELİME ARA Ke"
+      },
+      {
+        "title": "♦ (Abbas Emre, B. No: 2014/5005, 6/1/2016)",
+        "daire": "Anayasa Mahkemesi",
+        "source": "anayasa",
+        "summaryPreview": "T.C. Anayasa Mahkemesi - - - **- Norm Denetimi - Bireysel Başvuru - Yüce Divan - Siyasi Parti Kapatma, İhtar , Mali Denetim ve Değişik İşler - Yasama Dokunulmazlığı ve Milletvekilliğinin Düşmesi FİLTRELER - KELİME ARA Ke"
+      },
+      {
+        "title": "♦ (Güher Ergun ve diğerleri, B. No: 2012/13, 2/7/2013)",
+        "daire": "Anayasa Mahkemesi",
+        "source": "anayasa",
+        "summaryPreview": "T.C. Anayasa Mahkemesi - - - **- Norm Denetimi - Bireysel Başvuru - Yüce Divan - Siyasi Parti Kapatma, İhtar , Mali Denetim ve Değişik İşler - Yasama Dokunulmazlığı ve Milletvekilliğinin Düşmesi FİLTRELER - KELİME ARA Ke"
+      },
+      {
+        "title": "Anayasa Mahkemesi Karari",
+        "daire": "Anayasa Mahkemesi",
+        "source": "anayasa",
+        "summaryPreview": "T.C. Anayasa Mahkemesi - - - **- Norm Denetimi - Bireysel Başvuru - Yüce Divan - Siyasi Parti Kapatma, İhtar , Mali Denetim ve Değişik İşler - Yasama Dokunulmazlığı ve Milletvekilliğinin Düşmesi FİLTRELER - KELİME ARA Ke"
+      }
+    ],
+    "zeroResultMessage": null,
+    "error": null
+  }
+]

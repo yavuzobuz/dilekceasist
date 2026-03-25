@@ -1,0 +1,338 @@
+{
+  "summary": {
+    "runAt": "12.03.2026 01:32:11",
+    "total": 10,
+    "passCount": 8,
+    "borderlineCount": 0,
+    "failCount": 2,
+    "passRate": 80,
+    "avgDurationMs": 27247
+  },
+  "results": [
+    {
+      "order": 1,
+      "branch": "Is Hukuku",
+      "id": "call-center-gece-mesai-yeni",
+      "label": "Call center gece mesaisi ve bordro uyusmazligi",
+      "rawQuery": "Davaci isci, bir cagr? merkezinde yaklasik uc yil boyunca agirlikli olarak gece vardiyalarinda calistigini, haftada alti gun fiilen on bir ila on iki saat mesai yaptigini, sistemde tutulan puantajlarla gercek calisma saatlerinin bilincli sekilde eksik gosterildigini, resmi bordrolarda fazla mesai ve hafta tatili ucretlerinin yer almadigini, cikista da kullanilmayan yillik izinlerinin odenmedigini ileri surerek fazla mesai, hafta tatili, genel tatil ve yillik izin ucreti talep etmektedir.",
+      "durationMs": 31067,
+      "statusCode": 200,
+      "verdict": "pass",
+      "aiLegalArea": "is_hukuku",
+      "requiredConcepts": [
+        "fazla mesai",
+        "hafta tatili",
+        "yıllık izin ücreti",
+        "ulusal bayram genel tatil",
+        "gerçek çalışma süresi"
+      ],
+      "supportConcepts": [
+        "puantaj kayıtları",
+        "bordro",
+        "tanık beyanı",
+        "iş sözleşmesi"
+      ],
+      "targetSources": [
+        "yargitay"
+      ],
+      "resultCount": 10,
+      "topResult": {
+        "source": "yargitay",
+        "title": "Yargıtay Kararı 9. Hukuk Dairesi",
+        "daire": "9. Hukuk Dairesi",
+        "matchedKeywordCount": 5,
+        "semanticScore": 0.6918,
+        "retrievalStage": "full_text"
+      },
+      "error": null
+    },
+    {
+      "order": 2,
+      "branch": "Is Hukuku",
+      "id": "banka-baski-istifa-yeni",
+      "label": "Baski ile istifa ve ikale tartismasi",
+      "rawQuery": "Banka subesinde musteri temsilcisi olarak calisan davaci, performans dusuklugu bahanesiyle surekli baski gordugunu, yoneticilerin kendisine onceden hazirlanmis istifa ve ikale metinleri imzalatmaya calistigini, kabul etmemesi halinde tazminatsiz cikisla tehdit edildigini, sonunda iradesi sakatlanmis sekilde imza attigini belirterek istifa ve ikalenin gecersiz sayilmasini, kidem ve ihbar tazminati ile diger iscilik alacaklarinin tahsilini istemektedir.",
+      "durationMs": 36535,
+      "statusCode": 200,
+      "verdict": "pass",
+      "aiLegalArea": "is_hukuku",
+      "requiredConcepts": [
+        "istifa",
+        "ikale",
+        "irade fesadı",
+        "geçersizlik",
+        "kıdem tazminatı"
+      ],
+      "supportConcepts": [
+        "baskı",
+        "tehdit",
+        "iş sözleşmesi",
+        "işçilik alacakları"
+      ],
+      "targetSources": [
+        "yargitay"
+      ],
+      "resultCount": 10,
+      "topResult": {
+        "source": "yargitay",
+        "title": "Yargıtay Kararı 9. Hukuk Dairesi",
+        "daire": "9. Hukuk Dairesi",
+        "matchedKeywordCount": 5,
+        "semanticScore": 0.7111,
+        "retrievalStage": "full_text"
+      },
+      "error": null
+    },
+    {
+      "order": 3,
+      "branch": "Ceza",
+      "id": "gizli-kayit-santaj-yeni",
+      "label": "Gizli ses kaydi ve santaj iddiasi",
+      "rawQuery": "Sanigin, eski is ortagi ile yaptigi ozel nitelikli yuz yuze gorusmeleri tarafin acik rizasi olmaksizin cep telefonuyla kayda aldigi, daha sonra bu ses kayitlarini ifsa etmekle tehdit ederek para ve ticari avantaj talebinde bulundugu, kayitlarin ozel hayatin gizliligini ihlal edip etmedigi ve bu kayitlarin santaj sucu ile birlikte nasil degerlendirilmesi gerektigi tartisilmaktadir.",
+      "durationMs": 35775,
+      "statusCode": 200,
+      "verdict": "pass",
+      "aiLegalArea": "ceza",
+      "requiredConcepts": [
+        "özel hayatın gizliliği",
+        "şantaj",
+        "ses kaydı",
+        "rıza dışı kayıt",
+        "tehdit"
+      ],
+      "supportConcepts": [
+        "ifşa",
+        "menfaat temini",
+        "kişisel veri"
+      ],
+      "targetSources": [
+        "yargitay"
+      ],
+      "resultCount": 8,
+      "topResult": {
+        "source": "yargitay",
+        "title": "Yargıtay Kararı Ceza Genel Kurulu",
+        "daire": "Ceza Genel Kurulu",
+        "matchedKeywordCount": 5,
+        "semanticScore": 0.6993,
+        "retrievalStage": "full_text"
+      },
+      "error": null
+    },
+    {
+      "order": 4,
+      "branch": "Ceza",
+      "id": "bicakli-kavga-mesru-savunma-yeni",
+      "label": "Bicakli kavga ve mesru savunma siniri",
+      "rawQuery": "Gece saatlerinde iki grup arasinda aniden baslayan kavgada sanigin once karsi taraftan yumruk ve tekme ile saldiriya maruz kaldigi, ardindan cebinden cikardigi bicakla birden fazla darbe vurdugu, yaralanan kisinin hayati tehlike gecirdigi olayda eylemin mesru savunma sinirlari icinde kalip kalmadigi, asildigi takdirde haksiz tahrik veya oldurmeye tesebbus yonunden nasil nitelendirilecegi degerlendirilmektedir.",
+      "durationMs": 34680,
+      "statusCode": 200,
+      "verdict": "pass",
+      "aiLegalArea": "ceza",
+      "requiredConcepts": [
+        "kasten öldürme",
+        "meşru savunma",
+        "sınırın aşılması",
+        "haksız tahrik"
+      ],
+      "supportConcepts": [
+        "hayati tehlike",
+        "kasten yaralama",
+        "orantılılık",
+        "ani gelişen olay"
+      ],
+      "targetSources": [
+        "yargitay"
+      ],
+      "resultCount": 2,
+      "topResult": {
+        "source": "yargitay",
+        "title": "Yargıtay Kararı Ceza Genel Kurulu",
+        "daire": "Ceza Genel Kurulu",
+        "matchedKeywordCount": 4,
+        "semanticScore": 0.681,
+        "retrievalStage": "full_text"
+      },
+      "error": null
+    },
+    {
+      "order": 5,
+      "branch": "Ceza",
+      "id": "market-kamera-suphe-yeni",
+      "label": "Market kamerasi, kimlik tespiti ve supheden sanik yararlanir",
+      "rawQuery": "Bir markette raflardan urun aldigi iddia edilen kisiye iliskin tek delilin dusuk cozunurluklu guvenlik kamerasi goruntuleri oldugu, goruntulerde yuz seciminin net olmadigi, herhangi bir parmak izi veya ele gecen urun bulunmadigi, tanik beyanlarinin da kesinlik icermedigi durumda hirsizlik sucu bakimindan kimlik tespiti, delil yeterliligi ve supheden sanik yararlanir ilkesinin uygulanip uygulanmayacagi tartisilmaktadir.",
+      "durationMs": 31108,
+      "statusCode": 200,
+      "verdict": "pass",
+      "aiLegalArea": "ceza",
+      "requiredConcepts": [
+        "hırsızlık",
+        "kimlik tespiti",
+        "delil yetersizliği",
+        "şüpheden sanık yararlanır"
+      ],
+      "supportConcepts": [
+        "güvenlik kamerası görüntüleri",
+        "tanık beyanı",
+        "somut delil",
+        "mahkumiyet için kesin delil"
+      ],
+      "targetSources": [
+        "yargitay"
+      ],
+      "resultCount": 7,
+      "topResult": {
+        "source": "yargitay",
+        "title": "Yargıtay Kararı Ceza Genel Kurulu",
+        "daire": "Ceza Genel Kurulu",
+        "matchedKeywordCount": 3,
+        "semanticScore": 0.6555,
+        "retrievalStage": "full_text"
+      },
+      "error": null
+    },
+    {
+      "order": 6,
+      "branch": "Idare",
+      "id": "tarim-arazisi-prefabrik-yeni",
+      "label": "Tarim arazisinde prefabrik yapi, encumen cezasi ve yikim",
+      "rawQuery": "Davaci, tarim vasifli tasinmazina gecici oldugunu dusundugu prefabrik bir yapi koyduktan sonra belediye tarafindan ruhsatsiz yapilas?ma gerekcesiyle encumen karari ile idari para cezasi verildigini, ayrica yikim ve tahliye islemi tesis edildigini, yapinin tarimsal faaliyetle baglantili oldugunu ve islemin olcululuk ile yetki unsuru yonunden hukuka aykiri bulundugunu ileri surerek iptal ve yurutmenin durdurulmasi isteminde bulunmaktadir.",
+      "durationMs": 274,
+      "statusCode": 500,
+      "verdict": "fail",
+      "aiLegalArea": null,
+      "requiredConcepts": [],
+      "supportConcepts": [],
+      "targetSources": [],
+      "resultCount": 0,
+      "topResult": null,
+      "error": "{\"error\":{\"code\":500,\"message\":\"An internal error has occurred. Please retry or report in https://developers.generativeai.google/guide/troubleshooting\",\"status\":\"INTERNAL\"}}"
+    },
+    {
+      "order": 7,
+      "branch": "Idare",
+      "id": "memur-sosyal-medya-disiplin-yeni",
+      "label": "Memur sosyal medya paylasimi nedeniyle disiplin cezasi",
+      "rawQuery": "Bir kamu gorevlisine, mesai disinda yaptigi sosyal medya paylasimlarinin kurum itibarini zedeledigi gerekcesiyle ayliktan kesme cezas? verilmis, savunmasi alinirken iddialarin somutlastirilmadigi, disiplin amirinin tarafsiz davranmadigi ve paylasimlarin ifade ozgurlugu kapsaminda kaldigi ileri surulerek disiplin cezasinin iptali istenmistir.",
+      "durationMs": 232,
+      "statusCode": 500,
+      "verdict": "fail",
+      "aiLegalArea": null,
+      "requiredConcepts": [],
+      "supportConcepts": [],
+      "targetSources": [],
+      "resultCount": 0,
+      "topResult": null,
+      "error": "{\"error\":{\"code\":500,\"message\":\"An internal error has occurred. Please retry or report in https://developers.generativeai.google/guide/troubleshooting\",\"status\":\"INTERNAL\"}}"
+    },
+    {
+      "order": 8,
+      "branch": "Icra ve Alacak Hukuku",
+      "id": "e-fatura-cari-irsaliye-yeni",
+      "label": "E-fatura, sevk irsaliyesi ve cari hesapla alacak ispati",
+      "rawQuery": "Davaci sirket, uzun suredir mal sattigi davali aleyhine cari hesaba dayali ilamsiz icra takibi baslatmis, davalinin borca itiraz etmesi uzerine acilan itirazin iptali davasinda e-faturalar, teslimi gosteren sevk irsaliyeleri, BA BS bildirimleri ve cari hesap ekstresine dayanarak alacagin varligini ve likit nitelikte oldugunu ileri surmus, buna bagli olarak icra inkar tazminati da talep etmistir.",
+      "durationMs": 32344,
+      "statusCode": 200,
+      "verdict": "pass",
+      "aiLegalArea": "icra",
+      "requiredConcepts": [
+        "itirazın iptali",
+        "cari hesap alacağı",
+        "icra takibi",
+        "icra inkar tazminatı"
+      ],
+      "supportConcepts": [
+        "ticari defter",
+        "sevk irsaliyesi",
+        "BA BS bildirimleri",
+        "cari hesap ekstresi",
+        "likit alacak"
+      ],
+      "targetSources": [
+        "yargitay"
+      ],
+      "resultCount": 10,
+      "topResult": {
+        "source": "yargitay",
+        "title": "Yargıtay Kararı 11. Hukuk Dairesi",
+        "daire": "11. Hukuk Dairesi",
+        "matchedKeywordCount": 4,
+        "semanticScore": 0.7302,
+        "retrievalStage": "full_text"
+      },
+      "error": null
+    },
+    {
+      "order": 9,
+      "branch": "Icra ve Alacak Hukuku",
+      "id": "menfi-tespit-teminat-yeni",
+      "label": "Menfi tespit, tedbir ve teminatla icranin geri birakilmasi",
+      "rawQuery": "Davaci borclu oldugu ileri surulen bononun bedelsiz kaldigini, buna ragmen kambiyo takibi yapildigini, takip kesinlesmeden once menfi tespit davas? acarak ihtiyati tedbir talep ettigini, mahkemenin uygun teminat karsiliginda icranin geri birakilmasina karar verip veremeyecegi ile IIK 72 kapsaminda bu korumanin sartlarini tartismaya acmistir.",
+      "durationMs": 36045,
+      "statusCode": 200,
+      "verdict": "pass",
+      "aiLegalArea": "icra",
+      "requiredConcepts": [
+        "menfi tespit",
+        "kambiyo takibi",
+        "icranın geri bırakılması",
+        "İİK 72",
+        "bono bedelsizliği"
+      ],
+      "supportConcepts": [
+        "ihtiyati tedbir",
+        "teminat",
+        "takip kesinleşmeden"
+      ],
+      "targetSources": [
+        "yargitay"
+      ],
+      "resultCount": 2,
+      "topResult": {
+        "source": "yargitay",
+        "title": "Yargıtay Kararı 12. Hukuk Dairesi",
+        "daire": "12. Hukuk Dairesi",
+        "matchedKeywordCount": 2,
+        "semanticScore": 0.6872,
+        "retrievalStage": "full_text"
+      },
+      "error": null
+    },
+    {
+      "order": 10,
+      "branch": "Icra ve Alacak Hukuku",
+      "id": "kira-takibi-tahliye-yeni",
+      "label": "Kira alacagi takibi, tahliye talebi ve inkar tazminati",
+      "rawQuery": "Kiraya veren, aylardir odenmeyen kira bedelleri nedeniyle once ilamsiz icra takibi yaptigini, borclu kiracinin hem borca hem faize itiraz ederek takibi durdurdugunu, yazili kira sozlesmesi, banka hareketleri ve ihtarnameye dayanarak itirazin iptalini, birikmis kira alacaginin tahsilini, sartlari varsa tahliye ve icra inkar tazminatini birlikte talep ettigini belirtmektedir.",
+      "durationMs": 34405,
+      "statusCode": 200,
+      "verdict": "pass",
+      "aiLegalArea": "icra",
+      "requiredConcepts": [
+        "itirazın iptali",
+        "kira alacağı",
+        "icra takibi",
+        "tahliye",
+        "icra inkar tazminatı"
+      ],
+      "supportConcepts": [
+        "kira sözleşmesi",
+        "ödenmeyen kira",
+        "ihtarname"
+      ],
+      "targetSources": [
+        "yargitay"
+      ],
+      "resultCount": 10,
+      "topResult": {
+        "source": "yargitay",
+        "title": "Yargıtay Kararı 12. Hukuk Dairesi",
+        "daire": "12. Hukuk Dairesi",
+        "matchedKeywordCount": 5,
+        "semanticScore": 0.7689,
+        "retrievalStage": "full_text"
+      },
+      "error": null
+    }
+  ]
+}

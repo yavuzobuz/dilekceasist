@@ -1,0 +1,430 @@
+# Yargi CLI Live Detailed Report
+
+- scenarioCount: 16
+- pass: 9
+- partial: 7
+- fail: 0
+
+## Aile 6284 koruyucu-onleyici tedbir
+- status: pass
+- batchId: batch-yargitay-family-civil
+- durationMs: 30667
+- expectedDomain: aile
+- detectedDomain: aile
+- expectedBirim: H2
+- selectedBirimAdi: H2
+- firstSuccessfulBirimAdi: H2
+- routingMode: hard_primary
+- expectedFamily: 2. Hukuk Dairesi
+- acceptedTopResultDaireler: 2. Hukuk Dairesi
+- resultCount: 20
+- sourceCoverageStatus: ok
+- zeroResultReason: n/a
+- encountered429: false
+- simpleQualityScore: 100
+- factPatternSimilarityScore: 54
+- topProceduralShellBias: false
+- topFactPatternHits: ortak konut
+- topProceduralHits: n/a
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- checks: domain=true, birim=true, family=true, factPattern=true, rateLimited=false
+- top: 2. Hukuk Dairesi 2025/3299 E. 2025/10122 K. | 2. Hukuk Dairesi | yargitay
+- top: 2. Hukuk Dairesi 2025/4707 E. 2025/11937 K. | 2. Hukuk Dairesi | yargitay
+- top: 2. Hukuk Dairesi 2025/3643 E. 2025/11923 K. | 2. Hukuk Dairesi | yargitay
+- top: 2. Hukuk Dairesi 2025/3363 E. 2025/12050 K. | 2. Hukuk Dairesi | yargitay
+- top: 2. Hukuk Dairesi 2025/3998 E. 2025/11910 K. | 2. Hukuk Dairesi | yargitay
+
+## Borclar eser arsa payi karsiligi insaat
+- status: pass
+- batchId: batch-yargitay-family-civil
+- durationMs: 18032
+- expectedDomain: borclar
+- detectedDomain: borclar
+- expectedBirim: H6
+- selectedBirimAdi: H6
+- firstSuccessfulBirimAdi: H6
+- routingMode: hard_primary
+- expectedFamily: 6. Hukuk Dairesi
+- acceptedTopResultDaireler: 6. Hukuk Dairesi
+- resultCount: 1
+- sourceCoverageStatus: ok
+- zeroResultReason: n/a
+- encountered429: false
+- simpleQualityScore: 100
+- factPatternSimilarityScore: 50
+- topProceduralShellBias: false
+- topFactPatternHits: bedel
+- topProceduralHits: n/a
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- checks: domain=true, birim=true, family=true, factPattern=true, rateLimited=false
+- top: 6. Hukuk Dairesi 2025/2720 E. 2025/4078 K. | 6. Hukuk Dairesi | yargitay
+
+## Gayrimenkul ortakligin giderilmesi
+- status: pass
+- batchId: batch-yargitay-family-civil
+- durationMs: 17446
+- expectedDomain: gayrimenkul
+- detectedDomain: gayrimenkul
+- expectedBirim: H7
+- selectedBirimAdi: H7
+- firstSuccessfulBirimAdi: H7
+- routingMode: hard_primary
+- expectedFamily: 7. Hukuk Dairesi
+- acceptedTopResultDaireler: 7. Hukuk Dairesi
+- resultCount: 2
+- sourceCoverageStatus: ok
+- zeroResultReason: n/a
+- encountered429: false
+- simpleQualityScore: 100
+- factPatternSimilarityScore: 92
+- topProceduralShellBias: false
+- topFactPatternHits: tasinmaz, paydas, aynen taksim
+- topProceduralHits: temyiz sebepleri
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- checks: domain=true, birim=true, family=true, factPattern=true, rateLimited=false
+- top: 7. Hukuk Dairesi 2025/5640 E. 2025/5595 K. | 7. Hukuk Dairesi | yargitay
+- top: 7. Hukuk Dairesi 2025/5751 E. 2025/5596 K. | 7. Hukuk Dairesi | yargitay
+
+## Miras muris muvazaasi bakma sozlesmesi
+- status: pass
+- batchId: batch-yargitay-family-civil
+- durationMs: 15875
+- expectedDomain: miras
+- detectedDomain: miras
+- expectedBirim: H1
+- selectedBirimAdi: H1
+- firstSuccessfulBirimAdi: H1
+- routingMode: hard_primary
+- expectedFamily: 1. Hukuk Dairesi
+- acceptedTopResultDaireler: 1. Hukuk Dairesi
+- resultCount: 2
+- sourceCoverageStatus: ok
+- zeroResultReason: n/a
+- encountered429: false
+- simpleQualityScore: 100
+- factPatternSimilarityScore: 84
+- topProceduralShellBias: false
+- topFactPatternHits: tescil, muris muvazaasi
+- topProceduralHits: n/a
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- checks: domain=true, birim=true, family=true, factPattern=true, rateLimited=false
+- top: 1. Hukuk Dairesi 2025/6830 E. 2025/6285 K. | 1. Hukuk Dairesi | yargitay
+- top: 1. Hukuk Dairesi 2025/6814 E. 2025/6310 K. | 1. Hukuk Dairesi | yargitay
+
+## Tuketici mesafeli satis cayma hakki
+- status: partial
+- batchId: batch-yargitay-family-civil
+- durationMs: 23533
+- expectedDomain: tuketici
+- detectedDomain: tuketici
+- expectedBirim: H3
+- selectedBirimAdi: H3
+- firstSuccessfulBirimAdi: H3
+- routingMode: hard_primary
+- expectedFamily: 3. Hukuk Dairesi
+- acceptedTopResultDaireler: 3. Hukuk Dairesi
+- resultCount: 1
+- sourceCoverageStatus: ok
+- zeroResultReason: n/a
+- encountered429: true
+- simpleQualityScore: 100
+- factPatternSimilarityScore: 20
+- topProceduralShellBias: false
+- topFactPatternHits: iade
+- topProceduralHits: temyiz istemi, temyiz sebepleri
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- checks: domain=true, birim=true, family=true, factPattern=false, rateLimited=true
+- top: 3. Hukuk Dairesi 2025/3137 E. 2026/223 K. | 3. Hukuk Dairesi | yargitay
+
+## Sigorta ticari nakliyat hasari
+- status: partial
+- batchId: batch-yargitay-family-civil
+- durationMs: 27713
+- expectedDomain: sigorta
+- detectedDomain: sigorta
+- expectedBirim: H11
+- selectedBirimAdi: H11
+- firstSuccessfulBirimAdi: H11
+- routingMode: hard_primary
+- expectedFamily: 11. Hukuk Dairesi
+- acceptedTopResultDaireler: n/a
+- resultCount: 0
+- sourceCoverageStatus: no_candidates
+- zeroResultReason: no_candidates
+- encountered429: false
+- simpleQualityScore: 0
+- factPatternSimilarityScore: 0
+- topProceduralShellBias: false
+- topFactPatternHits: n/a
+- topProceduralHits: n/a
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- checks: domain=true, birim=true, family=false, factPattern=false, rateLimited=false
+
+## Ticaret limited sirket ortaklik
+- status: pass
+- batchId: batch-yargitay-commercial
+- durationMs: 20642
+- expectedDomain: ticaret
+- detectedDomain: ticaret
+- expectedBirim: H11
+- selectedBirimAdi: H11
+- firstSuccessfulBirimAdi: H11
+- routingMode: hard_primary
+- expectedFamily: 11. Hukuk Dairesi
+- acceptedTopResultDaireler: 11. Hukuk Dairesi
+- resultCount: 4
+- sourceCoverageStatus: ok
+- zeroResultReason: n/a
+- encountered429: false
+- simpleQualityScore: 100
+- factPatternSimilarityScore: 56
+- topProceduralShellBias: false
+- topFactPatternHits: genel kurul, pay devri
+- topProceduralHits: esastan reddi, istinaf basvurusunun esastan reddi
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- checks: domain=true, birim=true, family=true, factPattern=true, rateLimited=false
+- top: 11. Hukuk Dairesi 2025/3417 E. 2026/373 K. | 11. Hukuk Dairesi | yargitay
+- top: 11. Hukuk Dairesi 2025/3289 E. 2026/390 K. | 11. Hukuk Dairesi | yargitay
+- top: 11. Hukuk Dairesi 2025/4591 E. 2026/377 K. | 11. Hukuk Dairesi | yargitay
+- top: 11. Hukuk Dairesi 2025/3382 E. 2026/383 K. | 11. Hukuk Dairesi | yargitay
+
+## Ticaret konkordato komiser raporu
+- status: partial
+- batchId: batch-yargitay-commercial
+- durationMs: 28007
+- expectedDomain: ticaret
+- detectedDomain: ticaret
+- expectedBirim: H6
+- selectedBirimAdi: H6
+- firstSuccessfulBirimAdi: H6
+- routingMode: hard_primary
+- expectedFamily: 6. Hukuk Dairesi
+- acceptedTopResultDaireler: 6. Hukuk Dairesi
+- resultCount: 4
+- sourceCoverageStatus: ok
+- zeroResultReason: n/a
+- encountered429: false
+- simpleQualityScore: 100
+- factPatternSimilarityScore: 16
+- topProceduralShellBias: false
+- topFactPatternHits: komiser raporu
+- topProceduralHits: temyiz sebepleri, esastan reddi, istinaf basvurusunun esastan reddi
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- checks: domain=true, birim=true, family=true, factPattern=false, rateLimited=false
+- top: 6. Hukuk Dairesi 2025/3551 E. 2025/3995 K. | 6. Hukuk Dairesi | yargitay
+- top: 6. Hukuk Dairesi 2025/3516 E. 2025/4003 K. | 6. Hukuk Dairesi | yargitay
+- top: 6. Hukuk Dairesi 2025/2233 E. 2025/4084 K. | 6. Hukuk Dairesi | yargitay
+- top: 6. Hukuk Dairesi 2025/1385 E. 2025/4027 K. | 6. Hukuk Dairesi | yargitay
+
+## Icra haczedilmezlik meskeniyet
+- status: partial
+- batchId: batch-yargitay-commercial
+- durationMs: 37909
+- expectedDomain: icra
+- detectedDomain: icra
+- expectedBirim: H12
+- selectedBirimAdi: H12
+- firstSuccessfulBirimAdi: H12
+- routingMode: hard_primary
+- expectedFamily: 12. Hukuk Dairesi
+- acceptedTopResultDaireler: n/a
+- resultCount: 0
+- sourceCoverageStatus: no_candidates
+- zeroResultReason: no_candidates
+- encountered429: false
+- simpleQualityScore: 0
+- factPatternSimilarityScore: 0
+- topProceduralShellBias: false
+- topFactPatternHits: n/a
+- topProceduralHits: n/a
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- checks: domain=true, birim=true, family=false, factPattern=false, rateLimited=false
+
+## Icra menfi tespit ve istirdat
+- status: pass
+- batchId: batch-yargitay-commercial
+- durationMs: 23367
+- expectedDomain: icra
+- detectedDomain: icra
+- expectedBirim: H11
+- selectedBirimAdi: H11
+- firstSuccessfulBirimAdi: H11
+- routingMode: hard_primary
+- expectedFamily: 11. Hukuk Dairesi
+- acceptedTopResultDaireler: 11. Hukuk Dairesi
+- resultCount: 5
+- sourceCoverageStatus: ok
+- zeroResultReason: n/a
+- encountered429: false
+- simpleQualityScore: 100
+- factPatternSimilarityScore: 54
+- topProceduralShellBias: false
+- topFactPatternHits: haciz
+- topProceduralHits: n/a
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- checks: domain=true, birim=true, family=true, factPattern=true, rateLimited=false
+- top: 11. Hukuk Dairesi 2025/5147 E. 2026/331 K. | 11. Hukuk Dairesi | yargitay
+- top: 11. Hukuk Dairesi 2025/3505 E. 2026/328 K. | 11. Hukuk Dairesi | yargitay
+- top: 11. Hukuk Dairesi 2025/3363 E. 2026/194 K. | 11. Hukuk Dairesi | yargitay
+- top: 11. Hukuk Dairesi 2025/3106 E. 2026/294 K. | 11. Hukuk Dairesi | yargitay
+- top: 11. Hukuk Dairesi 2025/3265 E. 2026/371 K. | 11. Hukuk Dairesi | yargitay
+
+## Idare imar encumen yikim
+- status: pass
+- batchId: batch-danistay-public
+- durationMs: 11844
+- expectedDomain: idare
+- detectedDomain: idare
+- expectedBirim: D6
+- selectedBirimAdi: D6
+- firstSuccessfulBirimAdi: D6
+- routingMode: hard_primary
+- expectedFamily: 6. Daire
+- acceptedTopResultDaireler: 6. Daire
+- resultCount: 2
+- sourceCoverageStatus: ok
+- zeroResultReason: n/a
+- encountered429: false
+- simpleQualityScore: 100
+- factPatternSimilarityScore: 60
+- topProceduralShellBias: false
+- topFactPatternHits: imar plani, ruhsat
+- topProceduralHits: sure asimi
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- checks: domain=true, birim=true, family=true, factPattern=true, rateLimited=false
+- top: 6. Daire 2020/7712 E. 2025/5313 K. | 6. Daire | danistay
+- top: 6. Daire 2025/113 E. 2025/5285 K. | 6. Daire | danistay
+
+## Idare kamu ihale asiri dusuk teklif
+- status: partial
+- batchId: batch-danistay-public
+- durationMs: 11258
+- expectedDomain: idare
+- detectedDomain: idare
+- expectedBirim: D13
+- selectedBirimAdi: D13
+- firstSuccessfulBirimAdi: D13
+- routingMode: hard_primary
+- expectedFamily: 13. Daire
+- acceptedTopResultDaireler: 13. Daire
+- resultCount: 1
+- sourceCoverageStatus: ok
+- zeroResultReason: n/a
+- encountered429: false
+- simpleQualityScore: 100
+- factPatternSimilarityScore: 34
+- topProceduralShellBias: false
+- topFactPatternHits: ihale komisyonu
+- topProceduralHits: temyiz istemi
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- checks: domain=true, birim=true, family=true, factPattern=false, rateLimited=false
+- top: 13. Daire 2025/710 E. 2025/3228 K. | 13. Daire | danistay
+
+## Idare disiplin kademe ilerlemesi
+- status: partial
+- batchId: batch-danistay-public
+- durationMs: 18151
+- expectedDomain: idare
+- detectedDomain: idare
+- expectedBirim: D12
+- selectedBirimAdi: D12
+- firstSuccessfulBirimAdi: D12
+- routingMode: hard_primary
+- expectedFamily: 12. Daire
+- acceptedTopResultDaireler: 12. Daire
+- resultCount: 2
+- sourceCoverageStatus: ok
+- zeroResultReason: n/a
+- encountered429: false
+- simpleQualityScore: 99
+- factPatternSimilarityScore: 0
+- topProceduralShellBias: false
+- topFactPatternHits: savunma hakki
+- topProceduralHits: temyiz isteminin reddi, temyiz istemi, karsi oy
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- checks: domain=true, birim=true, family=true, factPattern=false, rateLimited=false
+- top: 12. Daire 2021/6586 E. 2025/3842 K. | 12. Daire | danistay
+- top: 12. Daire 2022/357 E. 2025/4214 K. | 12. Daire | danistay
+
+## Vergi MIYB KDV indirimi
+- status: pass
+- batchId: batch-danistay-public
+- durationMs: 13304
+- expectedDomain: vergi
+- detectedDomain: vergi
+- expectedBirim: D3
+- selectedBirimAdi: D3
+- firstSuccessfulBirimAdi: D3
+- routingMode: hard_primary
+- expectedFamily: 3. Daire
+- acceptedTopResultDaireler: 3. Daire
+- resultCount: 10
+- sourceCoverageStatus: ok
+- zeroResultReason: n/a
+- encountered429: false
+- simpleQualityScore: 100
+- factPatternSimilarityScore: 86
+- topProceduralShellBias: false
+- topFactPatternHits: vergi inceleme raporu, tarhiyat, vergi ziya, sahte belge
+- topProceduralHits: temyiz isteminin reddi, temyiz istemi, karsi oy
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- checks: domain=true, birim=true, family=true, factPattern=true, rateLimited=false
+- top: 3. Daire 2023/7220 E. 2025/4098 K. | 3. Daire | danistay
+- top: 3. Daire 2023/7216 E. 2025/4099 K. | 3. Daire | danistay
+- top: 3. Daire 2023/8539 E. 2025/4094 K. | 3. Daire | danistay
+- top: 3. Daire 2023/6527 E. 2025/4064 K. | 3. Daire | danistay
+- top: 3. Daire 2023/6529 E. 2025/4065 K. | 3. Daire | danistay
+
+## Vergi gumruk royalti ve ithal kiymeti
+- status: pass
+- batchId: batch-danistay-public
+- durationMs: 19964
+- expectedDomain: vergi
+- detectedDomain: vergi
+- expectedBirim: D7
+- selectedBirimAdi: D7
+- firstSuccessfulBirimAdi: D7
+- routingMode: hard_primary
+- expectedFamily: 7. Daire
+- acceptedTopResultDaireler: 7. Daire
+- resultCount: 20
+- sourceCoverageStatus: ok
+- zeroResultReason: n/a
+- encountered429: false
+- simpleQualityScore: 100
+- factPatternSimilarityScore: 100
+- topProceduralShellBias: false
+- topFactPatternHits: royalti, gumruk kiymeti, ithalat
+- topProceduralHits: n/a
+- phaseAttemptSummary: {"primaryAttemptCount":3,"secondaryAttemptCount":0}
+- checks: domain=true, birim=true, family=true, factPattern=true, rateLimited=false
+- top: 7. Daire 2023/3879 E. 2025/377 K. | 7. Daire | danistay
+- top: 7. Daire 2023/3559 E. 2025/370 K. | 7. Daire | danistay
+- top: 7. Daire 2023/3560 E. 2025/371 K. | 7. Daire | danistay
+- top: 7. Daire 2024/2706 E. 2025/366 K. | 7. Daire | danistay
+- top: 7. Daire 2023/3863 E. 2025/2057 K. | 7. Daire | danistay
+
+## Anayasa norm denetimi esitlik belirlilik
+- status: partial
+- batchId: batch-anayasa
+- durationMs: 16233
+- expectedDomain: anayasa
+- detectedDomain: anayasa
+- expectedBirim: n/a
+- selectedBirimAdi: n/a
+- firstSuccessfulBirimAdi: n/a
+- routingMode: source_first
+- expectedFamily: Anayasa Mahkemesi
+- acceptedTopResultDaireler: n/a
+- resultCount: 0
+- sourceCoverageStatus: no_candidates
+- zeroResultReason: no_candidates
+- encountered429: false
+- simpleQualityScore: 0
+- factPatternSimilarityScore: 0
+- topProceduralShellBias: false
+- topFactPatternHits: n/a
+- topProceduralHits: n/a
+- phaseAttemptSummary: {"primary_narrow":{"queryCount":3,"birimCount":0},"primary_broadened":{"queryCount":4,"birimCount":0}}
+- checks: domain=true, birim=true, family=false, factPattern=false, rateLimited=false
+
