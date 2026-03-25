@@ -17,7 +17,7 @@ export enum PetitionCategory {
 // Alt Kategori (Subcategory)
 export enum PetitionSubcategory {
   // Hukuk
-  DavaAcilis = "Dava Açılış ve Cevap",
+  DavaAcilis = "Dava Açılışı ve Cevap",
   AileHukuku = "Aile Hukuku",
   IsHukuku = "İş Hukuku",
   GayrimenkulMiras = "Gayrimenkul/Miras",
@@ -47,7 +47,7 @@ export enum PetitionSubcategory {
 
 // Dilekçe Türleri (Petition Types)
 export enum PetitionType {
-  // ========== HUKUK - Dava Açılış ==========
+  // ========== HUKUK - Dava Açılışı ==========
   DavaDilekcesi = "Dava Dilekçesi",
   CevapDilekcesi = "Cevap Dilekçesi",
   CevabaCevap = "Cevaba Cevap Dilekçesi",
@@ -112,7 +112,7 @@ export enum PetitionType {
 
   // ========== D.İŞ - İtiraz Merci ==========
   TrafikCezasiItiraz = "Trafik Cezasına İtiraz",
-  TutukluluğaItiraz = "Tutukluluğa İtiraz Dilekçesi",
+  TutuklulugaItiraz = "Tutukluluğa İtiraz Dilekçesi",
   IdariParaCezasiItiraz = "İdari Para Cezasına İtiraz",
 
   // ========== İCRA - Takip ve İtiraz ==========
@@ -155,10 +155,10 @@ export enum PetitionType {
   BireyselBasvuru = "AYM Bireysel Başvuru Dilekçesi",
   SureTutum = "Süre Tutum Dilekçesi", // Eski uygulama, 8. Yargı Paketi ile değişti
   KararDuzeltme = "Karar Düzeltme Dilekçesi",
-  YargilamanınYenilenmesi = "Yargılamanın Yenilenmesi Dilekçesi",
+  YargilamaninYenilenmesi = "Yargılamanın Yenilenmesi Dilekçesi",
 }
 
-// Kategori -> Alt Kategori Eşleşmesi
+// Kategori -> Alt Kategori Eslesmesi
 export const CategoryToSubcategories: Record<PetitionCategory, PetitionSubcategory[]> = {
   [PetitionCategory.Hukuk]: [
     PetitionSubcategory.DavaAcilis,
@@ -192,7 +192,7 @@ export const CategoryToSubcategories: Record<PetitionCategory, PetitionSubcatego
 
 // Alt Kategori -> Dilekçe Türleri Eşleşmesi
 export const SubcategoryToPetitionTypes: Record<PetitionSubcategory, PetitionType[]> = {
-  // Hukuk - Dava Açılış
+  // Hukuk - Dava Açılışı
   [PetitionSubcategory.DavaAcilis]: [
     PetitionType.DavaDilekcesi,
     PetitionType.CevapDilekcesi,
@@ -241,7 +241,7 @@ export const SubcategoryToPetitionTypes: Record<PetitionSubcategory, PetitionTyp
     PetitionType.KorumaTedbiri,
     PetitionType.ElKonulanEsya,
   ],
-  // Ceza - Kovuşturma
+  // Ceza - Kovusturma
   [PetitionSubcategory.Kovusturma]: [
     PetitionType.SavunmaDilekcesi,
     PetitionType.KatilmaTalebi,
@@ -267,7 +267,7 @@ export const SubcategoryToPetitionTypes: Record<PetitionSubcategory, PetitionTyp
   // D.İş - İtiraz Merci
   [PetitionSubcategory.ItirazMerci]: [
     PetitionType.TrafikCezasiItiraz,
-    PetitionType.TutukluluğaItiraz,
+    PetitionType.TutuklulugaItiraz,
     PetitionType.IdariParaCezasiItiraz,
   ],
   // İcra - Takip ve İtiraz
@@ -284,7 +284,7 @@ export const SubcategoryToPetitionTypes: Record<PetitionSubcategory, PetitionTyp
     PetitionType.Meskeniyet,
     PetitionType.Istihkak,
   ],
-  // İcra - Talepler
+  // Icra - Talepler
   [PetitionSubcategory.IcraTalepler]: [
     PetitionType.MaasHaczi,
     PetitionType.AracYakalama,
@@ -295,7 +295,7 @@ export const SubcategoryToPetitionTypes: Record<PetitionSubcategory, PetitionTyp
     PetitionType.DosyaKapatma,
     PetitionType.TahliyeTalebi,
   ],
-  // İcra - Genel Mahkeme
+  // Icra - Genel Mahkeme
   [PetitionSubcategory.IcraGenelMahkeme]: [
     PetitionType.ItirazinIptali,
     PetitionType.MenfiTespit,
@@ -316,7 +316,7 @@ export const SubcategoryToPetitionTypes: Record<PetitionSubcategory, PetitionTyp
     PetitionType.BireyselBasvuru,
     PetitionType.SureTutum,
     PetitionType.KararDuzeltme,
-    PetitionType.YargilamanınYenilenmesi,
+    PetitionType.YargilamaninYenilenmesi,
   ],
 };
 
@@ -337,7 +337,7 @@ export enum UserRole {
   Vekil = "Vekil (Avukat)",
 }
 
-// Rol önerileri - Kategoriye göre
+// Rol önerileri - kategoriye göre
 export const CategoryToRoles: Record<PetitionCategory, UserRole[]> = {
   [PetitionCategory.Hukuk]: [UserRole.Davaci, UserRole.Davali, UserRole.Vekil],
   [PetitionCategory.Ceza]: [UserRole.Musteki, UserRole.Magdur, UserRole.Sanik, UserRole.Mudahil, UserRole.Vekil],
@@ -393,6 +393,117 @@ export interface LegalSearchResult {
   documentId?: string;
   snippet?: string;
   relevanceScore?: number; // 0-100 relevance score
+  similarityScore?: number;
+  semanticQuery?: string;
+  initialKeyword?: string;
+  matchReason?: string;
+  matchHighlights?: string[];
+  matchedKeywordCount?: number;
+  matchedKeywords?: string[];
+  matchStage?: 'summary' | 'full_text';
+  requiredKeywordCount?: number;
+  semanticScore?: number;
+  summaryKeywordHits?: number;
+  fullTextKeywordHits?: number;
+  selectionReason?: string;
+  sourceUsed?: string;
+  retrievalStage?: 'summary' | 'full_text';
+  combinedScore?: number;
+  matchedRequiredConcepts?: string[];
+  missingRequiredConcepts?: string[];
+  matchedSupportConcepts?: string[];
+  matchedEvidenceConcepts?: string[];
+  matchedNegativeConcepts?: string[];
+  domainConfidence?: number;
+  rejectionReason?: string;
+}
+
+export interface LegalSearchPacket {
+  searchVariants?: Array<{
+    query: string;
+    mode?: 'strict' | 'broad' | 'statute' | 'fallback' | string;
+  }>;
+  fallbackToNext?: boolean;
+  primaryDomain?:
+    | 'ceza'
+    | 'is_hukuku'
+    | 'aile'
+    | 'icra'
+    | 'borclar'
+    | 'ticaret'
+    | 'gayrimenkul'
+    | 'idare'
+    | 'vergi'
+    | 'tuketici'
+    | 'sigorta'
+    | 'miras'
+    | 'anayasa'
+    | 'fikri_mulkiyet'
+    | 'bilisim'
+    | 'deniz'
+    | 'kamulastirma'
+    | 'rekabet'
+    | 'cevre'
+    | 'bankacilik'
+    | 'kadastro'
+    | 'cocuk'
+    | 'saglik'
+    | 'infaz'
+    | 'is_guvenligi'
+    | 'tahkim';
+  caseType?: string;
+  coreIssue?: string;
+  requiredConcepts?: string[];
+  supportConcepts?: string[];
+  evidenceConcepts?: string[];
+  negativeConcepts?: string[];
+  preferredSource?: 'yargitay' | 'danistay' | 'bam' | 'auto';
+  preferredBirimCodes?: string[];
+  searchSeedText?: string;
+  queryMode?: 'short_issue' | 'long_fact' | 'document_style';
+}
+
+export interface WebSearchPlan {
+  coreQueries?: string[];
+  supportQueries?: string[];
+  negativeQueries?: string[];
+  focusTopics?: string[];
+}
+
+export interface PrecedentSearchPlan {
+  searchVariants?: Array<{
+    query: string;
+    mode?: 'strict' | 'broad' | 'statute' | 'fallback' | string;
+  }>;
+  fallbackToNext?: boolean;
+  requiredConcepts?: string[];
+  supportConcepts?: string[];
+  evidenceConcepts?: string[];
+  negativeConcepts?: string[];
+  preferredSource?: 'yargitay' | 'danistay' | 'bam' | 'auto';
+  preferredBirimCodes?: string[];
+  searchSeedText?: string;
+  queryMode?: 'short_issue' | 'long_fact' | 'document_style';
+}
+
+export interface DetailedAnalysis {
+  documentType?: string;
+  caseStage?: string;
+  primaryDomain?: LegalSearchPacket['primaryDomain'];
+  secondaryDomains?: string[];
+  caseType?: string;
+  coreIssue?: string;
+  keyFacts?: string[];
+  timeline?: string[];
+  claims?: string[];
+  defenses?: string[];
+  evidenceSummary?: string[];
+  legalIssues?: string[];
+  risksAndWeakPoints?: string[];
+  missingCriticalInfo?: string[];
+  suggestedNextSteps?: string[];
+  webSearchPlan?: WebSearchPlan;
+  precedentSearchPlan?: PrecedentSearchPlan;
 }
 
 export interface AnalysisData {
@@ -401,6 +512,8 @@ export interface AnalysisData {
   caseDetails?: CaseDetails;
   lawyerInfo?: LawyerInfo;
   contactInfo?: ContactInfo[];
+  legalSearchPacket?: LegalSearchPacket;
+  analysisInsights?: DetailedAnalysis;
 }
 
 export interface CaseDetails {
@@ -434,7 +547,7 @@ export interface GeneratePetitionParams {
   caseDetails: CaseDetails;
   analysisSummary: string;
   webSearchResult: string;
-  legalSearchResult?: string; // Yargıtay, Danıştay etc. court decisions
+  legalSearchResult?: string; // Yargitay, Danistay etc. court decisions
   docContent: string;
   specifics: string;
   searchKeywords?: string[] | string;
@@ -446,6 +559,7 @@ export interface GeneratePetitionParams {
   legalResultCount?: number;
   lawyerInfo?: LawyerInfo;
   contactInfo?: ContactInfo[];
+  analysisInsights?: DetailedAnalysis;
 }
 
 export interface PetitionViewProps {
@@ -466,6 +580,8 @@ export interface ChatContext {
   keywords: string;
   searchSummary: string;
   legalSummary?: string;
+  webSources?: GroundingSource[];
+  legalSearchResults?: LegalSearchResult[];
   webSourceCount?: number;
   legalResultCount?: number;
   docContent: string;
@@ -477,3 +593,8 @@ export interface ChatContext {
   allowLegalSearch?: boolean;
   disableDocumentGeneration?: boolean;
 }
+
+
+
+
+

@@ -1,6 +1,7 @@
-ï»¿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Scale, FileText, X, Plus, Loader2, AlertCircle } from 'lucide-react';
-import { getLegalDocument, searchLegalDecisions, buildLegalKeywordQuery } from '../utils/legalSearch';
+import { useCallback } from 'react';
+import { compactLegalSearchQuery, getLegalDocument, searchLegalDecisionsDetailed, buildLegalKeywordQuery } from '../utils/legalSearch';
 import { resolveLegalSourceForQuery } from '../utils/legalSource';
 
 interface LegalSource {
@@ -38,7 +39,6 @@ const LEGAL_SOURCES: LegalSource[] = [
     { id: 'danistay', name: 'Danistay', description: 'Danistay Kararlari' },
     { id: 'uyap', name: 'Emsal (UYAP)', description: 'UYAP Emsal Kararlari' },
     { id: 'anayasa', name: 'Anayasa Mahkemesi', description: 'AYM Kararlari' },
-    { id: 'kik', name: 'KIK', description: 'Kamu Ihale Kurulu Kararlari' },
 ];
 
 const API_BASE_URL = '';
@@ -54,6 +54,7 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
     const [results, setResults] = useState<SearchResult[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [zeroResultMessage, setZeroResultMessage] = useState<string | null>(null);
     const [loadingDocument, setLoadingDocument] = useState<string | null>(null);
     const [documentContent, setDocumentContent] = useState<{ [key: string]: string }>({});
 
@@ -74,42 +75,47 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
         return hasDocumentUrl || !hasSyntheticId;
     };
 
-    const handleSearch = async (searchKeyword?: string) => {
-        const queryToUse = (searchKeyword || keyword || '').trim();
-        if (!queryToUse) return;
+    const handleSearch = useCallback(async (searchKeyword?: string) => {
+        const rawText = (searchKeyword || keyword || '').trim();
+        if (!rawText) return;
+        const compactedKeyword = compactLegalSearchQuery(rawText);
 
         setIsLoading(true);
         setError(null);
+        setZeroResultMessage(null);
         setResults([]);
 
         try {
-            const parsedResults = await searchLegalDecisions({
+            const detailedResults = await searchLegalDecisionsDetailed({
                 source: selectedSource,
-                keyword: queryToUse,
+                keyword: compactedKeyword,
+                rawQuery: rawText,
                 apiBaseUrl: API_BASE_URL,
             });
-            setResults(parsedResults);
+            setResults(detailedResults.normalizedResults);
+            setZeroResultMessage(detailedResults.diagnostics.zeroResultMessage || null);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Bilinmeyen bir hata olustu');
+            setZeroResultMessage(null);
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [keyword, selectedSource]);
 
     useEffect(() => {
         if (isOpen && initialKeywords.length > 0 && !hasAutoSearched) {
-            // Tum anahtar kelimeleri akÄ±llÄ± sekilde birlestir (ilk 8 keyword, max 240 karakter)
+            // Tum anahtar kelimeleri akýllý sekilde birlestir (ilk 8 keyword, max 240 karakter)
             const initialQuery = buildLegalKeywordQuery(initialKeywords, { maxTerms: 8, maxLength: 240 });
             if (initialQuery) {
                 setKeyword(initialQuery);
                 const autoSource = resolveLegalSourceForQuery(initialQuery, 'all');
                 setSelectedSource(prev => prev === 'all' ? autoSource : prev);
                 setHasAutoSearched(true);
-                // Otomatik arama baslat â€” kullanici beklemek zorunda kalmasin
+                // Otomatik arama baslat — kullanici beklemek zorunda kalmasin
                 handleSearch(initialQuery);
             }
         }
-    }, [isOpen, initialKeywords, hasAutoSearched]);
+    }, [isOpen, initialKeywords, hasAutoSearched, handleSearch]);
 
     // Panel kapaninca auto-search flag'ini sifirla
     useEffect(() => {
@@ -132,10 +138,18 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
         setLoadingDocument(docId);
 
         try {
-            const documentSource = resolveLegalSourceForQuery(
-                [selectedSource, keyword, result.title || '', result.daire || '', result.ozet || result.snippet || ''],
-                'all'
-            );
+            const documentSource =
+                String(result.source || '').trim() ||
+                resolveLegalSourceForQuery(
+                    [
+                        selectedSource,
+                        keyword,
+                        result.title || '',
+                        result.daire || '',
+                        result.ozet || result.snippet || '',
+                    ],
+                    'all'
+                );
             const content = await getLegalDocument({
                 source: documentSource,
                 documentId: docId,
@@ -200,7 +214,7 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
                         </div>
                         <div>
                             <h2 className="text-lg sm:text-xl font-bold text-white">Ictihat Arama</h2>
-                            <p className="text-xs sm:text-sm text-gray-400 hidden sm:block">Yargitay, Danistay ve diger mahkeme kararlarini arayin</p>
+                            <p className="text-xs sm:text-sm text-gray-400 hidden sm:block">Dogal dil ile karar arayin; sonuclar remote Yargi MCP uzerinden gelsin</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-gray-800 rounded-lg transition-colors">
@@ -232,7 +246,7 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
                                 value={keyword}
                                 onChange={(e) => setKeyword(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                placeholder="Anahtar kelime girin..."
+                                placeholder="Hukuki soruyu veya argümaný doðal dil ile yazýn..."
                                 className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors text-sm sm:text-base"
                             />
                         </div>
@@ -270,6 +284,9 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
                         <div className="text-center py-12">
                             <FileText className="w-12 h-12 text-gray-600 mx-auto mb-4" />
                             <p className="text-gray-400">Sonuc bulunamadi</p>
+                            {zeroResultMessage ? (
+                                <p className="mx-auto mt-2 max-w-md text-sm text-gray-500">{zeroResultMessage}</p>
+                            ) : null}
                         </div>
                     )}
 
@@ -403,3 +420,8 @@ export const LegalSearchPanel: React.FC<LegalSearchPanelProps> = ({
         </div>
     );
 };
+
+
+
+
+

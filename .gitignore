@@ -56,6 +56,13 @@ action_old.js
 alternative_old.tsx
 
 # Geçici dosyalar
-.codex_tmp_*/
+.codex_tmp_*
+.skill-builds/
+.vercel-backup-*/
+output/
+turk-hukuku-karar-arama/
+turk-hukuku-karar-arama.zip
 nul
 doc/CODEX_SKILL_CHEATSHEET.md
+*.mjs.json
+*.test.ts-prompt-results.json

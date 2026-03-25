@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+﻿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
            xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
@@ -8,7 +8,7 @@
   <ProviderName>DilekçeAsist</ProviderName>
   <DefaultLocale>tr-TR</DefaultLocale>
   <DisplayName DefaultValue="DilekçeAsist AI Chatbot" />
-  <Description DefaultValue="Word seçili metni üzerinden karar arama, metin düzeltme, beyin fırtınası ve web araması yapar." />
+  <Description DefaultValue="Word seçili metni üzerinden metin düzeltme, beyin fırtınası ve web araması yapar." />
   <IconUrl DefaultValue="https://dilekceasist.vercel.app/favicon.png" />
   <HighResolutionIconUrl DefaultValue="https://dilekceasist.vercel.app/favicon.png" />
   <SupportUrl DefaultValue="https://dilekceasist.vercel.app" />
@@ -28,3 +28,4 @@
   </DefaultSettings>
   <Permissions>ReadWriteDocument</Permissions>
 </OfficeApp>
+

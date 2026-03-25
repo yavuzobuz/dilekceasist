@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../../components/Header';
 import { Footer } from '../../components/Footer';
@@ -28,7 +28,7 @@ export default function Privacy() {
 
   const purposes = [
     'Platformun sunulması, üyelik ve oturum süreçlerinin yürütülmesi',
-    'Belge oluşturma, metin düzenleme, karar arama ve diğer AI özelliklerinin çalıştırılması',
+    'Belge oluşturma, metin düzenleme, web arastirmasi ve diğer AI özelliklerinin çalıştırılması',
     'Ödeme, faturalama, abonelik yönetimi ve finansal operasyonların yürütülmesi',
     'Bilgi güvenliği, denetim, hata ayıklama, suistimal önleme ve hizmet sürekliliğinin sağlanması',
     'Hukuki yükümlülüklerin yerine getirilmesi, resmi kurum taleplerinin karşılanması',
@@ -237,3 +237,4 @@ export default function Privacy() {
     </div>
   );
 }
+

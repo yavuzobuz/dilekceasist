@@ -1,4 +1,4 @@
-const el = {
+﻿const el = {
     sourceText: document.getElementById('sourceText'),
     promptText: document.getElementById('promptText'),
     resultText: document.getElementById('resultText'),
@@ -17,9 +17,7 @@ const el = {
     actionButtons: Array.from(document.querySelectorAll('[data-action]')),
 };
 
-const QUICK_PROMPTS = {
-    'decision-search': 'Bu konu için emsal Yargıtay ve Danıştay kararları ara. Her karar için daire, esas no, karar no, tarih ve kısa özet ver.',
-    'text-fix': 'Aşağıdaki metni anlamı değiştirmeden dil bilgisi, imla, noktalama ve akıcılık açısından düzelt.',
+const QUICK_PROMPTS = {    'text-fix': 'Aşağıdaki metni anlamı değiştirmeden dil bilgisi, imla, noktalama ve akıcılık açısından düzelt.',
     brainstorm: 'Bu konu için farklı hukuki strateji seçeneklerini, avantaj ve riskleriyle madde madde beyin fırtınası yap.',
     'web-search': 'Bu konu için web araması yap. Güvenilir kaynaklardan kısa özet ve uygulanabilir öneriler sun.',
 };
@@ -682,3 +680,4 @@ Office.onReady((info) => {
     }
     initialize();
 });
+

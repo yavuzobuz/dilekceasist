@@ -1,0 +1,77 @@
+- generic [ref=e278]:
+  - banner [ref=e279]:
+    - generic [ref=e281]:
+      - generic [ref=e282]:
+        - generic [ref=e283] [cursor=pointer]:
+          - img "DilekAI Logo" [ref=e284]
+          - heading "DilekAI" [level=1] [ref=e285]
+        - navigation [ref=e286]:
+          - button "Dilekçe Havuzu" [ref=e287] [cursor=pointer]:
+            - generic [ref=e289]:
+              - img [ref=e290]
+              - generic [ref=e292]: Dilekçe Havuzu
+          - button "Emsal Karar" [ref=e293] [cursor=pointer]:
+            - generic [ref=e295]:
+              - img [ref=e296]
+              - generic [ref=e302]: Emsal Karar
+          - button "Şablonlar" [ref=e303] [cursor=pointer]:
+            - generic [ref=e305]:
+              - img [ref=e306]
+              - generic [ref=e308]: Şablonlar
+          - button "Hakkında" [ref=e309] [cursor=pointer]:
+            - generic [ref=e311]:
+              - img [ref=e312]
+              - generic [ref=e314]: Hakkında
+          - button "Fiyatlandırma" [ref=e315] [cursor=pointer]:
+            - generic [ref=e317]:
+              - img [ref=e318]
+              - generic [ref=e320]: Fiyatlandırma
+          - button "SSS" [ref=e321] [cursor=pointer]:
+            - generic [ref=e323]:
+              - img [ref=e324]
+              - generic [ref=e327]: SSS
+      - generic [ref=e328]:
+        - button "Giriş" [ref=e329] [cursor=pointer]:
+          - generic [ref=e331]:
+            - img [ref=e332]
+            - text: Giriş
+        - button "Kayıt Ol" [ref=e336] [cursor=pointer]:
+          - generic [ref=e338]:
+            - img [ref=e339]
+            - text: Kayıt Ol
+  - generic [ref=e343]:
+    - img [ref=e345]
+    - heading "Emsal Karar Arama" [level=1] [ref=e349]
+    - paragraph [ref=e350]: Yargıtay, Danıştay ve İstinaf Mahkemeleri emsal kararları içerisinde detaylı arama yapın.
+  - generic [ref=e351]:
+    - generic [ref=e352]:
+      - generic [ref=e353]:
+        - generic:
+          - img
+        - 'textbox "Orn: Sanigin uzerinde para cikmamasi ticaret kastinin ispatlanamadigini gosterir veya dava metnini yapistirin..." [ref=e355]': Ayrıca, yıkım kararına dayanak teşkil eden yapı tespit ve tatil tutanaklarında belirtilen aykırılıkların niteliği ve kapsamı hukuka uygun bir şekilde değerlendirilmemiştir. Yapıda yapılan tadilat ve eklentilerin, imar mevzuatına tam anlamıyla aykırılık teşkil edip etmediği hususu detaylı olarak incelenmeden, doğrudan yıkım kararı verilmesi orantılılık ilkesine aykırıdır.
+        - button [ref=e398] [cursor=pointer]:
+          - img [ref=e399]
+      - combobox [ref=e357]:
+        - option "Otomatik" [selected]
+        - option "Ceza"
+        - option "Hukuk"
+        - option "Danistay"
+        - option "BAM / Istinaf"
+      - button "Karar Bul" [ref=e359] [cursor=pointer]:
+        - generic [ref=e402]: Karar Bul
+        - img [ref=e403]
+    - button "Gelişmiş Arama Nasıl Yapılır? Rehberi Aç" [ref=e364] [cursor=pointer]:
+      - img [ref=e365]
+      - text: Gelişmiş Arama Nasıl Yapılır? Rehberi Aç
+  - generic [ref=e367]:
+    - generic [ref=e368]:
+      - img [ref=e370]
+      - generic [ref=e382]:
+        - img [ref=e384]
+        - generic [ref=e387]:
+          - heading "Akilli Karar Arama" [level=3] [ref=e388]
+          - paragraph [ref=e389]: Arama; CLI, Bedesten ve gerekirse diger arka plan arama katmanlariyla calisir. Uygun sonuclar bulunup mevcut ekranda gosterilir.
+    - generic [ref=e391]:
+      - img [ref=e405]
+      - heading "Arama Hatası" [level=3] [ref=e407]
+      - paragraph [ref=e408]: "{\"error\":\"Unauthorized: Bearer token required\"}"

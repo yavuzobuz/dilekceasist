@@ -2,6 +2,7 @@ import analyzeHandler from '../../backend/gemini/analyze.js';
 import chatHandler from '../../backend/gemini/chat.js';
 import generatePetitionHandler from '../../backend/gemini/generate-petition.js';
 import keywordsHandler from '../../backend/gemini/keywords.js';
+import legalSearchPlanHandler from '../../backend/gemini/legal-search-plan.js';
 import reviewHandler from '../../backend/gemini/review.js';
 import rewriteHandler from '../../backend/gemini/rewrite.js';
 import webSearchHandler from '../../backend/gemini/web-search.js';
@@ -20,6 +21,7 @@ const ACTION_HANDLERS = {
     chat: chatHandler,
     'generate-petition': generatePetitionHandler,
     keywords: keywordsHandler,
+    'legal-search-plan': legalSearchPlanHandler,
     review: reviewHandler,
     rewrite: rewriteHandler,
     'web-search': webSearchHandler,

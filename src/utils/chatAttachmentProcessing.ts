@@ -2,7 +2,17 @@ import JSZip from 'jszip';
 import UTIF from 'utif2';
 import mammoth from 'mammoth';
 
-import type { AnalysisData, CaseDetails, ContactInfo, LawyerInfo, UploadedFile } from '../../types';
+import type {
+    AnalysisData,
+    CaseDetails,
+    ContactInfo,
+    DetailedAnalysis,
+    LawyerInfo,
+    LegalSearchPacket,
+    PrecedentSearchPlan,
+    UploadedFile,
+    WebSearchPlan,
+} from '../../types';
 
 const fileToBase64 = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
@@ -89,6 +99,100 @@ const mergeContactInfo = (
     return merged.length > 0 ? merged : undefined;
 };
 
+const mergeUniqueStringList = (currentValue?: string[], incomingValue?: string[]): string[] | undefined => {
+    const combined = [
+        ...(Array.isArray(currentValue) ? currentValue : []),
+        ...(Array.isArray(incomingValue) ? incomingValue : []),
+    ]
+        .map((item) => String(item || '').trim())
+        .filter(Boolean);
+
+    if (combined.length === 0) return undefined;
+    return Array.from(new Set(combined));
+};
+
+const mergeLegalSearchPacket = (
+    currentValue?: LegalSearchPacket,
+    incomingValue?: LegalSearchPacket
+): LegalSearchPacket | undefined => {
+    if (!currentValue && !incomingValue) return undefined;
+    if (!currentValue) return incomingValue;
+    if (!incomingValue) return currentValue;
+
+    return {
+        primaryDomain: mergeStringField(currentValue.primaryDomain, incomingValue.primaryDomain) as LegalSearchPacket['primaryDomain'],
+        caseType: mergeStringField(currentValue.caseType, incomingValue.caseType),
+        coreIssue: mergeStringField(currentValue.coreIssue, incomingValue.coreIssue),
+        requiredConcepts: mergeUniqueStringList(currentValue.requiredConcepts, incomingValue.requiredConcepts),
+        supportConcepts: mergeUniqueStringList(currentValue.supportConcepts, incomingValue.supportConcepts),
+        evidenceConcepts: mergeUniqueStringList(currentValue.evidenceConcepts, incomingValue.evidenceConcepts),
+        negativeConcepts: mergeUniqueStringList(currentValue.negativeConcepts, incomingValue.negativeConcepts),
+        preferredSource: mergeStringField(currentValue.preferredSource, incomingValue.preferredSource) as LegalSearchPacket['preferredSource'],
+        preferredBirimCodes: mergeUniqueStringList(currentValue.preferredBirimCodes, incomingValue.preferredBirimCodes),
+        searchSeedText: mergeStringField(currentValue.searchSeedText, incomingValue.searchSeedText),
+        queryMode: mergeStringField(currentValue.queryMode, incomingValue.queryMode) as LegalSearchPacket['queryMode'],
+    };
+};
+
+const mergeWebSearchPlan = (
+    currentValue?: WebSearchPlan,
+    incomingValue?: WebSearchPlan
+): WebSearchPlan | undefined => {
+    if (!currentValue && !incomingValue) return undefined;
+
+    return {
+        coreQueries: mergeUniqueStringList(currentValue?.coreQueries, incomingValue?.coreQueries),
+        supportQueries: mergeUniqueStringList(currentValue?.supportQueries, incomingValue?.supportQueries),
+        negativeQueries: mergeUniqueStringList(currentValue?.negativeQueries, incomingValue?.negativeQueries),
+        focusTopics: mergeUniqueStringList(currentValue?.focusTopics, incomingValue?.focusTopics),
+    };
+};
+
+const mergePrecedentSearchPlan = (
+    currentValue?: PrecedentSearchPlan,
+    incomingValue?: PrecedentSearchPlan
+): PrecedentSearchPlan | undefined => {
+    if (!currentValue && !incomingValue) return undefined;
+
+    return {
+        requiredConcepts: mergeUniqueStringList(currentValue?.requiredConcepts, incomingValue?.requiredConcepts),
+        supportConcepts: mergeUniqueStringList(currentValue?.supportConcepts, incomingValue?.supportConcepts),
+        evidenceConcepts: mergeUniqueStringList(currentValue?.evidenceConcepts, incomingValue?.evidenceConcepts),
+        negativeConcepts: mergeUniqueStringList(currentValue?.negativeConcepts, incomingValue?.negativeConcepts),
+        preferredSource: mergeStringField(currentValue?.preferredSource, incomingValue?.preferredSource) as PrecedentSearchPlan['preferredSource'],
+        preferredBirimCodes: mergeUniqueStringList(currentValue?.preferredBirimCodes, incomingValue?.preferredBirimCodes),
+        searchSeedText: mergeStringField(currentValue?.searchSeedText, incomingValue?.searchSeedText),
+        queryMode: mergeStringField(currentValue?.queryMode, incomingValue?.queryMode) as PrecedentSearchPlan['queryMode'],
+    };
+};
+
+const mergeDetailedAnalysis = (
+    currentValue?: DetailedAnalysis,
+    incomingValue?: DetailedAnalysis
+): DetailedAnalysis | undefined => {
+    if (!currentValue && !incomingValue) return undefined;
+
+    return {
+        documentType: mergeStringField(currentValue?.documentType, incomingValue?.documentType),
+        caseStage: mergeStringField(currentValue?.caseStage, incomingValue?.caseStage),
+        primaryDomain: mergeStringField(currentValue?.primaryDomain, incomingValue?.primaryDomain) as DetailedAnalysis['primaryDomain'],
+        secondaryDomains: mergeUniqueStringList(currentValue?.secondaryDomains, incomingValue?.secondaryDomains),
+        caseType: mergeStringField(currentValue?.caseType, incomingValue?.caseType),
+        coreIssue: mergeStringField(currentValue?.coreIssue, incomingValue?.coreIssue),
+        keyFacts: mergeUniqueStringList(currentValue?.keyFacts, incomingValue?.keyFacts),
+        timeline: mergeUniqueStringList(currentValue?.timeline, incomingValue?.timeline),
+        claims: mergeUniqueStringList(currentValue?.claims, incomingValue?.claims),
+        defenses: mergeUniqueStringList(currentValue?.defenses, incomingValue?.defenses),
+        evidenceSummary: mergeUniqueStringList(currentValue?.evidenceSummary, incomingValue?.evidenceSummary),
+        legalIssues: mergeUniqueStringList(currentValue?.legalIssues, incomingValue?.legalIssues),
+        risksAndWeakPoints: mergeUniqueStringList(currentValue?.risksAndWeakPoints, incomingValue?.risksAndWeakPoints),
+        missingCriticalInfo: mergeUniqueStringList(currentValue?.missingCriticalInfo, incomingValue?.missingCriticalInfo),
+        suggestedNextSteps: mergeUniqueStringList(currentValue?.suggestedNextSteps, incomingValue?.suggestedNextSteps),
+        webSearchPlan: mergeWebSearchPlan(currentValue?.webSearchPlan, incomingValue?.webSearchPlan),
+        precedentSearchPlan: mergePrecedentSearchPlan(currentValue?.precedentSearchPlan, incomingValue?.precedentSearchPlan),
+    };
+};
+
 export const mergeAnalysisData = (
     currentValue: AnalysisData | null | undefined,
     incomingValue: AnalysisData | null | undefined
@@ -121,6 +225,8 @@ export const mergeAnalysisData = (
         caseDetails: mergeCaseDetails(currentValue?.caseDetails, incomingValue?.caseDetails),
         lawyerInfo: mergeLawyerInfo(currentValue?.lawyerInfo, incomingValue?.lawyerInfo),
         contactInfo: mergeContactInfo(currentValue?.contactInfo, incomingValue?.contactInfo),
+        legalSearchPacket: mergeLegalSearchPacket(currentValue?.legalSearchPacket, incomingValue?.legalSearchPacket),
+        analysisInsights: mergeDetailedAnalysis(currentValue?.analysisInsights, incomingValue?.analysisInsights),
     };
 };
 

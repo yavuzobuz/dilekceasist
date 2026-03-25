@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
@@ -74,7 +74,12 @@ Setup summary:
 2. Ensure taskpane URL is reachable: `/office/word/taskpane.html`.
 3. In Word, open `My Add-ins` and upload the manifest file.
 4. Select text in Word and use chatbot with quick actions:
-   - `Karar Arama`
+   - `Web Arama`
    - `Metin Duzeltme`
    - `Beyin Firtinasi`
    - `Web Aramasi`
+
+
+## Legal Search Model
+
+GEMINI_LEGAL_SEARCH_MODEL_NAME=gemini-3-flash-preview can be set in .env to use a separate Gemini model only for emsal karar arama planning.

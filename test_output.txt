@@ -1,0 +1,400 @@
+﻿
+[1m[46m RUN [49m[22m [36mv4.0.15 [39m[90mC:/Users/Obuzhukuk/Desktop/dilekceasist[39m
+
+[90mstdout[2m | tests/simpleBedestenService.test.ts[2m > [22m[2msimpleBedestenService[2m > [22m[2mprefers agent searchSeedText over keyword and rawQuery in CLI mode
+[22m[39m[Simple Bedesten CLI] start variants=2 source=all courts=YARGITAYKARARI
+[Simple Bedesten CLI] attempt mode=default birim=H9 timeout=12000ms
+
+[90mstdout[2m | tests/simpleBedestenService.test.ts[2m > [22m[2msimpleBedestenService[2m > [22m[2mreturns CLI search results directly without local filtering
+[22m[39m[Simple Bedesten CLI] start variants=1 source=all courts=YARGITAYKARARI
+[Simple Bedesten CLI] attempt mode=default birim=H9 timeout=12000ms
+
+ [32mÔ£ô[39m tests/legalSearchPlan.test.ts[2m > [22mlegal search plan normalization[2m > [22mclassifies short and long legal texts into different query modes[32m 3[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchPlan.test.ts[2m > [22mlegal search plan normalization[2m > [22mdetects document-style legal language correctly[32m 1[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchPlan.test.ts[2m > [22mlegal search plan normalization[2m > [22mselects same-domain few-shot examples before cross-domain ones[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchPlan.test.ts[2m > [22mlegal search plan normalization[2m > [22mselects the lower-court-history anti-example when UYAP risk appears in long ceza queries[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchPlan.test.ts[2m > [22mlegal search plan normalization[2m > [22mdemotes evidence-like concepts out of the core retrieval set[32m 18[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchPlan.test.ts[2m > [22mlegal search plan normalization[2m > [22mkeeps evidence-centric concepts in the core set when the dispute is about unlawful evidence[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchPlan.test.ts[2m > [22mlegal search plan normalization[2m > [22mresets allowEvidenceAsCore when the dispute only uses proof language but is not about unlawful evidence[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchPlan.test.ts[2m > [22mlegal search plan normalization[2m > [22mlimits ceza long_fact retrieval concepts to three core items when evidence is not core[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchPlan.test.ts[2m > [22mlegal search plan normalization[2m > [22mbuilds round-based search clauses for case files without using evidence as first-pass query text[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchPlan.test.ts[2m > [22mlegal search plan normalization[2m > [22mkeeps searchQuery keyword-like and semanticQuery natural-language after normalization[32m 8[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchPlan.test.ts[2m > [22mlegal search plan normalization[2m > [22muses keyword searchQuery as the first case-like search clause[32m 3[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchPlan.test.ts[2m > [22mlegal search plan normalization[2m > [22mkeeps UYAP only when the text explicitly asks for lower-court style precedent[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchPlan.test.ts[2m > [22mlegal search plan normalization[2m > [22madds a fitting chamber hint for non-ceza domains when AI leaves it empty[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchPlan.test.ts[2m > [22mlegal search plan normalization[2m > [22memits structured validation warnings when evidence terms move buckets and source drifts[32m 3[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchPlan.test.ts[2m > [22mlegal search plan normalization[2m > [22mbuilds retry forbidden terms from validation warnings without duplicates[32m 2[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchPlan.test.ts[2m > [22mlegal search plan normalization[2m > [22mruns scout then planner then retry then reviewer and accepts the repaired plan[32m 62[2mms[22m[39m
+ [31m├ù[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mprefers agent searchSeedText over keyword and rawQuery in CLI mode[33m 349[2mms[22m[39m
+[31m   ÔåÆ expected "vi.fn()" to not be called at all, but actually been called 1 times[90m
+
+Received: 
+
+[1m  1st vi.fn() call:
+
+[22m    Array [
+      Object {
+        "abortSignal": null,
+        "documentId": "cli-1",
+      },
+    ]
+[31m[90m
+
+Number of calls: [1m1[22m
+[31m[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mcan use CLI transport for simple document retrieval when requested[32m 2[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchPlan.test.ts[2m > [22mlegal search plan normalization[2m > [22mlets reviewer fix source drift for short_issue plans without adding hard-coded rewrite[32m 18[2mms[22m[39m
+[90mstdout[2m | tests/simpleBedestenService.test.ts[2m > [22m[2msimpleBedestenService[2m > [22m[2muses the raw CLI result list for ceza queries too
+[22m[39m[Simple Bedesten CLI] start variants=2 source=all courts=YARGITAYKARARI
+[Simple Bedesten CLI] attempt mode=default birim=ALL timeout=12000ms
+
+[90mstdout[2m | tests/simpleBedestenService.test.ts[2m > [22m[2msimpleBedestenService[2m > [22m[2mtries agent provided CLI query variants sequentially and keeps the first successful one in diagnostics
+[22m[39m[Simple Bedesten CLI] start variants=2 source=all courts=ISTINAFHUKUK
+[Simple Bedesten CLI] attempt mode=strict birim=ALL timeout=12000ms
+
+[90mstdout[2m | tests/simpleBedestenService.test.ts[2m > [22m[2msimpleBedestenService[2m > [22m[2mtries agent provided CLI query variants sequentially and keeps the first successful one in diagnostics
+[22m[39m[Simple Bedesten CLI] attempt mode=broad birim=ALL timeout=12000ms
+
+[90mstdout[2m | tests/simpleBedestenService.test.ts[2m > [22m[2msimpleBedestenService[2m > [22m[2mcaps CLI variants in auto mode and avoids HTTP fallback when CLI attempts fail
+[22m[39m[Simple Bedesten CLI] start variants=2 source=all courts=YARGITAYKARARI
+[Simple Bedesten CLI] attempt mode=strict birim=ALL timeout=12000ms
+
+[90mstdout[2m | tests/simpleBedestenService.test.ts[2m > [22m[2msimpleBedestenService[2m > [22m[2mcaps CLI variants in auto mode and avoids HTTP fallback when CLI attempts fail
+[22m[39m[Simple Bedesten CLI] attempt mode=broad birim=ALL timeout=12000ms
+
+[90mstdout[2m | tests/simpleBedestenService.test.ts[2m > [22m[2msimpleBedestenService[2m > [22m[2mfalls through to HTTP search in auto mode when CLI returns empty results
+[22m[39m[Simple Bedesten CLI] start variants=2 source=all courts=YARGITAYKARARI
+[Simple Bedesten CLI] attempt mode=default birim=ALL timeout=12000ms
+
+[90mstdout[2m | tests/simpleBedestenService.test.ts[2m > [22m[2msimpleBedestenService[2m > [22m[2mfalls through to HTTP search in auto mode when CLI returns empty results
+[22m[39m[Simple Bedesten CLI] attempt mode=direct_short birim=ALL timeout=12000ms
+
+node.exe : [90mstderr[2m | tests/simpleBedestenService.test.ts[2m > [22m[2
+msimpleBedestenService[2m > [22m[2mfalls through to HTTP search in auto mode
+ when CLI returns empty results
+At C:\Program Files\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([90mstderr[2m...s empty results 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[22m[39m[Simple Bedesten CLI] empty result, falling back to HTTP source=all e
+lapsed=6ms
+
+ [31m├ù[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mreturns CLI search results directly without local filtering[32m 146[2mms[22m[39m
+[31m   ÔåÆ expected [] to have a length of 1 but got +0[39m
+ [31m├ù[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22muses the raw CLI result list for ceza queries too[32m 33[2mms[22m[39m
+[31m   ÔåÆ expected [] to have a length of 1 but got +0[39m
+ [31m├ù[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mtries agent provided CLI query variants sequentially and keeps the first successful one in diagnostics[32m 25[2mms[22m[39m
+[31m   ÔåÆ expected [] to have a length of 1 but got +0[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mcaps CLI variants in auto mode and avoids HTTP fallback when CLI attempts fail[32m 16[2mms[22m[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mfalls through to HTTP search in auto mode when CLI returns empty results[32m 41[2mms[22m[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mbuilds a required-term variant from a compact legal query[32m 1[2mms[22m[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mbuilds a quoted required-phrase variant in Yargitay search syntax[32m 2[2mms[22m[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mruns one extra query variant in pro mode after an empty first response[32m 24[2mms[22m[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mreranks pro results with document content so substantive matches beat procedural ones[32m 64[2mms[22m[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mreranks beyond the first five candidates when a later document matches the real dispute better[32m 42[2mms[22m[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mpushes idare substantive matches above procedural Danistay decisions[32m 20[2mms[22m[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mtargets the preferred chamber first for is hukuku queries[32m 97[2mms[22m[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mprefers provided keyword seeds over noisy long raw text when building the search phrase[32m 180[2mms[22m[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22muses legalSearchPacket as the primary routing and query source when provided[32m 9[2mms[22m[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mdoes not lock generic ceza file searches to Ceza Genel Kurulu by default[32m 2[2mms[22m[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mbuilds focused ceza variants for uyu┼şturucu trade files[32m 1[2mms[22m[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mkeeps expanded substantive signal dictionaries above the x3 floor for critical domains[32m 1[2mms[22m[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mbuilds focused gayrimenkul variants from tapu and kira disputes[32m 5[2mms[22m[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mkeeps ceza long-text files in the ceza domain instead of drifting to is hukuku[32m 52[2mms[22m[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mcompacts long ceza procedural text around the real crime instead of dates and docket numbers[32m 3[2mms[22m[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mroutes idare-like text to Danistay in the simple path[32m 67[2mms[22m[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mroutes gayrimenkul-like text to the standalone gayrimenkul domain[32m 67[2mms[22m[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mpushes procedural gayrimenkul decisions below substantive tapu decisions[32m 13[2mms[22m[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mreranks fallback results toward the expected chamber[32m 84[2mms[22m[39m
+ [32mÔ£ô[39m tests/simpleBedestenService.test.ts[2m > [22msimpleBedestenService[2m > [22mconverts html document content into plain markdown-like text[32m 29[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchPlan.test.ts[2m > [22mlegal search plan normalization[2m > [22mcounts transient transport retries without changing prompt behavior[33m 1286[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchPlan.test.ts[2m > [22mlegal search plan normalization[2m > [22mfalls back to a minimal safe plan after retry and review still fail[32m 74[2mms[22m[39m
+ [31m├ù[39m tests/yargiCliLive10.test.ts[2m > [22myargi cli live 10 helpers[2m > [22mnormalizes Turkish text safely for lightweight matching[32m 12[2mms[22m[39m
+[31m   ÔåÆ Cannot read properties of undefined (reading 'normalizeText')[39m
+ [31m├ù[39m tests/yargiCliLive10.test.ts[2m > [22myargi cli live 10 helpers[2m > [22mcounts expected term hits inside document text[32m 2[2mms[22m[39m
+[31m   ÔåÆ Cannot read properties of undefined (reading 'countExpectedTermHits')[39m
+ [31m├ù[39m tests/yargiCliLive10.test.ts[2m > [22myargi cli live 10 helpers[2m > [22mscores strong matches as suitable and weak matches as weak[32m 2[2mms[22m[39m
+[31m   ÔåÆ Cannot read properties of undefined (reading 'computeSuitabilityScore')[39m
+ [31m├ù[39m tests/yargiCliLive10.test.ts[2m > [22myargi cli live 10 helpers[2m > [22mbuilds a short markdown summary with verdict counts[32m 1[2mms[22m[39m
+[31m   ÔåÆ Cannot read properties of undefined (reading 'buildMarkdownReport')[39m
+[90mstdout[2m | tests/cliBedestenBridge.test.ts[2m > [22m[2mcliBedestenBridge[2m > [22m[2mparses Bedesten search JSON from CLI stdout
+[22m[39m[YARGI_CLI] search:request {"phrase":"tazminat","courtTypes":["YARGITAYKARARI"],"birimAdi":"H9","timeoutMs":20000}
+[YARGI_CLI] spawn:start {"command":"fake-yargi","args":["bedesten","search","tazminat","-p","2","-c","YARGITAYKARARI","-b","H9"],"timeoutMs":20000}
+[YARGI_CLI] spawn:stdout {"pid":null,"chunk":1,"preview":"{\"decisions\":[{\"documentId\":\"123\",\"birimAdi\":\"9. Hukuk Dairesi\",\"esasNo\":\"2024/1\"}]}"}
+[YARGI_CLI] spawn:close {"pid":null,"code":0,"timedOut":false,"aborted":false,"stdoutChunks":1,"stderrChunks":0}
+[YARGI_CLI] spawn:success {"pid":null,"stdoutChunks":1,"stderrChunks":0,"stdoutPreview":"{\"decisions\":[{\"documentId\":\"123\",\"birimAdi\":\"9. Hukuk Dairesi\",\"esasNo\":\"2024/1\"}]}","stderrPreview":""}
+
+[90mstdout[2m | tests/cliBedestenBridge.test.ts[2m > [22m[2mcliBedestenBridge[2m > [22m[2mparses Bedesten search JSON from CLI stdout
+[22m[39m[YARGI_CLI] search:response {"decisionCount":1}
+
+[90mstdout[2m | tests/cliBedestenBridge.test.ts[2m > [22m[2mcliBedestenBridge[2m > [22m[2mnormalizes operator-heavy phrases before sending them to CLI
+[22m[39m[YARGI_CLI] search:request {"phrase":"ise iade gecersiz fesih","courtTypes":["YARGITAYKARARI"],"birimAdi":"ALL","timeoutMs":20000}
+[YARGI_CLI] spawn:start {"command":"fake-yargi","args":["bedesten","search","ise iade gecersiz fesih","-p","1","-c","YARGITAYKARARI"],"timeoutMs":20000}
+[YARGI_CLI] spawn:stdout {"pid":null,"chunk":1,"preview":"{\"decisions\":[]}"}
+[YARGI_CLI] spawn:close {"pid":null,"code":0,"timedOut":false,"aborted":false,"stdoutChunks":1,"stderrChunks":0}
+[YARGI_CLI] spawn:success {"pid":null,"stdoutChunks":1,"stderrChunks":0,"stdoutPreview":"{\"decisions\":[]}","stderrPreview":""}
+
+[90mstdout[2m | tests/cliBedestenBridge.test.ts[2m > [22m[2mcliBedestenBridge[2m > [22m[2mnormalizes operator-heavy phrases before sending them to CLI
+[22m[39m[YARGI_CLI] search:response {"decisionCount":0}
+
+[90mstdout[2m | tests/cliBedestenBridge.test.ts[2m > [22m[2mcliBedestenBridge[2m > [22m[2mparses Bedesten doc JSON from CLI stdout
+[22m[39m[YARGI_CLI] doc:request {"documentId":"998877"}
+[YARGI_CLI] spawn:start {"command":"fake-yargi","args":["bedesten","doc","998877"],"timeoutMs":20000}
+[YARGI_CLI] spawn:stdout {"pid":null,"chunk":1,"preview":"{\"documentId\":\"998877\",\"markdownContent\":\"# Karar\\n\\nMetin\",\"sourceUrl\":\"https://mevzuat.adalet.gov.tr/ictihat/998877\",\"mimeType\":\"text/html\"}"}
+[YARGI_CLI] spawn:close {"pid":null,"code":0,"timedOut":false,"aborted":false,"stdoutChunks":1,"stderrChunks":0}
+[YARGI_CLI] spawn:success {"pid":null,"stdoutChunks":1,"stderrChunks":0,"stdoutPreview":"{\"documentId\":\"998877\",\"markdownContent\":\"# Karar\\n\\nMetin\",\"sourceUrl\":\"https://mevzuat.adalet.gov.tr/ictihat/998877\",\"mimeType\":\"text/html\"}","stderrPreview":""}
+
+[90mstdout[2m | tests/cliBedestenBridge.test.ts[2m > [22m[2mcliBedestenBridge[2m > [22m[2mparses Bedesten doc JSON from CLI stdout
+[22m[39m[YARGI_CLI] doc:response {"documentId":"998877","hasMarkdown":true}
+
+[90mstdout[2m | tests/cliBedestenBridge.test.ts[2m > [22m[2mcliBedestenBridge[2m > [22m[2msurfaces CLI command errors as backend errors
+[22m[39m[YARGI_CLI] search:request {"phrase":"tazminat","courtTypes":[],"birimAdi":"ALL","timeoutMs":20000}
+[YARGI_CLI] spawn:start {"command":"fake-yargi","args":["bedesten","search","tazminat","-p","1"],"timeoutMs":20000}
+[YARGI_CLI] spawn:stdout {"pid":null,"chunk":1,"preview":"{\"error\":\"CLI hata verdi\"}"}
+[YARGI_CLI] spawn:close {"pid":null,"code":1,"timedOut":false,"aborted":false,"stdoutChunks":1,"stderrChunks":0}
+
+[90mstderr[2m | tests/cliBedestenBridge.test.ts[2m > [22m[2mcliBedestenBri
+dge[2m > [22m[2msurfaces CLI command errors as backend errors
+[22m[39m[YARGI_CLI] spawn:error {"pid":null,"code":"yargi_cli_command_failed"
+,"message":"CLI hata verdi","stdoutChunks":1,"stderrChunks":0,"stdoutPreview":"
+{\"error\":\"CLI hata verdi\"}","stderrPreview":""}
+
+[90mstdout[2m | tests/cliBedestenBridge.test.ts[2m > [22m[2mcliBedestenBridge[2m > [22m[2maborts the running CLI command when the request is cancelled
+[22m[39m[YARGI_CLI] search:request {"phrase":"tazminat","courtTypes":[],"birimAdi":"ALL","timeoutMs":20000}
+[YARGI_CLI] spawn:start {"command":"fake-yargi","args":["bedesten","search","tazminat","-p","1"],"timeoutMs":20000}
+
+[90mstderr[2m | tests/cliBedestenBridge.test.ts[2m > [22m[2mcliBedestenBri
+dge[2m > [22m[2maborts the running CLI command when the request is cancelled
+[22m[39m[YARGI_CLI] spawn:terminate {"pid":null,"timedOut":false,"aborted":tr
+ue}
+[YARGI_CLI] spawn:error {"pid":null,"code":"REQUEST_ABORTED","message":"REQUEST
+_ABORTED","stdoutChunks":0,"stderrChunks":0,"stdoutPreview":"","stderrPreview":
+""}
+
+[90mstdout[2m | tests/cliBedestenBridge.test.ts[2m > [22m[2mcliBedestenBridge[2m > [22m[2mrejects immediately on CLI timeout without waiting for close
+[22m[39m[YARGI_CLI] search:request {"phrase":"tazminat","courtTypes":[],"birimAdi":"ALL","timeoutMs":25}
+[YARGI_CLI] spawn:start {"command":"fake-yargi","args":["bedesten","search","tazminat","-p","1"],"timeoutMs":25}
+
+[90mstderr[2m | tests/cliBedestenBridge.test.ts[2m > [22m[2mcliBedestenBri
+dge[2m > [22m[2mrejects immediately on CLI timeout without waiting for close
+[22m[39m[YARGI_CLI] spawn:timeout {"pid":null,"timeoutMs":25,"stdoutChunks":0
+,"stderrChunks":0}
+[YARGI_CLI] spawn:terminate {"pid":null,"timedOut":true,"aborted":false}
+[YARGI_CLI] spawn:error {"pid":null,"code":"yargi_cli_timeout","message":"Yargi
+ CLI zaman asimina ugradi.","stdoutChunks":0,"stderrChunks":0,"stdoutPreview":"
+","stderrPreview":""}
+
+ [32mÔ£ô[39m tests/cliBedestenBridge.test.ts[2m > [22mcliBedestenBridge[2m > [22mparses Bedesten search JSON from CLI stdout[32m 28[2mms[22m[39m
+ [32mÔ£ô[39m tests/cliBedestenBridge.test.ts[2m > [22mcliBedestenBridge[2m > [22mnormalizes operator-heavy phrases before sending them to CLI[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m tests/cliBedestenBridge.test.ts[2m > [22mcliBedestenBridge[2m > [22mparses Bedesten doc JSON from CLI stdout[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/cliBedestenBridge.test.ts[2m > [22mcliBedestenBridge[2m > [22msurfaces CLI command errors as backend errors[32m 10[2mms[22m[39m
+ [32mÔ£ô[39m tests/cliBedestenBridge.test.ts[2m > [22mcliBedestenBridge[2m > [22maborts the running CLI command when the request is cancelled[32m 7[2mms[22m[39m
+ [32mÔ£ô[39m tests/cliBedestenBridge.test.ts[2m > [22mcliBedestenBridge[2m > [22mrejects immediately on CLI timeout without waiting for close[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchSkill.test.ts[2m > [22mlegal search skill integration[2m > [22mbuilds a ceza long_fact skill package for long iddianame-style drug files[32m 22[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchSkill.test.ts[2m > [22mlegal search skill integration[2m > [22mroutes aile metinlerini aile skilline yonlendirir[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchSkill.test.ts[2m > [22mlegal search skill integration[2m > [22mroutes icra metinlerini 12. hukuk odakli alt skill ile kurar[32m 3[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchSkill.test.ts[2m > [22mlegal search skill integration[2m > [22mroutes idare metinlerini idare skilline yonlendirir[32m 3[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchSkill.test.ts[2m > [22mlegal search skill integration[2m > [22mrepairs mojibake text before planning[32m 1[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchSkill.test.ts[2m > [22mlegal search skill integration[2m > [22mroutes kamudaki mobbing ve tam yargi metinlerini idareye zorlar[32m 4[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchSkill.test.ts[2m > [22mlegal search skill integration[2m > [22mrepairs generic hard-case diagnosis into the real legal institution[32m 17[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchSkill.test.ts[2m > [22mlegal search skill integration[2m > [22mkeeps strategy order and ceza negatives when skill package is passed into strategy builder[32m 11[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchSkill.test.ts[2m > [22mlegal search skill integration[2m > [22msplits anayasa bireysel basvuru ile norm denetimini ayri skill planlarina ayirir[32m 6[2mms[22m[39m
+ [32mÔ£ô[39m tests/legalSearchSkill.test.ts[2m > [22mlegal search skill integration[2m > [22msurfaces skill diagnostics and zero-result messaging to the frontend helper[32m 1[2mms[22m[39m
+
+[31mÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[39m[1m[41m Failed Tests 8 [49m[22m[31mÔÄ»ÔÄ»ÔÄ
+»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[39m
+
+[41m[1m FAIL [22m[49m tests/simpleBedestenService.test.ts[2m > [22msimple
+BedestenService[2m > [22mprefers agent searchSeedText over keyword and rawQue
+ry in CLI mode
+[31m[1mAssertionError[22m: expected "vi.fn()" to not be called at all, but a
+ctually been called 1 times[90m
+
+Received: 
+
+[1m  1st vi.fn() call:
+
+[22m    Array [
+      Object {
+        "abortSignal": null,
+        "documentId": "cli-1",
+      },
+    ]
+[31m[90m
+
+Number of calls: [1m1[22m
+[31m[39m
+[36m [2mÔØ»[22m tests/simpleBedestenService.test.ts:[2m74:59[22m[39m
+    [90m 72| [39m
+    [90m 73| [39m        expect(cliBridgeMocks.searchDecisionsViaYargiCli).to
+HaveBeenCaÔÇĞ
+    [90m 74| [39m        expect(cliBridgeMocks.getDocumentViaYargiCli).not.to
+HaveBeenCaÔÇĞ
+    [90m   | [39m                                                          [
+31m^[39m
+    [90m 75| [39m        expect(cliBridgeMocks.searchDecisionsViaYargiCli.moc
+k.calls[0]ÔÇĞ
+    [90m 76| [39m            phrase[33m:[39m [32m'Ise iade gecersiz fesih'
+[39m[33m,[39m
+
+[31m[2mÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»Ô
+Ä»[1/8]ÔÄ»[22m[39m
+
+[41m[1m FAIL [22m[49m tests/simpleBedestenService.test.ts[2m > [22msimple
+BedestenService[2m > [22mreturns CLI search results directly without local fi
+ltering
+[31m[1mAssertionError[22m: expected [] to have a length of 1 but got +0[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 1[39m
+[31m+ 0[39m
+
+[36m [2mÔØ»[22m tests/simpleBedestenService.test.ts:[2m125:33[22m[39m
+    [90m123| [39m        })[33m;[39m
+    [90m124| [39m
+    [90m125| [39m        [34mexpect[39m(payload[33m.[39mresults)[33m.[3
+9m[34mtoHaveLength[39m([34m1[39m)[33m;[39m
+    [90m   | [39m                                [31m^[39m
+    [90m126| [39m        [34mexpect[39m(payload[33m.[39mresults[[34m0[3
+9m][33m.[39mdaire)[33m.[39m[34mtoBe[39m([32m'4. Ceza Dairesi'[39m)[33m
+;[39m
+    [90m127| [39m        expect(payload.retrievalDiagnostics.zeroResultReason
+).toBeNullÔÇĞ
+
+[31m[2mÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»Ô
+Ä»[2/8]ÔÄ»[22m[39m
+
+[41m[1m FAIL [22m[49m tests/simpleBedestenService.test.ts[2m > [22msimple
+BedestenService[2m > [22muses the raw CLI result list for ceza queries too
+[31m[1mAssertionError[22m: expected [] to have a length of 1 but got +0[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 1[39m
+[31m+ 0[39m
+
+[36m [2mÔØ»[22m tests/simpleBedestenService.test.ts:[2m149:33[22m[39m
+    [90m147| [39m        })[33m;[39m
+    [90m148| [39m
+    [90m149| [39m        [34mexpect[39m(payload[33m.[39mresults)[33m.[3
+9m[34mtoHaveLength[39m([34m1[39m)[33m;[39m
+    [90m   | [39m                                [31m^[39m
+    [90m150| [39m        [34mexpect[39m(payload[33m.[39mresults[[34m0[3
+9m][33m.[39mdocumentId)[33m.[39m[34mtoBe[39m([32m'cli-ceza-1'[39m)[33m
+;[39m
+    [90m151| [39m        expect(cliBridgeMocks.getDocumentViaYargiCli).not.to
+HaveBeenCaÔÇĞ
+
+[31m[2mÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»Ô
+Ä»[3/8]ÔÄ»[22m[39m
+
+[41m[1m FAIL [22m[49m tests/simpleBedestenService.test.ts[2m > [22msimple
+BedestenService[2m > [22mtries agent provided CLI query variants sequentially
+ and keeps the first successful one in diagnostics
+[31m[1mAssertionError[22m: expected [] to have a length of 1 but got +0[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 1[39m
+[31m+ 0[39m
+
+[36m [2mÔØ»[22m tests/simpleBedestenService.test.ts:[2m184:33[22m[39m
+    [90m182| [39m
+    [90m183| [39m        expect(cliBridgeMocks.searchDecisionsViaYargiCli).to
+HaveBeenCaÔÇĞ
+    [90m184| [39m        [34mexpect[39m(payload[33m.[39mresults)[33m.[3
+9m[34mtoHaveLength[39m([34m1[39m)[33m;[39m
+    [90m   | [39m                                [31m^[39m
+    [90m185| [39m        expect(payload.retrievalDiagnostics.queryVariants.le
+ngth).toBeÔÇĞ
+    [90m186| [39m        expect(payload.retrievalDiagnostics.selectedQueryVar
+iant).toBeÔÇĞ
+
+[31m[2mÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»Ô
+Ä»[4/8]ÔÄ»[22m[39m
+
+[41m[1m FAIL [22m[49m tests/yargiCliLive10.test.ts[2m > [22myargi cli liv
+e 10 helpers[2m > [22mnormalizes Turkish text safely for lightweight matching
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'normaliz
+eText')[39m
+[36m [2mÔØ»[22m tests/yargiCliLive10.test.ts:[2m6:28[22m[39m
+    [90m  4| [39m[34mdescribe[39m([32m'yargi cli live 10 helpers'[39m[33
+m,[39m () [33m=>[39m {
+    [90m  5| [39m    it('normalizes Turkish text safely for lightweight match
+ing', () =ÔÇĞ
+    [90m  6| [39m        expect(__testables.normalizeText('─░┼şe ─░ade, Fesih
+!')).toBe('isÔÇĞ
+    [90m   | [39m                           [31m^[39m
+    [90m  7| [39m    })[33m;[39m
+    [90m  8| [39m
+
+[31m[2mÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»Ô
+Ä»[5/8]ÔÄ»[22m[39m
+
+[41m[1m FAIL [22m[49m tests/yargiCliLive10.test.ts[2m > [22myargi cli liv
+e 10 helpers[2m > [22mcounts expected term hits inside document text
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'countExp
+ectedTermHits')[39m
+[36m [2mÔØ»[22m tests/yargiCliLive10.test.ts:[2m10:34[22m[39m
+    [90m  8| [39m
+    [90m  9| [39m    [34mit[39m([32m'counts expected term hits inside docu
+ment text'[39m[33m,[39m () [33m=>[39m {
+    [90m 10| [39m        [35mconst[39m hits [33m=[39m __testables[33m.[
+39m[34mcountExpectedTermHits[39m(
+    [90m   | [39m                                 [31m^[39m
+    [90m 11| [39m            'Bu karar ise iade, gecersiz fesih ve is sozlesm
+esi hakkinÔÇĞ
+    [90m 12| [39m            [[32m'ise iade'[39m[33m,[39m [32m'fesih'[3
+9m[33m,[39m [32m'sigorta'[39m]
+
+[31m[2mÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»Ô
+Ä»[6/8]ÔÄ»[22m[39m
+
+[41m[1m FAIL [22m[49m tests/yargiCliLive10.test.ts[2m > [22myargi cli liv
+e 10 helpers[2m > [22mscores strong matches as suitable and weak matches as w
+eak
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'computeS
+uitabilityScore')[39m
+[36m [2mÔØ»[22m tests/yargiCliLive10.test.ts:[2m19:41[22m[39m
+    [90m 17| [39m
+    [90m 18| [39m    it('scores strong matches as suitable and weak matches a
+s weak', (ÔÇĞ
+    [90m 19| [39m        [35mconst[39m strongScore [33m=[39m __testables
+[33m.[39m[34mcomputeSuitabilityScore[39m({
+    [90m   | [39m                                        [31m^[39m
+    [90m 20| [39m            resultCount[33m:[39m [34m10[39m[33m,[39m
+    [90m 21| [39m            courtMatch[33m:[39m [35mtrue[39m[33m,[39m
+
+[31m[2mÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»Ô
+Ä»[7/8]ÔÄ»[22m[39m
+
+[41m[1m FAIL [22m[49m tests/yargiCliLive10.test.ts[2m > [22myargi cli liv
+e 10 helpers[2m > [22mbuilds a short markdown summary with verdict counts
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'buildMar
+kdownReport')[39m
+[36m [2mÔØ»[22m tests/yargiCliLive10.test.ts:[2m41:38[22m[39m
+    [90m 39| [39m
+    [90m 40| [39m    [34mit[39m([32m'builds a short markdown summary with 
+verdict counts'[39m[33m,[39m () [33m=>[39m {
+    [90m 41| [39m        [35mconst[39m markdown [33m=[39m __testables[33
+m.[39m[34mbuildMarkdownReport[39m(
+    [90m   | [39m                                     [31m^[39m
+    [90m 42| [39m            [32m'17.03.2026 12:00:00'[39m[33m,[39m
+    [90m 43| [39m            {
+
+[31m[2mÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»Ô
+Ä»[8/8]ÔÄ»[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m3 passed[39m[22m[90m (5)[39m
+[2m      Tests [22m [1m[31m8 failed[39m[22m[2m | [22m[1m[32m58 passed[39m[22m[90m (66)[39m
+[2m   Start at [22m 17:39:29
+[2m   Duration [22m 11.59s[2m (transform 2.96s, setup 2.18s, import 5.69s, tests 3.09s, environment 16.18s)[22m
+

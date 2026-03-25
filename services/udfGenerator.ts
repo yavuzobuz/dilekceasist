@@ -18,7 +18,7 @@ export interface GenerateUdfOptions {
 }
 
 /**
- * Generates a UDF compliant blob format expected by UYAP DokÃ¼man EditÃ¶rÃ¼
+ * Generates a UDF compliant blob format expected by UYAP Doküman Editörü
  */
 export async function generateUdfBlob(options: GenerateUdfOptions): Promise<Blob> {
   const { html, corporateHeader } = options;
@@ -74,7 +74,7 @@ export async function generateUdfBlob(options: GenerateUdfOptions): Promise<Blob
         currentOffset += 1;
       } else if (tag === 'li') {
         // Simple list support
-        const bulletText = 'â€¢ ';
+        const bulletText = '• ';
         plainText += bulletText;
         elements.push(`<paragraph Alignment="${nextAlign}"><content startOffset="${currentOffset}" length="${bulletText.length}" /></paragraph>`);
         currentOffset += bulletText.length;
@@ -122,7 +122,7 @@ export async function generateUdfBlob(options: GenerateUdfOptions): Promise<Blob
 <elements resolver="hvl-default">
 ${elements.join('\n')}
 </elements>
-<styles><style name="default" description="GeÃ§erli" family="Dialog" size="12" bold="false" italic="false" foreground="-13421773" FONT_ATTRIBUTE_KEY="javax.swing.plaf.FontUIResource[family=Dialog,name=Dialog,style=plain,size=12]" /><style name="hvl-default" family="Times New Roman" size="12" description="GÃ¶vde" /></styles>
+<styles><style name="default" description="Geçerli" family="Dialog" size="12" bold="false" italic="false" foreground="-13421773" FONT_ATTRIBUTE_KEY="javax.swing.plaf.FontUIResource[family=Dialog,name=Dialog,style=plain,size=12]" /><style name="hvl-default" family="Times New Roman" size="12" description="Gövde" /></styles>
 </template>`;
 
   // Create ZIP archive

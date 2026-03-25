@@ -1,8 +1,11 @@
 import { applyCors, getSafeErrorMessage } from '../../lib/api/cors.js';
+import { AI_CONFIG } from '../../config.js';
 import { GEMINI_MODEL_NAME, getGeminiClient } from './_shared.js';
 
 const MODEL_NAME = GEMINI_MODEL_NAME;
 const SEARCH_TIMEOUT_MS = Number(process.env.GEMINI_WEB_SEARCH_TIMEOUT_MS || 45000);
+const SEARCH_MAX_RETRIES = Math.max(1, Number(process.env.GEMINI_WEB_SEARCH_MAX_RETRIES || AI_CONFIG.MAX_RETRIES || 3));
+const INITIAL_RETRY_DELAY_MS = Math.max(250, Number(process.env.GEMINI_WEB_SEARCH_RETRY_DELAY_MS || AI_CONFIG.INITIAL_RETRY_DELAY_MS || 1000));
 
 const normalizeKeywordList = (rawKeywords) => {
     if (!Array.isArray(rawKeywords)) return [];
@@ -22,6 +25,16 @@ const normalizeKeywordList = (rawKeywords) => {
     return cleaned.slice(0, 8);
 };
 
+const normalizeSearchTerms = ({ rawKeywords, rawQuery } = {}) => {
+    const normalizedKeywords = normalizeKeywordList(rawKeywords);
+    if (normalizedKeywords.length > 0) return normalizedKeywords;
+
+    const normalizedQuery = String(rawQuery || '').replace(/\s+/g, ' ').trim();
+    if (!normalizedQuery) return [];
+
+    return normalizeKeywordList([normalizedQuery]);
+};
+
 const withTimeout = async (promise, timeoutMs, timeoutMessage) => {
     let timer = null;
     try {
@@ -34,51 +47,70 @@ const withTimeout = async (promise, timeoutMs, timeoutMessage) => {
     }
 };
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const isRetryableSearchError = (error) => {
+    const status = Number(error?.status || error?.code || 0);
+    const message = String(error?.message || error || '').toLowerCase();
+
+    return status === 429
+        || status === 500
+        || status === 503
+        || message.includes('high demand')
+        || message.includes('unavailable')
+        || message.includes('try again later')
+        || message.includes('timed out')
+        || message.includes('timeout');
+};
+
+const runWithRetry = async (task, { retries = SEARCH_MAX_RETRIES, initialDelayMs = INITIAL_RETRY_DELAY_MS } = {}) => {
+    let attempt = 0;
+    let lastError = null;
+
+    while (attempt < retries) {
+        try {
+            return await task();
+        } catch (error) {
+            lastError = error;
+            attempt += 1;
+
+            if (attempt >= retries || !isRetryableSearchError(error)) {
+                throw error;
+            }
+
+            await sleep(initialDelayMs * (2 ** (attempt - 1)));
+        }
+    }
+
+    throw lastError;
+};
+
 const buildPrimaryPrompt = (keywords) => {
-    const yargitayQueries = keywords.map((kw) => `\"${kw}\" Yargitay karar emsal`);
-    const mevzuatQueries = keywords.map((kw) => `\"${kw}\" kanun maddesi hukum`);
+    const mevzuatQueries = keywords.map((kw) => `"${kw}" kanun maddesi hukum`);
 
     return `
-## ARAMA GOREVI: YARGITAY KARARLARI VE MEVZUAT
+## ARAMA GOREVI: HUKUKI WEB ARASTIRMASI
 
 ### ANAHTAR KELIMELER
 ${keywords.join(', ')}
 
 ### ARAMA STRATEJISI
-**1. Yargitay Kararlari (Oncelikli)**
-${yargitayQueries.map((q) => `- ${q}`).join('\n')}
+**1. Hukuki Web Arastirmasi**
+${keywords.map((q) => `- ${q}`).join('\n')}
 
 **2. Mevzuat Aramasi**
 ${mevzuatQueries.map((q) => `- ${q}`).join('\n')}
 
 ## BEKLENTILER
-1. En az 3-5 Yargitay karari bul
-2. Her karar icin TAM KUNYESINI yaz
-3. Ilgili kanun maddelerini listele
+1. Konuyu ozetle
+2. Ilgili mevzuati listele
+3. Pratik risk ve dikkat noktalarini belirt
 `;
 };
 
-const SYSTEM_INSTRUCTION = `Sen, Turk hukuku alaninda uzman bir arastirma asistanisin.
-Gorevin ozellikle Yargitay kararlari bulmak ve bunlari dilekcede kullanilabilir formatta sunmaktir.
-
-KRITIK GOREV: Yargitay kararlari bulma
-1. Karar kunyesi: Daire, Esas No, Karar No, Tarih
-2. Karar ozeti: 1-2 cumlelik ozet
-3. Ilgili kanun maddesi: Kararda atif yapilan mevzuat
-
-CIKTI FORMATI
-### EMSAL YARGITAY KARARLARI
-**1. [Yargitay X. HD., E. XXXX/XXXX, K. XXXX/XXXX, T. XX.XX.XXXX]**
-Ozet: [Kararin ozeti]
-Ilgili Mevzuat: [Kanun maddesi]
-
-### ILGILI MEVZUAT
-- [Kanun Adi] m. [madde no]: [madde ozeti]
-
-### ARASTIRMA OZETI
-[Bulunan karar ve mevzuata dayali genel hukuki degerlendirme]
-
-Onemli: Uydurma karar numarasi veya kaynak verme.`;
+const SYSTEM_INSTRUCTION = `Sen, Turk hukuku alaninda genel web arastirmasi yapan bir yardimci asistansin.
+Uydurma karar veya kaynak verme.
+Konuyu kisa, net ve kullanisli sekilde ozetle.`;
 
 export default async function handler(req, res) {
     if (!applyCors(req, res, {
@@ -92,10 +124,13 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     try {
-        const keywords = normalizeKeywordList(req?.body?.keywords);
+        const keywords = normalizeSearchTerms({
+            rawKeywords: req?.body?.keywords,
+            rawQuery: req?.body?.query,
+        });
 
         if (keywords.length === 0) {
-            return res.status(400).json({ error: 'keywords must be a non-empty array' });
+            return res.status(400).json({ error: 'keywords veya query gerekli' });
         }
 
         const ai = getGeminiClient();
@@ -110,17 +145,19 @@ export default async function handler(req, res) {
         let _debugFallbackError = null;
 
         try {
-            response = await withTimeout(
-                ai.models.generateContent({
-                    model: MODEL_NAME,
-                    contents: primaryPrompt,
-                    config: {
-                        tools: [{ googleSearch: {} }],
-                        systemInstruction: SYSTEM_INSTRUCTION,
-                    },
-                }),
-                SEARCH_TIMEOUT_MS,
-                'Web search timed out'
+            response = await runWithRetry(
+                () => withTimeout(
+                    ai.models.generateContent({
+                        model: MODEL_NAME,
+                        contents: primaryPrompt,
+                        config: {
+                            tools: [{ googleSearch: {} }],
+                            systemInstruction: SYSTEM_INSTRUCTION,
+                        },
+                    }),
+                    SEARCH_TIMEOUT_MS,
+                    'Web search timed out'
+                )
             );
         } catch (searchError) {
             degraded = true;

@@ -1,8 +1,6 @@
-import {
-    getLegalDocumentViaMcp,
-    getLegalSources,
-    searchLegalDecisionsViaMcp,
-} from '../../lib/legal/mcpLegalSearch.js';
+import { getLegalSources } from '../../lib/legal/mcpLegalSearch.js';
+import searchDecisionsHandler from '../../backend/legal/search-decisions.js';
+import getDocumentHandler from '../../backend/legal/get-document.js';
 
 export const config = {
     maxDuration: 60,
@@ -15,18 +13,18 @@ const normalizeAction = (value = '') =>
         .replace(/^\/+|\/+$/g, '');
 
 async function handleSources(_req, res) {
-    res.json(getLegalSources());
+    return res.json(getLegalSources());
 }
 
 async function handleSearchDecisions(req, res) {
-    const { keyword } = req.body || {};
+    const { keyword, rawQuery } = req.body || {};
+    const effectiveQuery = String(rawQuery || keyword || '').trim();
 
-    if (!String(keyword || '').trim()) {
-        return res.status(400).json({ error: 'Arama kelimesi (keyword) gereklidir.' });
+    if (!effectiveQuery) {
+        return res.status(400).json({ error: 'Arama metni gereklidir.' });
     }
 
-    const payload = await searchLegalDecisionsViaMcp(req.body || {});
-    return res.json(payload);
+    return searchDecisionsHandler(req, res);
 }
 
 async function handleGetDocument(req, res) {
@@ -36,8 +34,7 @@ async function handleGetDocument(req, res) {
         return res.status(400).json({ error: 'documentId veya documentUrl gereklidir.' });
     }
 
-    const payload = await getLegalDocumentViaMcp(req.body || {});
-    return res.json(payload);
+    return getDocumentHandler(req, res);
 }
 
 export default async function handler(req, res) {

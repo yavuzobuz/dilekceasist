@@ -1,0 +1,182 @@
+[
+  {
+    "id": "C1",
+    "domain": "Ceza",
+    "totalResults": 1,
+    "relevantResults": 1,
+    "passRate": 100,
+    "avgScore": 90,
+    "searchQuery": "uyusturucu madde ticareti, kullanmak icin uyusturucu, suc"
+  },
+  {
+    "id": "C2",
+    "domain": "Ceza",
+    "totalResults": 9,
+    "relevantResults": 9,
+    "passRate": 100,
+    "avgScore": 86.3,
+    "searchQuery": "şüpheden sanık yararlanır, çelişkili beyan, husumetli tanık"
+  },
+  {
+    "id": "C3",
+    "domain": "Ceza",
+    "totalResults": 14,
+    "relevantResults": 14,
+    "passRate": 100,
+    "avgScore": 83.9,
+    "searchQuery": "hakaret suçu, ifade özgürlüğü, ağır eleştiri"
+  },
+  {
+    "id": "C4",
+    "domain": "Ceza",
+    "totalResults": 9,
+    "relevantResults": 9,
+    "passRate": 100,
+    "avgScore": 83.6,
+    "searchQuery": "nitelikli hirsizlik, konut eklentisi"
+  },
+  {
+    "id": "I1",
+    "domain": "İş",
+    "totalResults": 13,
+    "relevantResults": 13,
+    "passRate": 100,
+    "avgScore": 83.8,
+    "searchQuery": "haksiz fesih, fazla calisma alacagi, ispat yukumlulugu"
+  },
+  {
+    "id": "I2",
+    "domain": "İş",
+    "totalResults": 5,
+    "relevantResults": 5,
+    "passRate": 100,
+    "avgScore": 84,
+    "searchQuery": "performans dusuklugu, feshin son care, ise iade"
+  },
+  {
+    "id": "I3",
+    "domain": "İş",
+    "totalResults": 14,
+    "relevantResults": 14,
+    "passRate": 100,
+    "avgScore": 83.5,
+    "searchQuery": "mobbing, esit davranma borcu, calisma kosullarinda esasli"
+  },
+  {
+    "id": "A1",
+    "domain": "Aile",
+    "totalResults": 9,
+    "relevantResults": 9,
+    "passRate": 100,
+    "avgScore": 87.4,
+    "searchQuery": "evlilik birliğinin temelinden, boşanmada tam kusur, yoksulluk"
+  },
+  {
+    "id": "A2",
+    "domain": "Aile",
+    "totalResults": 1,
+    "relevantResults": 1,
+    "passRate": 100,
+    "avgScore": 81,
+    "searchQuery": "velayetin tevdii, çocuğun üstün yararı"
+  },
+  {
+    "id": "B1",
+    "domain": "Borçlar",
+    "totalResults": 4,
+    "relevantResults": 4,
+    "passRate": 100,
+    "avgScore": 84.5,
+    "searchQuery": "kira artis orani, on iki aylik, temerrut"
+  },
+  {
+    "id": "B2",
+    "domain": "Borçlar",
+    "totalResults": 12,
+    "relevantResults": 0,
+    "passRate": 0,
+    "avgScore": 83.4,
+    "searchQuery": "arsa payi karsiligi, yuklenicinin temerrudu, geriye etkili"
+  },
+  {
+    "id": "T1",
+    "domain": "Ticaret",
+    "totalResults": 11,
+    "relevantResults": 11,
+    "passRate": 100,
+    "avgScore": 87.5,
+    "searchQuery": "genel kurul kararlarının, azlık haklarının ihlali, dürüstlük"
+  },
+  {
+    "id": "T2",
+    "domain": "Ticaret",
+    "totalResults": 9,
+    "relevantResults": 9,
+    "passRate": 100,
+    "avgScore": 87.6,
+    "searchQuery": "imza itirazi, bonoda tahrifat, kambiyo takibi"
+  },
+  {
+    "id": "ID1",
+    "domain": "İdare",
+    "totalResults": 13,
+    "relevantResults": 13,
+    "passRate": 100,
+    "avgScore": 87.6,
+    "searchQuery": "meslekten çıkarma, disiplin cezası iptali, ölçülülük ilkesi"
+  },
+  {
+    "id": "ID2",
+    "domain": "İdare",
+    "totalResults": 14,
+    "relevantResults": 14,
+    "passRate": 100,
+    "avgScore": 80.1,
+    "searchQuery": "hizmet kusuru, tam yargı davası, idari sorumluluk"
+  },
+  {
+    "id": "ID3",
+    "domain": "İdare",
+    "totalResults": 13,
+    "relevantResults": 13,
+    "passRate": 100,
+    "avgScore": 87.1,
+    "searchQuery": "vergi ziyası cezası, varsayıma dayalı tarhiyat, somut"
+  },
+  {
+    "id": "M1",
+    "domain": "Miras",
+    "totalResults": 2,
+    "relevantResults": 2,
+    "passRate": 100,
+    "avgScore": 87.5,
+    "searchQuery": "muris muvazaasi, tapu iptali ve, muvazaali devir"
+  },
+  {
+    "id": "TK1",
+    "domain": "Tüketici",
+    "totalResults": 7,
+    "relevantResults": 7,
+    "passRate": 100,
+    "avgScore": 87.1,
+    "searchQuery": "ayıplı mal, ayıpsız misli ile, sözleşmeden dönme"
+  },
+  {
+    "id": "S1",
+    "domain": "Sigorta",
+    "totalResults": 10,
+    "relevantResults": 10,
+    "passRate": 100,
+    "avgScore": 87.6,
+    "searchQuery": "geçici iş göremezlik, sürekli iş göremezlik, aktüerya"
+  },
+  {
+    "id": "IC1",
+    "domain": "İcra",
+    "totalResults": 9,
+    "relevantResults": 9,
+    "passRate": 100,
+    "avgScore": 85.9,
+    "searchQuery": "meskeniyet iddiası, haline münasip ev, haczedilmezlik şikayeti"
+  }
+]

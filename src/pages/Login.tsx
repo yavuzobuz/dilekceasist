@@ -18,7 +18,7 @@ const Login: React.FC = () => {
     if (rawRedirect.startsWith('/')) {
       return rawRedirect;
     }
-    return '/alt-app';
+    return '/chat';
   }, [location.search]);
 
   const handleSubmit = async (e: React.FormEvent) => {
