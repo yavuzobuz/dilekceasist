@@ -34,6 +34,10 @@ vi.mock('../src/pages/TemplatesPage', () => ({
     ),
 }));
 
+vi.mock('../src/pages/EmsalAraPage', () => ({
+    default: () => <div>Emsal Ara Page</div>,
+}));
+
 vi.mock('../src/components/auth/ProtectedRoute', () => ({
     default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
@@ -89,5 +93,15 @@ describe('AppRouter', () => {
 
         expect(screen.getByText('Alternative App')).toBeInTheDocument();
         expect(sessionStorage.getItem('templateContent')).toBe('mock-template-content');
+    });
+
+    it('should render the emsal ara page at /emsal-ara', () => {
+        render(
+            <MemoryRouter initialEntries={['/emsal-ara']}>
+                <App />
+            </MemoryRouter>
+        );
+
+        expect(screen.getByText('Emsal Ara Page')).toBeInTheDocument();
     });
 });

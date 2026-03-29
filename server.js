@@ -17,6 +17,7 @@ import templatesHandler from './api/templates.js';
 import announcementsHandler from './api/announcements.js';
 import legalSearchDecisionsHandler from './backend/legal/search-decisions.js';
 import legalGetDocumentHandler from './backend/legal/get-document.js';
+import karakaziSearchHandler from './backend/legal/karakazi-search.js';
 import legalActionHandler from './api/legal/[action].js';
 import legalSearchPlanHandler from './backend/gemini/legal-search-plan.js';
 import analyzeHandler from './backend/gemini/analyze.js';
@@ -652,6 +653,7 @@ app.all('/api/templates', (req, res) => templatesHandler(req, res));
 app.all('/api/legal', (req, res) => legalActionHandler(req, res));
 app.all('/api/legal/search-decisions', (req, res) => legalSearchDecisionsHandler(req, res));
 app.all('/api/legal/get-document', (req, res) => legalGetDocumentHandler(req, res));
+app.all('/api/legal/karakazi-search', (req, res) => karakaziSearchHandler(req, res));
 
 // 1. Analyze Documents
 app.post('/api/gemini/analyze', (req, res) => analyzeHandler(req, res));
@@ -3050,8 +3052,6 @@ app.all('/api/announcements', (req, res) => announcementsHandler(req, res));
 app.listen(PORT, () => {
     console.warn(`Server running on http://localhost:${PORT}`);
 });
-
-
 
 
 

@@ -18,6 +18,8 @@ import { SparklesIcon } from '../../components/Icon';
 import { Petition, supabase } from '../../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
+import { buildLegalResearchBatchMessage, detectLegalSearchIntent } from '../../lib/legal/chatLegalIntent';
+import { useLegalSearch } from '../hooks/useLegalSearch';
 import { buildLegalKeywordQuery, compactLegalSearchQuery, getLegalDocument, searchLegalDecisionsDetailed } from '../utils/legalSearch';
 import { resolveLegalSourceForQuery } from '../utils/legalSource';
 import { buildGeneratePetitionParams, buildLegalSearchResultSummary } from '../utils/petitionGeneration';
@@ -34,6 +36,7 @@ import {
   mergeSpecificsWithChecklist,
 } from '../../components/missingInfoChecklist';
 import type { MissingInfoQuestion } from '../../components/missingInfoChecklist';
+import EmsalPanel from '../components/EmsalPanel';
 
 // Helper function to convert a File object to a base64 string
 const fileToBase64 = (file: File): Promise<string> => {
@@ -67,6 +70,25 @@ const hasWebEvidence = (result: WebSearchResult | null): boolean => {
 
 const hasLegalEvidenceForGeneration = (results: LegalSearchResult[]): boolean =>
   buildLegalSearchResultSummary(results).trim().length > 0;
+
+const getLegalResultIdentityKey = (result: Partial<LegalSearchResult>): string => {
+  const documentId = String(result.documentId || '').trim();
+  if (documentId && !/^(search-|legal-|ai-summary|sem-|template-decision-)/i.test(documentId)) {
+    return `doc:${documentId}`;
+  }
+
+  return `meta:${result.title || ''}|${result.esasNo || ''}|${result.kararNo || ''}|${result.tarih || ''}`;
+};
+
+const mergeUniqueLegalResults = (existing: LegalSearchResult[], incoming: LegalSearchResult[]): LegalSearchResult[] => {
+  const seen = new Set<string>();
+  return [...existing, ...incoming].filter(result => {
+    const key = getLegalResultIdentityKey(result);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
 
 const buildDecisionPreviewText = (value: string): string => {
   const plain = String(value || '')
@@ -122,6 +144,7 @@ export const AppMain: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const { search: searchLegalFromChat } = useLegalSearch();
   const petitionFromState = (location.state as { petition?: Petition })?.petition;
 
   // Inputs from user
@@ -172,6 +195,7 @@ export const AppMain: React.FC = () => {
   const [isFullPageEditorMode, setIsFullPageEditorMode] = useState(false);
   const [editorReturnRoute, setEditorReturnRoute] = useState('/app');
   const [isLegalSearchOpen, setIsLegalSearchOpen] = useState(false);
+  const [isEmsalPanelOpen, setIsEmsalPanelOpen] = useState(false);
 
   useEffect(() => {
     setPrecedentContext(buildLegalSearchResultSummary(legalSearchResults));
@@ -427,15 +451,7 @@ export const AppMain: React.FC = () => {
   const mergeLegalResults = useCallback((incoming: LegalSearchResult[]) => {
     if (incoming.length === 0) return;
 
-    setLegalSearchResults(prev => {
-      const seen = new Set<string>();
-      return [...prev, ...incoming].filter(result => {
-        const key = `${result.title || ''}|${result.esasNo || ''}|${result.kararNo || ''}|${result.tarih || ''}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-    });
+    setLegalSearchResults(prev => mergeUniqueLegalResults(prev, incoming));
   }, []);
 
   const handleGenerateKeywords = useCallback(async () => {
@@ -679,6 +695,7 @@ export const AppMain: React.FC = () => {
   };
 
   const handleSendChatMessage = useCallback(async (message: string, files?: File[]) => {
+    const normalizedMessage = String(message || '').trim();
     const chatSourceFiles = Array.isArray(files) ? files : [];
     let mergedAnalysisData = analysisData;
     let mergedAnalysisSummary = analysisData?.summary || '';
@@ -764,6 +781,30 @@ export const AppMain: React.FC = () => {
       if (chatAnalyzeFailureMessage) {
         setChatMessages(prev => [...prev, { role: 'model', text: chatAnalyzeFailureMessage }]);
         setError(chatAnalyzeFailureMessage);
+        return;
+      }
+
+      if (detectLegalSearchIntent(normalizedMessage)) {
+        const firstAttachment = chatSourceFiles[0];
+        const documentBase64 = firstAttachment ? await fileToBase64(firstAttachment) : undefined;
+        const searchedResults = await searchLegalFromChat({
+          text: normalizedMessage || undefined,
+          documentBase64,
+          mimeType: firstAttachment?.type || undefined,
+        });
+
+        if (searchedResults.length > 0) {
+          mergedLegalResults = mergeUniqueLegalResults(mergedLegalResults, searchedResults);
+          setLegalSearchResults(mergedLegalResults);
+
+          const batchMessage = buildLegalResearchBatchMessage(searchedResults);
+          if (batchMessage) {
+            setChatMessages(prev => [...prev, { role: 'model', text: batchMessage }]);
+          }
+
+          addToast(`${searchedResults.length} adet emsal karar bulundu.`, 'success');
+        }
+
         return;
       }
 
@@ -976,7 +1017,7 @@ export const AppMain: React.FC = () => {
     } finally {
       setIsLoadingChat(false);
     }
-  }, [chatMessages, analysisData, searchKeywords, webSearchResult, legalSearchResults, docContent, specificsWithMissingInfo, mergeLegalResults, addToast, user, savePetitionToSupabase, missingInfoBlockingUnansweredCount, generatedPetition, petitionType]);
+  }, [chatMessages, analysisData, searchKeywords, webSearchResult, legalSearchResults, docContent, specificsWithMissingInfo, mergeLegalResults, addToast, user, savePetitionToSupabase, missingInfoBlockingUnansweredCount, generatedPetition, petitionType, searchLegalFromChat]);
 
   const handleRewriteText = useCallback(async (text: string): Promise<string> => {
     setError(null);
@@ -1196,87 +1237,122 @@ export const AppMain: React.FC = () => {
           webSearchResult={webSearchResult}
           generatedPetition={generatedPetition}
         />
-        <main className="py-8 grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-          <InputPanel
-            petitionType={petitionType}
-            setPetitionType={setPetitionType}
-            userRole={userRole}
-            setUserRole={setUserRole}
-            caseDetails={caseDetails}
-            setCaseDetails={setCaseDetails}
-            files={files}
-            setFiles={setFiles}
+        <div className="mt-6 flex items-center justify-end">
+          <button
+            type="button"
+            onClick={() => setIsEmsalPanelOpen((prev) => !prev)}
+            className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+          >
+            {isEmsalPanelOpen ? 'Emsal Panelini Kapat' : 'Emsal Ara'}
+          </button>
+        </div>
 
-            onAnalyze={handleAnalyze}
-            isAnalyzing={isAnalyzing}
-            analysisData={analysisData}
-            addManualParty={addManualParty}
+        <main className={isEmsalPanelOpen ? 'py-8 grid grid-cols-1 gap-8 items-start xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.72fr)]' : 'py-8'}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start min-w-0">
+            <InputPanel
+              petitionType={petitionType}
+              setPetitionType={setPetitionType}
+              userRole={userRole}
+              setUserRole={setUserRole}
+              caseDetails={caseDetails}
+              setCaseDetails={setCaseDetails}
+              files={files}
+              setFiles={setFiles}
 
-            onGenerateKeywords={handleGenerateKeywords}
-            isGeneratingKeywords={isGeneratingKeywords}
-            searchKeywords={searchKeywords}
-            setSearchKeywords={setSearchKeywords}
+              onAnalyze={handleAnalyze}
+              isAnalyzing={isAnalyzing}
+              analysisData={analysisData}
+              addManualParty={addManualParty}
 
-            onSearch={handleSearch}
-            isSearching={isSearching}
-            webSearchResult={webSearchResult}
-            onOpenLegalSearch={() => setIsLegalSearchOpen(true)}
-            legalSearchResults={legalSearchResults}
-            onRemoveLegalResult={handleRemoveLegalResult}
+              onGenerateKeywords={handleGenerateKeywords}
+              isGeneratingKeywords={isGeneratingKeywords}
+              searchKeywords={searchKeywords}
+              setSearchKeywords={setSearchKeywords}
 
-            docContent={docContent}
-            setDocContent={setDocContent}
-            specifics={specifics}
-            setSpecifics={setSpecifics}
-            missingInfoQuestions={missingInfoQuestions}
-            missingInfoAnswers={missingInfoAnswers}
-            hasScannedMissingInfo={hasScannedMissingInfo}
-            onRunMissingInfoScan={handleRunMissingInfoScan}
-            onMissingInfoAnswerChange={handleMissingInfoAnswerChange}
-            missingInfoBlockingUnansweredCount={missingInfoBlockingUnansweredCount}
-            missingInfoTotalUnansweredCount={missingInfoTotalUnansweredCount}
-            parties={parties}
-            setParties={setParties}
+              onSearch={handleSearch}
+              isSearching={isSearching}
+              webSearchResult={webSearchResult}
+              onOpenLegalSearch={() => setIsLegalSearchOpen(true)}
+              legalSearchResults={legalSearchResults}
+              onRemoveLegalResult={handleRemoveLegalResult}
 
-            onGenerate={handleGeneratePetition}
-            isLoading={isLoadingPetition}
-          />
-          <OutputPanel
-            petitionVersion={petitionVersion}
-            generatedPetition={generatedPetition}
-            setGeneratedPetition={setGeneratedPetition}
-            onRewrite={handleRewriteText}
-            sources={webSearchResult?.sources || []}
-            isLoadingPetition={isLoadingPetition}
-            onReview={handleReviewPetition}
-            isReviewing={isReviewingPetition}
-            chatMessages={chatMessages}
-            onSendMessage={handleSendChatMessage}
-            isLoadingChat={isLoadingChat}
-            // Pass context and setters to chat
-            // Branding props
-            officeLogoUrl={profile?.office_logo_url}
-            corporateHeader={profile?.corporate_header}
+              docContent={docContent}
+              setDocContent={setDocContent}
+              specifics={specifics}
+              setSpecifics={setSpecifics}
+              missingInfoQuestions={missingInfoQuestions}
+              missingInfoAnswers={missingInfoAnswers}
+              hasScannedMissingInfo={hasScannedMissingInfo}
+              onRunMissingInfoScan={handleRunMissingInfoScan}
+              onMissingInfoAnswerChange={handleMissingInfoAnswerChange}
+              missingInfoBlockingUnansweredCount={missingInfoBlockingUnansweredCount}
+              missingInfoTotalUnansweredCount={missingInfoTotalUnansweredCount}
+              parties={parties}
+              setParties={setParties}
 
-            // Chat context
-            searchKeywords={searchKeywords}
-            setSearchKeywords={setSearchKeywords}
-            webSearchResult={webSearchResult}
-            setWebSearchResult={setWebSearchResult}
-            precedentContext={precedentContext}
-            setPrecedentContext={setPrecedentContext}
+              onGenerate={handleGeneratePetition}
+              isLoading={isLoadingPetition}
+            />
+            <OutputPanel
+              petitionVersion={petitionVersion}
+              generatedPetition={generatedPetition}
+              setGeneratedPetition={setGeneratedPetition}
+              onRewrite={handleRewriteText}
+              sources={webSearchResult?.sources || []}
+              isLoadingPetition={isLoadingPetition}
+              onReview={handleReviewPetition}
+              isReviewing={isReviewingPetition}
+              chatMessages={chatMessages}
+              onSendMessage={handleSendChatMessage}
+              isLoadingChat={isLoadingChat}
+              // Pass context and setters to chat
+              // Branding props
+              officeLogoUrl={profile?.office_logo_url}
+              corporateHeader={profile?.corporate_header}
 
-            docContent={docContent}
-            setDocContent={setDocContent}
-            specifics={specifics}
-            setSpecifics={setSpecifics}
+              // Chat context
+              searchKeywords={searchKeywords}
+              setSearchKeywords={setSearchKeywords}
+              webSearchResult={webSearchResult}
+              setWebSearchResult={setWebSearchResult}
+              precedentContext={precedentContext}
+              setPrecedentContext={setPrecedentContext}
 
-            onReset={handleReset}
-            onExpandFullPage={() => {
-              setEditorReturnRoute('/app');
-              setIsFullPageEditorMode(true);
-            }}
-          />
+              docContent={docContent}
+              setDocContent={setDocContent}
+              specifics={specifics}
+              setSpecifics={setSpecifics}
+
+              onReset={handleReset}
+              onExpandFullPage={() => {
+                setEditorReturnRoute('/app');
+                setIsFullPageEditorMode(true);
+              }}
+            />
+          </div>
+
+          {isEmsalPanelOpen ? (
+            <aside className="min-w-0">
+              <div className="sticky top-6 rounded-3xl border border-white/10 bg-[#0f1115] shadow-[0_24px_80px_rgba(0,0,0,0.25)]">
+                <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-white">Emsal Paneli</h3>
+                    <p className="text-xs text-gray-500">Yan panelden karar arayın.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsEmsalPanelOpen(false)}
+                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
+                  >
+                    Kapat
+                  </button>
+                </div>
+                <div className="max-h-[calc(100vh-9rem)] overflow-y-auto p-3">
+                  <EmsalPanel />
+                </div>
+              </div>
+            </aside>
+          ) : null}
         </main>
       </div>
       {error && (
@@ -1297,9 +1373,3 @@ export const AppMain: React.FC = () => {
     </div>
   );
 };
-
-
-
-
-
-

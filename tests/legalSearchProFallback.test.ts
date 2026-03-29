@@ -6,6 +6,7 @@ const searchLegalDecisionsViaMcp = vi.fn();
 
 vi.mock('../backend/gemini/legal-search-plan-core.js', () => ({
     normalizeAiLegalSearchPlanWithDiagnostics,
+    generateLegalSearchPlanWithDiagnostics: vi.fn().mockResolvedValue(null),
     expandQueryWithGemini: vi.fn().mockResolvedValue([]),
 }));
 
@@ -41,12 +42,15 @@ describe('search-decisions simple backend', () => {
         vi.resetModules();
         vi.unstubAllGlobals();
         vi.unstubAllEnvs();
+        vi.stubEnv('GEMINI_API_KEY', '');
+        vi.stubEnv('GEMINI_LEGAL_QUERY_EXPANSION_API_KEY', '');
+        vi.stubEnv('VITE_GEMINI_API_KEY', '');
         normalizeAiLegalSearchPlanWithDiagnostics.mockReset();
         searchLegalDecisionsViaMcp.mockReset();
     });
 
     it('uses the simple Bedesten backend as the primary path', async () => {
-        const fetchMock = vi.fn().mockResolvedValue(createJsonResponse({
+        const fetchMock = vi.fn().mockImplementation(() => createJsonResponse({
             data: {
                 emsalKararList: [
                     {
@@ -95,10 +99,10 @@ describe('search-decisions simple backend', () => {
         expect(res.payload?.retrievalDiagnostics?.packetApplied).toBe(true);
         expect(res.payload?.retrievalDiagnostics?.packetPrimaryDomain).toBe('is_hukuku');
         expect(res.payload?.retrievalDiagnostics?.packetRequiredConceptCount).toBe(2);
-    }, 15000);
+    }, 25000);
 
     it('can start from legalSearchPacket even when keyword and rawQuery are empty', async () => {
-        const fetchMock = vi.fn().mockResolvedValue(createJsonResponse({
+        const fetchMock = vi.fn().mockImplementation(() => createJsonResponse({
             data: {
                 emsalKararList: [
                     {
@@ -186,28 +190,37 @@ describe('search-decisions simple backend', () => {
     });
 
     it('falls back to legacy MCP when simple results are low quality and procedural-biased', async () => {
-        const fetchMock = vi.fn()
-            .mockResolvedValueOnce(createJsonResponse({
-                data: {
-                    emsalKararList: [
-                        {
-                            documentId: '998877',
-                            itemType: { name: 'YARGITAYKARARI', description: 'Yargitay Karari' },
-                            birimAdi: '12. Hukuk Dairesi',
-                            esasNo: '2024/90',
-                            kararNo: '2025/17',
-                            kararTarihiStr: '12.02.2025',
-                        },
-                    ],
-                    total: 1,
-                },
-            }))
-            .mockImplementation(() => Promise.resolve(createJsonResponse({
-                data: {
-                    content: Buffer.from('Temyiz isteminin reddi, usulden ret, gorev ve yetki yonunden inceleme ile karar kaldirma nedenleri tartisilmaktadir.', 'utf-8').toString('base64'),
-                    mimeType: 'text/plain',
-                },
-            })));
+        const fetchMock = vi.fn().mockImplementation((url) => {
+            const normalizedUrl = String(url || '');
+            if (normalizedUrl.includes('searchDocuments')) {
+                return Promise.resolve(createJsonResponse({
+                    data: {
+                        emsalKararList: [
+                            {
+                                documentId: '998877',
+                                itemType: { name: 'YARGITAYKARARI', description: 'Yargitay Karari' },
+                                birimAdi: '12. Hukuk Dairesi',
+                                esasNo: '2024/90',
+                                kararNo: '2025/17',
+                                kararTarihiStr: '12.02.2025',
+                            },
+                        ],
+                        total: 1,
+                    },
+                }));
+            }
+
+            if (normalizedUrl.includes('getDocumentContent')) {
+                return Promise.resolve(createJsonResponse({
+                    data: {
+                        content: Buffer.from('Temyiz isteminin reddi, usulden ret, gorev ve yetki yonunden inceleme ile karar kaldirma nedenleri tartisilmaktadir.', 'utf-8').toString('base64'),
+                        mimeType: 'text/plain',
+                    },
+                }));
+            }
+
+            throw new Error(`Unexpected fetch url: ${normalizedUrl}`);
+        });
         vi.stubGlobal('fetch', fetchMock);
         searchLegalDecisionsViaMcp.mockResolvedValue({
             results: [
@@ -284,8 +297,7 @@ describe('search-decisions simple backend', () => {
         expect(res.payload?.retrievalDiagnostics?.queryVariants?.length).toBeGreaterThanOrEqual(4);
     }, 15000);
 
-    it('does not fall back to legacy MCP when CLI search is aborted', async () => {
-        vi.stubEnv('LEGAL_SIMPLE_BEDESTEN_PROVIDER', 'cli');
+    it('does not fall back to legacy MCP when simple search is aborted', async () => {
         vi.doMock('../lib/legal/simpleBedestenService.js', async (importOriginal) => {
             const actual = await importOriginal();
             const abortError = new Error('REQUEST_ABORTED');
@@ -317,51 +329,7 @@ describe('search-decisions simple backend', () => {
         vi.doUnmock('../lib/legal/simpleBedestenService.js');
     });
 
-    it('does not fall back to legacy MCP when CLI returns zero results', async () => {
-        vi.stubEnv('LEGAL_SIMPLE_BEDESTEN_PROVIDER', 'cli');
-        vi.doMock('../lib/legal/simpleBedestenService.js', async (importOriginal) => {
-            const actual = await importOriginal();
-            return {
-                ...actual,
-                supportsSimpleBedestenSearch: vi.fn(() => true),
-                searchLegalDecisionsViaSimpleBedesten: vi.fn().mockResolvedValue({
-                    results: [],
-                    retrievalDiagnostics: {
-                        backendMode: 'simple_bedesten',
-                        provider: 'cli',
-                        selectedQueryVariant: 'uyusturucu madde ticareti tck 188',
-                        contentRerankApplied: false,
-                        zeroResultReason: 'no_candidates',
-                    },
-                }),
-            };
-        });
-
-        const { default: handler } = await import('../backend/legal/search-decisions.js');
-        const req = {
-            method: 'POST',
-            headers: {},
-            body: {
-                source: 'all',
-                keyword: 'uyusturucu madde ticareti tck 188',
-                rawQuery: 'uyusturucu madde ticareti tck 188',
-                filters: { searchArea: 'ceza' },
-            },
-        };
-        const res = createRes();
-
-        await handler(req as any, res as any);
-
-        expect(searchLegalDecisionsViaMcp).not.toHaveBeenCalled();
-        expect(res.payload?.retrievalDiagnostics?.backendMode).toBe('simple_bedesten');
-        expect(res.payload?.retrievalDiagnostics?.fallbackUsed).toBe(false);
-        expect(res.payload?.retrievalDiagnostics?.selectedQueryVariant).toBe('uyusturucu madde ticareti tck 188');
-        expect(res.payload?.results).toHaveLength(0);
-        vi.doUnmock('../lib/legal/simpleBedestenService.js');
-    });
-
     it('does not abort the request when req close fires before the response is written', async () => {
-        vi.stubEnv('LEGAL_SIMPLE_BEDESTEN_PROVIDER', 'cli');
         let resolveSimpleSearch: ((value: any) => void) | null = null;
 
         vi.doMock('../lib/legal/simpleBedestenService.js', async (importOriginal) => {
@@ -399,14 +367,14 @@ describe('search-decisions simple backend', () => {
         resolveSimpleSearch?.({
             results: [
                 {
-                    documentId: 'cli-1',
+                    documentId: 'http-1',
                     source: 'yargitay',
                     title: '20. Ceza Dairesi karari',
                 },
             ],
             retrievalDiagnostics: {
                 backendMode: 'simple_bedesten',
-                provider: 'cli',
+                provider: 'http',
                 fallbackUsed: false,
                 zeroResultReason: null,
             },

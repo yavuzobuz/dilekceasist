@@ -15,6 +15,7 @@ import {
 } from './Icon';
 import { Paperclip, X, FileText, Image as ImageIcon } from 'lucide-react';
 import { VoiceInputButton } from './VoiceInputButton';
+import { parseLegalResearchBatchMessage } from '../lib/legal/chatLegalIntent';
 
 type ExpandedFieldKey = 'keywords' | 'searchSummary' | 'precedents' | 'docContent' | 'specifics';
 
@@ -367,6 +368,39 @@ const isImageLikeFile = (file: File): boolean => {
     return ['.jpg', '.jpeg', '.png', '.webp', '.tif', '.tiff'].some((ext) => lowerName.endsWith(ext));
 };
 
+const LegalResearchBatchCards: React.FC<{ message: string }> = ({ message }) => {
+    const items = parseLegalResearchBatchMessage(message);
+    if (items.length === 0) {
+        return <p className="break-words whitespace-pre-wrap text-sm">{message}</p>;
+    }
+
+    return (
+        <div className="space-y-3 py-1">
+            {items.map((item, index) => (
+                <article key={`${item.title}-${index}`} className="rounded-xl border border-white/10 bg-black/20 p-3 text-left">
+                    <div className="text-sm font-semibold text-white">{item.title}</div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-300">
+                        {item.daire ? <span>{item.daire}</span> : null}
+                        {item.esasNo ? <span>E. {item.esasNo}</span> : null}
+                        {item.kararNo ? <span>K. {item.kararNo}</span> : null}
+                        {item.tarih ? <span>T. {item.tarih}</span> : null}
+                    </div>
+                    {item.sourceUrl ? (
+                        <a
+                            href={item.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-3 inline-flex items-center text-xs font-medium text-red-300 underline-offset-2 hover:underline"
+                        >
+                            Kaynak ↗
+                        </a>
+                    ) : null}
+                </article>
+            ))}
+        </div>
+    );
+};
+
 export const ChatView: React.FC<ChatViewProps> = (props) => {
     const { messages, onSendMessage, isLoading, statusText } = props;
     const [input, setInput] = useState('');
@@ -447,7 +481,11 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
                             <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
                                 {msg.role === 'model' && <AiIcon className="mt-1 h-6 w-6 flex-shrink-0 ai-icon-accent" />}
                                 <div className={`max-w-[85%] rounded-xl px-3 py-2 sm:max-w-lg sm:px-4 ${msg.role === 'user' ? 'ai-bubble-user' : 'ai-bubble-model'}`}>
-                                    <p className="break-words whitespace-pre-wrap text-sm">{msg.text}</p>
+                                    {msg.role === 'model' ? (
+                                        <LegalResearchBatchCards message={msg.text} />
+                                    ) : (
+                                        <p className="break-words whitespace-pre-wrap text-sm">{msg.text}</p>
+                                    )}
                                 </div>
                                 {msg.role === 'user' && <UserCircleIcon className="mt-1 h-6 w-6 flex-shrink-0 text-gray-400" />}
                             </div>

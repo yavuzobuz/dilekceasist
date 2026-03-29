@@ -2,10 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { __testables } from '../lib/legal/simpleBedestenService.js';
 
 const {
+    buildDocumentRerankSignals,
     scoreDocumentAgainstSignals,
     passesStrictQueryPrecisionGate,
     assessSimpleQuality,
 } = __testables;
+
+const normalizeConcepts = (values) =>
+    (Array.isArray(values) ? values : [])
+        .map((value) => String(value || '').toLocaleLowerCase('tr-TR'));
 
 describe('fact-pattern acceptance', () => {
     it('penalizes procedural shell documents that only repeat the offense label', () => {
@@ -121,5 +126,119 @@ describe('fact-pattern acceptance', () => {
         expect(shellQuality.reasons).toContain('procedural_shell_bias');
         expect(factualQuality.topFactPatternHitCount).toBeGreaterThan(shellQuality.topFactPatternHitCount);
         expect(factualQuality.score).toBeGreaterThan(shellQuality.score);
+    });
+
+    it('penalizes TCK 191-only content when semantic intent is TCK 188 trade', () => {
+        const signals = {
+            phraseSignals: ['uyusturucu madde ticareti', 'ticaret kasti'],
+            queryCorePhraseSignals: ['tck 188', 'uyusturucu madde ticareti'],
+            substantiveSignals: ['tck 188', 'uyusturucu madde ticareti', 'ticaret kasti'],
+            evidenceSignals: ['paketleme', 'hassas terazi'],
+            factPatternSignals: ['fiziki takip', 'paketleme', 'hassas terazi'],
+            tokenSignals: ['uyusturucu', 'ticaret', '188', 'terazi'],
+            queryCoreTokenSignals: ['uyusturucu', 'ticaret', '188'],
+            mustSignals: ['tck 188', 'uyusturucu madde ticareti'],
+            contrastSignals: ['tck 191', 'kullanmak icin bulundurma'],
+            negativeSignals: [],
+        };
+
+        const tradeScore = scoreDocumentAgainstSignals({
+            primaryDomain: 'ceza',
+            signals,
+            documentText: `
+                Sanigin eyleminin TCK 188 kapsaminda uyusturucu madde ticareti oldugu,
+                fiziki takip, paketleme ve hassas terazi delilleriyle birlikte degerlendirilmistir.
+            `,
+        });
+
+        const possessionScore = scoreDocumentAgainstSignals({
+            primaryDomain: 'ceza',
+            signals,
+            documentText: `
+                Sanik hakkinda TCK 191 kapsaminda kullanmak icin bulundurma sucu nedeniyle
+                kisisel kullanim siniri tartisilmistir.
+            `,
+        });
+
+        expect(tradeScore.mustHits).toEqual(expect.arrayContaining(['tck 188', 'uyusturucu madde ticareti']));
+        expect(possessionScore.contrastHits).toEqual(expect.arrayContaining(['tck 191', 'kullanmak icin bulundurma']));
+        expect(tradeScore.score).toBeGreaterThan(possessionScore.score);
+    });
+
+    it('penalizes generic kira results missing tahliye and temerrut anchors', () => {
+        const signals = {
+            phraseSignals: ['kira', 'temerrut', 'tahliye'],
+            queryCorePhraseSignals: ['temerrut', 'tahliye'],
+            substantiveSignals: ['kira', 'temerrut', 'tahliye', 'tbk 315'],
+            evidenceSignals: ['ihtarname'],
+            factPatternSignals: ['ihtar', 'odememe', 'kira bedeli'],
+            tokenSignals: ['kira', 'temerrut', 'tahliye', 'tbk', '315'],
+            queryCoreTokenSignals: ['temerrut', 'tahliye', '315'],
+            mustSignals: ['temerrut', 'tahliye'],
+            contrastSignals: ['kira tespiti', 'kira artisi'],
+            negativeSignals: [],
+        };
+
+        const tahliyeScore = scoreDocumentAgainstSignals({
+            primaryDomain: 'borclar',
+            signals,
+            documentText: `
+                Kiracinin kira bedelini odememesi nedeniyle temerrut olustugu,
+                TBK 315 uyarinca ihtarname ve tahliye kosullarinin degerlendirildigi belirtilmistir.
+            `,
+        });
+
+        const kiraTespitScore = scoreDocumentAgainstSignals({
+            primaryDomain: 'borclar',
+            signals,
+            documentText: `
+                Uyuşmazlik kira tespiti ve kira artisi istemine iliskindir.
+                Rayic bedel ve TUFE artisi uzerinden inceleme yapilmistir.
+            `,
+        });
+
+        expect(tahliyeScore.mustHits).toEqual(expect.arrayContaining(['temerrut', 'tahliye']));
+        expect(kiraTespitScore.contrastHits).toEqual(expect.arrayContaining(['kira tespiti', 'kira artisi']));
+        expect(tahliyeScore.score).toBeGreaterThan(kiraTespitScore.score);
+    });
+
+    it('suppresses broad static ceza signals when agentic must/contrast signals are available', async () => {
+        const signals = await buildDocumentRerankSignals({
+            primaryDomain: 'ceza',
+            querySeedText: 'TCK 188 uyusturucu madde ticareti',
+            rawText: 'Ticareti yapma veya saglama sucunun TCK 188 kapsamindaki unsurlari nelerdir?',
+            skillPlan: {
+                retrievalConcepts: ['TCK 188', 'uyusturucu madde ticareti', 'ticaret kasti'],
+                supportConcepts: ['saglama'],
+                evidenceConcepts: ['paketleme'],
+                negativeConcepts: ['kisisel kullanim'],
+                mustConcepts: ['TCK 188', 'uyusturucu madde ticareti'],
+                contrastConcepts: ['TCK 191', 'kullanmak icin bulundurma'],
+            },
+        });
+
+        expect(normalizeConcepts(signals.mustSignals)).toEqual(expect.arrayContaining(['tck 188', 'uyusturucu madde ticareti']));
+        expect(normalizeConcepts(signals.contrastSignals)).toEqual(expect.arrayContaining(['tck 191', 'kullanmak icin bulundurma']));
+        expect(normalizeConcepts(signals.substantiveSignals)).not.toContain('kullanmak icin bulundurma');
+        expect(normalizeConcepts(signals.substantiveSignals)).not.toContain('tck 191');
+    });
+
+    it('suppresses broad static borclar signals when agentic kira tahliye signals are available', async () => {
+        const signals = await buildDocumentRerankSignals({
+            primaryDomain: 'borclar',
+            querySeedText: 'kira temerrut tahliye',
+            rawText: 'Kiracim kirasini odemiyor, tahliye etmek istiyorum.',
+            skillPlan: {
+                retrievalConcepts: ['kira', 'temerrut', 'tahliye'],
+                supportConcepts: ['TBK 315', 'ihtarname'],
+                negativeConcepts: ['bosanma', 'nafaka'],
+                mustConcepts: ['temerrut', 'tahliye'],
+                contrastConcepts: ['kira tespiti', 'kira artisi'],
+            },
+        });
+
+        expect(normalizeConcepts(signals.mustSignals)).toEqual(expect.arrayContaining(['temerrut', 'tahliye']));
+        expect(normalizeConcepts(signals.contrastSignals)).toEqual(expect.arrayContaining(['kira tespiti', 'kira artisi']));
+        expect(normalizeConcepts(signals.substantiveSignals)).not.toContain('kira tespiti');
     });
 });

@@ -31,7 +31,7 @@ describe('get-document simple backend', () => {
 
     it('uses simple Bedesten document retrieval first', async () => {
         const encodedHtml = Buffer.from('<p>Karar metni burada.</p>', 'utf-8').toString('base64');
-        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(createJsonResponse({
+        vi.stubGlobal('fetch', vi.fn().mockImplementation(() => createJsonResponse({
             data: {
                 content: encodedHtml,
                 mimeType: 'text/html',

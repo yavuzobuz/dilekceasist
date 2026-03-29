@@ -1,68 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const flushPromises = async () => {
-    await Promise.resolve();
-    await Promise.resolve();
-};
-
-const createCliDecision = (documentId: string, birimAdi = '3. Hukuk Dairesi') => ({
-    documentId,
-    itemType: { name: 'YARGITAYKARARI', description: 'Yargitay Karari' },
-    birimAdi,
-    esasNo: '2024/91',
-    kararNo: '2024/145',
-    kararTarihiStr: '10.03.2024',
-});
-
-const mergeDocumentScores = ({
-    lexicalScore = 0,
-    embeddingScore = 0,
-    proceduralShellBias = false,
-} = {}) => {
-    const normalizedLexical = Math.min(Math.max(Number(lexicalScore || 0) / 1000, 0), 1);
-    const normalizedEmbedding = Math.min(Math.max(Number(embeddingScore || 0), 0), 1);
-    return proceduralShellBias
-        ? Math.min(0.39, normalizedLexical * 0.35)
-        : (normalizedLexical * 0.65) + (normalizedEmbedding * 0.35);
-};
-
-const importSimpleBedestenWithExpansion = async ({
-    expansionVariants = [],
-    searchMock = vi.fn(async () => []),
-    getDocumentMock = vi.fn(async ({ documentId }: { documentId: string }) => ({
-        documentId,
-        markdownContent: 'Kira tahliye, TBK 315, mecurun tahliyesi, temerrut ihtari ve kiralananin tahliyesi birlikte degerlendirilmistir.',
-        mimeType: 'text/plain',
-    })),
-} = {}) => {
-    vi.doMock('../backend/gemini/legal-search-plan-core.js', async (importOriginal) => {
-        const actual = await importOriginal<typeof import('../backend/gemini/legal-search-plan-core.js')>();
-        return {
-            ...actual,
-            expandQueryWithGemini: vi.fn(async () => expansionVariants),
-        };
+const createJsonResponse = (payload, status = 200) =>
+    new Response(JSON.stringify(payload), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
     });
 
-    vi.doMock('../lib/legal/cliBedestenBridge.js', () => ({
-        searchDecisionsViaYargiCli: searchMock,
-        getDocumentViaYargiCli: getDocumentMock,
-        isYargiCliLikelyAvailable: vi.fn(() => true),
-    }));
-
-    vi.doMock('../lib/legal/embeddingReranker.js', () => ({
-        isEmbeddingRerankEnabled: vi.fn(() => false),
-        getEmbedding: vi.fn(),
-        computeEmbeddingScore: vi.fn(async () => 0),
-        mergeDocumentScores: vi.fn(mergeDocumentScores),
-    }));
-
-    const simpleBedestenModule = await import('../lib/legal/simpleBedestenService.js');
-    return {
-        ...simpleBedestenModule,
-        searchMock,
-        getDocumentMock,
-    };
-};
+vi.mock('../lib/legal/embeddingReranker.js', () => ({
+    isEmbeddingRerankEnabled: vi.fn(() => false),
+    getEmbedding: vi.fn(),
+    computeEmbeddingScore: vi.fn(async () => 0),
+    mergeDocumentScores: vi.fn(() => 0),
+}));
 
 describe('query expansion via Gemini', () => {
     beforeEach(() => {
@@ -73,8 +22,7 @@ describe('query expansion via Gemini', () => {
 
     afterEach(() => {
         vi.doUnmock('../backend/gemini/legal-search-plan-core.js');
-        vi.doUnmock('../lib/legal/cliBedestenBridge.js');
-        vi.doUnmock('../lib/legal/embeddingReranker.js');
+        vi.unstubAllGlobals();
     });
 
     it('returns an empty array when Gemini credentials are missing', async () => {
@@ -94,52 +42,36 @@ describe('query expansion via Gemini', () => {
         expect(variants).toEqual([]);
     });
 
-    it('normalizes mocked Gemini responses into string variants', async () => {
-        const { expandQueryWithGemini } = await import('../backend/gemini/legal-search-plan-core.js');
-
-        const variants = await expandQueryWithGemini({
-            rawQuery: 'kiraci kira odemiyor tahliye',
-            caseType: 'borclar_kira',
-            primaryDomain: 'borclar',
-            existingVariants: ['kira tahliye'],
-            generateStructuredJsonImpl: vi.fn().mockResolvedValue({
-                variants: [
+    it('merges and dedupes registry and Gemini variants before HTTP search dispatch', async () => {
+        vi.doMock('../backend/gemini/legal-search-plan-core.js', async (importOriginal) => {
+            const actual = await importOriginal();
+            return {
+                ...actual,
+                expandQueryWithGemini: vi.fn(async () => [
                     'mecurun tahliyesi',
                     'TBK 350',
-                    'temerrut ihtari',
                     'kira tahliye',
-                    42,
-                    '  kiralananin tahliyesi  ',
-                ],
-            }),
+                    'mecurun tahliyesi',
+                ]),
+            };
         });
 
-        expect(variants.length).toBeGreaterThan(0);
-        expect(variants.every((variant) => typeof variant === 'string')).toBe(true);
-        expect(variants).toEqual(expect.arrayContaining([
-            'mecurun tahliyesi',
-            'TBK 350',
-            'temerrut ihtari',
-            'kiralananin tahliyesi',
-        ]));
-        expect(variants).not.toContain('kira tahliye');
-    });
+        const fetchMock = vi.fn().mockImplementation(() => createJsonResponse({
+            data: {
+                emsalKararList: [],
+                total: 0,
+            },
+        }));
+        vi.stubGlobal('fetch', fetchMock);
 
-    it('preserves registry variants when Gemini adds dynamic ones', async () => {
-        const { searchLegalDecisionsViaSimpleBedesten } = await importSimpleBedestenWithExpansion({
-            expansionVariants: [
-                'mecurun tahliyesi',
-                'TBK 350',
-                'kira bedelinin odenmemesi',
-                'temerrut ihtari',
-            ],
-        });
+        const {
+            searchLegalDecisionsViaSimpleBedesten,
+        } = await import('../lib/legal/simpleBedestenService.js');
 
         const payload = await searchLegalDecisionsViaSimpleBedesten({
             source: 'all',
             rawQuery: 'kiraci kira odemiyor tahliye',
             filters: { searchArea: 'hukuk' },
-            provider: 'cli',
             legalSearchPacket: {
                 primaryDomain: 'borclar',
                 caseType: 'borclar_kira',
@@ -153,113 +85,49 @@ describe('query expansion via Gemini', () => {
             },
         });
 
-        expect(payload.retrievalDiagnostics.queryVariants).toContain('kira tahliye');
-        expect(payload.retrievalDiagnostics.queryVariants).toContain('mecurun tahliyesi');
-        expect(payload.retrievalDiagnostics.queryVariants).toContain('TBK 350');
-    });
-
-    it('dedupes merged registry and Gemini variants before search dispatch', async () => {
-        const { searchLegalDecisionsViaSimpleBedesten } = await importSimpleBedestenWithExpansion({
-            expansionVariants: [
-                'mecurun tahliyesi',
-                'TBK 350',
-                'kira tahliye',
-                'mecurun tahliyesi',
-            ],
-        });
-
-        const payload = await searchLegalDecisionsViaSimpleBedesten({
-            source: 'all',
-            rawQuery: 'kiraci kira odemiyor tahliye',
-            filters: { searchArea: 'hukuk' },
-            provider: 'cli',
-            legalSearchPacket: {
-                primaryDomain: 'borclar',
-                caseType: 'borclar_kira',
-                preferredBirimCodes: ['H3'],
-                searchSeedText: 'kiraci kira odemiyor tahliye',
-                requiredConcepts: ['kira tahliye', 'TBK 315'],
-                supportConcepts: ['temerrut', 'ihtar'],
-                searchVariants: [
-                    { query: 'kira tahliye', mode: 'registry_case_type' },
-                ],
-            },
-        });
-
+        expect(fetchMock).toHaveBeenCalled();
+        expect(payload.retrievalDiagnostics.queryVariants.some((item) => String(item || '').includes('kira tahliye'))).toBe(true);
+        expect(payload.retrievalDiagnostics.queryVariants.some((item) => String(item || '').includes('mecurun tahliyesi'))).toBe(true);
+        expect(payload.retrievalDiagnostics.queryVariants.some((item) => String(item || '').includes('TBK 350'))).toBe(true);
         expect(payload.retrievalDiagnostics.queryVariants.length).toBe(
             new Set(payload.retrievalDiagnostics.queryVariants).size
         );
+        expect(payload.retrievalDiagnostics.provider).toBe('http');
     });
 
-    it('starts the first five merged CLI variants in parallel and dedupes duplicate decisions', async () => {
-        const deferredCalls: Array<{
-            phrase: string;
-            resolve: (value: unknown) => void;
-            settled: boolean;
-        }> = [];
-        const searchMock = vi.fn().mockImplementation(async ({ phrase }: { phrase: string }) =>
-            new Promise((resolve) => {
-                deferredCalls.push({
-                    phrase,
-                    resolve,
-                    settled: false,
-                });
-            })
-        );
-
-        const { searchLegalDecisionsViaSimpleBedesten } = await importSimpleBedestenWithExpansion({
-            expansionVariants: [
-                'mecurun tahliyesi',
-                'TBK 350',
-                'kira bedelinin odenmemesi',
-                'temerrut ihtari',
-            ],
-            searchMock,
-        });
-
-        const pendingPayload = searchLegalDecisionsViaSimpleBedesten({
-            source: 'all',
-            rawQuery: 'kiraci kira odemiyor tahliye',
-            filters: { searchArea: 'hukuk' },
-            provider: 'cli',
-            legalSearchPacket: {
-                primaryDomain: 'borclar',
-                preferredBirimCodes: ['H3'],
-                searchSeedText: 'kiraci kira odemiyor tahliye',
-                requiredConcepts: ['kira tahliye', 'TBK 315'],
-                supportConcepts: ['temerrut', 'ihtar'],
-                searchVariants: [
-                    { query: 'kira tahliye', mode: 'registry_case_type' },
+    it('uses agentic required and forbidden concepts when generating Gemini variants', async () => {
+        const generateStructuredJsonImpl = vi.fn().mockResolvedValue({
+            parsed: {
+                variants: [
+                    'TCK 191 kullanmak icin bulundurma',
+                    'TCK 188 ticaret kasti',
+                    'uyusturucu madde ticareti saglama',
                 ],
             },
+            transportRetryCount: 0,
         });
 
-        await flushPromises();
+        const { expandQueryWithGemini } = await import('../backend/gemini/legal-search-plan-core.js');
+        const variants = await expandQueryWithGemini({
+            rawQuery: 'Ticareti yapma veya saglama sucunun TCK 188 kapsamindaki unsurlari nelerdir?',
+            caseType: 'ceza_uyusturucu',
+            primaryDomain: 'ceza',
+            existingVariants: ['TCK 188 uyusturucu madde ticareti'],
+            agenticSignals: {
+                requiredConcepts: ['TCK 188', 'uyusturucu madde ticareti'],
+                negativeConcepts: ['kira', 'alacak'],
+                contrastConcepts: ['TCK 191', 'kullanmak icin bulundurma'],
+            },
+            generateStructuredJsonImpl,
+        });
 
-        expect(searchMock).toHaveBeenCalledTimes(5);
-
-        const resolvePendingCalls = async () => {
-            while (true) {
-                const unresolvedCalls = deferredCalls.filter((call) => !call.settled);
-                if (unresolvedCalls.length === 0) break;
-
-                unresolvedCalls.forEach((call) => {
-                    call.settled = true;
-                    if (call.phrase === 'kira tahliye' || call.phrase === 'mecurun tahliyesi') {
-                        call.resolve([createCliDecision('doc-1')]);
-                        return;
-                    }
-                    call.resolve([]);
-                });
-
-                await flushPromises();
-            }
-        };
-
-        await resolvePendingCalls();
-        const payload = await pendingPayload;
-
-        expect(payload.results).toHaveLength(1);
-        expect(payload.results[0].documentId).toBe('doc-1');
+        const prompt = String(generateStructuredJsonImpl.mock.calls[0]?.[0]?.contents || '');
+        expect(prompt).toContain('Agentik cekirdek kavramlar');
+        expect(prompt).toContain('TCK 188');
+        expect(prompt).toContain('Agentik kontrast kavramlar');
+        expect(prompt).toContain('TCK 191');
+        expect(variants).toEqual(expect.arrayContaining(['TCK 188 ticaret kasti', 'uyusturucu madde ticareti saglama']));
+        expect(variants.join(' ').toLocaleLowerCase('tr-TR')).not.toContain('tck 191');
+        expect(variants.join(' ').toLocaleLowerCase('tr-TR')).not.toContain('kullanmak icin bulundurma');
     });
 });

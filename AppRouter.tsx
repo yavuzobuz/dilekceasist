@@ -19,6 +19,8 @@ import Cookies from './src/pages/Cookies';
 import { TemplatesPage, type TemplateTransferContext } from './src/pages/TemplatesPage';
 import PrecedentSearch from './src/pages/PrecedentSearch';
 import LegalSearchLiveTest from './src/pages/LegalSearchLiveTest';
+import EmsalAraPage from './src/pages/EmsalAraPage';
+import KarakaziPage from './src/pages/KarakaziPage';
 import ProtectedRoute from './src/components/auth/ProtectedRoute';
 import { PageEntrance } from './src/components/PageEntrance';
 import ChatPage from './src/pages/ChatPage';
@@ -101,7 +103,9 @@ export default function App() {
       <Route path="/word-addin" element={<PageEntrance><WordAddin /></PageEntrance>} />
       <Route path="/fiyatlandirma" element={<PageEntrance><Pricing /></PageEntrance>} />
       <Route path="/pricing" element={<PageEntrance><Pricing /></PageEntrance>} />
+      <Route path="/emsal-ara" element={<PageEntrance><EmsalAraPage /></PageEntrance>} />
       <Route path="/emsal-karar-arama" element={<PageEntrance><PrecedentSearch /></PageEntrance>} />
+      <Route path="/karakazi" element={<PageEntrance><KarakaziPage /></PageEntrance>} />
       <Route
         path="/emsal-karar-test"
         element={
@@ -162,4 +166,3 @@ export default function App() {
     </Routes>
   );
 }
-

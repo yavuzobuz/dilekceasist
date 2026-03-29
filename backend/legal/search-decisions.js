@@ -1,4 +1,5 @@
 import { applyCors, getSafeErrorMessage } from '../../lib/api/cors.js';
+import { analyzerOutputToPacket } from '../gemini/document-analyzer.js';
 import { normalizeAiLegalSearchPlanWithDiagnostics, generateLegalSearchPlanWithDiagnostics } from '../gemini/legal-search-plan-core.js';
 import { searchLegalDecisionsViaMcp } from '../../lib/legal/mcpLegalSearch.js';
 import {
@@ -18,9 +19,7 @@ const ALLOW_LEGACY_FALLBACK = process.env.LEGAL_SIMPLE_ALLOW_LEGACY_FALLBACK !==
 const LEGAL_PRIMARY_BACKEND = String(process.env.LEGAL_PRIMARY_BACKEND || 'simple').trim().toLowerCase() === 'mcp'
     ? 'mcp'
     : 'simple';
-const LEGAL_SIMPLE_PROVIDER = String(
-    process.env.LEGAL_SIMPLE_BEDESTEN_PROVIDER || (process.env.NODE_ENV === 'test' ? 'http' : 'auto')
-).trim().toLowerCase();
+const LEGAL_SIMPLE_PROVIDER = 'http';
 
 const normalizePacketText = (value = '', maxLength = 240) =>
     sanitizeLegalInput(String(value || '').replace(/\s+/g, ' ').trim()).text.slice(0, maxLength).trim();
@@ -44,6 +43,108 @@ const buildPacketFallbackText = (packet = null) => {
         .filter(Boolean)
         .join(' ')
         .trim();
+};
+
+const normalizeApiResultShape = (result = {}) => {
+    const resolvedBirimAdi = String(
+        result?.birimAdi
+        || result?.daire
+        || result?.birim
+        || result?.chamber
+        || ''
+    ).trim();
+    const resolvedKararTarihi = String(
+        result?.kararTarihi
+        || result?.kararTarihiStr
+        || result?.tarih
+        || ''
+    ).trim();
+    const resolvedDocumentId = String(result?.documentId || result?.id || '').trim();
+    const resolvedSourceUrl = String(
+        result?.sourceUrl
+        || result?.documentUrl
+        || (resolvedDocumentId ? `https://mevzuat.adalet.gov.tr/ictihat/${resolvedDocumentId}` : '')
+    ).trim();
+    const numericMergedScore = Number(result?.contentMergedScore);
+    const fallbackMergedScore = Number(result?.__mergedScore01);
+    const numericEmbeddingScore = Number(result?.contentEmbeddingScore);
+
+    return {
+        ...result,
+        birimAdi: resolvedBirimAdi || undefined,
+        daire: String(result?.daire || resolvedBirimAdi || '').trim() || undefined,
+        kararTarihi: resolvedKararTarihi || undefined,
+        tarih: String(result?.tarih || resolvedKararTarihi || '').trim() || undefined,
+        contentMergedScore: Number.isFinite(numericMergedScore)
+            ? numericMergedScore
+            : (Number.isFinite(fallbackMergedScore) ? fallbackMergedScore : undefined),
+        contentEmbeddingScore: Number.isFinite(numericEmbeddingScore) ? numericEmbeddingScore : undefined,
+        sourceUrl: resolvedSourceUrl || undefined,
+    };
+};
+
+const normalizeApiResults = (results = []) =>
+    Array.isArray(results) ? results.map((result) => normalizeApiResultShape(result)) : [];
+
+const normalizeRetrievalDiagnostics = (diagnostics = {}, resultCount = 0) => ({
+    ...diagnostics,
+    agentDomain: diagnostics?.agentDomain || diagnostics?.primaryDomain || diagnostics?.packetPrimaryDomain || null,
+    embeddingQuery: typeof diagnostics?.embeddingQuery === 'string' && diagnostics.embeddingQuery.trim()
+        ? diagnostics.embeddingQuery.trim()
+        : null,
+    selectedBirimAdi: diagnostics?.selectedBirimAdi || diagnostics?.firstSuccessfulBirimAdi || null,
+    totalCandidates: Number.isFinite(Number(diagnostics?.totalCandidates))
+        ? Number(diagnostics.totalCandidates)
+        : resultCount,
+});
+
+const resolveDocumentAnalyzerResult = (body = null) => {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+
+    const candidate = body.documentAnalyzerResult || body.analyzerResult || body.documentAnalysis || null;
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return null;
+    return candidate;
+};
+
+const mergeRequestPackets = ({
+    analyzerPacket = null,
+    explicitPacket = null,
+} = {}) => {
+    const normalizedAnalyzerPacket = normalizeExplicitLegalSearchPacket(analyzerPacket);
+    const normalizedExplicitPacket = normalizeExplicitLegalSearchPacket(explicitPacket);
+
+    if (!normalizedAnalyzerPacket) return normalizedExplicitPacket;
+    if (!normalizedExplicitPacket) return normalizedAnalyzerPacket;
+
+    return normalizeExplicitLegalSearchPacket({
+        primaryDomain: normalizedExplicitPacket.primaryDomain || normalizedAnalyzerPacket.primaryDomain,
+        caseType: normalizedExplicitPacket.caseType || normalizedAnalyzerPacket.caseType,
+        coreIssue: normalizedExplicitPacket.coreIssue || normalizedAnalyzerPacket.coreIssue,
+        requiredConcepts: (normalizedExplicitPacket.requiredConcepts || []).length > 0
+            ? normalizedExplicitPacket.requiredConcepts
+            : normalizedAnalyzerPacket.requiredConcepts,
+        supportConcepts: (normalizedExplicitPacket.supportConcepts || []).length > 0
+            ? normalizedExplicitPacket.supportConcepts
+            : normalizedAnalyzerPacket.supportConcepts,
+        evidenceConcepts: (normalizedExplicitPacket.evidenceConcepts || []).length > 0
+            ? normalizedExplicitPacket.evidenceConcepts
+            : normalizedAnalyzerPacket.evidenceConcepts,
+        negativeConcepts: (normalizedExplicitPacket.negativeConcepts || []).length > 0
+            ? normalizedExplicitPacket.negativeConcepts
+            : normalizedAnalyzerPacket.negativeConcepts,
+        preferredSource: normalizedExplicitPacket.preferredSource || normalizedAnalyzerPacket.preferredSource,
+        preferredBirimCodes: (normalizedExplicitPacket.preferredBirimCodes || []).length > 0
+            ? normalizedExplicitPacket.preferredBirimCodes
+            : normalizedAnalyzerPacket.preferredBirimCodes,
+        searchSeedText: normalizedExplicitPacket.searchSeedText || normalizedAnalyzerPacket.searchSeedText,
+        searchVariants: (normalizedExplicitPacket.searchVariants || []).length > 0
+            ? normalizedExplicitPacket.searchVariants
+            : normalizedAnalyzerPacket.searchVariants,
+        fallbackToNext: normalizedExplicitPacket.fallbackToNext !== undefined
+            ? normalizedExplicitPacket.fallbackToNext
+            : normalizedAnalyzerPacket.fallbackToNext,
+        queryMode: normalizedExplicitPacket.queryMode || normalizedAnalyzerPacket.queryMode,
+    });
 };
 
 const buildLegacyRetrievalDiagnostics = ({
@@ -103,6 +204,7 @@ const buildSimpleResponsePayload = ({
     fallbackUsed = false,
     fallbackReason = null,
 } = {}) => {
+    const results = normalizeApiResults(payload?.results || []);
     const inheritedFallbackReason = payload?.retrievalDiagnostics?.fallbackReason || null;
     const resolvedFallbackReason = fallbackReason || inheritedFallbackReason || null;
     const inheritedZeroResultReason = payload?.retrievalDiagnostics?.zeroResultReason || null;
@@ -114,17 +216,18 @@ const buildSimpleResponsePayload = ({
                 : (inheritedZeroResultReason === 'no_candidates'
                     ? 'no_candidates'
                     : (resolvedFallbackReason ? 'dependency_error' : undefined))));
-    const retrievalDiagnostics = {
+    const retrievalDiagnostics = normalizeRetrievalDiagnostics({
         ...(payload?.retrievalDiagnostics || {}),
         backendMode: 'simple_bedesten',
         fallbackUsed,
         fallbackReason: resolvedFallbackReason,
         upstream: 'bedesten',
         sourceCoverageStatus,
-    };
+    }, results.length);
 
     return {
         ...payload,
+        results,
         searchMode,
         retrievalDiagnostics,
         diagnostics: retrievalDiagnostics,
@@ -142,8 +245,8 @@ const buildMcpPrimaryResponsePayload = ({
     const base = payload?.retrievalDiagnostics && typeof payload.retrievalDiagnostics === 'object'
         ? payload.retrievalDiagnostics
         : {};
-    const resultCount = Array.isArray(payload?.results) ? payload.results.length : 0;
-    const retrievalDiagnostics = {
+    const results = normalizeApiResults(payload?.results || []);
+    const retrievalDiagnostics = normalizeRetrievalDiagnostics({
         ...base,
         backendMode: 'mcp_primary',
         fallbackUsed,
@@ -151,14 +254,15 @@ const buildMcpPrimaryResponsePayload = ({
         upstream: 'mcp',
         finalMatchedCount: Number.isFinite(Number(base?.finalMatchedCount))
             ? Number(base.finalMatchedCount)
-            : resultCount,
+            : results.length,
         zeroResultReason: typeof base?.zeroResultReason === 'string'
             ? base.zeroResultReason
-            : (resultCount === 0 ? 'no_candidates' : null),
-    };
+            : (results.length === 0 ? 'no_candidates' : null),
+    }, results.length);
 
     return {
         ...payload,
+        results,
         searchMode,
         retrievalDiagnostics,
         diagnostics: retrievalDiagnostics,
@@ -175,11 +279,7 @@ const shouldFallbackForLowQuality = (payload = null) => {
     return Number.isFinite(qualityScore) && qualityScore < 80;
 };
 
-const shouldReturnCliResponseDirectly = (payload = null) =>
-    ['cli', 'auto'].includes(LEGAL_SIMPLE_PROVIDER)
-    && payload?.retrievalDiagnostics?.provider === 'cli'
-    && Array.isArray(payload?.results)
-    && (payload.results.length > 0 || LEGAL_SIMPLE_PROVIDER === 'cli');
+const shouldReturnCliResponseDirectly = () => false;
 
 const isAbortLikeError = (error = null, abortSignal = null, req = null) =>
     error?.code === 'REQUEST_ABORTED'
@@ -198,12 +298,15 @@ const buildLegacyResponsePayload = ({
         simplePayload,
         fallbackReason,
     });
+    const results = normalizeApiResults(payload?.results || []);
+    const normalizedRetrievalDiagnostics = normalizeRetrievalDiagnostics(retrievalDiagnostics, results.length);
 
     return {
         ...payload,
+        results,
         searchMode,
-        retrievalDiagnostics,
-        diagnostics: retrievalDiagnostics,
+        retrievalDiagnostics: normalizedRetrievalDiagnostics,
+        diagnostics: normalizedRetrievalDiagnostics,
         planDiagnostics: planDiagnostics || payload?.planDiagnostics || undefined,
     };
 };
@@ -258,13 +361,27 @@ export default async function handler(req, res) {
 
     try {
         const source = String(req?.body?.source || 'all').trim().toLowerCase();
-        const legalSearchPacket = normalizeExplicitLegalSearchPacket(req?.body?.legalSearchPacket);
+        const agenticSignalsEnabled = String(process.env.LEGAL_AGENTIC_SIGNALS_ENABLED || '').trim() === 'true';
+        const embeddingRerankEnabled = String(process.env.LEGAL_EMBEDDING_RERANK_ENABLED || '').trim() === 'true';
+        if (!agenticSignalsEnabled) {
+            process.env.LEGAL_AGENT_PIPELINE = '0';
+        }
+        if (!embeddingRerankEnabled) {
+            process.env.LEGAL_EMBEDDING_RERANK_ENABLED = 'false';
+        }
+        const analyzerResult = resolveDocumentAnalyzerResult(req?.body);
+        const analyzerPacket = analyzerOutputToPacket(analyzerResult);
+        const legalSearchPacket = mergeRequestPackets({
+            analyzerPacket,
+            explicitPacket: req?.body?.legalSearchPacket,
+        });
         const packetFallbackText = buildPacketFallbackText(legalSearchPacket);
         const keyword = sanitizeLegalInput(req?.body?.keyword || '').text;
         const rawQuery = sanitizeLegalInput(req?.body?.rawQuery || packetFallbackText || keyword || '').text;
         const rawText = [keyword, rawQuery].filter(Boolean).join(' ').trim() || rawQuery;
         const filters = req?.body?.filters && typeof req.body.filters === 'object' ? req.body.filters : {};
-        const normalizedSearchMode = String(req?.body?.searchMode || 'auto').trim().toLowerCase() === 'pro'
+        const requestedSearchMode = req?.body?.searchMode ?? req?.body?.mode ?? 'auto';
+        const normalizedSearchMode = String(requestedSearchMode || 'auto').trim().toLowerCase() === 'pro'
             ? 'pro'
             : 'auto';
 
@@ -279,7 +396,13 @@ export default async function handler(req, res) {
         let normalizedProvidedPlan = null;
         if (req?.body?.aiSearchPlan && typeof req.body.aiSearchPlan === 'object') {
             normalizedProvidedPlan = normalizeAiLegalSearchPlanWithDiagnostics(req.body.aiSearchPlan, source);
-        } else if (normalizedSearchMode === 'pro' && !legalSearchPacket && rawQuery && rawQuery.length > 5) {
+        } else if (
+            agenticSignalsEnabled
+            && normalizedSearchMode === 'pro'
+            && !legalSearchPacket
+            && rawQuery
+            && rawQuery.length > 100
+        ) {
             try {
                 const generatedPlan = await generateLegalSearchPlanWithDiagnostics({ rawText: rawQuery, preferredSource: source });
                 if (generatedPlan && generatedPlan.plan) {
@@ -384,7 +507,7 @@ export default async function handler(req, res) {
         let fallbackReason = simpleSupported ? 'simple_no_results' : 'unsupported_source';
 
         if (simpleSupported) {
-            const isLongQuery = rawQuery.length > 500 || normalizedSearchMode === 'pro';
+            const isLongQuery = rawQuery.length > 100;
             if (isLongQuery) {
                 try {
                     console.log(`[LEGAL_SEARCH] Multi-Strategy path activated (rawQuery.length=${rawQuery.length}, mode=${normalizedSearchMode})`);

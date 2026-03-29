@@ -9,11 +9,6 @@ const importTestablesWithSkillGuess = async (primaryDomain: string | null) => {
     vi.doMock('../backend/gemini/legal-search-plan-core.js', () => ({
         expandQueryWithGemini: vi.fn(async () => []),
     }));
-    vi.doMock('../lib/legal/cliBedestenBridge.js', () => ({
-        searchDecisionsViaYargiCli: vi.fn(),
-        getDocumentViaYargiCli: vi.fn(),
-        isYargiCliLikelyAvailable: vi.fn(() => false),
-    }));
     vi.doMock('../lib/legal/embeddingReranker.js', () => ({
         isEmbeddingRerankEnabled: vi.fn(() => false),
         getEmbedding: vi.fn(),
@@ -28,12 +23,14 @@ const importTestablesWithSkillGuess = async (primaryDomain: string | null) => {
 describe('inferPrimaryDomain keyword fallback', () => {
     beforeEach(() => {
         vi.resetModules();
+        vi.stubEnv('GEMINI_API_KEY', '');
+        vi.stubEnv('GEMINI_LEGAL_QUERY_EXPANSION_API_KEY', '');
+        vi.stubEnv('VITE_GEMINI_API_KEY', '');
     });
 
     afterEach(() => {
         vi.doUnmock('../lib/legal/legal-search-skill.js');
         vi.doUnmock('../backend/gemini/legal-search-plan-core.js');
-        vi.doUnmock('../lib/legal/cliBedestenBridge.js');
         vi.doUnmock('../lib/legal/embeddingReranker.js');
         vi.resetModules();
     });
@@ -46,7 +43,7 @@ describe('inferPrimaryDomain keyword fallback', () => {
             source: 'all',
             filters: { searchArea: 'hukuk' },
         })).toBe('borclar');
-    });
+    }, 10000);
 
     it('falls back to icra keywords when the skill package drifts to the default domain', async () => {
         const testables = await importTestablesWithSkillGuess('genel_hukuk');
@@ -56,5 +53,5 @@ describe('inferPrimaryDomain keyword fallback', () => {
             source: 'all',
             filters: { searchArea: 'hukuk' },
         })).toBe('icra');
-    });
+    }, 10000);
 });

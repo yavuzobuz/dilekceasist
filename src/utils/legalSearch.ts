@@ -17,6 +17,21 @@ export interface NormalizedLegalDecision extends LegalSearchResult {
     [key: string]: any;
 }
 
+export interface DocumentAnalyzerResult {
+    davaKonusu?: string;
+    hukukiMesele?: string;
+    kaynak?: string;
+    courtTypes?: string[];
+    birimAdi?: string;
+    aramaIfadeleri?: string[];
+    ilgiliKanunlar?: string[];
+    mustKavramlar?: string[];
+    supportKavramlar?: string[];
+    negativeKavramlar?: string[];
+    queryMode?: LegalSearchPacket['queryMode'] | string;
+    diagnostics?: Record<string, any>;
+}
+
 const SYNTHETIC_LEGAL_RESULT_ID_REGEX = /^(search-|legal-|ai-summary|sem-|template-decision-)/i;
 
 const getLegalResultIdentityKey = (result: Partial<NormalizedLegalDecision>): string => {
@@ -33,6 +48,7 @@ interface SearchLegalDecisionsParams {
     keyword: string;
     rawQuery?: string;
     legalSearchPacket?: LegalSearchPacket | null;
+    documentAnalyzerResult?: DocumentAnalyzerResult | null;
     filters?: Record<string, any>;
     searchMode?: 'auto' | 'pro';
     apiBaseUrl?: string;
@@ -1236,6 +1252,7 @@ const createLegalSearchPayload = ({
     keyword,
     rawQuery,
     legalSearchPacket,
+    documentAnalyzerResult,
     filters = {},
     searchMode,
 }: {
@@ -1243,6 +1260,7 @@ const createLegalSearchPayload = ({
     keyword: string;
     rawQuery: string;
     legalSearchPacket?: LegalSearchPacket;
+    documentAnalyzerResult?: DocumentAnalyzerResult | null;
     filters?: Record<string, any>;
     searchMode?: 'pro';
 }): Record<string, any> => {
@@ -1255,6 +1273,9 @@ const createLegalSearchPayload = ({
 
     if (legalSearchPacket) {
         payload.legalSearchPacket = legalSearchPacket;
+    }
+    if (documentAnalyzerResult) {
+        payload.documentAnalyzerResult = documentAnalyzerResult;
     }
     if (searchMode) {
         payload.searchMode = searchMode;
@@ -1369,6 +1390,7 @@ export const searchLegalDecisionsDetailed = async ({
     keyword,
     rawQuery,
     legalSearchPacket,
+    documentAnalyzerResult,
     filters = {},
     searchMode = 'auto',
     apiBaseUrl = '',
@@ -1396,6 +1418,7 @@ export const searchLegalDecisionsDetailed = async ({
         keyword: effectiveKeyword,
         rawQuery: effectiveRawQuery,
         legalSearchPacket: effectiveLegalSearchPacket,
+        documentAnalyzerResult,
         filters: effectiveFilters,
         searchMode: effectiveSearchMode,
     });
@@ -1651,7 +1674,6 @@ export const getLegalDocumentDebug = async ({
 
     throw new Error(lastErrorText || 'Belge alinamadi.');
 };
-
 
 
 

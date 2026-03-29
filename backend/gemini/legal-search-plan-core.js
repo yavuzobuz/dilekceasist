@@ -11,7 +11,6 @@ import {
 } from './legal-search-plan-fewshot.js';
 import {
     dedupeByMatchKey,
-    getDomainProfile,
     normalizeDisplayText,
     normalizeDomainId,
     normalizeMatchText,
@@ -462,9 +461,6 @@ const buildRetryConstraintInstruction = (retryForbiddenTerms = []) => {
     ].join('\n');
 };
 
-const extendInstructionWithRetryConstraints = (instruction = '', retryForbiddenTerms = []) =>
-    [instruction, buildRetryConstraintInstruction(retryForbiddenTerms)].filter(Boolean).join('\n');
-
 const sleep = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const isTransientGenerationError = (error) => {
@@ -662,7 +658,7 @@ const hasConstitutionalHint = (haystack = '') =>
 
 const hasEvidenceCoreHint = (value = '') => EVIDENCE_CORE_HINT_REGEX.test(normalizeMatchText(value));
 
-const resolveAllowEvidenceAsCore = ({ requested = false, texts = [] } = {}) => {
+const resolveAllowEvidenceAsCore = ({ texts = [] } = {}) => {
     if (hasEvidenceCoreHint((Array.isArray(texts) ? texts : [texts]).filter(Boolean).join(' '))) return true;
     return false;
 };
@@ -1698,19 +1694,6 @@ const SHORT_ISSUE_RESPONSE_SCHEMA = {
     required: ['primaryDomain', 'coreIssue', 'retrievalConcepts'],
 };
 
-const CASE_FILE_SUMMARY_SCHEMA = {
-    type: Type.OBJECT,
-    properties: {
-        queryMode: { type: Type.STRING },
-        primaryDomain: { type: Type.STRING },
-        secondaryDomains: { type: Type.ARRAY, items: { type: Type.STRING } },
-        coreIssue: { type: Type.STRING },
-        allowEvidenceAsCore: { type: Type.BOOLEAN },
-        reasoning: { type: Type.STRING },
-    },
-    required: ['primaryDomain', 'coreIssue'],
-};
-
 const CASE_FILE_PLAN_SCHEMA = {
     type: Type.OBJECT,
     properties: {
@@ -1854,6 +1837,7 @@ const unwrapStructuredJsonResult = (result = {}) => {
 const normalizeQueryExpansionVariants = ({
     variants = [],
     existingVariants = [],
+    forbiddenVariants = [],
     limit = QUERY_EXPANSION_MAX_VARIANTS,
 } = {}) => {
     const seen = new Set(
@@ -1861,12 +1845,22 @@ const normalizeQueryExpansionVariants = ({
             .map((item) => normalizeMatchText(item))
             .filter(Boolean)
     );
+    const forbidden = dedupeByMatchKey(forbiddenVariants, QUERY_EXPANSION_MAX_VARIANTS + 8)
+        .map((item) => normalizeMatchText(item))
+        .filter(Boolean);
     const normalizedVariants = [];
 
     for (const value of Array.isArray(variants) ? variants : []) {
         const normalized = normalizeDisplayText(value).slice(0, 120).trim();
         const matchKey = normalizeMatchText(normalized);
-        if (!normalized || normalized.length < 3 || !matchKey || seen.has(matchKey)) continue;
+        const overlapsForbidden = forbidden.some((term) =>
+            term
+            && (
+                matchKey.includes(term)
+                || term.includes(matchKey)
+            )
+        );
+        if (!normalized || normalized.length < 3 || !matchKey || seen.has(matchKey) || overlapsForbidden) continue;
         seen.add(matchKey);
         normalizedVariants.push(normalized);
         if (normalizedVariants.length >= limit) break;
@@ -1880,10 +1874,17 @@ const buildQueryExpansionPrompt = ({
     caseType = '',
     primaryDomain = '',
     existingVariants = [],
+    agenticSignals = null,
 } = {}) => {
     const normalizedExistingVariants = dedupeByMatchKey(existingVariants, QUERY_EXPANSION_MAX_VARIANTS)
         .map((item) => normalizeDisplayText(item).trim())
         .filter(Boolean);
+    const normalizedRequiredConcepts = normalizeConceptList(
+        agenticSignals?.requiredConcepts || agenticSignals?.mustConcepts || [],
+        6
+    );
+    const normalizedNegativeConcepts = normalizeConceptList(agenticSignals?.negativeConcepts || [], 8);
+    const normalizedContrastConcepts = normalizeConceptList(agenticSignals?.contrastConcepts || [], 6);
 
     // Build domain-aware negative example hint to prevent cross-domain concept bleed.
     const negativeDomainHints = [
@@ -1905,6 +1906,15 @@ const buildQueryExpansionPrompt = ({
         `Birincil domain: ${DOMAIN_LABELS[normalizeDomainId(primaryDomain, DEFAULT_DOMAIN_PROFILE_ID)] || normalizeDisplayText(primaryDomain || '') || 'Genel Hukuk'}`,
         `Dava tipi / alt alan: ${normalizeDisplayText(caseType || '').trim() || 'belirtilmedi'}. Bu dava tipine UYMAYAN kavramlar uretme.`,
         `Mevcut varyantlar: ${JSON.stringify(normalizedExistingVariants)}`,
+        normalizedRequiredConcepts.length > 0
+            ? `Agentik cekirdek kavramlar: ${JSON.stringify(normalizedRequiredConcepts)}. Bu ekseni koru.`
+            : '',
+        normalizedContrastConcepts.length > 0
+            ? `Agentik kontrast kavramlar: ${JSON.stringify(normalizedContrastConcepts)}. Bunlari EK varyant olarak uretme.`
+            : '',
+        normalizedNegativeConcepts.length > 0
+            ? `Agentik negatif kavramlar: ${JSON.stringify(normalizedNegativeConcepts)}. Bunlari EK varyant olarak uretme.`
+            : '',
         'Kurallar:',
         `1. ${QUERY_EXPANSION_MIN_VARIANTS} ile ${QUERY_EXPANSION_MAX_VARIANTS} arasinda EK varyant uret.`,
         '2. Mevcut varyantlari tekrar etme.',
@@ -1959,6 +1969,7 @@ export const expandQueryWithGemini = async ({
     caseType = '',
     primaryDomain = '',
     existingVariants = [],
+    agenticSignals = null,
     generateStructuredJsonImpl = generateStructuredJson,
 } = {}) => {
     const normalizedRawQuery = normalizeDisplayText(rawQuery).slice(0, 240).trim();
@@ -1977,6 +1988,7 @@ export const expandQueryWithGemini = async ({
                 caseType,
                 primaryDomain,
                 existingVariants,
+                agenticSignals,
             }),
             systemInstruction: 'Turk hukuk karar aramalari icin tekrar etmeyen, kisa ve resmi query varyantlari uret.',
             responseSchema: QUERY_EXPANSION_RESPONSE_SCHEMA,
@@ -1987,6 +1999,10 @@ export const expandQueryWithGemini = async ({
         return normalizeQueryExpansionVariants({
             variants: parsed?.variants,
             existingVariants,
+            forbiddenVariants: [
+                ...(agenticSignals?.negativeConcepts || []),
+                ...(agenticSignals?.contrastConcepts || []),
+            ],
         });
     } catch (error) {
         if (usingLiveTransport) {
@@ -2509,8 +2525,6 @@ export const __testables = {
     isLikelyNaturalLanguageQuery,
     isLikelyKeywordQuery,
 };
-
-
 
 
 

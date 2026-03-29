@@ -9,9 +9,7 @@ const ALLOW_LEGACY_FALLBACK = process.env.LEGAL_SIMPLE_ALLOW_LEGACY_FALLBACK !==
 const LEGAL_PRIMARY_BACKEND = String(process.env.LEGAL_PRIMARY_BACKEND || 'simple').trim().toLowerCase() === 'mcp'
     ? 'mcp'
     : 'simple';
-const LEGAL_SIMPLE_PROVIDER = String(
-    process.env.LEGAL_SIMPLE_BEDESTEN_PROVIDER || (process.env.NODE_ENV === 'test' ? 'http' : 'auto')
-).trim().toLowerCase();
+const LEGAL_SIMPLE_PROVIDER = 'http';
 
 const buildLegacyDocumentPayload = ({ payload = {}, fallbackReason = 'legacy_requested' } = {}) => {
     const diagnostics = {

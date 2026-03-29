@@ -10,6 +10,8 @@ import { analyzeDocuments, generateSearchKeywords, performWebSearch, streamChatR
 import { prepareChatAttachmentsForAnalysis, mergeAnalysisData } from '../utils/chatAttachmentProcessing';
 import { buildLegalSearchInputs, normalizeLegalSearchResults as normalizeSharedLegalSearchResults, searchLegalDecisionsDetailed, getLegalDocument, type NormalizedLegalDecision } from '../utils/legalSearch';
 import { resolveLegalSourceForQuery } from '../utils/legalSource';
+import { buildLegalResearchBatchMessage, detectLegalSearchIntent } from '../lib/legal/chatLegalIntent';
+import { useLegalSearch } from '../hooks/useLegalSearch';
 
 type AlternativeLegalSearchResult = NormalizedLegalDecision;
 
@@ -34,6 +36,25 @@ const extractGeneratedDocumentPayload = (rawArgs: unknown): { title: string; con
     if (!normalizedContent) return null;
     return { title: typeof title === 'string' && title.trim() ? title.trim() : 'Belge', content: normalizedContent };
 };
+
+const inferMimeType = (file: File): string => {
+    if (file.type) return file.type;
+    const lowerName = file.name.toLowerCase();
+    if (lowerName.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    if (lowerName.endsWith('.doc')) return 'application/msword';
+    return 'application/pdf';
+};
+
+const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+            const base64String = String(reader.result || '').split(',')[1] || '';
+            resolve(base64String);
+        };
+        reader.onerror = (error) => reject(error);
+    });
 
 const normalizeKeywordText = (value: string): string => String(value || '').toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\u0131/g, 'i').replace(/[^a-z0-9\s./-]/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -118,16 +139,6 @@ const isExplicitWebSearchRequest = (raw: string): boolean => {
     return hasWebTerm && hasSearchVerb;
 };
 
-const isExplicitLegalSearchRequest = (raw: string): boolean => {
-    const norm = normalizeKeywordText(raw);
-    if (!norm || hasSearchOptOutIntent(norm)) return false;
-    // "karar" çok sık geçtiği için sadece "emsal", "yargıtay", "içtihat" veya "karar ara/bul" yan yana ise tetiklenir
-    const hasLegalTerm = /(emsal|ictihat|yargitay|danistay)/i.test(norm);
-    const hasSearchVerb = /(ara|bul|getir|goster|listele|paylas|ornek|arastir)/i.test(norm);
-    const hasKararAra = /(karar ara|kararlari ara|karar bul|kararlari bul|esas no|karar no)/i.test(norm);
-    return (hasLegalTerm && hasSearchVerb) || hasKararAra;
-};
-
 const isLikelyPetitionRequest = (rawMessage: string): boolean => {
     if (!rawMessage) return false;
     return /(dilekce|dilekçe|belge|taslak|template|ihtarname|itiraz|temyiz|feragat|talep|sozlesme|sözleşme)/i.test(rawMessage) && /(olustur|olutur|hazirla|hazırla|yaz)/i.test(rawMessage);
@@ -190,6 +201,7 @@ const createToastId = (): string => `${Date.now()}-${++toastIdCounter}-${Math.ra
 
 export default function ChatPage() {
     const navigate = useNavigate();
+    const { search: searchLegalFromIntent } = useLegalSearch();
     const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
     const [isLoadingChat, setIsLoadingChat] = useState(false);
@@ -304,6 +316,30 @@ export default function ChatPage() {
         let assistantText = '';
 
         try {
+            if (detectLegalSearchIntent(normalizedMessage)) {
+                setChatProgressText('Emsal karar aranıyor...');
+                const firstAttachment = chatSourceFiles[0];
+                const documentBase64 = firstAttachment ? await fileToBase64(firstAttachment) : undefined;
+                const searchedResults = await searchLegalFromIntent({
+                    text: normalizedMessage || undefined,
+                    documentBase64,
+                    mimeType: firstAttachment ? inferMimeType(firstAttachment) : undefined,
+                });
+
+                if (searchedResults.length > 0) {
+                    mergedLegalResults = mergeUniqueLegalResults(mergedLegalResults, searchedResults);
+                    setLegalSearchResults(mergedLegalResults);
+                    setPrecedentContext(buildLegalResultsPrompt(mergedLegalResults));
+
+                    const batchMessage = buildLegalResearchBatchMessage(searchedResults);
+                    if (batchMessage) {
+                        setChatMessages(prev => [...prev, { role: 'model', text: batchMessage }]);
+                    }
+                }
+
+                return;
+            }
+
             if (chatSourceFiles.length > 0) {
                 const preparedAttachments = await prepareChatAttachmentsForAnalysis(chatSourceFiles);
                 if (preparedAttachments.uploadedFiles.length > 0 || preparedAttachments.udfTextContent || preparedAttachments.wordTextContent) {
@@ -332,7 +368,7 @@ export default function ChatPage() {
             }
 
             let isWebExplicit = isExplicitWebSearchRequest(normalizedMessage);
-            let isLegalExplicit = isExplicitLegalSearchRequest(normalizedMessage);
+            let isLegalExplicit = detectLegalSearchIntent(normalizedMessage);
             const isPetition = isLikelyPetitionRequest(normalizedMessage);
 
             // Sadece biri isteniyorsa diğerini eziyoruz, böylece her ikisi de aynı anda gereksiz yere çalışmaz. 
@@ -394,22 +430,10 @@ export default function ChatPage() {
                     setPrecedentContext(buildLegalResultsPrompt(mergedLegalResults));
                     // Sonuçları anında chat'e göster
                     if (mergedLegalResults.length > 0) {
-                        const newMessagesToAdd: ChatMessage[] = [];
-                        newMessagesToAdd.push({ role: 'model', text: `⚖️ **Emsal Karar Başarılı:** (${mergedLegalResults.length} karar bulundu. İlk 5 kararın içeriği aşağıdadır:)` });
-                        
-                        mergedLegalResults.slice(0, 5).forEach((r, i) => {
-                            const ref = [r.title, r.esasNo ? `E. ${r.esasNo}` : '', r.kararNo ? `K. ${r.kararNo}` : '', r.tarih].filter(Boolean).join(' | ');
-                            const sourceText = r.summaryText || r.ozet || r.snippet || '';
-                            const content = sourceText.toString().replace(/[\r\n]+/g, ' ').trim();
-                            const finalContent = content.length > 600 ? content.slice(0, 599) + '...' : content;
-                            
-                            newMessagesToAdd.push({ 
-                                role: 'model', 
-                                text: `**Karar ${i + 1}:** ${ref}\n\n> ${finalContent || 'İçerik çekilemedi, ancak karar referanslanabilir.'}` 
-                            });
-                        });
-                        
-                        setChatMessages(prev => [...prev, ...newMessagesToAdd]);
+                        const batchMessage = buildLegalResearchBatchMessage(mergedLegalResults);
+                        if (batchMessage) {
+                            setChatMessages(prev => [...prev, { role: 'model', text: batchMessage }]);
+                        }
                     }
                 } catch (e) { console.error('Legal search error', e); }
             }
@@ -513,7 +537,7 @@ export default function ChatPage() {
             setIsLoadingChat(false);
             setChatProgressText('');
         }
-    }, [chatMessages, analysisData, searchKeywords, webSearchResult, legalSearchResults, docContent, specifics, runLegalSearch, addToast]);
+    }, [chatMessages, analysisData, searchKeywords, webSearchResult, legalSearchResults, docContent, specifics, runLegalSearch, addToast, searchLegalFromIntent]);
 
     return (
         <div className="min-h-screen bg-[#0F0F11] font-sans flex flex-col text-gray-300">
