@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ChatMessage, WebSearchResult } from '../types';
 import { LoadingSpinner } from './LoadingSpinner';
 import {
@@ -12,10 +12,12 @@ import {
     GlobeAltIcon,
     DocumentTextIcon,
     LightBulbIcon,
+    EyeIcon,
 } from './Icon';
-import { Paperclip, X, FileText, Image as ImageIcon } from 'lucide-react';
+import { Paperclip, X, FileText, Image as ImageIcon, Loader2, Scale, Plus } from 'lucide-react';
 import { VoiceInputButton } from './VoiceInputButton';
 import { parseLegalResearchBatchMessage } from '../lib/legal/chatLegalIntent';
+import { getLegalDocument } from '../src/utils/legalSearch';
 
 type ExpandedFieldKey = 'keywords' | 'searchSummary' | 'precedents' | 'docContent' | 'specifics';
 
@@ -353,6 +355,7 @@ interface ChatViewProps {
     setDocContent: React.Dispatch<React.SetStateAction<string>>;
     specifics: string;
     setSpecifics: React.Dispatch<React.SetStateAction<string>>;
+    onUseDecision?: (text: string) => void;
 }
 
 const CHAT_ALLOWED_EXTENSIONS = ['.pdf', '.udf', '.doc', '.docx', '.txt', '.jpg', '.jpeg', '.png', '.webp', '.tif', '.tiff'];
@@ -368,7 +371,12 @@ const isImageLikeFile = (file: File): boolean => {
     return ['.jpg', '.jpeg', '.png', '.webp', '.tif', '.tiff'].some((ext) => lowerName.endsWith(ext));
 };
 
-const LegalResearchBatchCards: React.FC<{ message: string }> = ({ message }) => {
+const LegalResearchBatchCards: React.FC<{
+    message: string;
+    onOpenDecision?: (item: ReturnType<typeof parseLegalResearchBatchMessage>[number], index: number) => void;
+    onUseDecision?: (text: string) => void;
+    loadingIndex?: number | null;
+}> = ({ message, onOpenDecision, onUseDecision, loadingIndex }) => {
     const items = parseLegalResearchBatchMessage(message);
     if (items.length === 0) {
         return <p className="break-words whitespace-pre-wrap text-sm">{message}</p>;
@@ -395,6 +403,24 @@ const LegalResearchBatchCards: React.FC<{ message: string }> = ({ message }) => 
                             Kaynak ↗
                         </a>
                     ) : null}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            onClick={() => onOpenDecision?.(item, index)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10"
+                        >
+                            {loadingIndex === index ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <EyeIcon className="h-3.5 w-3.5" />}
+                            Kararı gör
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => onUseDecision?.(`${item.title}${item.esasNo ? ` E. ${item.esasNo}` : ''}${item.kararNo ? ` K. ${item.kararNo}` : ''}${item.tarih ? ` T. ${item.tarih}` : ''}`)}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-700"
+                        >
+                            <Plus className="h-3.5 w-3.5" />
+                            Kararı kullan
+                        </button>
+                    </div>
                 </article>
             ))}
         </div>
@@ -405,6 +431,10 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
     const { messages, onSendMessage, isLoading, statusText } = props;
     const [input, setInput] = useState('');
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+    const [selectedDecision, setSelectedDecision] = useState<{ title: string; text: string } | null>(null);
+    const [decisionModalOpen, setDecisionModalOpen] = useState(false);
+    const [decisionLoadingIndex, setDecisionLoadingIndex] = useState<number | null>(null);
+    const [decisionContentCache, setDecisionContentCache] = useState<Record<string, string>>({});
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -441,6 +471,50 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
     const removeFile = (index: number) => {
         setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
     };
+
+    const handleUseDecision = useCallback((text: string) => {
+        props.setDocContent((prev) => {
+            const existing = String(prev || '').trim();
+            const addition = `--- Emsal Karar ---\n${text}`;
+            return existing ? `${existing}\n\n${addition}` : addition;
+        });
+    }, [props]);
+
+    const handleOpenDecision = useCallback(async (
+        item: ReturnType<typeof parseLegalResearchBatchMessage>[number],
+        index: number
+    ) => {
+        const cacheKey = `${item.title}|${item.esasNo || ''}|${item.kararNo || ''}|${item.tarih || ''}`;
+        setDecisionModalOpen(true);
+        setDecisionLoadingIndex(index);
+
+        const cached = decisionContentCache[cacheKey];
+        if (cached) {
+            setSelectedDecision({ title: item.title, text: cached });
+            setDecisionLoadingIndex(null);
+            return;
+        }
+
+        try {
+            const content = item.sourceUrl
+                ? await getLegalDocument({
+                    documentUrl: item.sourceUrl,
+                    title: item.title,
+                    esasNo: item.esasNo,
+                    kararNo: item.kararNo,
+                    tarih: item.tarih,
+                })
+                : '';
+
+            const resolvedText = content || 'Tam metin bulunamadi. Sadece karar bilgileri mevcut.';
+            setDecisionContentCache((prev) => ({ ...prev, [cacheKey]: resolvedText }));
+            setSelectedDecision({ title: item.title, text: resolvedText });
+        } catch {
+            setSelectedDecision({ title: item.title, text: 'Karar metni yuklenemedi.' });
+        } finally {
+            setDecisionLoadingIndex(null);
+        }
+    }, [decisionContentCache]);
 
     const isPetitionRequested = props.messages.some(m => 
         m.role === 'user' && /(dilekce|dilekçe|belge|taslak|template|ihtarname|itiraz|temyiz|feragat|talep|sozlesme|sözleşme)/i.test(m.text || '') && /(olustur|olutur|hazirla|hazırla|yaz)/i.test(m.text || '')
@@ -481,9 +555,14 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
                             <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
                                 {msg.role === 'model' && <AiIcon className="mt-1 h-6 w-6 flex-shrink-0 ai-icon-accent" />}
                                 <div className={`max-w-[85%] rounded-xl px-3 py-2 sm:max-w-lg sm:px-4 ${msg.role === 'user' ? 'ai-bubble-user' : 'ai-bubble-model'}`}>
-                                    {msg.role === 'model' ? (
-                                        <LegalResearchBatchCards message={msg.text} />
-                                    ) : (
+                                {msg.role === 'model' ? (
+                                    <LegalResearchBatchCards
+                                        message={msg.text}
+                                        onOpenDecision={handleOpenDecision}
+                                        onUseDecision={handleUseDecision}
+                                        loadingIndex={decisionLoadingIndex}
+                                    />
+                                ) : (
                                         <p className="break-words whitespace-pre-wrap text-sm">{msg.text}</p>
                                     )}
                                 </div>
@@ -593,6 +672,35 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
                     </div>
                 </div>
             </form>
+
+            {decisionModalOpen && selectedDecision && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4" onClick={() => setDecisionModalOpen(false)}>
+                    <div className="w-full max-w-4xl rounded-2xl border border-white/10 bg-[#0f1115] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+                            <div className="min-w-0">
+                                <h3 className="truncate text-lg font-semibold text-white">{selectedDecision.title}</h3>
+                                <p className="text-xs text-gray-400">Karar metni</p>
+                            </div>
+                            <button type="button" onClick={() => setDecisionModalOpen(false)} className="rounded-lg p-2 hover:bg-white/5">
+                                <X className="h-5 w-5 text-gray-300" />
+                            </button>
+                        </div>
+                        <div className="max-h-[70vh] overflow-y-auto p-5">
+                            <pre className="whitespace-pre-wrap break-words text-sm leading-6 text-gray-200">{selectedDecision.text}</pre>
+                        </div>
+                        <div className="flex items-center justify-end gap-2 border-t border-white/10 px-5 py-4">
+                            <button
+                                type="button"
+                                onClick={() => handleUseDecision(selectedDecision.text)}
+                                className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+                            >
+                                <Scale className="h-4 w-4" />
+                                Kararı kullan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
