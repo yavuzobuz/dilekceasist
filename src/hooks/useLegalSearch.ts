@@ -164,6 +164,8 @@ export const useLegalSearch = () => {
     const search = async (params: UseLegalSearchParams): Promise<NormalizedLegalDecision[]> => {
         setLoading(true);
         setError(null);
+        setDecisions([]);
+        decisionsRef.current = [];
 
         try {
             const text = String(params.text || '').trim();
@@ -173,15 +175,24 @@ export const useLegalSearch = () => {
                 throw new Error('Arama icin metin veya belge gereklidir.');
             }
 
-            const analysisData = await analyzeDocuments(uploadedFiles, text, '');
-            const documentAnalyzerResult = buildDocumentAnalyzerResult(analysisData, text);
-            const analysisState: LegalSearchAnalysis = {
-                ...analysisData,
-                documentAnalyzerResult,
-            };
+            let analysisData: AnalysisData | null = null;
+            try {
+                analysisData = await analyzeDocuments(uploadedFiles, text, '');
+            } catch {
+                analysisData = null;
+            }
+            const documentAnalyzerResult = analysisData
+                ? buildDocumentAnalyzerResult(analysisData, text)
+                : null;
+            const analysisState: LegalSearchAnalysis | null = analysisData
+                ? {
+                    ...analysisData,
+                    documentAnalyzerResult,
+                }
+                : null;
             const rawQuery =
                 text
-                || analysisData.summary
+                || analysisData?.summary
                 || documentAnalyzerResult?.aramaIfadeleri?.[0]
                 || documentAnalyzerResult?.hukukiMesele
                 || '';

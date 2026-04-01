@@ -1281,6 +1281,10 @@ const createLegalSearchPayload = ({
         payload.searchMode = searchMode;
     }
 
+    // Use the same hybrid retrieval path for both pasted text and uploaded documents.
+    payload.retrievalMode = 'hybrid';
+    payload.hybridMode = 'hybrid';
+
     return payload;
 };
 
@@ -1674,7 +1678,6 @@ export const getLegalDocumentDebug = async ({
 
     throw new Error(lastErrorText || 'Belge alinamadi.');
 };
-
 
 
 

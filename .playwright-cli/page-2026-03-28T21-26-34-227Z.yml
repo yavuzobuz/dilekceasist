@@ -1,0 +1,30 @@
+- generic [ref=e5]:
+  - generic [ref=e7]:
+    - img [ref=e9]
+    - generic [ref=e13]:
+      - heading "Emsal Paneli" [level=2] [ref=e14]
+      - paragraph [ref=e15]: Metin ya da belge yükleyin, analiz alın ve tam metni gerektiğinde çağırın.
+  - generic [ref=e16]:
+    - generic [ref=e17]:
+      - generic [ref=e18]:
+        - generic [ref=e19]: Arama Metni
+        - textbox "Emsal arama metni" [ref=e20]:
+          - /placeholder: Kira temerrüt tahliye, işe iade, imar para cezası...
+        - generic [ref=e21]:
+          - button "Emsal Ara" [disabled] [ref=e22]:
+            - img [ref=e23]
+            - text: Emsal Ara
+          - button "PDF / Word Yükle" [ref=e26] [cursor=pointer]:
+            - img [ref=e27]
+            - text: PDF / Word Yükle
+        - paragraph [ref=e29]: Yüklenen dosya base64'e çevrilir ve mevcut analiz akışına gönderilir.
+      - generic [ref=e30]:
+        - generic [ref=e32]:
+          - heading "Analiz Özeti" [level=3] [ref=e33]
+          - paragraph [ref=e34]: Dava konusu, daire ve kanun referansları
+        - generic [ref=e35]: Henüz bir analiz yok.
+    - generic [ref=e37]:
+      - generic [ref=e39]:
+        - heading "Kararlar" [level=3] [ref=e40]
+        - paragraph [ref=e41]: 0 sonuç
+      - generic [ref=e43]: Arama sonucu bekleniyor.

@@ -132,6 +132,18 @@ const sanitizeAnnouncementDeletePayload = (payload = {}) => {
     return { id: sanitizeRequiredText(payload.id, 'id', 64) };
 };
 
+const isTransientAnnouncementFetchError = (error = null) => {
+    const message = String(error?.message || error?.code || '').toLowerCase();
+    return (
+        message.includes('fetch failed')
+        || message.includes('network error')
+        || message.includes('etimedout')
+        || message.includes('econnreset')
+        || message.includes('enotfound')
+        || message.includes('request to')
+    );
+};
+
 const createServiceRoleClient = () => {
     const supabaseUrl = getSupabaseUrl();
     const serviceRoleKey = getSupabaseServiceRoleKey();
@@ -294,10 +306,15 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
 
     } catch (error) {
-        console.error('Announcements API error:', error);
         if (isPublicActiveFetch) {
+            if (isTransientAnnouncementFetchError(error)) {
+                console.warn('Announcements API unavailable for public fetch, returning empty list.');
+            } else {
+                console.error('Announcements API error:', error);
+            }
             return res.status(200).json({ announcements: [] });
         }
+        console.error('Announcements API error:', error);
         return res.status(error.status || 500).json({
             error: getSafeErrorMessage(error, 'Announcements API error'),
         });

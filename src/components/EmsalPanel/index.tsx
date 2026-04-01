@@ -62,13 +62,80 @@ export default function EmsalPanel() {
     } = useLegalSearch();
 
     const [searchText, setSearchText] = useState('');
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [isDraggingFile, setIsDraggingFile] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedDecision, setSelectedDecision] = useState<NormalizedLegalDecision | null>(null);
     const [modalText, setModalText] = useState('');
     const [modalLoading, setModalLoading] = useState(false);
     const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle');
+    const [searchInFlight, setSearchInFlight] = useState(false);
+    const [searchVariants, setSearchVariants] = useState<string[]>([]);
+    const [activeSearchVariant, setActiveSearchVariant] = useState(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const fetchFullTextRef = useRef(fetchFullText);
+
+    const normalizeQuery = (value: string) => String(value || '').replace(/\s+/g, ' ').trim();
+
+    const extractCoreTerms = (value: string) => {
+        const text = normalizeQuery(value);
+        if (!text) return [];
+
+        const stopWords = new Set([
+            've', 'veya', 'ile', 'da', 'de', 'bir', 'bu', 'şu', 'o', 'mi', 'mı', 'mu', 'mü',
+            'olan', 'olarak', 'için', 'gibi', 'ancak', 'fakat', 'lakin', 'ise', 'davacı', 'davalı',
+            'dosyada', 'tarafından', 'hakkında', 'sonra', 'önce', 'sonunda', 'olarak',
+        ]);
+
+        return text
+            .split(/[,\.\n;:]+|\s{2,}/g)
+            .flatMap((chunk) => chunk.split(/\s+/g))
+            .map((token) => token.replace(/[“”"'+()\-]/g, '').trim())
+            .filter((token) => token && !stopWords.has(token.toLocaleLowerCase('tr-TR')))
+            .filter((token) => token.length >= 3)
+            .slice(0, 8);
+    };
+
+    const buildSearchVariants = (value: string) => {
+        const base = normalizeQuery(value);
+        const segments = base
+            .split(/[.!?\n]+|(?:\s{2,})/g)
+            .map((segment) => normalizeQuery(segment))
+            .filter(Boolean);
+
+        const coreTerms = extractCoreTerms(base);
+        const firstFocus = normalizeQuery(segments[0] || base);
+        const secondFocus = normalizeQuery(segments[1] || segments[0] || base);
+        const thirdFocus = normalizeQuery(segments[2] || segments.at(-1) || base);
+
+        const plusJoinedVariant = coreTerms.slice(0, 6).map((term) => `+${term}`).join(' ').trim();
+        const phraseVariant = coreTerms.slice(2, 6).map((term) => `"${term}"`).join(' ').trim();
+        const focusVariant = [secondFocus, thirdFocus].filter(Boolean).join(' ').trim() || base;
+
+        return Array.from(new Set([
+            firstFocus,
+            plusJoinedVariant || focusVariant,
+            phraseVariant || focusVariant,
+        ].filter(Boolean))).slice(0, 3);
+    };
+
+    const runSearch = async (queryText: string) => {
+        const text = normalizeQuery(queryText);
+        if (!text && !selectedFile) return;
+
+        if (selectedFile) {
+            const mimeType = inferMimeType(selectedFile);
+            const base64 = await readFileAsBase64(selectedFile);
+            await search({
+                text: text || undefined,
+                documentBase64: base64,
+                mimeType,
+            });
+            return;
+        }
+
+        await search({ text });
+    };
 
     useEffect(() => {
         fetchFullTextRef.current = fetchFullText;
@@ -110,24 +177,55 @@ export default function EmsalPanel() {
     }, [isModalOpen, selectedDecisionKey, fullTextCache]);
 
     const handleSearch = async () => {
-        const text = searchText.trim();
-        if (!text) return;
-        await search({ text });
+        if (loading || searchInFlight) return;
+
+        const text = normalizeQuery(searchText);
+        if (!text && !selectedFile) return;
+
+        setSelectedDecision(null);
+        setIsModalOpen(false);
+        setModalText('');
+        setModalLoading(false);
+        setCopyState('idle');
+        setSearchVariants([]);
+        setActiveSearchVariant(0);
+
+        setSearchInFlight(true);
+        try {
+            const variants = buildSearchVariants(text);
+            setSearchVariants(variants);
+            setActiveSearchVariant(0);
+            await runSearch(variants[0] || text);
+        } finally {
+            setSearchInFlight(false);
+        }
+    };
+
+    const handleVariantSearch = async (variantIndex: number) => {
+        if (loading || searchInFlight) return;
+
+        const variant = searchVariants[variantIndex];
+        if (!variant) return;
+
+        setSearchInFlight(true);
+        try {
+            setActiveSearchVariant(variantIndex);
+            await runSearch(variant);
+        } finally {
+            setSearchInFlight(false);
+        }
     };
 
     const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
-
-        const mimeType = inferMimeType(file);
-        const base64 = await readFileAsBase64(file);
-        await search({
-            text: searchText.trim() || undefined,
-            documentBase64: base64,
-            mimeType,
-        });
-
+        setSelectedFile(file);
         event.target.value = '';
+    };
+
+    const clearSelectedFile = () => {
+        setSelectedFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
     const openDecision = (decision: NormalizedLegalDecision) => {
@@ -199,21 +297,79 @@ export default function EmsalPanel() {
                             className="w-full rounded-2xl border border-white/10 bg-[#11141a] px-4 py-3 text-sm leading-6 text-white placeholder:text-gray-500 outline-none transition focus:border-red-500/60"
                         />
 
+                        <div
+                            className={`mt-4 rounded-2xl border border-dashed p-4 transition ${
+                                isDraggingFile
+                                    ? 'border-red-500/60 bg-red-500/10'
+                                    : selectedFile
+                                        ? 'border-emerald-500/40 bg-emerald-500/10'
+                                        : 'border-white/10 bg-[#11141a]'
+                            }`}
+                            onDragOver={(event) => {
+                                event.preventDefault();
+                                setIsDraggingFile(true);
+                            }}
+                            onDragLeave={() => setIsDraggingFile(false)}
+                            onDrop={(event) => {
+                                event.preventDefault();
+                                setIsDraggingFile(false);
+                                const file = event.dataTransfer.files?.[0];
+                                if (!file) return;
+                                setSelectedFile(file);
+                            }}
+                        >
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="min-w-0">
+                                    <div className="text-sm font-medium text-white">Belge Yükle</div>
+                                    <div className="mt-1 text-xs text-gray-500">
+                                        PDF veya Word yükleyin. İsterseniz metinle birlikte aynı aramada kullanılır.
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={loading}
+                                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-gray-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    <Paperclip className="h-4 w-4" />
+                                    Dosya Seç
+                                </button>
+                            </div>
+
+                            {selectedFile ? (
+                                <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                                    <div className="min-w-0">
+                                        <div className="truncate text-sm font-medium text-white">{selectedFile.name}</div>
+                                        <div className="mt-1 text-xs text-gray-500">
+                                            {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={clearSelectedFile}
+                                        className="rounded-xl border border-white/10 bg-white/5 p-2 text-gray-300 transition hover:bg-white/10 hover:text-white"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            ) : null}
+                        </div>
+
                         <div className="mt-4 flex flex-col gap-3 sm:flex-row">
                             <button
                                 type="button"
                                 onClick={handleSearch}
-                                disabled={loading || !searchText.trim()}
+                                disabled={loading || searchInFlight || (!searchText.trim() && !selectedFile)}
                                 className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-white/10"
                             >
-                                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                                Emsal Ara
+                                {loading || searchInFlight ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                {selectedFile ? 'Belgeyle Emsal Ara' : 'Emsal Ara'}
                             </button>
 
                             <button
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}
-                                disabled={loading}
+                                disabled={loading || searchInFlight}
                                 className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-gray-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 <Paperclip className="h-4 w-4" />
@@ -229,6 +385,26 @@ export default function EmsalPanel() {
                                 onChange={handleFileChange}
                             />
                         </div>
+
+                        {searchVariants.length > 1 ? (
+                            <div className="mt-4 flex flex-wrap gap-2">
+                                {searchVariants.map((variant, index) => (
+                                    <button
+                                        key={`${variant}-${index}`}
+                                        type="button"
+                                        onClick={() => handleVariantSearch(index)}
+                                        disabled={loading || searchInFlight}
+                                        className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                                            activeSearchVariant === index
+                                                ? 'border-red-500/40 bg-red-500/15 text-red-100'
+                                                : 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10'
+                                        } disabled:cursor-not-allowed disabled:opacity-60`}
+                                    >
+                                        {index + 1}. arama
+                                    </button>
+                                ))}
+                            </div>
+                        ) : null}
 
                         <p className="mt-3 text-xs text-gray-500">
                             Yüklenen dosya base64'e çevrilir ve mevcut analiz akışına gönderilir.

@@ -384,6 +384,11 @@ export default async function handler(req, res) {
         const normalizedSearchMode = String(requestedSearchMode || 'auto').trim().toLowerCase() === 'pro'
             ? 'pro'
             : 'auto';
+        const hasDocumentDrivenPacket = Boolean(analyzerResult || legalSearchPacket);
+        const forceHybridRetrieval = String(req?.body?.retrievalMode || '').trim().toLowerCase() === 'hybrid'
+            || String(req?.body?.hybridMode || '').trim().toLowerCase() === 'hybrid'
+            || hasDocumentDrivenPacket
+            || (normalizedSearchMode === 'pro' && !hasDocumentDrivenPacket);
 
         console.info(
             `[LEGAL_SEARCH] API start source=${source}, mode=${normalizedSearchMode}, provider=${LEGAL_SIMPLE_PROVIDER}, rawQuery="${rawQuery.slice(0, 120)}"`
@@ -399,6 +404,7 @@ export default async function handler(req, res) {
         } else if (
             agenticSignalsEnabled
             && normalizedSearchMode === 'pro'
+            && !forceHybridRetrieval
             && !legalSearchPacket
             && rawQuery
             && rawQuery.length > 100
@@ -471,6 +477,7 @@ export default async function handler(req, res) {
                     filters,
                     searchMode: normalizedSearchMode,
                     legalSearchPacket: resolvedLegalSearchPacket,
+                    hybridFastMode: forceHybridRetrieval,
                     abortSignal: requestAbortController.signal,
                     provider: LEGAL_SIMPLE_PROVIDER,
                 });
@@ -508,7 +515,7 @@ export default async function handler(req, res) {
 
         if (simpleSupported) {
             const isLongQuery = rawQuery.length > 100;
-            if (isLongQuery) {
+            if (isLongQuery && !forceHybridRetrieval) {
                 try {
                     console.log(`[LEGAL_SEARCH] Multi-Strategy path activated (rawQuery.length=${rawQuery.length}, mode=${normalizedSearchMode})`);
                     const strategies = await buildSearchStrategies({
@@ -566,6 +573,8 @@ export default async function handler(req, res) {
                     }
                     console.warn('[LEGAL_SEARCH] Multi-Strategy failed, falling back to single query:', multiError?.message || multiError);
                 }
+            } else if (isLongQuery && forceHybridRetrieval) {
+                console.log('[LEGAL_SEARCH] Multi-Strategy skipped for document-driven hybrid retrieval');
             }
 
             try {
@@ -576,6 +585,7 @@ export default async function handler(req, res) {
                     filters,
                     searchMode: normalizedSearchMode,
                     legalSearchPacket: resolvedLegalSearchPacket,
+                    hybridFastMode: forceHybridRetrieval,
                     abortSignal: requestAbortController.signal,
                     provider: LEGAL_SIMPLE_PROVIDER,
                 });
