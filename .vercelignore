@@ -1,0 +1,16 @@
+node_modules
+dist
+output
+tests
+.playwright-cli
+.codex-smoke
+.skill-builds
+.codex_tmp_yargi_cli_analysis
+.codex_tmp_yargi_mcp
+.vercel-backup-*
+*.log
+*.err.log
+*.out.log
+tmp-*
+.tmp-*
+turk-hukuku-karar-arama
