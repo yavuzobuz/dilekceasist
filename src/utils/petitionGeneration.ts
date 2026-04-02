@@ -23,6 +23,42 @@ interface BuildGeneratePetitionParamsArgs {
     parties: { [key: string]: string };
 }
 
+const trimText = (value: string, maxChars: number): string => {
+    const text = String(value || '').trim();
+    if (!text) return '';
+    if (text.length <= maxChars) return text;
+    return `${text.slice(0, maxChars - 1).trim()}...`;
+};
+
+const trimChatHistory = (history: ChatMessage[] = []): ChatMessage[] =>
+    (Array.isArray(history) ? history : [])
+        .slice(-8)
+        .map((message) => ({
+            ...message,
+            text: trimText(message.text, 1200),
+        }));
+
+const trimWebSources = (sources: WebSearchResult['sources'] = []): WebSearchResult['sources'] =>
+    (Array.isArray(sources) ? sources : [])
+        .filter((source) => typeof source?.uri === 'string' && source.uri.trim().length > 0)
+        .slice(0, 4)
+        .map((source) => ({
+            ...source,
+            title: trimText(String(source?.title || ''), 120),
+            uri: trimText(String(source?.uri || ''), 220),
+        }));
+
+const trimLegalResults = (results: LegalSearchResult[] = []): LegalSearchResult[] =>
+    (Array.isArray(results) ? results : [])
+        .slice(0, 5)
+        .map((result) => ({
+            ...result,
+            title: trimText(String(result.title || ''), 140),
+            ozet: trimText(String(result.ozet || ''), 500),
+            snippet: trimText(String(result.snippet || ''), 500),
+            selectionReason: trimText(String(result.selectionReason || ''), 240),
+        }));
+
 export const buildLegalSearchResultSummary = (results: LegalSearchResult[] = []): string =>
     (Array.isArray(results) ? results : [])
         .map((result) => {
@@ -61,19 +97,20 @@ export const buildGeneratePetitionParams = ({
     userRole,
     petitionType,
     caseDetails,
-    analysisSummary: analysisData.summary,
-    webSearchResult: webSearchResult?.summary || '',
-    webSources: webSearchResult?.sources || [],
-    legalSearchResult: buildLegalSearchResultSummary(legalSearchResults),
-    legalSearchResults,
-    docContent,
-    specifics,
+    analysisSummary: trimText(analysisData.summary, 5000),
+    webSearchResult: trimText(webSearchResult?.summary || '', 2500),
+    webSources: trimWebSources(webSearchResult?.sources || []),
+    legalSearchResult: trimText(buildLegalSearchResultSummary(legalSearchResults), 5000),
+    legalSearchResults: trimLegalResults(legalSearchResults),
+    docContent: trimText(docContent, 8000),
+    specifics: trimText(specifics, 3000),
     searchKeywords,
-    chatHistory,
+    chatHistory: trimChatHistory(chatHistory),
     parties,
-    webSourceCount: webSearchResult?.sources?.length || 0,
-    legalResultCount: legalSearchResults.length,
+    webSourceCount: trimWebSources(webSearchResult?.sources || []).length,
+    legalResultCount: trimLegalResults(legalSearchResults).length,
     lawyerInfo: analysisData.lawyerInfo,
     contactInfo: analysisData.contactInfo,
     analysisInsights: analysisData.analysisInsights,
 });
+

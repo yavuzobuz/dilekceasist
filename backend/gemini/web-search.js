@@ -1,8 +1,8 @@
 import { applyCors, getSafeErrorMessage } from '../../lib/api/cors.js';
 import { AI_CONFIG } from '../../config.js';
-import { GEMINI_MODEL_NAME, getGeminiClient } from './_shared.js';
+import { GEMINI_STABLE_FALLBACK_MODEL_NAME, getGeminiClient } from './_shared.js';
 
-const MODEL_NAME = GEMINI_MODEL_NAME;
+const MODEL_NAME = GEMINI_STABLE_FALLBACK_MODEL_NAME || 'gemini-2.5-flash';
 const SEARCH_TIMEOUT_MS = Number(process.env.GEMINI_WEB_SEARCH_TIMEOUT_MS || 45000);
 const SEARCH_MAX_RETRIES = Math.max(1, Number(process.env.GEMINI_WEB_SEARCH_MAX_RETRIES || AI_CONFIG.MAX_RETRIES || 3));
 const INITIAL_RETRY_DELAY_MS = Math.max(250, Number(process.env.GEMINI_WEB_SEARCH_RETRY_DELAY_MS || AI_CONFIG.INITIAL_RETRY_DELAY_MS || 1000));

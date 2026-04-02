@@ -4,10 +4,13 @@ import {
     GEMINI_FLASH_PREVIEW_MODEL_NAME,
     GEMINI_LEGAL_SUMMARIZER_MODEL_NAME,
     GEMINI_MODEL_NAME,
+    GEMINI_PETITION_MODEL_NAME,
+    GEMINI_STABLE_FALLBACK_MODEL_NAME,
     getGeminiClient,
 } from './_shared.js';
 
-const MODEL_NAME = GEMINI_MODEL_NAME;
+const MODEL_NAME = GEMINI_PETITION_MODEL_NAME || GEMINI_MODEL_NAME;
+const FALLBACK_MODEL_NAME = GEMINI_STABLE_FALLBACK_MODEL_NAME;
 const LEGAL_SUMMARIZER_MODEL_NAME = GEMINI_LEGAL_SUMMARIZER_MODEL_NAME;
 const LEGAL_SUMMARIZER_PREVIEW_MODEL_NAME = GEMINI_FLASH_PREVIEW_MODEL_NAME;
 
@@ -674,21 +677,13 @@ Saglanan ham verileri, profesyonel, detayli, gerekceli ve dava stratejisi kuran 
 
         const promptText = buildGenerationPrompt(effectiveParams);
 
-        const response = await ai.models.generateContent({
-            model: MODEL_NAME,
-            contents: promptText,
-            config: { systemInstruction },
-        });
+        const response = await generateWithFallback(ai, promptText, systemInstruction);
 
         let finalText = response.text || '';
         let evidenceCheck = petitionUsesResearchEvidence(finalText, effectiveParams);
 
         if (!evidenceCheck.satisfied) {
-            const repairResponse = await ai.models.generateContent({
-                model: MODEL_NAME,
-                contents: buildRepairPrompt(effectiveParams, finalText),
-                config: { systemInstruction },
-            });
+            const repairResponse = await generateWithFallback(ai, buildRepairPrompt(effectiveParams, finalText), systemInstruction);
 
             if (repairResponse.text) {
                 finalText = repairResponse.text;
@@ -708,6 +703,37 @@ Saglanan ham verileri, profesyonel, detayli, gerekceli ve dava stratejisi kuran 
     }
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function generateWithFallback(ai, contents, systemInstruction) {
+    const models = [MODEL_NAME];
+    if (FALLBACK_MODEL_NAME && FALLBACK_MODEL_NAME !== MODEL_NAME) {
+        models.push(FALLBACK_MODEL_NAME);
+    }
+
+    let lastError;
+    for (const model of models) {
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+            try {
+                return await ai.models.generateContent({
+                    model,
+                    contents,
+                    config: { systemInstruction },
+                });
+            } catch (error) {
+                lastError = error;
+                const status = Number(error?.status || error?.response?.status || 0);
+                const code = String(error?.code || error?.error?.status || '').toUpperCase();
+                const retryable = status === 503 || code === 'UNAVAILABLE';
+                if (!retryable || attempt === 2) break;
+                await sleep(500 * (attempt + 1));
+            }
+        }
+    }
+
+    throw lastError || new Error('petition_generation_failed');
+}
+
 export const __testables = {
     collectLegalResults,
     buildLegalCitation,
@@ -720,4 +746,3 @@ export const __testables = {
     mergeIntegratedResearchIntoPetition,
     petitionUsesResearchEvidence,
 };
-

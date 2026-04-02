@@ -1,5 +1,5 @@
 import { applyCors, getSafeErrorMessage } from '../../lib/api/cors.js';
-import { GEMINI_MODEL_NAME, getGeminiClient } from './_shared.js';
+import { GEMINI_MODEL_NAME, GEMINI_STABLE_FALLBACK_MODEL_NAME, getGeminiClient } from './_shared.js';
 
 const MODEL_NAME = GEMINI_MODEL_NAME;
 
@@ -182,15 +182,47 @@ export default async function handler(req, res) {
 
         parts.push({ text: 'Lutfen yukaridaki tum belgeleri analiz et ve JSON formatinda sonuc dondur.' });
 
-        const response = await ai.models.generateContent({
-            model: MODEL_NAME,
-            contents: [{ role: 'user', parts }],
-            config: { systemInstruction: ANALYZE_SYSTEM_INSTRUCTION },
-        });
+        const response = await generateAnalysisWithFallback(ai, parts);
 
         res.json({ text: response.text });
     } catch (error) {
         console.error('Analyze Error:', error);
         res.status(500).json({ error: getSafeErrorMessage(error, 'Internal Server Error') });
     }
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function generateAnalysisWithFallback(ai, parts) {
+    const primaryModels = [MODEL_NAME];
+    const fallbackModels = GEMINI_STABLE_FALLBACK_MODEL_NAME && GEMINI_STABLE_FALLBACK_MODEL_NAME !== MODEL_NAME
+        ? [GEMINI_STABLE_FALLBACK_MODEL_NAME]
+        : [];
+    const attempts = [
+        ...primaryModels.map((model) => ({ model, retries: 2 })),
+        ...fallbackModels.map((model) => ({ model, retries: 1 })),
+    ];
+
+    let lastError;
+
+    for (const attempt of attempts) {
+        for (let i = 0; i <= attempt.retries; i += 1) {
+            try {
+                return await ai.models.generateContent({
+                    model: attempt.model,
+                    contents: [{ role: 'user', parts }],
+                    config: { systemInstruction: ANALYZE_SYSTEM_INSTRUCTION },
+                });
+            } catch (error) {
+                lastError = error;
+                const status = Number(error?.status || error?.response?.status || 0);
+                const code = String(error?.code || error?.error?.status || '').toUpperCase();
+                const retryable = status === 503 || code === 'UNAVAILABLE';
+                if (!retryable || i === attempt.retries) break;
+                await sleep(500 * (i + 1));
+            }
+        }
+    }
+
+    throw lastError || new Error('analysis_generation_failed');
 }

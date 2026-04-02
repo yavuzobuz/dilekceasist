@@ -398,9 +398,9 @@ const isExplicitLegalSearchRequest = (rawMessage: string): boolean => {
 const hasWebEvidence = (result: WebSearchResult | null): boolean => {
     if (!result) return false;
     const summary = typeof result.summary === 'string' ? result.summary.trim() : '';
-    const hasSummary = summary.length >= 40;
+    const hasSummary = summary.length >= 20;
     const hasSource = Array.isArray(result.sources) && result.sources.some(source => typeof source?.uri === 'string' && source.uri.trim().length > 0);
-    return hasSummary && hasSource;
+    return hasSummary || hasSource;
 };
 
 const getLegalResultPreviewText = (result: Partial<AlternativeLegalSearchResult>): string => {
@@ -3900,53 +3900,74 @@ export default function AlternativeApp() {
 
             {isDecisionModalOpen && (
                 <div
-                    className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm"
+                    className="fixed inset-0 z-[60] flex items-end justify-center bg-black/75 p-3 backdrop-blur-md sm:items-center sm:p-5"
                     onClick={() => setIsDecisionModalOpen(false)}
                 >
                     <div
-                        className="absolute right-0 top-0 h-full w-full max-w-[560px] bg-[#111113] border-l border-white/10 shadow-2xl flex flex-col animate-slide-in-right"
+                        className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-[24px] border border-white/10 bg-gradient-to-b from-[#151923] to-[#0b0f15] shadow-[0_30px_120px_rgba(0,0,0,0.65)]"
                         onClick={(event) => event.stopPropagation()}
                     >
-                        <div className="flex items-start justify-between gap-4 p-5 border-b border-white/10 bg-[#0E0E11]">
+                        <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-6">
                             <div className="min-w-0">
-                                <p className="text-[11px] uppercase tracking-[0.2em] text-gray-500 mb-1">Karar Detay?</p>
-                                <h3 className="text-lg font-semibold text-white truncate">{selectedDecision?.title || 'Karar Detay?'}</h3>
-                                <p className="text-xs text-gray-400 mt-1">
-                                    {selectedDecision?.esasNo ? `E. ${selectedDecision.esasNo} ` : ''}
-                                    {selectedDecision?.kararNo ? `K. ${selectedDecision.kararNo} ` : ''}
-                                    {selectedDecision?.tarih ? `T. ${selectedDecision.tarih}` : ''}
+                                <div className="text-[11px] uppercase tracking-[0.28em] text-gray-500">
+                                    Karar Detayı
+                                </div>
+                                <h3 className="mt-1 truncate text-lg font-semibold text-white sm:text-xl">
+                                    {selectedDecision?.title || 'Karar Detayı'}
+                                </h3>
+                                <p className="mt-2 text-xs text-gray-400">
+                                    {selectedDecision?.esasNo ? `E. ${selectedDecision.esasNo}` : ''}
+                                    {selectedDecision?.kararNo ? `${selectedDecision?.esasNo ? ' · ' : ''}K. ${selectedDecision.kararNo}` : ''}
+                                    {selectedDecision?.tarih ? `${selectedDecision?.esasNo || selectedDecision?.kararNo ? ' · ' : ''}T. ${selectedDecision.tarih}` : ''}
                                 </p>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    {selectedDecision?.tarih ? (
+                                        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium tracking-wide text-gray-200">
+                                            {selectedDecision.tarih}
+                                        </span>
+                                    ) : null}
+                                    {selectedDecision?.esasNo ? (
+                                        <span className="rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-[11px] font-medium tracking-wide text-red-100">
+                                            E. {selectedDecision.esasNo}
+                                        </span>
+                                    ) : null}
+                                    {selectedDecision?.kararNo ? (
+                                        <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] font-medium tracking-wide text-gray-200">
+                                            K. {selectedDecision.kararNo}
+                                        </span>
+                                    ) : null}
+                                </div>
                             </div>
                             <button
                                 onClick={() => setIsDecisionModalOpen(false)}
-                                className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                                className="rounded-xl border border-white/10 bg-white/5 p-2 text-gray-300 transition hover:bg-white/10 hover:text-white"
                             >
-                                <svg className="w-5 h-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
 
-                        <div className="flex-1 min-h-0 overflow-y-auto p-5">
-                            <div className="rounded-2xl border border-white/10 bg-[#151518] p-4 mb-4">
-                                <p className="text-xs uppercase tracking-[0.18em] text-gray-500 mb-2">?zet</p>
-                                <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
-                                    {selectedDecision?.ozet || selectedDecision?.snippet || '?zet bulunamad?.'}
+                        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+                            <div className="rounded-3xl border border-white/10 bg-black/20 p-4 sm:p-5">
+                                <p className="mb-2 text-xs uppercase tracking-[0.18em] text-gray-500">Özet</p>
+                                <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-300">
+                                    {selectedDecision?.ozet || selectedDecision?.snippet || 'Özet bulunamadı.'}
                                 </p>
                             </div>
 
                             {isDecisionContentLoading ? (
-                                <div className="py-12 flex flex-col items-center justify-center text-gray-400">
+                                <div className="flex min-h-[18rem] flex-col items-center justify-center rounded-3xl border border-white/10 bg-black/20 py-12 text-gray-400">
                                     <LoadingSpinner className="w-8 h-8 text-white mb-3" />
-                                    Tam metin y?kleniyor...
+                                    Tam metin yükleniyor...
                                 </div>
                             ) : (
-                                <div className="space-y-3">
+                                <div className="mt-4 space-y-3">
                                     <div className="flex items-center justify-between">
                                         <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Tam Metin</p>
-                                        <span className="text-[11px] text-gray-500">A?a?? kayd?rarak inceleyin</span>
+                                        <span className="text-[11px] text-gray-500">Aşağı kaydırarak inceleyin</span>
                                     </div>
-                                    <pre className="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed font-sans rounded-2xl border border-white/10 bg-[#0F0F12] p-4 max-h-[calc(100vh-360px)] overflow-y-auto">
+                                    <pre className="max-h-[calc(100vh-360px)] overflow-y-auto whitespace-pre-wrap rounded-3xl border border-white/10 bg-black/20 p-4 font-sans text-sm leading-relaxed text-gray-100">
                                         {selectedDecisionContent}
                                     </pre>
                                 </div>
@@ -3954,22 +3975,22 @@ export default function AlternativeApp() {
                         </div>
 
                         {!isDecisionContentLoading && (
-                            <div className="p-4 border-t border-white/10 bg-[#0D0D0F] flex items-center justify-between gap-3">
+                            <div className="flex items-center justify-between gap-3 border-t border-white/10 bg-black/20 px-4 py-4 sm:px-6">
                                 <div className="text-xs text-gray-500">
-                                    Karar? dilek?eye eklemek i?in butona bas?n.
+                                    Kararı dilekçeye eklemek için butona basın.
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={() => setIsDecisionModalOpen(false)}
-                                        className="px-4 py-2 rounded-lg border border-white/10 text-gray-300 hover:text-white hover:border-white/20 transition-colors"
+                                        className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-gray-300 transition hover:bg-white/10 hover:text-white"
                                     >
                                         Kapat
                                     </button>
                                     <button
                                         onClick={handleUseSelectedDecision}
-                                        className="px-4 py-2 rounded-lg bg-gradient-to-r from-red-600 to-red-700 text-white font-semibold hover:from-red-500 hover:to-red-600 transition-colors shadow-lg shadow-red-900/30"
+                                        className="rounded-xl bg-gradient-to-r from-red-600 to-red-700 px-4 py-2 font-semibold text-white shadow-lg shadow-red-900/30 transition hover:from-red-500 hover:to-red-600"
                                     >
-                                        Dilek?eye ekle
+                                        Dilekçeye ekle
                                     </button>
                                 </div>
                             </div>

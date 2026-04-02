@@ -347,7 +347,7 @@ app.use('/api/gemini/chat', express.json({ limit: process.env.UPLOAD_JSON_BODY_L
 app.use('/api/html-to-docx', express.json({ limit: process.env.DOC_JSON_BODY_LIMIT || '1mb' }));
 
 // Default body limits
-app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '100kb' }));
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '15mb' }));
 app.use(express.urlencoded({ extended: false, limit: process.env.URLENCODED_BODY_LIMIT || '100kb' }));
 
 // Input sanitization middleware
@@ -697,6 +697,7 @@ app.post('/api/gemini/legal-search-plan', legalSearchPlanHandler);
 app.post('/api/gemini/web-search', (req, res) => webSearchHandler(req, res));
 
 // 4. Generate Petition
+app.use('/api/gemini/generate-petition', express.json({ limit: process.env.PETITION_JSON_BODY_LIMIT || process.env.UPLOAD_JSON_BODY_LIMIT || '15mb' }));
 app.post('/api/gemini/generate-petition', (req, res) => generatePetitionHandler(req, res));
 
 const GEMINI_INLINE_SUPPORTED_MIME_TYPES = new Set([
@@ -3052,8 +3053,6 @@ app.all('/api/announcements', (req, res) => announcementsHandler(req, res));
 app.listen(PORT, () => {
     console.warn(`Server running on http://localhost:${PORT}`);
 });
-
-
 
 
 

@@ -63,9 +63,9 @@ const createToastId = (): string => {
 const hasWebEvidence = (result: WebSearchResult | null): boolean => {
   if (!result) return false;
   const summary = typeof result.summary === 'string' ? result.summary.trim() : '';
-  const hasSummary = summary.length >= 40;
+  const hasSummary = summary.length >= 20;
   const hasSource = Array.isArray(result.sources) && result.sources.some(source => typeof source?.uri === 'string' && source.uri.trim().length > 0);
-  return hasSummary && hasSource;
+  return hasSummary || hasSource;
 };
 
 const hasLegalEvidenceForGeneration = (results: LegalSearchResult[]): boolean =>
