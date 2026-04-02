@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+﻿import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import {
     AlertCircle,
     ArrowUpRight,
@@ -519,23 +519,48 @@ export default function EmsalPanel() {
 
             {isModalOpen && selectedDecision ? (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+                    className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-3 backdrop-blur-md sm:items-center sm:p-5"
                     onClick={closeModal}
                 >
                     <div
-                        className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0d1015] shadow-2xl"
+                        className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-[24px] border border-white/10 bg-gradient-to-b from-[#151923] to-[#0b0f15] shadow-[0_30px_120px_rgba(0,0,0,0.65)]"
                         onClick={(event) => event.stopPropagation()}
                     >
-                        <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
+                        <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-6">
                             <div className="min-w-0">
-                                <h3 className="truncate text-lg font-semibold text-white">
-                                    {selectedDecision.title || 'Tam Metin'}
+                                <div className="text-[11px] uppercase tracking-[0.28em] text-gray-500">
+                                    Karar Detayı
+                                </div>
+                                <h3 className="mt-1 truncate text-lg font-semibold text-white sm:text-xl">
+                                    {selectedDecision.title || 'Karar Detayı'}
                                 </h3>
-                                <p className="mt-1 text-xs text-gray-500">
+                                <p className="mt-2 text-xs text-gray-400">
                                     {selectedDecision.daire ? `Daire: ${selectedDecision.daire}` : ''}
                                     {selectedDecision.esasNo ? `${selectedDecision.daire ? ' · ' : ''}E. ${selectedDecision.esasNo}` : ''}
                                     {selectedDecision.kararNo ? `${selectedDecision.esasNo || selectedDecision.daire ? ' · ' : ''}K. ${selectedDecision.kararNo}` : ''}
                                 </p>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    {selectedDecision.tarih ? (
+                                        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium tracking-wide text-gray-200">
+                                            {selectedDecision.tarih}
+                                        </span>
+                                    ) : null}
+                                    {selectedDecision.daire ? (
+                                        <span className="rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-[11px] font-medium tracking-wide text-red-100">
+                                            {selectedDecision.daire}
+                                        </span>
+                                    ) : null}
+                                    {selectedDecision.esasNo ? (
+                                        <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] font-medium tracking-wide text-gray-200">
+                                            E. {selectedDecision.esasNo}
+                                        </span>
+                                    ) : null}
+                                    {selectedDecision.kararNo ? (
+                                        <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] font-medium tracking-wide text-gray-200">
+                                            K. {selectedDecision.kararNo}
+                                        </span>
+                                    ) : null}
+                                </div>
                             </div>
                             <button
                                 type="button"
@@ -546,22 +571,24 @@ export default function EmsalPanel() {
                             </button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-5">
+                        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
                             {modalLoading ? (
-                                <div className="flex min-h-[24rem] items-center justify-center text-gray-400">
+                                <div className="flex min-h-[18rem] items-center justify-center rounded-3xl border border-white/10 bg-black/20 text-gray-400">
                                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                                     Tam metin getiriliyor...
                                 </div>
                             ) : (
-                                <pre className="whitespace-pre-wrap break-words text-sm leading-7 text-gray-200">
-                                    {modalText || 'Tam metin getirilemedi.'}
-                                </pre>
+                                <div className="rounded-3xl border border-white/10 bg-black/20 p-4 sm:p-5">
+                                    <pre className="whitespace-pre-wrap break-words text-sm leading-7 text-gray-100">
+                                        {modalText || 'Tam metin getirilemedi.'}
+                                    </pre>
+                                </div>
                             )}
                         </div>
 
-                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 px-5 py-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 bg-black/20 px-4 py-4 sm:px-6">
                             <div className="text-xs text-gray-500">
-                                {Object.prototype.hasOwnProperty.call(fullTextCache, selectedDecisionKey) ? 'Cache kullanildi' : 'Lazy fetch'}
+                                {Object.prototype.hasOwnProperty.call(fullTextCache, selectedDecisionKey) ? 'Cache kullanıldı' : 'Lazy fetch'}
                             </div>
                             <div className="flex gap-2">
                                 <button
