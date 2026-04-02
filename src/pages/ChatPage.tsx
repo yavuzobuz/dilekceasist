@@ -8,7 +8,7 @@ import { Scale } from 'lucide-react';
 import { ChatMessage, WebSearchResult, AnalysisData, UserRole } from '../../types';
 import { analyzeDocuments, generateSearchKeywords, performWebSearch, streamChatResponse, generatePetition } from '../../services/geminiService';
 import { prepareChatAttachmentsForAnalysis, mergeAnalysisData } from '../utils/chatAttachmentProcessing';
-import { buildLegalSearchInputs, normalizeLegalSearchResults as normalizeSharedLegalSearchResults, searchLegalDecisionsDetailed, getLegalDocument, type NormalizedLegalDecision } from '../utils/legalSearch';
+import { buildHybridSearchVariants, buildLegalSearchInputs, normalizeLegalSearchResults as normalizeSharedLegalSearchResults, searchLegalDecisionsDetailed, getLegalDocument, type NormalizedLegalDecision } from '../utils/legalSearch';
 import { resolveLegalSourceForQuery } from '../utils/legalSource';
 import { buildLegalResearchBatchMessage, detectLegalSearchIntent } from '../lib/legal/chatLegalIntent';
 import { useLegalSearch } from '../hooks/useLegalSearch';
@@ -424,7 +424,8 @@ export default function ChatPage() {
                         .map(m => `${m.role === 'user' ? 'Kullanıcı' : 'Yapay Zeka'}: ${m.text}`).join('\n');
                     const enrichedContextQuery = `Sorgu: ${normalizedMessage || evidenceKeywords.join(', ')}\n\n--- Sohbet Geçmişi (Bağlam) ---\n${recentMessagesText}`;
                     
-                    const searchedResults = await runLegalSearch(enrichedContextQuery, { silent: true, suppressError: true });
+                    const hybridQuery = buildHybridSearchVariants(enrichedContextQuery)[0] || enrichedContextQuery;
+                    const searchedResults = await runLegalSearch(hybridQuery, { silent: true, suppressError: true });
                     mergedLegalResults = mergeUniqueLegalResults(mergedLegalResults, searchedResults);
                     setLegalSearchResults(mergedLegalResults);
                     setPrecedentContext(buildLegalResultsPrompt(mergedLegalResults));

@@ -330,10 +330,12 @@ const buildAutoLegalSearchText = ({
     packet,
     fallbackSummary = '',
     fallbackKeywords = [],
+    userRole,
 }: {
     packet?: LegalSearchPacket | null;
     fallbackSummary?: string;
     fallbackKeywords?: string[];
+    userRole?: UserRole;
 }): string => {
     const directPacketSearchText = String(packet?.searchSeedText || '').trim();
     if (directPacketSearchText) return directPacketSearchText;
@@ -350,8 +352,12 @@ const buildAutoLegalSearchText = ({
         .trim();
 
     if (packetText) return packetText;
-    if (String(fallbackSummary || '').trim()) return String(fallbackSummary || '').trim();
-    return Array.isArray(fallbackKeywords) ? fallbackKeywords.join(' ').trim() : '';
+
+    const rolePrefix = userRole ? `Taraf rolü: ${userRole}` : '';
+    const summaryText = String(fallbackSummary || '').trim();
+    const keywordText = Array.isArray(fallbackKeywords) ? fallbackKeywords.join(' ').trim() : '';
+
+    return [summaryText, keywordText].filter(Boolean).join(' ').trim();
 };
 
 const buildAutoWebSearchKeywords = ({
@@ -1580,6 +1586,5 @@ export default function PrecedentSearch() {
         </div>
     );
 }
-
 
 

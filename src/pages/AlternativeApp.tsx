@@ -18,6 +18,7 @@ import { Petition, supabase } from '../../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import {
     buildLegalSearchInputs,
+    buildHybridSearchVariants,
     getLegalDocument,
     normalizeLegalSearchResults as normalizeSharedLegalSearchResults,
     searchLegalDecisionsDetailed,
@@ -502,10 +503,12 @@ const buildAutoLegalSearchText = ({
     packet,
     fallbackSummary = '',
     fallbackKeywords = [],
+    userRole,
 }: {
     packet?: LegalSearchPacket | null;
     fallbackSummary?: string;
     fallbackKeywords?: string[];
+    userRole?: UserRole;
 }): string => {
     const directPacketSearchText = String(packet?.searchSeedText || '').trim();
     if (directPacketSearchText) return directPacketSearchText;
@@ -522,8 +525,11 @@ const buildAutoLegalSearchText = ({
         .trim();
 
     if (packetText) return packetText;
-    if (String(fallbackSummary || '').trim()) return String(fallbackSummary || '').trim();
-    return Array.isArray(fallbackKeywords) ? fallbackKeywords.join(' ').trim() : '';
+
+    const summaryText = String(fallbackSummary || '').trim();
+    const keywordText = Array.isArray(fallbackKeywords) ? fallbackKeywords.join(' ').trim() : '';
+
+    return [summaryText, keywordText].filter(Boolean).join(' ').trim();
 };
 
 const buildAutoWebSearchKeywords = ({
@@ -1190,6 +1196,7 @@ export default function AlternativeApp() {
         });
         if (!keyword && !normalizedPacket) return [];
 
+        const hybridKeyword = buildHybridSearchVariants(keyword || effectiveRawQuery)[0] || keyword || effectiveRawQuery;
         const shouldReplace = options?.replaceExisting ?? !options?.silent;
 
         setIsLegalSearching(true);
@@ -1203,8 +1210,8 @@ export default function AlternativeApp() {
         try {
             const detailedResult = await searchLegalDecisionsDetailed({
                 source: 'all',
-                keyword,
-                rawQuery: effectiveRawQuery,
+                keyword: hybridKeyword,
+                rawQuery: effectiveRawQuery || hybridKeyword,
                 legalSearchPacket: normalizedPacket,
                 apiBaseUrl: '',
             });
@@ -1801,6 +1808,33 @@ export default function AlternativeApp() {
             setIsDecisionContentLoading(false);
         }
     };
+
+    const handleUseSelectedDecision = useCallback(() => {
+        const decisionText = String(selectedDecisionContent || '').trim();
+        if (!decisionText) {
+            addToast('Eklemek için karar metni bulunamadı.', 'info');
+            return;
+        }
+
+        setDocContent(prev => {
+            const appendix = [
+                '--- Emsal Karar ---',
+                selectedDecision?.title || 'Karar',
+                selectedDecision?.esasNo ? `E. ${selectedDecision.esasNo}` : '',
+                selectedDecision?.kararNo ? `K. ${selectedDecision.kararNo}` : '',
+                selectedDecision?.tarih ? `T. ${selectedDecision.tarih}` : '',
+                '',
+                decisionText,
+            ].filter(Boolean).join('\n');
+
+            return prev.trim()
+                ? `${prev.trim()}\n\n${appendix}`
+                : appendix;
+        });
+
+        addToast('Seçilen karar dilekçeye eklendi.', 'success');
+        setIsDecisionModalOpen(false);
+    }, [addToast, selectedDecision, selectedDecisionContent]);
 
     const handleCaseDetailChange = useCallback((field: keyof CaseDetails, value: string) => {
         setCaseDetails(prev => ({ ...prev, [field]: value }));
@@ -2813,7 +2847,6 @@ export default function AlternativeApp() {
                     </div>
                 </div>
             )}
-
             <div className="flex flex-1 overflow-hidden">
                 {/* Left Sidebar / Stepper */}
                 <aside className="w-80 bg-[#111113] border-r border-white/5 flex flex-col overflow-y-auto shrink-0">
@@ -3867,16 +3900,17 @@ export default function AlternativeApp() {
 
             {isDecisionModalOpen && (
                 <div
-                    className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+                    className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm"
                     onClick={() => setIsDecisionModalOpen(false)}
                 >
                     <div
-                        className="w-full max-w-4xl max-h-[90vh] bg-[#111113] border border-white/10 rounded-2xl overflow-hidden shadow-2xl"
+                        className="absolute right-0 top-0 h-full w-full max-w-[560px] bg-[#111113] border-l border-white/10 shadow-2xl flex flex-col animate-slide-in-right"
                         onClick={(event) => event.stopPropagation()}
                     >
-                        <div className="flex items-start justify-between gap-4 p-5 border-b border-white/10">
+                        <div className="flex items-start justify-between gap-4 p-5 border-b border-white/10 bg-[#0E0E11]">
                             <div className="min-w-0">
-                                <h3 className="text-lg font-semibold text-white truncate">{selectedDecision?.title || 'Karar Detayı'}</h3>
+                                <p className="text-[11px] uppercase tracking-[0.2em] text-gray-500 mb-1">Karar Detay?</p>
+                                <h3 className="text-lg font-semibold text-white truncate">{selectedDecision?.title || 'Karar Detay?'}</h3>
                                 <p className="text-xs text-gray-400 mt-1">
                                     {selectedDecision?.esasNo ? `E. ${selectedDecision.esasNo} ` : ''}
                                     {selectedDecision?.kararNo ? `K. ${selectedDecision.kararNo} ` : ''}
@@ -3893,18 +3927,53 @@ export default function AlternativeApp() {
                             </button>
                         </div>
 
-                        <div className="p-5 overflow-y-auto max-h-[72vh]">
+                        <div className="flex-1 min-h-0 overflow-y-auto p-5">
+                            <div className="rounded-2xl border border-white/10 bg-[#151518] p-4 mb-4">
+                                <p className="text-xs uppercase tracking-[0.18em] text-gray-500 mb-2">?zet</p>
+                                <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
+                                    {selectedDecision?.ozet || selectedDecision?.snippet || '?zet bulunamad?.'}
+                                </p>
+                            </div>
+
                             {isDecisionContentLoading ? (
                                 <div className="py-12 flex flex-col items-center justify-center text-gray-400">
                                     <LoadingSpinner className="w-8 h-8 text-white mb-3" />
-                                    Tam metin yükleniyor...
+                                    Tam metin y?kleniyor...
                                 </div>
                             ) : (
-                                <pre className="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed font-sans">
-                                    {selectedDecisionContent}
-                                </pre>
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Tam Metin</p>
+                                        <span className="text-[11px] text-gray-500">A?a?? kayd?rarak inceleyin</span>
+                                    </div>
+                                    <pre className="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed font-sans rounded-2xl border border-white/10 bg-[#0F0F12] p-4 max-h-[calc(100vh-360px)] overflow-y-auto">
+                                        {selectedDecisionContent}
+                                    </pre>
+                                </div>
                             )}
                         </div>
+
+                        {!isDecisionContentLoading && (
+                            <div className="p-4 border-t border-white/10 bg-[#0D0D0F] flex items-center justify-between gap-3">
+                                <div className="text-xs text-gray-500">
+                                    Karar? dilek?eye eklemek i?in butona bas?n.
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setIsDecisionModalOpen(false)}
+                                        className="px-4 py-2 rounded-lg border border-white/10 text-gray-300 hover:text-white hover:border-white/20 transition-colors"
+                                    >
+                                        Kapat
+                                    </button>
+                                    <button
+                                        onClick={handleUseSelectedDecision}
+                                        className="px-4 py-2 rounded-lg bg-gradient-to-r from-red-600 to-red-700 text-white font-semibold hover:from-red-500 hover:to-red-600 transition-colors shadow-lg shadow-red-900/30"
+                                    >
+                                        Dilek?eye ekle
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )

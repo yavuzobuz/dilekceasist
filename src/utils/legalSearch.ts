@@ -1,4 +1,4 @@
-import type { LegalSearchResult } from '../../types';
+import type { LegalSearchResult, UserRole } from '../../types';
 import type { LegalSearchPacket } from '../../types';
 import { normalizeLegalSource } from './legalSource';
 import { normalizeExplicitLegalSearchPacket as normalizeSharedExplicitLegalSearchPacket } from '../../lib/legal/legal-search-packet-adapter.js';
@@ -34,6 +34,18 @@ export interface DocumentAnalyzerResult {
 
 const SYNTHETIC_LEGAL_RESULT_ID_REGEX = /^(search-|legal-|ai-summary|sem-|template-decision-)/i;
 
+export const getRoleSearchDirection = (userRole?: UserRole): string => {
+    const role = String(userRole || '').toLowerCase();
+    if (!role) return '';
+    if (['davaci', 'müvekkil', 'muvekkil', 'alacakli', 'basvuran', 'magdur', 'mağdur', 'musteki', 'müşteki', 'istinafeden', 'temyizeden'].some((token) => role.includes(token))) {
+        return 'lehine';
+    }
+    if (['davali', 'borclu', 'sanik', 'şüpheli', 'supheli', 'mudahil', 'müdahil'].some((token) => role.includes(token))) {
+        return 'aleyhine';
+    }
+    return '';
+};
+
 const getLegalResultIdentityKey = (result: Partial<NormalizedLegalDecision>): string => {
     const documentId = String(result.documentId || '').trim();
     if (documentId && !SYNTHETIC_LEGAL_RESULT_ID_REGEX.test(documentId)) {
@@ -52,6 +64,7 @@ interface SearchLegalDecisionsParams {
     filters?: Record<string, any>;
     searchMode?: 'auto' | 'pro';
     apiBaseUrl?: string;
+    userRole?: import('../../types').UserRole;
 }
 
 interface GetLegalDocumentParams {
@@ -252,6 +265,53 @@ export interface LegalSearchDetailedResult {
     durationMs: number;
     diagnostics: LegalSearchResponseDiagnostics;
 }
+
+const normalizeSearchVariantText = (value: string): string =>
+    String(value || '').replace(/\s+/g, ' ').trim();
+
+const extractSearchVariantCoreTerms = (value: string): string[] => {
+    const text = normalizeSearchVariantText(value);
+    if (!text) return [];
+
+    const stopWords = new Set([
+        've', 'veya', 'ile', 'da', 'de', 'bir', 'bu', 'su', 'o', 'mi', 'mı', 'mu', 'mü',
+        'olan', 'olarak', 'için', 'icin', 'gibi', 'ancak', 'fakat', 'lakin', 'ise', 'davacı', 'davali',
+        'dosyada', 'tarafından', 'hakkında', 'sonra', 'önce', 'sonunda',
+    ]);
+
+    return text
+        .split(/[,\.\n;:]+|\s{2,}/g)
+        .flatMap((chunk) => chunk.split(/\s+/g))
+        .map((token) => token.replace(/[“”"'()+\-]/g, '').trim())
+        .filter((token) => token && !stopWords.has(token.toLocaleLowerCase('tr-TR')))
+        .filter((token) => token.length >= 3)
+        .slice(0, 8);
+};
+
+export const buildHybridSearchVariants = (value: string): string[] => {
+    const base = normalizeSearchVariantText(value);
+    if (!base) return [];
+
+    const segments = base
+        .split(/[.!?\n]+|(?:\s{2,})/g)
+        .map((segment) => normalizeSearchVariantText(segment))
+        .filter(Boolean);
+
+    const coreTerms = extractSearchVariantCoreTerms(base);
+    const firstFocus = normalizeSearchVariantText(segments[0] || base);
+    const secondFocus = normalizeSearchVariantText(segments[1] || segments[0] || base);
+    const thirdFocus = normalizeSearchVariantText(segments[2] || segments.at(-1) || base);
+
+    const plusJoinedVariant = coreTerms.slice(0, 6).map((term) => `+${term}`).join(' ').trim();
+    const phraseVariant = coreTerms.slice(2, 6).map((term) => `"${term}"`).join(' ').trim();
+    const focusVariant = [secondFocus, thirdFocus].filter(Boolean).join(' ').trim() || base;
+
+    return Array.from(new Set([
+        firstFocus,
+        plusJoinedVariant || focusVariant,
+        phraseVariant || focusVariant,
+    ].filter(Boolean))).slice(0, 3);
+};
 
 const REQUEST_TIMEOUT_MS = Math.max(
     15000,
@@ -474,6 +534,32 @@ const getLegalSearchPacketKeywordList = (packet?: LegalSearchPacket): string[] =
     return keywords;
 };
 
+const getLegalSearchPacketAnchorKeywords = (packet?: LegalSearchPacket): string[] => {
+    if (!packet) return [];
+
+    const ordered = [
+        packet.searchSeedText,
+        packet.coreIssue,
+        packet.caseType,
+        ...(Array.isArray(packet.requiredConcepts) ? packet.requiredConcepts.slice(0, 3) : []),
+    ];
+
+    const anchors: string[] = [];
+    const seen = new Set<string>();
+
+    for (const item of ordered) {
+        const normalized = normalizeLegalSearchPacketText(item, 120);
+        if (!normalized) continue;
+        const key = normalizeKeywordToken(normalized);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        anchors.push(normalized);
+        if (anchors.length >= 6) break;
+    }
+
+    return anchors;
+};
+
 const buildAutoLegalSearchText = ({
     packet,
     fallbackSummary = '',
@@ -518,16 +604,24 @@ export const buildLegalSearchInputs = ({
     const preservedKeywords = Array.isArray(preserveKeywords)
         ? preserveKeywords.filter(Boolean)
         : [];
+    const anchorKeywords = getLegalSearchPacketAnchorKeywords(normalizedPacket);
     const effectiveFallbackKeywords = Array.isArray(fallbackKeywords) && fallbackKeywords.length > 0
         ? fallbackKeywords
         : preservedKeywords;
-    const effectiveRawQuery = rawQuery || buildAutoLegalSearchText({
+    const effectiveRawQuery = compactLegalSearchQuery(
+        rawQuery || buildAutoLegalSearchText({
+        packet: normalizedPacket,
+        fallbackSummary,
+        fallbackKeywords: effectiveFallbackKeywords,
+        }),
+        { preserveKeywords: [...anchorKeywords, ...packetKeywords, ...preservedKeywords] }
+    ) || rawQuery || buildAutoLegalSearchText({
         packet: normalizedPacket,
         fallbackSummary,
         fallbackKeywords: effectiveFallbackKeywords,
     });
     const keyword = String(normalizedPacket?.searchSeedText || '').trim()
-        || compactLegalSearchQuery(effectiveRawQuery, { preserveKeywords: [...packetKeywords, ...preservedKeywords] })
+        || compactLegalSearchQuery(effectiveRawQuery, { preserveKeywords: [...anchorKeywords, ...packetKeywords, ...preservedKeywords] })
         || buildKeywordFromLegalSearchPacket(normalizedPacket)
         || effectiveRawQuery;
 
@@ -1255,6 +1349,7 @@ const createLegalSearchPayload = ({
     documentAnalyzerResult,
     filters = {},
     searchMode,
+    userRole,
 }: {
     source: string;
     keyword: string;
@@ -1263,6 +1358,7 @@ const createLegalSearchPayload = ({
     documentAnalyzerResult?: DocumentAnalyzerResult | null;
     filters?: Record<string, any>;
     searchMode?: 'pro';
+    userRole?: import('../../types').UserRole;
 }): Record<string, any> => {
     const payload: Record<string, any> = {
         source,
@@ -1279,6 +1375,9 @@ const createLegalSearchPayload = ({
     }
     if (searchMode) {
         payload.searchMode = searchMode;
+    }
+    if (userRole) {
+        payload.userRole = userRole;
     }
 
     // Use the same hybrid retrieval path for both pasted text and uploaded documents.
@@ -1678,10 +1777,5 @@ export const getLegalDocumentDebug = async ({
 
     throw new Error(lastErrorText || 'Belge alinamadi.');
 };
-
-
-
-
-
 
 

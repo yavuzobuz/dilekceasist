@@ -12,7 +12,7 @@ import {
     X,
 } from 'lucide-react';
 import { useLegalSearch } from '../../hooks/useLegalSearch';
-import type { NormalizedLegalDecision } from '../../utils/legalSearch';
+import { buildHybridSearchVariants, type NormalizedLegalDecision } from '../../utils/legalSearch';
 
 const getDecisionKey = (decision: Partial<NormalizedLegalDecision>, fallback = '') => (
     String(decision.documentId || decision.id || fallback || '').trim()
@@ -96,29 +96,6 @@ export default function EmsalPanel() {
             .slice(0, 8);
     };
 
-    const buildSearchVariants = (value: string) => {
-        const base = normalizeQuery(value);
-        const segments = base
-            .split(/[.!?\n]+|(?:\s{2,})/g)
-            .map((segment) => normalizeQuery(segment))
-            .filter(Boolean);
-
-        const coreTerms = extractCoreTerms(base);
-        const firstFocus = normalizeQuery(segments[0] || base);
-        const secondFocus = normalizeQuery(segments[1] || segments[0] || base);
-        const thirdFocus = normalizeQuery(segments[2] || segments.at(-1) || base);
-
-        const plusJoinedVariant = coreTerms.slice(0, 6).map((term) => `+${term}`).join(' ').trim();
-        const phraseVariant = coreTerms.slice(2, 6).map((term) => `"${term}"`).join(' ').trim();
-        const focusVariant = [secondFocus, thirdFocus].filter(Boolean).join(' ').trim() || base;
-
-        return Array.from(new Set([
-            firstFocus,
-            plusJoinedVariant || focusVariant,
-            phraseVariant || focusVariant,
-        ].filter(Boolean))).slice(0, 3);
-    };
-
     const runSearch = async (queryText: string) => {
         const text = normalizeQuery(queryText);
         if (!text && !selectedFile) return;
@@ -192,7 +169,7 @@ export default function EmsalPanel() {
 
         setSearchInFlight(true);
         try {
-            const variants = buildSearchVariants(text);
+            const variants = buildHybridSearchVariants(text);
             setSearchVariants(variants);
             setActiveSearchVariant(0);
             await runSearch(variants[0] || text);

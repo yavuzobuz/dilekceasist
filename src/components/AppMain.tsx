@@ -486,13 +486,18 @@ export const AppMain: React.FC = () => {
 
       addToast('Ictihat aramasi baslatiliyor...', 'info');
       try {
-        const rawSearchQuery = buildLegalKeywordQuery(keywords, { maxTerms: 8, maxLength: 220 }) || keywords.slice(0, 5).join(' ');
+        const baseSearchQuery = buildLegalKeywordQuery(keywords, { maxTerms: 8, maxLength: 220 }) || keywords.slice(0, 5).join(' ');
+        const rawSearchQuery = [analysisData?.legalSearchPacket?.searchSeedText || '', baseSearchQuery]
+          .filter(Boolean)
+          .join(' ')
+          .trim();
         const keyword = compactLegalSearchQuery(rawSearchQuery, { preserveKeywords: keywords }) || rawSearchQuery;
         const detailedResult = await searchLegalDecisionsDetailed({
           source: 'all',
           keyword,
           rawQuery: rawSearchQuery,
           legalSearchPacket: analysisData?.legalSearchPacket,
+          userRole,
           apiBaseUrl: '',
         });
         const normalizedResults = detailedResult.normalizedResults as LegalSearchResult[];
