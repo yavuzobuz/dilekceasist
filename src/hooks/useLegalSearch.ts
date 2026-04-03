@@ -9,6 +9,7 @@ import {
     type NormalizedLegalDecision,
 } from '../utils/legalSearch';
 import { resolveLegalSourceForQuery } from '../utils/legalSource';
+import { buildDocumentAnalyzerResult as buildSharedDocumentAnalyzerResult } from '../../lib/assistant/legal-search-context.js';
 
 export interface UseLegalSearchParams {
     text?: string;
@@ -18,113 +19,6 @@ export interface UseLegalSearchParams {
 
 export type LegalSearchAnalysis = AnalysisData & {
     documentAnalyzerResult: DocumentAnalyzerResult | null;
-};
-
-const dedupeStrings = (values: Array<string | null | undefined>, limit = 8): string[] => {
-    const seen = new Set<string>();
-    const items: string[] = [];
-
-    for (const value of values) {
-        const normalized = String(value || '').replace(/\s+/g, ' ').trim();
-        if (!normalized) continue;
-        const key = normalized.toLocaleLowerCase('tr-TR');
-        if (seen.has(key)) continue;
-        seen.add(key);
-        items.push(normalized);
-        if (items.length >= limit) break;
-    }
-
-    return items;
-};
-
-const mapPreferredSourceToAnalyzer = (preferredSource = '', fallbackText = '') => {
-    const normalizedSource = String(preferredSource || '').trim().toLocaleLowerCase('tr-TR');
-    const inferredSource = resolveLegalSourceForQuery(fallbackText, 'all');
-    const effectiveSource = normalizedSource || inferredSource;
-
-    if (effectiveSource === 'anayasa') {
-        return { kaynak: 'anayasa', courtTypes: [] as string[] };
-    }
-    if (effectiveSource === 'danistay') {
-        return { kaynak: 'bedesten', courtTypes: ['DANISTAYKARAR'] };
-    }
-    if (effectiveSource === 'uyap' || effectiveSource === 'bam') {
-        return { kaynak: 'emsal', courtTypes: ['ISTINAFHUKUK'] };
-    }
-    if (effectiveSource === 'yargitay') {
-        return { kaynak: 'bedesten', courtTypes: ['YARGITAYKARARI'] };
-    }
-    return { kaynak: 'bedesten', courtTypes: [] as string[] };
-};
-
-const extractLawReferences = (values: string[] = []): string[] =>
-    dedupeStrings(
-        values.filter((value) => /(?:\b(?:tbk|tck|hmk|cmk|tmk|ihk|kvkk|aym)\b|\b\d+\s*sayili\b|\bmadde\b)/i.test(value)),
-        6
-    );
-
-const buildDocumentAnalyzerResult = (
-    analysisData: AnalysisData,
-    fallbackText = ''
-): DocumentAnalyzerResult | null => {
-    const legalSearchPacket = analysisData.legalSearchPacket;
-    const fallbackQuery = String(fallbackText || analysisData.summary || '').trim();
-    const searchClauses = dedupeStrings([
-        ...(legalSearchPacket?.searchVariants || []).map((item) => item?.query),
-        legalSearchPacket?.searchSeedText,
-        fallbackQuery,
-    ], 6);
-
-    const primaryConcepts = dedupeStrings([
-        ...(legalSearchPacket?.requiredConcepts || []),
-        analysisData.analysisInsights?.coreIssue,
-        analysisData.caseDetails?.caseTitle,
-    ], 8);
-    const supportConcepts = dedupeStrings([
-        ...(legalSearchPacket?.supportConcepts || []),
-        ...(analysisData.analysisInsights?.legalIssues || []),
-    ], 8);
-    const negativeConcepts = dedupeStrings(legalSearchPacket?.negativeConcepts || [], 8);
-
-    if (
-        searchClauses.length === 0
-        && primaryConcepts.length === 0
-        && supportConcepts.length === 0
-        && !analysisData.summary?.trim()
-    ) {
-        return null;
-    }
-
-    const sourceHints = mapPreferredSourceToAnalyzer(legalSearchPacket?.preferredSource, fallbackQuery);
-    const lawReferences = extractLawReferences([
-        ...primaryConcepts,
-        ...supportConcepts,
-        ...searchClauses,
-    ]);
-
-    return {
-        davaKonusu:
-            legalSearchPacket?.caseType
-            || analysisData.analysisInsights?.caseType
-            || analysisData.caseDetails?.caseTitle
-            || '',
-        hukukiMesele:
-            legalSearchPacket?.coreIssue
-            || analysisData.analysisInsights?.coreIssue
-            || analysisData.summary
-            || fallbackQuery,
-        kaynak: sourceHints.kaynak,
-        courtTypes: sourceHints.courtTypes,
-        aramaIfadeleri: searchClauses,
-        ilgiliKanunlar: lawReferences,
-        mustKavramlar: primaryConcepts,
-        supportKavramlar: supportConcepts,
-        negativeKavramlar: negativeConcepts,
-        queryMode: legalSearchPacket?.queryMode || 'long_fact',
-        diagnostics: {
-            origin: 'useLegalSearch',
-        },
-    };
 };
 
 const buildUploadedFiles = ({
@@ -182,7 +76,7 @@ export const useLegalSearch = () => {
                 analysisData = null;
             }
             const documentAnalyzerResult = analysisData
-                ? buildDocumentAnalyzerResult(analysisData, text)
+                ? buildSharedDocumentAnalyzerResult(analysisData, text) as DocumentAnalyzerResult | null
                 : null;
             const analysisState: LegalSearchAnalysis | null = analysisData
                 ? {

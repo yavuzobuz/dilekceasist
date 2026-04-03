@@ -1,22 +1,26 @@
 :root {
     color-scheme: light;
-    --bg: #f7f8fb;
-    --card: #ffffff;
-    --text: #111827;
-    --muted: #4b5563;
-    --border: #e5e7eb;
-    --primary: #b91c1c;
-    --primary-hover: #991b1b;
+    --bg: #f5f4ef;
+    --card: #fffdf7;
+    --text: #1b1b18;
+    --muted: #5d5d53;
+    --border: #ddd7c9;
+    --primary: #8d1f1f;
+    --primary-hover: #6f1717;
+    --secondary: #232320;
+    --pill: #efe8d8;
+    --success: #166534;
+    --error: #991b1b;
 }
 
-* {
-    box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
     margin: 0;
     font-family: "Segoe UI", Arial, sans-serif;
-    background: var(--bg);
+    background:
+        radial-gradient(circle at top right, rgba(141, 31, 31, 0.08), transparent 32%),
+        linear-gradient(180deg, #f8f6f0 0%, var(--bg) 100%);
     color: var(--text);
 }
 
@@ -26,31 +30,52 @@ body {
     gap: 12px;
 }
 
-h1, h2 {
-    margin: 0 0 8px;
-}
-
-h1 {
-    font-size: 18px;
-}
-
-h2 {
-    font-size: 14px;
-}
+h1, h2 { margin: 0 0 8px; }
+h1 { font-size: 18px; }
+h2 { font-size: 14px; }
 
 p {
     margin: 0;
     color: var(--muted);
     font-size: 12px;
+    line-height: 1.45;
 }
 
 .card {
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: 12px;
     padding: 12px;
     display: grid;
     gap: 10px;
+    box-shadow: 0 10px 30px rgba(20, 20, 18, 0.04);
+}
+
+.tab-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.tab-btn {
+    border: 1px solid var(--border);
+    background: #f4efe2;
+    color: var(--text);
+    border-radius: 999px;
+    padding: 10px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.tab-btn.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+.mode-description {
+    font-size: 12px;
 }
 
 .field {
@@ -68,10 +93,12 @@ input[type="text"],
 input[type="password"] {
     width: 100%;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 10px;
     padding: 10px;
     font-size: 13px;
     font-family: inherit;
+    background: #fff;
+    color: var(--text);
 }
 
 textarea {
@@ -85,6 +112,10 @@ textarea {
     gap: 8px;
 }
 
+.quick-span {
+    grid-column: 1 / -1;
+}
+
 .actions {
     display: flex;
     gap: 8px;
@@ -92,10 +123,10 @@ textarea {
 
 .btn {
     border: none;
-    border-radius: 8px;
+    border-radius: 10px;
     padding: 10px 12px;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
 }
 
@@ -113,8 +144,14 @@ textarea {
     background: var(--primary-hover);
 }
 
+.quick-grid .btn.active {
+    background: var(--secondary);
+    color: #fff;
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
 .btn-secondary {
-    background: #111827;
+    background: var(--secondary);
     color: #fff;
 }
 
@@ -131,16 +168,70 @@ textarea {
     min-height: 18px;
 }
 
-.status.error {
-    color: #991b1b;
+.status.error { color: var(--error); }
+.status.success { color: var(--success); }
+
+.research-state {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
-.status.success {
-    color: #166534;
+.pill {
+    background: var(--pill);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.result-list {
+    display: grid;
+    gap: 8px;
+}
+
+.result-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #fff;
+    padding: 10px;
+    display: grid;
+    gap: 6px;
+}
+
+.result-card h3 {
+    margin: 0;
+    font-size: 13px;
+}
+
+.result-meta {
+    font-size: 11px;
+    color: var(--muted);
+}
+
+.result-text {
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.5;
+}
+
+.result-link {
+    font-size: 11px;
+    color: var(--primary);
+    text-decoration: none;
+    word-break: break-all;
+}
+
+.empty-state {
+    color: var(--muted);
+    font-size: 12px;
 }
 
 @media (max-width: 360px) {
-    .quick-grid {
+    .quick-grid,
+    .tab-row {
         grid-template-columns: 1fr;
     }
 }

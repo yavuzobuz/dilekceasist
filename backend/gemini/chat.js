@@ -19,7 +19,7 @@ const appendGeminiFileParts = (parts, files) => {
     }
 };
 
-const buildSystemInstruction = ({ analysisSummary, context }) => {
+export const buildSystemInstruction = ({ analysisSummary, context }) => {
     const safeContext = context && typeof context === 'object' ? context : {};
     const summary = normalizeText(analysisSummary);
     const keywords = Array.isArray(safeContext.searchKeywords)
@@ -71,6 +71,14 @@ const buildSystemInstruction = ({ analysisSummary, context }) => {
 
     const hasWebData = !!(webSummary || webSources);
     const hasLegalData = !!(legalSummary || legalResults);
+    const searchCapabilityText = [
+        hasWebData
+            ? '- Web arastirmasi verisi bu istekte zaten saglandi; yalnizca bu veriyi kullan.'
+            : '- Bu istekte web arastirmasi verisi saglanmadi. Web aramasi yapildigini ima etme.',
+        hasLegalData
+            ? '- Emsal karar verisi bu istekte zaten saglandi; yalnizca bu veriyi kullan.'
+            : '- Bu istekte emsal karar verisi saglanmadi. Emsal karar arandigini veya bulundu gunu ima etme.',
+    ].join('\n');
 
     return [
         'Sen Turk hukuku konusunda uzman bir hukuk asistanisin.',
@@ -80,15 +88,14 @@ const buildSystemInstruction = ({ analysisSummary, context }) => {
         '- Kullanici anahtar kelime eklemek isterse update_search_keywords fonksiyonunu kullan.',
         '',
         'YETENEKLERIN:',
-        '- Web arastirmasi: Kullanici "web aramasi yap" veya "internetten ara" dediginde sistem otomatik web arastirmasi yapar.',
-        '- Emsal karar arama: Kullanici "emsal karar ara" veya "yargitay karari bul" dediginde sistem ictihat veritabanlarini tarar.',
-        '- Belge olusturma: Kullanici dilekce/belge istediginde sistem her iki aramayi da yapar ve generate_document ile belge olusturur.',
+        searchCapabilityText,
+        '- Belge olusturma: Kullanici dilekce/belge istediginde uygun durumda generate_document ile belge olustur.',
         '',
         'CEVAP VERIRKEN:',
         '- ASLA "web aramasi yapamiyorum", "internete erisemiyorum", "arama yetenegim yok", "bu konuda arastirma yapiliyor" gibi ifadeler KULLANMA.',
         '- ASLA "bekleyin" veya "en kisa surede sunulacak" gibi bekleme ifadeleri KULLANMA.',
         '- Asagida web veya emsal karar verileri varsa bunlari kullanarak detayli cevap ver.',
-        '- Asagida veri yoksa, DOGRUDAN kendi hukuk bilginle kapsamli ve detayli cevap ver. Bilmiyormus gibi davranma.',
+        '- Asagida veri yoksa, arama yapildigini soylemeden dogrudan kendi hukuk bilginle kapsamli cevap ver.',
         '- Gerektiginde kullaniciya "Daha detayli bilgi icin \'web aramasi yap\' veya \'emsal karar ara\' diyebilirsiniz" seklinde oneri sun.',
         '- Her zaman gercek bilgi ve mevzuat referanslarina dayanarak cevap ver.',
         '',
@@ -231,4 +238,3 @@ export default async function handler(req, res) {
 export const __testables = {
     buildSystemInstruction,
 };
-

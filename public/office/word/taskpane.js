@@ -1,4 +1,4 @@
-﻿const el = {
+const el = {
     sourceText: document.getElementById('sourceText'),
     promptText: document.getElementById('promptText'),
     resultText: document.getElementById('resultText'),
@@ -14,19 +14,52 @@
     sendChatBtn: document.getElementById('sendChatBtn'),
     loginBtn: document.getElementById('loginBtn'),
     upgradePlanBtn: document.getElementById('upgradePlanBtn'),
-    actionButtons: Array.from(document.querySelectorAll('[data-action]')),
+    modeButtons: Array.from(document.querySelectorAll('[data-mode]')),
+    tabButtons: Array.from(document.querySelectorAll('[data-tab]')),
+    modeDescription: document.getElementById('modeDescription'),
+    activeModeText: document.getElementById('activeModeText'),
+    researchState: document.getElementById('researchState'),
+    researchSummary: document.getElementById('researchSummary'),
+    webResults: document.getElementById('webResults'),
+    legalResults: document.getElementById('legalResults'),
 };
 
-const QUICK_PROMPTS = {    'text-fix': 'Aşağıdaki metni anlamı değiştirmeden dil bilgisi, imla, noktalama ve akıcılık açısından düzelt.',
-    brainstorm: 'Bu konu için farklı hukuki strateji seçeneklerini, avantaj ve riskleriyle madde madde beyin fırtınası yap.',
-    'web-search': 'Bu konu için web araması yap. Güvenilir kaynaklardan kısa özet ve uygulanabilir öneriler sun.',
+const MODE_CONTENT = {
+    edit: {
+        tab: 'text-assistant',
+        title: 'Metin Duzelt',
+        description: 'Metin duzeltme ve yazim iyilestirme icin kullanin.',
+        prompt: 'Asagidaki metni resmi, acik ve profesyonel dille duzelt.',
+    },
+    brainstorm: {
+        tab: 'text-assistant',
+        title: 'Beyin Firtinasi',
+        description: 'Hukuki strateji ve olasi yaklasimlari arastirma gerekmeksizin tartismak icin kullanin.',
+        prompt: 'Bu konu icin farkli hukuki strateji seceneklerini, avantaj ve riskleriyle madde madde degerlendir.',
+    },
+    web_search: {
+        tab: 'research',
+        title: 'Web Arastir',
+        description: 'Web kaynaklarindan dogrulanabilir bilgi toplayin.',
+        prompt: 'Bu konu icin web arastirmasi yap ve pratik sonucunu ozetle.',
+    },
+    precedent_search: {
+        tab: 'research',
+        title: 'Emsal Karar Ara',
+        description: 'Gercek emsal karar arama zinciri ile Yargitay/Danistay/BAM sonuclarini tarayin.',
+        prompt: 'Bu konu icin uygun emsal kararlari ara ve en ilgili olanlari ozetle.',
+    },
+    research_and_answer: {
+        tab: 'research',
+        title: 'Arastir + Cevap Yaz',
+        description: 'Web arastirmasi ile emsal karar aramasini birlestirip tek bir hukuki cevap uretin.',
+        prompt: 'Bu konu icin once web ve emsal karar arastirmasi yap, sonra bunlari kullanarak net bir hukuki degerlendirme yaz.',
+    },
 };
 
-const MAX_HISTORY_MESSAGES = 8;
-const MAX_DOCUMENT_CONTEXT_CHARS = 12000;
-let chatHistory = [];
 let isBusy = false;
 let lastPlanUsage = null;
+let activeMode = 'edit';
 
 const setStatus = (message, type = 'info') => {
     el.status.textContent = message || '';
@@ -53,54 +86,18 @@ const setBusy = (busy) => {
     el.readSelectionBtn.disabled = busy;
     el.replaceSelectionBtn.disabled = busy;
     el.sendChatBtn.disabled = busy;
-    if (el.includeDocumentContext) {
-        el.includeDocumentContext.disabled = busy;
-    }
-    if (el.authToken) {
-        el.authToken.disabled = busy;
-    }
-    if (el.loginBtn) {
-        el.loginBtn.disabled = busy;
-    }
-    if (el.upgradePlanBtn) {
-        el.upgradePlanBtn.disabled = busy;
-    }
-    el.actionButtons.forEach((btn) => { btn.disabled = busy; });
+    if (el.includeDocumentContext) el.includeDocumentContext.disabled = busy;
+    if (el.authToken) el.authToken.disabled = busy;
+    if (el.loginBtn) el.loginBtn.disabled = busy;
+    if (el.upgradePlanBtn) el.upgradePlanBtn.disabled = busy;
+    el.modeButtons.forEach((btn) => { btn.disabled = busy; });
+    el.tabButtons.forEach((btn) => { btn.disabled = busy; });
 };
 
 const resolveApiBaseUrl = () => {
     const raw = (el.apiBaseUrl.value || '').trim();
     if (!raw) return window.location.origin;
     return raw.replace(/\/+$/, '');
-};
-
-const hasLoginPromptedFlag = () => {
-    try {
-        const params = new URLSearchParams(window.location.search || '');
-        return params.get('loginPrompted') === '1';
-    } catch {
-        return false;
-    }
-};
-
-const buildTaskpaneReturnPath = () => {
-    const currentUrl = new URL(window.location.href);
-    currentUrl.searchParams.set('loginPrompted', '1');
-    return `${currentUrl.pathname}${currentUrl.search}`;
-};
-
-const buildLoginUrl = () => {
-    const apiBase = resolveApiBaseUrl();
-    const redirectPath = buildTaskpaneReturnPath();
-    const query = new URLSearchParams({
-        redirect: redirectPath,
-        source: 'word-addin',
-    });
-    return `${apiBase}/login?${query.toString()}`;
-};
-
-const redirectToLogin = () => {
-    window.location.href = buildLoginUrl();
 };
 
 const safeJsonParse = (value) => {
@@ -131,7 +128,6 @@ const findTokenFromLocalStorage = () => {
             if (!raw) continue;
             const parsed = safeJsonParse(raw);
             if (!parsed) continue;
-
             if (Array.isArray(parsed)) {
                 for (const entry of parsed) {
                     const token = extractSupabaseTokenCandidate(entry);
@@ -139,12 +135,11 @@ const findTokenFromLocalStorage = () => {
                 }
                 continue;
             }
-
             const token = extractSupabaseTokenCandidate(parsed);
             if (token) return token;
         }
     } catch (error) {
-        console.warn('Auth token localStorage içinden okunamadı:', error);
+        console.warn('Auth token localStorage icinden okunamadi:', error);
     }
     return '';
 };
@@ -164,19 +159,17 @@ const buildAuthHeaders = () => {
     if (authToken) {
         headers.Authorization = `Bearer ${authToken}`;
     }
-
     return headers;
 };
 
 const normalizeUsage = (rawUsage) => {
     if (!rawUsage || typeof rawUsage !== 'object') return null;
-    const normalized = {
+    return {
         dailyLimit: rawUsage.dailyLimit ?? rawUsage.daily_limit ?? null,
         usedToday: rawUsage.usedToday ?? rawUsage.used_today ?? null,
         remainingToday: rawUsage.remainingToday ?? rawUsage.remaining_today ?? null,
         trialEndsAt: rawUsage.trialEndsAt ?? rawUsage.trial_ends_at ?? null,
     };
-    return normalized;
 };
 
 const formatDate = (isoDate) => {
@@ -187,8 +180,8 @@ const formatDate = (isoDate) => {
 };
 
 const formatQuotaText = (usage) => {
-    if (!usage) return 'Kota bilgisi alınamadı.';
-    if (usage.dailyLimit == null) return 'Kota: Sınırsız paket.';
+    if (!usage) return 'Kota bilgisi alinamadi.';
+    if (usage.dailyLimit == null) return 'Kota: Sinirsiz paket.';
 
     const dailyLimit = Number(usage.dailyLimit);
     const usedToday = usage.usedToday == null
@@ -198,22 +191,20 @@ const formatQuotaText = (usage) => {
         ? Math.max(0, dailyLimit - usedToday)
         : Number(usage.remainingToday);
 
-    let text = `Kota: ${remainingToday} / ${dailyLimit} (kalan/günlük)`;
+    let text = `Kota: ${remainingToday} / ${dailyLimit} (kalan/gunluk)`;
     const trialEndText = formatDate(usage.trialEndsAt);
     if (trialEndText) {
-        text += ` | Trial bitiş: ${trialEndText}`;
+        text += ` | Trial bitis: ${trialEndText}`;
     }
     return text;
 };
 
 const isUsageBlocked = (usage) => {
     if (!usage || usage.dailyLimit == null) return false;
-
     const dailyLimit = Number(usage.dailyLimit);
     const remainingToday = usage.remainingToday == null
         ? Math.max(0, dailyLimit - Number(usage.usedToday || 0))
         : Number(usage.remainingToday);
-
     return Number.isFinite(remainingToday) && remainingToday <= 0;
 };
 
@@ -228,7 +219,7 @@ const refreshPlanSummary = async ({ silent = false } = {}) => {
     if (!authToken) {
         lastPlanUsage = null;
         if (!silent) {
-            setQuotaInfo('Kota: giriş gerekli. Giriş yaptıktan sonra limit otomatik güncellenir.');
+            setQuotaInfo('Kota: giris gerekli. Giris yaptiktan sonra limit otomatik guncellenir.');
         }
         return null;
     }
@@ -243,41 +234,23 @@ const refreshPlanSummary = async ({ silent = false } = {}) => {
         });
 
         if (!response.ok) {
-            const rawError = await response.text();
-            let message = `HTTP ${response.status}`;
-            if (rawError) {
-                const parsed = safeJsonParse(rawError);
-                if (parsed?.error) {
-                    message = parsed.error;
-                } else {
-                    message = rawError;
-                }
-            }
-            throw new Error(message);
+            throw new Error(`HTTP ${response.status}`);
         }
 
         const payload = await response.json().catch(() => ({}));
         const usage = normalizeUsage(payload?.summary);
-        if (!usage) {
-            throw new Error('Plan özeti boş geldi.');
-        }
-
+        if (!usage) throw new Error('Plan ozeti bos geldi.');
         lastPlanUsage = usage;
         applyUsageToUi(usage, 'success');
         return usage;
     } catch (error) {
         lastPlanUsage = null;
         if (!silent) {
-            setQuotaInfo(
-                `Kota bilgisi alınamadı: ${error instanceof Error ? error.message : 'bilinmeyen hata'}`,
-                'error'
-            );
+            setQuotaInfo(`Kota bilgisi alinamadi: ${error instanceof Error ? error.message : 'bilinmeyen hata'}`, 'error');
         }
         return null;
     }
 };
-
-const limitHistory = (history) => history.slice(-MAX_HISTORY_MESSAGES);
 
 const readSelection = async () => Word.run(async (context) => {
     const selection = context.document.getSelection();
@@ -303,197 +276,173 @@ const truncateContext = (text, maxChars) => {
     const normalized = String(text || '').trim();
     if (!normalized) return '';
     if (normalized.length <= maxChars) return normalized;
-    return `${normalized.slice(0, maxChars)}\n\n...[BELGE BAĞLAMI KISALTILDI]`;
+    return `${normalized.slice(0, maxChars)}\n\n...[BELGE BAGLAMI KISALTILDI]`;
 };
 
-const buildUserMessage = ({ prompt, selectionText, hasDocumentContext }) => {
-    if (!selectionText) {
-        return hasDocumentContext
-            ? `${prompt}\n\nNot: Belgenin tamamı bağlam olarak eklendi.`
-            : prompt;
-    }
-    const base = `${prompt}\n\nWord seçimi:\n"""${selectionText}"""`;
-    return hasDocumentContext ? `${base}\n\nNot: Belgenin tamamı bağlam olarak eklendi.` : base;
+const setActiveTab = (tabName) => {
+    el.tabButtons.forEach((button) => {
+        button.classList.toggle('active', button.dataset.tab === tabName);
+    });
 };
 
-const extractTextFromChunk = (chunk) => {
-    let text = '';
-    const parts = chunk?.candidates?.[0]?.content?.parts;
-
-    if (Array.isArray(parts)) {
-        parts.forEach((part) => {
-            if (typeof part?.text === 'string') {
-                text += part.text;
-            }
-        });
-    }
-
-    if (typeof chunk?.text === 'string') {
-        text += chunk.text;
-    }
-
-    return text;
+const setActiveMode = (mode) => {
+    activeMode = Object.prototype.hasOwnProperty.call(MODE_CONTENT, mode) ? mode : 'edit';
+    const config = MODE_CONTENT[activeMode];
+    el.modeButtons.forEach((button) => {
+        button.classList.toggle('active', (button.dataset.mode || '') === activeMode);
+    });
+    el.promptText.value = config.prompt;
+    el.modeDescription.textContent = config.description;
+    el.activeModeText.textContent = `Aktif mod: ${config.title}`;
+    setActiveTab(config.tab);
 };
 
-const callChatApi = async ({ history, selectionText, documentText, onTextChunk, onUsage, onQuotaBlocked }) => {
+const renderResearchState = ({ webSearch = null, legalSearch = null, appliedIntent = 'edit' } = {}) => {
+    const webDone = Boolean(webSearch?.summary);
+    const legalDone = Array.isArray(legalSearch?.results) && legalSearch.results.length > 0;
+    el.researchState.innerHTML = [
+        `<div class="pill">Web: ${webDone ? 'yapildi' : 'yapilmadi'}</div>`,
+        `<div class="pill">Emsal: ${legalDone ? 'yapildi' : 'yapilmadi'}</div>`,
+        `<div class="pill">Intent: ${appliedIntent}</div>`,
+    ].join('');
+};
+
+const renderWebResults = (webSearch) => {
+    if (!webSearch?.summary && !(Array.isArray(webSearch?.sources) && webSearch.sources.length > 0)) {
+        el.webResults.className = 'result-list empty-state';
+        el.webResults.textContent = 'Henuz web arastirmasi yapilmadi.';
+        return;
+    }
+
+    const cards = [];
+    if (webSearch.summary) {
+        cards.push(`
+            <article class="result-card">
+                <h3>Web Arastirma Ozeti</h3>
+                <div class="result-text">${webSearch.summary}</div>
+            </article>
+        `);
+    }
+    (webSearch.sources || []).forEach((source) => {
+        cards.push(`
+            <article class="result-card">
+                <h3>${source.title || source.uri}</h3>
+                <a class="result-link" href="${source.uri}" target="_blank" rel="noopener noreferrer">${source.uri}</a>
+            </article>
+        `);
+    });
+
+    el.webResults.className = 'result-list';
+    el.webResults.innerHTML = cards.join('');
+};
+
+const renderLegalResults = (legalSearch) => {
+    const results = Array.isArray(legalSearch?.results) ? legalSearch.results : [];
+    if (results.length === 0) {
+        el.legalResults.className = 'result-list empty-state';
+        el.legalResults.textContent = 'Henuz emsal karar aramasi yapilmadi.';
+        return;
+    }
+
+    el.legalResults.className = 'result-list';
+    el.legalResults.innerHTML = results.slice(0, 6).map((result) => {
+        const preview = (result.ozet || result.snippet || result.summaryText || '').trim();
+        const meta = [result.esasNo ? `E. ${result.esasNo}` : '', result.kararNo ? `K. ${result.kararNo}` : '', result.tarih ? `T. ${result.tarih}` : ''].filter(Boolean).join(' | ');
+        const link = result.sourceUrl || result.documentUrl || '';
+        return `
+            <article class="result-card">
+                <h3>${result.title || 'Karar'}</h3>
+                <div class="result-meta">${meta || 'Karar metaverisi mevcut degil.'}</div>
+                <div class="result-text">${preview || 'Ozet bulunamadi.'}</div>
+                ${link ? `<a class="result-link" href="${link}" target="_blank" rel="noopener noreferrer">${link}</a>` : ''}
+            </article>
+        `;
+    }).join('');
+};
+
+const renderResearchSummary = (payload) => {
+    const summaryParts = [];
+    if (payload.analysis?.summary) summaryParts.push(`Analiz: ${payload.analysis.summary}`);
+    if (payload.webSearch?.summary) summaryParts.push(`Web: ${payload.webSearch.summary}`);
+    if (payload.legalSearch?.summary) summaryParts.push(`Emsal: ${payload.legalSearch.summary}`);
+    el.researchSummary.value = summaryParts.join('\n\n').trim();
+};
+
+const callWordAssistantApi = async ({ message, selectionText, documentText, mode, includeDocumentContext }) => {
     const apiBase = resolveApiBaseUrl();
     const headers = buildAuthHeaders();
-
-    const contextDoc = [
-        selectionText ? `Seçili Metin:\n${selectionText}` : '',
-        documentText ? `Belge Metni:\n${documentText}` : '',
-    ].filter(Boolean).join('\n\n---\n\n');
-
-    const response = await fetch(`${apiBase}/api/gemini/chat`, {
+    const response = await fetch(`${apiBase}/api/word-assistant/respond`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
-            chatHistory: history,
-            analysisSummary: (selectionText || documentText || '').slice(0, 1500),
-            context: {
-                keywords: '',
-                searchSummary: '',
-                docContent: contextDoc,
-                specifics: documentText
-                    ? `Word belge bağlamı aktif. Uzunluk: ${documentText.length} karakter.`
-                    : 'Yalnızca seçili metin bağlamı aktif.',
-            },
+            message,
+            selectionText,
+            documentText,
+            mode,
+            includeDocumentContext,
         }),
     });
 
+    const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-        const rawError = await response.text();
-        let message = `Chat API failed (HTTP ${response.status})`;
-        let errorCode = null;
-        if (rawError) {
-            const parsed = safeJsonParse(rawError);
-            if (parsed?.error) {
-                message = parsed.error;
-                errorCode = parsed.code || null;
-            } else {
-                message = rawError;
-            }
-        }
-        const error = new Error(message);
-        error.status = response.status;
-        error.code = errorCode;
-        throw error;
+        throw new Error(payload?.error || `Word assistant failed (HTTP ${response.status})`);
     }
-
-    if (!response.body) {
-        throw new Error('Chat API response body boş geldi.');
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let fullText = '';
-    let quotaBlocked = false;
-    let quotaMessage = '';
-    let usageFromStream = null;
-
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-            if (!line.trim()) continue;
-
-            try {
-                const chunk = JSON.parse(line);
-                const usage = normalizeUsage(chunk?.usage);
-                if (usage) {
-                    usageFromStream = usage;
-                    if (typeof onUsage === 'function') onUsage(usage);
-                }
-
-                if (chunk?.quotaBlocked) {
-                    quotaBlocked = true;
-                    quotaMessage = typeof chunk?.errorMessage === 'string'
-                        ? chunk.errorMessage.trim()
-                        : (typeof chunk?.text === 'string' ? chunk.text.trim() : 'Belge üretim kotanız doldu.');
-                    if (typeof onQuotaBlocked === 'function') onQuotaBlocked(chunk, quotaMessage);
-                }
-
-                const textChunk = extractTextFromChunk(chunk);
-                if (textChunk) {
-                    fullText += textChunk;
-                    if (typeof onTextChunk === 'function') onTextChunk(textChunk);
-                }
-            } catch {
-                // Ignore non-JSON lines from stream to keep UI responsive.
-            }
-        }
-    }
-
-    return {
-        text: fullText.trim(),
-        quotaBlocked,
-        quotaMessage,
-        usage: usageFromStream,
-    };
+    return payload;
 };
 
 const handleReadSelection = async () => {
     if (isBusy) return;
     setBusy(true);
     try {
-        setStatus('Word seçimi okunuyor...');
+        setStatus('Word secimi okunuyor...');
         const selectedText = await readSelection();
         el.sourceText.value = selectedText;
         if (!selectedText.trim()) {
-            setStatus('Lütfen Word içinde bir metin seçin.', 'error');
+            setStatus('Lutfen Word icinde bir metin secin.', 'error');
             return;
         }
-        setStatus('Seçim panele alındı.', 'success');
+        setStatus('Secim panele alindi.', 'success');
     } catch (error) {
-        setStatus(error instanceof Error ? error.message : 'Seçim okunamadı.', 'error');
+        setStatus(error instanceof Error ? error.message : 'Secim okunamadi.', 'error');
     } finally {
         setBusy(false);
     }
 };
 
-const sendChat = async (promptOverride) => {
+const sendAssistantRequest = async () => {
     if (isBusy) return;
 
-    const prompt = (promptOverride || el.promptText.value || '').trim();
-    if (!prompt) {
-        setStatus('Lütfen chatbot için bir mesaj girin.', 'error');
+    const message = (el.promptText.value || '').trim();
+    if (!message) {
+        setStatus('Lutfen asistan icin bir mesaj girin.', 'error');
         return;
     }
 
     let selectionText = (el.sourceText.value || '').trim();
     let documentText = '';
     const shouldIncludeDocumentContext = Boolean(el.includeDocumentContext?.checked);
-
     const authToken = resolveAuthToken();
+
     if (!authToken) {
         setAuthUiState(false);
-        setStatus('Giriş gerekli. Giriş sayfasına yönlendiriliyorsunuz...', 'error');
-        setQuotaInfo('Kota: giriş olmadan kontrol edilemez.');
-        redirectToLogin();
+        setStatus('Giris gerekli. Once giris yapin.', 'error');
         return;
     }
 
     const usageBeforeSend = await refreshPlanSummary({ silent: true });
     if (!usageBeforeSend) {
-        setStatus('Limit bilgisi alınamadı. Lütfen tekrar deneyin.', 'error');
+        setStatus('Limit bilgisi alinamadi. Lutfen tekrar deneyin.', 'error');
         return;
     }
     if (isUsageBlocked(usageBeforeSend)) {
         applyUsageToUi(usageBeforeSend, 'error');
-        setStatus('Günlük belge üretim limitiniz dolu. İşlem durduruldu.', 'error');
+        setStatus('Gunluk belge uretim limitiniz dolu. Islem durduruldu.', 'error');
         return;
     }
 
     setBusy(true);
-
     try {
-        setStatus('Word bağlamı okunuyor...');
+        setStatus('Word baglami okunuyor...');
 
         if (!selectionText) {
             selectionText = (await readSelection()).trim();
@@ -503,135 +452,71 @@ const sendChat = async (promptOverride) => {
         }
 
         if (shouldIncludeDocumentContext) {
-            try {
-                const fullDocumentText = await readDocumentText();
-                documentText = truncateContext(fullDocumentText, MAX_DOCUMENT_CONTEXT_CHARS);
-            } catch (error) {
-                console.error('Word belge metni okunamadı:', error);
-            }
+            const fullDocumentText = await readDocumentText();
+            documentText = truncateContext(fullDocumentText, 12000);
         }
 
         if (!selectionText && !documentText) {
-            setStatus('Lütfen Word içinde seçim yapın veya belge metni olduğundan emin olun.', 'error');
+            setStatus('Lutfen Word icinde secim yapin veya belge metni oldugundan emin olun.', 'error');
             return;
         }
 
-        const userMessage = buildUserMessage({
-            prompt,
-            selectionText,
-            hasDocumentContext: Boolean(documentText),
-        });
-        const requestHistory = limitHistory([...chatHistory, { role: 'user', text: userMessage }]);
-
-        setStatus('Chatbot yanıtı üretiyor...');
-        el.resultText.value = '';
-
-        const response = await callChatApi({
-            history: requestHistory,
+        setStatus('Asistan orkestrasyonu calisiyor...');
+        const payload = await callWordAssistantApi({
+            message,
             selectionText,
             documentText,
-            onTextChunk: (textChunk) => {
-                el.resultText.value += textChunk;
-            },
-            onUsage: (usage) => {
-                applyUsageToUi(usage, 'success');
-            },
-            onQuotaBlocked: (_chunk, message) => {
-                if (message) {
-                    setStatus(message, 'error');
-                }
-            },
+            mode: activeMode,
+            includeDocumentContext: shouldIncludeDocumentContext,
         });
 
-        const finalText = (response.text || el.resultText.value || '').trim();
-        if (!finalText && !response.quotaBlocked) {
-            throw new Error('Chatbot boş yanıt döndürdü.');
-        }
+        el.resultText.value = String(payload.assistantText || '').trim();
+        renderResearchState(payload);
+        renderResearchSummary(payload);
+        renderWebResults(payload.webSearch);
+        renderLegalResults(payload.legalSearch);
 
-        if (finalText) {
-            el.resultText.value = finalText;
-            chatHistory = limitHistory([...requestHistory, { role: 'model', text: finalText }]);
-        }
-
-        if (response.usage) {
-            applyUsageToUi(response.usage, 'success');
-        }
-
-        if (response.quotaBlocked) {
-            setStatus(response.quotaMessage || 'Belge üretim kotanız dolu.', 'error');
-            refreshPlanSummary({ silent: true }).catch(() => {});
-            return;
-        }
-
-        if (el.autoReplace.checked) {
-            await replaceSelection(finalText);
-            setStatus('Chatbot sonucu Word seçimine uygulandı.', 'success');
+        if (el.autoReplace.checked && el.resultText.value.trim()) {
+            await replaceSelection(el.resultText.value.trim());
+            setStatus('Asistan sonucu Word secimine uygulandi.', 'success');
         } else {
-            setStatus('Chatbot sonucu hazırlandı. İsterseniz "Seçime Uygula" ile yazabilirsiniz.', 'success');
+            setStatus('Asistan sonucu hazirlandi.', 'success');
         }
 
-        refreshPlanSummary({ silent: true }).catch(() => {});
+        if (payload.quota) {
+            applyUsageToUi(normalizeUsage(payload.quota), 'success');
+        } else {
+            refreshPlanSummary({ silent: true }).catch(() => {});
+        }
     } catch (error) {
-        const status = typeof error?.status === 'number' ? error.status : null;
-        const code = typeof error?.code === 'string' ? error.code : '';
-        const message = error instanceof Error ? error.message : 'Chatbot işlemi başarısız.';
-
-        if (status === 401 || code === 'AUTH_REQUIRED' || code === 'INVALID_SESSION') {
-            setStatus('Oturum geçersiz. Giriş sayfasına yönlendiriliyorsunuz...', 'error');
-            setAuthUiState(false);
-            redirectToLogin();
-            return;
-        }
-
-        if (status === 429 || code === 'TRIAL_DAILY_LIMIT_REACHED' || code === 'PLAN_DAILY_LIMIT_REACHED' || code === 'TRIAL_EXPIRED') {
-            setStatus(message || 'Günlük limit dolu. İşlem durduruldu.', 'error');
-            if (lastPlanUsage) {
-                applyUsageToUi(lastPlanUsage, 'error');
-            }
-            return;
-        }
-
-        setStatus(message, 'error');
+        setStatus(error instanceof Error ? error.message : 'Asistan istegi basarisiz.', 'error');
     } finally {
         setBusy(false);
     }
-};
-
-const handleQuickAction = (action) => {
-    const template = QUICK_PROMPTS[action];
-    if (!template) return;
-    el.promptText.value = template;
-    el.promptText.focus();
-    setStatus('Hazır prompt eklendi. "Chatbot\'a Gönder"e basın.');
 };
 
 const handleReplaceSelection = async () => {
     if (isBusy) return;
     const resultText = (el.resultText.value || '').trim();
     if (!resultText) {
-        setStatus('Uygulanacak chatbot sonucu yok.', 'error');
+        setStatus('Uygulanacak asistan sonucu yok.', 'error');
         return;
     }
 
     setBusy(true);
     try {
-        setStatus('Chatbot sonucu Word seçimine yazılıyor...');
+        setStatus('Asistan sonucu Word secimine yaziliyor...');
         await replaceSelection(resultText);
-        setStatus('Chatbot sonucu seçime yazıldı.', 'success');
+        setStatus('Asistan sonucu secime yazildi.', 'success');
     } catch (error) {
-        setStatus(error instanceof Error ? error.message : 'Seçime yazma başarısız.', 'error');
+        setStatus(error instanceof Error ? error.message : 'Secime yazma basarisiz.', 'error');
     } finally {
         setBusy(false);
     }
 };
 
 const handleUpgradePlan = () => {
-    const pricingUrl = `${resolveApiBaseUrl()}/fiyatlandirma`;
-    window.open(pricingUrl, '_blank', 'noopener,noreferrer');
-};
-
-const handleLogin = () => {
-    redirectToLogin();
+    window.open(`${resolveApiBaseUrl()}/fiyatlandirma`, '_blank', 'noopener,noreferrer');
 };
 
 const initialize = () => {
@@ -639,45 +524,39 @@ const initialize = () => {
     setAuthUiState(Boolean(resolveAuthToken()));
     el.readSelectionBtn.addEventListener('click', handleReadSelection);
     el.replaceSelectionBtn.addEventListener('click', handleReplaceSelection);
-    el.sendChatBtn.addEventListener('click', () => sendChat());
-    if (el.loginBtn) {
-        el.loginBtn.addEventListener('click', handleLogin);
-    }
-    if (el.upgradePlanBtn) {
-        el.upgradePlanBtn.addEventListener('click', handleUpgradePlan);
-    }
+    el.sendChatBtn.addEventListener('click', sendAssistantRequest);
+    if (el.loginBtn) el.loginBtn.addEventListener('click', () => { window.location.href = `${resolveApiBaseUrl()}/login?source=word-addin`; });
+    if (el.upgradePlanBtn) el.upgradePlanBtn.addEventListener('click', handleUpgradePlan);
     if (el.authToken) {
         el.authToken.addEventListener('change', () => {
             refreshPlanSummary({ silent: true }).catch(() => {});
         });
     }
-    el.actionButtons.forEach((btn) => {
-        btn.addEventListener('click', () => handleQuickAction(btn.dataset.action || ''));
+
+    el.modeButtons.forEach((button) => {
+        button.addEventListener('click', () => setActiveMode(button.dataset.mode || 'edit'));
     });
-    setStatus('Hazır. Word seçimini alın, hızlı aksiyon seçin ve chatbot ile devam edin.');
+    el.tabButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            const tabName = button.dataset.tab || 'text-assistant';
+            const fallbackMode = tabName === 'research' ? 'research_and_answer' : 'edit';
+            setActiveMode(fallbackMode);
+        });
+    });
 
-    if (!resolveAuthToken()) {
-        setQuotaInfo('Kota: giriş gerekli.');
-        if (!hasLoginPromptedFlag()) {
-            setStatus('Giriş yapmanız gerekiyor. Giriş sayfasına yönlendiriliyorsunuz...', 'error');
-            setTimeout(() => {
-                redirectToLogin();
-            }, 120);
-            return;
-        }
-        setStatus('Giriş yaparak devam edin. Giriş butonunu kullanabilirsiniz.', 'error');
-        return;
-    }
-
-    setQuotaInfo('Kota bilgisi yükleniyor...');
-    refreshPlanSummary().catch(() => {});
+    setActiveMode('edit');
+    renderResearchState({});
+    renderWebResults(null);
+    renderLegalResults(null);
+    setStatus('Hazir. Word secimini alin ve uygun aksiyonu secin.');
+    setQuotaInfo('Kota bilgisi yukleniyor...');
+    refreshPlanSummary({ silent: true }).catch(() => {});
 };
 
 Office.onReady((info) => {
     if (info.host !== Office.HostType.Word) {
-        setStatus('Bu panel yalnızca Word için tasarlanmıştır.', 'error');
+        setStatus('Bu panel yalnizca Word icin tasarlanmistir.', 'error');
         return;
     }
     initialize();
 });
-
