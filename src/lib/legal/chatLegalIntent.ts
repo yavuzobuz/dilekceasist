@@ -100,7 +100,7 @@ export const parseLegalResearchBatchMessage = (rawMessage = ''): LegalResearchBa
     const body = message.slice(LEGAL_RESEARCH_BATCH_MARKER.length).trim();
     if (!body) return [];
 
-    return body
+    const parsedItems: Array<LegalResearchBatchItem | null> = body
         .split(/\n(?=###\s+\d+\.)/)
         .map((section) => section.trim())
         .filter(Boolean)
@@ -122,6 +122,7 @@ export const parseLegalResearchBatchMessage = (rawMessage = ''): LegalResearchBa
                 ...parseDecisionMetadata(metadataLine),
                 sourceUrl: sourceMatch?.[1]?.trim() || undefined,
             };
-        })
-        .filter((item): item is LegalResearchBatchItem => Boolean(item));
+        });
+
+    return parsedItems.filter((item): item is LegalResearchBatchItem => item !== null);
 };

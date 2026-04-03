@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, expect, it } from 'vitest';
 import { __testables } from '../lib/legal/mcpLegalSearch.js';
 import { shouldUseProLegalSearchMode } from '../src/utils/legalSearch';

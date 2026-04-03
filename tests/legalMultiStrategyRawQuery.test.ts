@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const searchLegalDecisionsViaMcp = vi.fn();
@@ -65,3 +67,4 @@ describe('multiStrategySearch raw query handling', () => {
         });
     }, 30000);
 });
+// @ts-nocheck

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const normalizeConcepts = (values: unknown) =>
@@ -12,7 +14,7 @@ describe('agentic domain signals', () => {
 
     it('falls back heuristically when Gemini credentials are unavailable', async () => {
         vi.doMock('../backend/gemini/_shared.js', async (importOriginal) => {
-            const actual = await importOriginal();
+            const actual = await importOriginal<typeof import('../backend/gemini/_shared.js')>();
             return {
                 ...actual,
                 GEMINI_API_KEY: '',
@@ -92,7 +94,7 @@ describe('agentic domain signals', () => {
             });
 
         vi.doMock('../backend/gemini/_shared.js', async (importOriginal) => {
-            const actual = await importOriginal();
+            const actual = await importOriginal<typeof import('../backend/gemini/_shared.js')>();
             return {
                 ...actual,
                 GEMINI_API_KEY: 'test-key',

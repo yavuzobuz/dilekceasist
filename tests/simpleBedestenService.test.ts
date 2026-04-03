@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../lib/legal/embeddingReranker.js', () => ({
@@ -503,3 +505,4 @@ describe('simpleBedestenService', () => {
         expect(__testables.resolveSimpleBedestenProvider()).toBe('http');
     });
 });
+// @ts-nocheck

@@ -139,9 +139,24 @@ const Profile: React.FC = () => {
         return (data as { summary?: UserPlanSummary | null }).summary ?? null;
       };
 
-      const summary = await parseSummaryResponse(
-        await fetch('/api/user-plan-summary', { headers: authHeaders })
-      );
+      const fetchPlanSummary = async (url: string) => {
+        const response = await fetch(url, { headers: authHeaders });
+        const summary = await parseSummaryResponse(response);
+
+        if (summary !== undefined) {
+          return summary;
+        }
+
+        if (response.status !== 404 || url.includes('admin-users')) {
+          return undefined;
+        }
+
+        return parseSummaryResponse(
+          await fetch('/api/admin-users?action=plan-summary', { headers: authHeaders })
+        );
+      };
+
+      const summary = await fetchPlanSummary('/api/user-plan-summary');
 
       if (summary === undefined) {
         setPlanSummary(null);
@@ -1790,5 +1805,4 @@ const Profile: React.FC = () => {
 };
 
 export default Profile;
-
 

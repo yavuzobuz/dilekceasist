@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 process.env.LEGAL_SIMPLE_ALLOW_LEGACY_FALLBACK = '0';

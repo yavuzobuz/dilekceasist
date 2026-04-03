@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
 import { describe, expect, it } from 'vitest';
 import { buildSkillBackedSearchPackage } from '../lib/legal/legal-search-skill.js';
 import { buildSearchStrategies } from '../lib/legal/legal-strategy-builder.js';

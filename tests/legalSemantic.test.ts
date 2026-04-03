@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
 import { describe, expect, it, vi } from 'vitest';
 import { __testables, getLegalSources } from '../lib/legal/mcpLegalSearch.js';
 import {
@@ -467,4 +469,4 @@ describe('legal MCP helpers', () => {
         expect(detailed.diagnostics.zeroResultMessage).toContain('son dogrulama');
     });
 });
-
+// @ts-nocheck

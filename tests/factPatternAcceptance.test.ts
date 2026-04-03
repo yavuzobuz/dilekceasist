@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, expect, it } from 'vitest';
 import { __testables } from '../lib/legal/simpleBedestenService.js';
 

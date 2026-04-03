@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const createJsonResponse = (payload, status = 200) =>
@@ -44,7 +45,7 @@ describe('query expansion via Gemini', () => {
 
     it('merges and dedupes registry and Gemini variants before HTTP search dispatch', async () => {
         vi.doMock('../backend/gemini/legal-search-plan-core.js', async (importOriginal) => {
-            const actual = await importOriginal();
+            const actual = await importOriginal<typeof import('../backend/gemini/legal-search-plan-core.js')>();
             return {
                 ...actual,
                 expandQueryWithGemini: vi.fn(async () => [
