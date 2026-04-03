@@ -10,12 +10,12 @@
 <body>
     <main class="container">
         <header>
-            <h1>AI Hukuk Asistani</h1>
-            <p>Word secimi uzerinden metin duzeltin, web arastirin, emsal karar tarayin ve ayni asistan akisi ile cevap uretin.</p>
+            <h1>AI Hukuk Chatbotu</h1>
+            <p>Word icindeki secili metin uzerinden metin duzeltme, beyin firtinasi, web aramasi yapin.</p>
         </header>
 
-        <section class="card">
-            <div class="tab-row" role="tablist" aria-label="Panel modu">
+        <section class="card compact-card">
+            <div class="tab-row compact" role="tablist" aria-label="Panel modu">
                 <button id="textAssistantTab" class="tab-btn active" data-tab="text-assistant" type="button">Metin Asistani</button>
                 <button id="researchTab" class="tab-btn" data-tab="research" type="button">Arastirma</button>
             </div>
@@ -32,21 +32,21 @@
         </section>
 
         <section class="card">
-            <h2>2) Hizli Aksiyon</h2>
-            <div class="quick-grid">
-                <button class="btn btn-primary" data-mode="edit" type="button">Metin Duzelt</button>
+            <h2>2) Chatbot</h2>
+            <div class="quick-grid legacy">
+                <button class="btn btn-primary" data-mode="edit" type="button">Metin Duzeltme</button>
                 <button class="btn btn-primary" data-mode="brainstorm" type="button">Beyin Firtinasi</button>
-                <button class="btn btn-primary" data-mode="web_search" type="button">Web Arastir</button>
+                <button class="btn btn-primary" data-mode="web_search" type="button">Web Aramasi</button>
                 <button class="btn btn-primary" data-mode="precedent_search" type="button">Emsal Karar Ara</button>
-                <button class="btn btn-primary quick-span" data-mode="research_and_answer" type="button">Arastir + Cevap Yaz</button>
+                <button class="btn btn-primary" data-mode="research_and_answer" type="button">Arastir + Cevap Yaz</button>
             </div>
             <p id="activeModeText" class="status">Aktif mod: Metin Duzelt</p>
         </section>
 
         <section class="card">
-            <h2>3) Asistan Istemi</h2>
+            <h2>3) Mesajiniz</h2>
             <label class="field">
-                <span>Mesajiniz</span>
+                <span>Asistan istemi</span>
                 <textarea id="promptText" rows="5" placeholder="Ornek: Bu metni resmi ve ikna edici dille duzelt."></textarea>
             </label>
 
@@ -64,7 +64,7 @@
             </label>
         </section>
 
-        <section class="card" id="researchPanel">
+        <section class="card">
             <h2>4) Arastirma Durumu</h2>
             <div id="researchState" class="research-state">
                 <div class="pill">Web: yapilmadi</div>
@@ -79,12 +79,12 @@
 
         <section class="card">
             <h2>5) Web Kaynaklari</h2>
-            <div id="webResults" class="result-list empty-state">Henüz web arastirmasi yapilmadi.</div>
+            <div id="webResults" class="result-list empty-state">Henuz web arastirmasi yapilmadi.</div>
         </section>
 
         <section class="card">
             <h2>6) Emsal Kararlar</h2>
-            <div id="legalResults" class="result-list empty-state">Henüz emsal karar aramasi yapilmadi.</div>
+            <div id="legalResults" class="result-list empty-state">Henuz emsal karar aramasi yapilmadi.</div>
         </section>
 
         <section class="card">
@@ -116,7 +116,7 @@
 
         <p id="status" class="status" role="status" aria-live="polite">Office yukleniyor...</p>
         <p id="quotaInfo" class="status" role="status" aria-live="polite">Kota: giris yapildiginda otomatik takip edilir.</p>
-        <div class="actions">
+        <div class="actions footer-actions">
             <button id="loginBtn" class="btn btn-secondary" type="button">Giris Yap</button>
             <button id="upgradePlanBtn" class="btn btn-primary" type="button">Plan Yukselt</button>
         </div>

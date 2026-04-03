@@ -44,8 +44,9 @@ if not exist "%TEMP%\dilekceasist\manifest.xml" (
 )
 
 :: Debugging aktif et
-echo [4/5] Add-in ayarlari yapiliyor...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "npx --yes office-addin-dev-settings debugging '%TEMP%\dilekceasist\manifest.xml' --enable" >nul 2>&1
+echo [4/5] Eski gelistirme kayitlari temizleniyor...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "npx --yes office-addin-dev-settings debugging '%TEMP%\dilekceasist\manifest.xml' --disable" >nul 2>&1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "npx --yes office-addin-dev-settings unregister '%TEMP%\dilekceasist\manifest.xml'" >nul 2>&1
 
 :: Sideload et
 echo [5/5] Word'e yukleniyor...
