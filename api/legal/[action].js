@@ -3,6 +3,11 @@ import searchDecisionsHandler from '../../backend/legal/search-decisions.js';
 import getDocumentHandler from '../../backend/legal/get-document.js';
 
 export const config = {
+    api: {
+        bodyParser: {
+            sizeLimit: '1mb',
+        },
+    },
     maxDuration: 60,
 };
 
