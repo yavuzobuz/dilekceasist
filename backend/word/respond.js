@@ -20,6 +20,22 @@ const normalizeMode = (value = '') => {
 
 const normalizeText = (value = '') => String(value || '').replace(/\s+/g, ' ').trim();
 const compactSearchQuery = (value = '') => normalizeText(value).split(/\s+/).slice(0, 12).join(' ');
+const GENERIC_WEB_PROMPT_PATTERNS = [
+    /bu konu icin web arastirmasi yap/gi,
+    /pratik sonucunu ozetle/gi,
+    /web arastirmasi yap/gi,
+    /web arastir/gi,
+    /internetten ara/gi,
+    /uygun kaynaklari bul/gi,
+];
+
+const stripGenericResearchPrompt = (value = '') => {
+    let text = normalizeText(value);
+    for (const pattern of GENERIC_WEB_PROMPT_PATTERNS) {
+        text = text.replace(pattern, ' ');
+    }
+    return normalizeText(text);
+};
 
 const createMemoryResponse = () => {
     let statusCode = 200;
@@ -117,6 +133,39 @@ const buildLegalSearchRequest = ({
     };
 };
 
+const buildWebSearchRequest = ({
+    message = '',
+    selectionText = '',
+    documentText = '',
+    analysisData = null,
+    documentAnalyzerResult = null,
+} = {}) => {
+    const cleanedMessage = stripGenericResearchPrompt(message);
+    const substantiveContext = normalizeText([
+        selectionText,
+        documentAnalyzerResult?.hukukiMesele,
+        analysisData?.summary,
+        documentText,
+    ].filter(Boolean).join(' '));
+
+    const rawQuery = normalizeText([
+        cleanedMessage,
+        substantiveContext,
+    ].filter(Boolean).join(' '));
+
+    const keywordSeed = normalizeText([
+        documentAnalyzerResult?.hukukiMesele,
+        analysisData?.summary,
+        selectionText,
+        cleanedMessage,
+    ].filter(Boolean).join(' '));
+
+    return {
+        rawQuery: rawQuery || substantiveContext || cleanedMessage,
+        keywords: compactSearchQuery(keywordSeed || rawQuery).split(/\s+/).filter(Boolean).slice(0, 8),
+    };
+};
+
 const performAssistantChatCompletion = async ({
     message = '',
     selectionText = '',
@@ -200,7 +249,7 @@ export default async function handler(req, res) {
             });
         }
 
-        if ((intent.allowLegalSearch || mode === 'research_and_answer') && combinedContextText) {
+        if ((intent.allowWebSearch || intent.allowLegalSearch || mode === 'research_and_answer') && combinedContextText) {
             try {
                 const analyzePayload = await invokeJsonHandler(analyzeHandler, {
                     method: 'POST',
@@ -222,16 +271,20 @@ export default async function handler(req, res) {
         }
 
         if (intent.allowWebSearch) {
-            const queryKeywords = compactSearchQuery(
-                normalizeText([message, selectionText, analysisData?.summary].filter(Boolean).join(' '))
-            ).split(/\s+/).filter(Boolean).slice(0, 8);
+            const webSearchRequest = buildWebSearchRequest({
+                message,
+                selectionText,
+                documentText: effectiveDocumentText,
+                analysisData,
+                documentAnalyzerResult,
+            });
 
             webSearch = await invokeJsonHandler(webSearchHandler, {
                 method: 'POST',
                 headers: req.headers || {},
                 body: {
-                    keywords: queryKeywords,
-                    query: message || selectionText || analysisData?.summary || '',
+                    keywords: webSearchRequest.keywords,
+                    query: webSearchRequest.rawQuery || message || selectionText || analysisData?.summary || '',
                 },
             }).catch(() => ({
                 text: '',

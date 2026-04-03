@@ -57,6 +57,8 @@ const MODE_CONTENT = {
     },
 };
 
+const WORD_LOGIN_REDIRECT = '/office/word/taskpane.html?v=20260403-1';
+
 let isBusy = false;
 let lastPlanUsage = null;
 let activeMode = 'edit';
@@ -525,7 +527,12 @@ const initialize = () => {
     el.readSelectionBtn.addEventListener('click', handleReadSelection);
     el.replaceSelectionBtn.addEventListener('click', handleReplaceSelection);
     el.sendChatBtn.addEventListener('click', sendAssistantRequest);
-    if (el.loginBtn) el.loginBtn.addEventListener('click', () => { window.location.href = `${resolveApiBaseUrl()}/login?source=word-addin`; });
+    if (el.loginBtn) {
+        el.loginBtn.addEventListener('click', () => {
+            const redirect = encodeURIComponent(WORD_LOGIN_REDIRECT);
+            window.location.href = `${resolveApiBaseUrl()}/login?source=word-addin&redirect=${redirect}`;
+        });
+    }
     if (el.upgradePlanBtn) el.upgradePlanBtn.addEventListener('click', handleUpgradePlan);
     if (el.authToken) {
         el.authToken.addEventListener('change', () => {

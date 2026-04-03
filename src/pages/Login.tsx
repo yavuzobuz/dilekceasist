@@ -14,9 +14,13 @@ const Login: React.FC = () => {
 
   const redirectTarget = useMemo(() => {
     const params = new URLSearchParams(location.search || '');
+    const source = (params.get('source') || '').trim().toLowerCase();
     const rawRedirect = (params.get('redirect') || '').trim();
     if (rawRedirect.startsWith('/')) {
       return rawRedirect;
+    }
+    if (source === 'word-addin') {
+      return '/office/word/taskpane.html?v=20260403-1';
     }
     return '/chat';
   }, [location.search]);
