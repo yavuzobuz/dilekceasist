@@ -8,6 +8,42 @@ const SEARCH_TIMEOUT_MS = Number(process.env.GEMINI_WEB_SEARCH_TIMEOUT_MS || 450
 const SEARCH_MAX_RETRIES = Math.max(1, Number(process.env.GEMINI_WEB_SEARCH_MAX_RETRIES || AI_CONFIG.MAX_RETRIES || 3));
 const INITIAL_RETRY_DELAY_MS = Math.max(250, Number(process.env.GEMINI_WEB_SEARCH_RETRY_DELAY_MS || AI_CONFIG.INITIAL_RETRY_DELAY_MS || 1000));
 
+const SEARCH_COMMAND_PATTERNS = [
+    /\b(?:web|internet(?:ten|te)?|google(?:'?da)?|webde|webden)\s*(?:ara(?:ma(?:si)?|stir(?:ma(?:si)?)?)?|bul|tara|getir|incele|listele)\s*(?:yap(?:ilsin)?|et)?\b/gi,
+    /\b(?:ara(?:ma(?:si)?|stir(?:ma(?:si)?)?)?|bul|tara|getir|incele|listele)\s*(?:web|internet(?:ten|te)?|google(?:'?da)?|webde|webden)\b/gi,
+    /\bderin\s*(?:arastir(?:ma)?|ara)\s*(?:yap)?\b/gi,
+    /\b(?:bu\s+konu\s+(?:icin|hakkinda|ile\s+ilgili))\b/gi,
+    /\b(?:konu\s+hakkinda)\b/gi,
+    /\b(?:guncel\s+arama\s+yap)\b/gi,
+    /\b(?:hesaplari\s+dogrula)\b/gi,
+    /\b(?:yaparak\s+dogrula)\b/gi,
+    /\b(?:dogrula)\b/gi,
+];
+
+const COMMAND_ONLY_TOKENS = new Set([
+    'web', 'internet', 'internetten', 'webde', 'webden', 'google', 'googleda',
+    'ara', 'arama', 'aramasi', 'arastir', 'arastirma', 'bul', 'tara', 'getir',
+    'incele', 'listele', 'yap', 'yaparak', 'dogrula', 'kaynak', 'link', 'url',
+    'konu', 'hakkinda', 'ilgili', 'guncel', 'derin',
+]);
+
+const normalizeKeywordText = (value) => String(value || '')
+    .toLocaleLowerCase('tr-TR')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\u0131/g, 'i')
+    .replace(/[^a-z0-9\s./-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const stripSearchCommandPhrases = (raw) => {
+    let text = normalizeKeywordText(raw);
+    for (const pattern of SEARCH_COMMAND_PATTERNS) {
+        text = text.replace(pattern, ' ');
+    }
+    return text.replace(/\s+/g, ' ').trim();
+};
+
 const normalizeKeywordList = (rawKeywords) => {
     if (!Array.isArray(rawKeywords)) return [];
 
@@ -17,10 +53,15 @@ const normalizeKeywordList = (rawKeywords) => {
     rawKeywords.forEach((item) => {
         const value = String(item || '').replace(/\s+/g, ' ').trim();
         if (!value) return;
-        const key = value.toLocaleLowerCase('tr-TR');
+        const strippedValue = stripSearchCommandPhrases(value) || value;
+        const normalizedValue = normalizeKeywordText(strippedValue);
+        if (!normalizedValue) return;
+        const tokens = normalizedValue.split(/\s+/).filter(Boolean);
+        if (tokens.length === 0 || tokens.every((token) => COMMAND_ONLY_TOKENS.has(token))) return;
+        const key = normalizedValue;
         if (seen.has(key)) return;
         seen.add(key);
-        cleaned.push(value.slice(0, 120));
+        cleaned.push(strippedValue.slice(0, 120));
     });
 
     return cleaned.slice(0, 8);

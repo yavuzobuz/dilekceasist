@@ -42,6 +42,12 @@ export const stripSearchCommandPhrases = (raw: string): string => {
     return text.replace(/\s+/g, ' ').trim();
 };
 
+export const resolveSearchTopicFromMessage = (raw: string, messages: ChatMessage[], maxMessages = 6): string => {
+    const cleanedMessage = stripSearchCommandPhrases(raw);
+    if (cleanedMessage) return cleanedMessage;
+    return extractContextFromChatHistory(messages, maxMessages);
+};
+
 export const extractContextFromChatHistory = (messages: ChatMessage[], maxMessages = 6): string => {
     if (!Array.isArray(messages) || messages.length === 0) return '';
 

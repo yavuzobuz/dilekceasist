@@ -32,6 +32,7 @@ import {
     writeTransientStorageItem,
 } from '../utils/transientStorage';
 import { mergeAnalysisData, prepareChatAttachmentsForAnalysis } from '../utils/chatAttachmentProcessing';
+import { buildRetryKeywords, extractContextFromChatHistory, resolveSearchTopicFromMessage } from '../utils/chatSearchContext';
 import { File, FileCode2, FileImage, FileText } from 'lucide-react';
 import { MissingInfoChecklistPanel } from '../../components/MissingInfoChecklistPanel';
 import {
@@ -2123,6 +2124,8 @@ export default function AlternativeApp() {
             text: normalizedMessage || (chatSourceFiles.length > 0 ? `[Dosya] ${chatSourceFiles.length} dosya yüklendi` : ''),
         };
         const newMessages: ChatMessage[] = [...chatMessages, userMessage];
+        const chatHistoryContext = extractContextFromChatHistory(newMessages);
+        const resolvedSearchTopic = resolveSearchTopicFromMessage(normalizedMessage, newMessages);
         setChatMessages(newMessages);
         setIsLoadingChat(true);
         setError(null);
@@ -2274,19 +2277,16 @@ export default function AlternativeApp() {
                     mergedAnalysisSummary || '',
                     mergedDocContent || '',
                     chatSourceFiles.map(file => file.name).join(' '),
-                    normalizedMessage || '',
+                    resolvedSearchTopic || '',
+                    !resolvedSearchTopic ? chatHistoryContext : '',
                 ].filter(Boolean).join('\n');
                 transientEvidenceKeywords = extractKeywordCandidates(evidenceSeed).slice(0, 8);
 
-                // Fallback: if keyword extraction produced nothing, use the raw message words as search terms
-                if (transientEvidenceKeywords.length === 0 && normalizedMessage) {
-                    const rawWords = normalizedMessage
-                        .split(/\s+/)
-                        .filter((w: string) => w.length >= 3)
-                        .filter((w: string) => !/^(bir|bu|su|ve|ile|de|da|olan|icin|gibi|ama|veya|ben|sen|biz|siz|ne|mi|mu|mi|dir|bana|beni|lutfen|lütfen)$/i.test(w));
-                    if (rawWords.length > 0) {
-                        transientEvidenceKeywords = rawWords.slice(0, 8);
-                    }
+                if (transientEvidenceKeywords.length === 0) {
+                    transientEvidenceKeywords = buildRetryKeywords(
+                        [resolvedSearchTopic, chatHistoryContext, normalizedMessage].filter(Boolean).join(' '),
+                        8
+                    );
                 }
             }
 
@@ -2311,7 +2311,10 @@ export default function AlternativeApp() {
                 if ((requiresWebEvidenceForChat || requiresStrictEvidenceForDocument) && !hasWebEvidence(mergedWebSearchResult) && normalizedMessage) {
                     setChatProgressText('Web aramasi yeniden deneniyor...');
                     try {
-                        const retryKeywords = normalizedMessage.split(/\s+/).filter((w: string) => w.length >= 3).slice(0, 6);
+                        const retryKeywords = buildRetryKeywords(
+                            [resolvedSearchTopic, chatHistoryContext, normalizedMessage].filter(Boolean).join(' '),
+                            6
+                        );
                         if (retryKeywords.length > 0) {
                             const retryWebResult = await performWebSearch(retryKeywords);
                             mergedWebSearchResult = mergeWebSearchResults(mergedWebSearchResult, retryWebResult);
@@ -2341,7 +2344,10 @@ export default function AlternativeApp() {
                 if ((requiresLegalEvidenceForChat || requiresStrictEvidenceForDocument) && !hasLegalEvidenceForChat(mergedLegalResults) && normalizedMessage) {
                     setChatProgressText('Emsal karar aramasi yeniden deneniyor...');
                     try {
-                        const retryKeywords = normalizedMessage.split(/\s+/).filter((w: string) => w.length >= 3).slice(0, 6);
+                        const retryKeywords = buildRetryKeywords(
+                            [resolvedSearchTopic, chatHistoryContext, normalizedMessage].filter(Boolean).join(' '),
+                            6
+                        );
                         if (retryKeywords.length > 0) {
                             const retryResults = await runLegalSearch(retryKeywords, { silent: true, suppressError: true });
                             if (retryResults.length > 0) {

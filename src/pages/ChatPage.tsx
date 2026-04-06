@@ -12,8 +12,28 @@ import { buildHybridSearchVariants, buildLegalSearchInputs, normalizeLegalSearch
 import { resolveLegalSourceForQuery } from '../utils/legalSource';
 import { buildLegalResearchBatchMessage, detectLegalSearchIntent } from '../lib/legal/chatLegalIntent';
 import { useLegalSearch } from '../hooks/useLegalSearch';
+import { buildRetryKeywords, extractContextFromChatHistory, resolveSearchTopicFromMessage } from '../utils/chatSearchContext';
 
 type AlternativeLegalSearchResult = NormalizedLegalDecision;
+
+const CHAT_GUIDE_CARDS = [
+    {
+        title: 'Konuyu Kisa Anlatin',
+        description: 'Olayi 2-3 cumle ile yazin. Temel sorun, tarih ve talebi belirtmeniz daha iyi sonuc verir.',
+    },
+    {
+        title: 'Ne Istediginizi Net Soyleyin',
+        description: '"Web aramasi yap", "emsal karar ara" veya "bunu duzelt" gibi kisa komutlar kullanabilirsiniz.',
+    },
+    {
+        title: 'Belge Yukleyebilirsiniz',
+        description: 'PDF, Word, TXT veya gorsel yukleyip belge uzerinden ozet, analiz veya yorum isteyebilirsiniz.',
+    },
+    {
+        title: 'Dilekce Oncesi Hazirlik Icin Uygun',
+        description: 'Bu alan; arastirma yapmak, strateji dusunmek ve dilekce oncesi fikri netlestirmek icin tasarlandi.',
+    },
+];
 
 const parseFunctionCallArgs = (rawArgs: unknown): Record<string, any> => {
     if (!rawArgs) return {};
@@ -304,6 +324,8 @@ export default function ChatPage() {
 
         const userMessage: ChatMessage = { role: 'user', text: normalizedMessage || (chatSourceFiles.length > 0 ? `[Dosya] ${chatSourceFiles.length} dosya yüklendi` : '') };
         const newMessages = [...chatMessages, userMessage];
+        const chatHistoryContext = extractContextFromChatHistory(newMessages);
+        const resolvedSearchTopic = resolveSearchTopicFromMessage(normalizedMessage, newMessages);
         setChatMessages(newMessages);
         setIsLoadingChat(true);
         setError(null);
@@ -389,11 +411,20 @@ export default function ChatPage() {
             const allowWebSearch = isWebExplicit;
             const allowLegalSearch = isLegalExplicit;
 
-            let evidenceKeywords = mergedKeywords.length > 0 ? mergedKeywords : extractKeywordCandidates([mergedAnalysisSummary, mergedDocContent, normalizedMessage].filter(Boolean).join('\n'));
-            
-            // Fallback: anahtar kelime çıkarılamadıysa mesajın kendisini kullan
-            if (evidenceKeywords.length === 0 && normalizedMessage.length > 5) {
-                evidenceKeywords = [normalizedMessage];
+            let evidenceKeywords = mergedKeywords.length > 0
+                ? mergedKeywords
+                : extractKeywordCandidates([
+                    mergedAnalysisSummary,
+                    mergedDocContent,
+                    resolvedSearchTopic,
+                    !resolvedSearchTopic ? chatHistoryContext : '',
+                ].filter(Boolean).join('\n'));
+
+            if (evidenceKeywords.length === 0) {
+                evidenceKeywords = buildRetryKeywords(
+                    [resolvedSearchTopic, chatHistoryContext, normalizedMessage].filter(Boolean).join(' '),
+                    8
+                );
             }
 
             if (allowWebSearch && evidenceKeywords.length > 0) {
@@ -422,7 +453,7 @@ export default function ChatPage() {
                     // Orijinal mesajı rawQuery olarak gönder, ayrıca son mesajlardan oluşan bağlamı (context) AI asistanının anlaması için ekle
                     const recentMessagesText = newMessages.slice(Math.max(0, newMessages.length - 6))
                         .map(m => `${m.role === 'user' ? 'Kullanıcı' : 'Yapay Zeka'}: ${m.text}`).join('\n');
-                    const enrichedContextQuery = `Sorgu: ${normalizedMessage || evidenceKeywords.join(', ')}\n\n--- Sohbet Geçmişi (Bağlam) ---\n${recentMessagesText}`;
+                    const enrichedContextQuery = `Sorgu: ${resolvedSearchTopic || normalizedMessage || evidenceKeywords.join(', ')}\n\n--- Sohbet Geçmişi (Bağlam) ---\n${recentMessagesText}`;
                     
                     const hybridQuery = buildHybridSearchVariants(enrichedContextQuery)[0] || enrichedContextQuery;
                     const searchedResults = await runLegalSearch(hybridQuery, { silent: true, suppressError: true });
@@ -571,6 +602,23 @@ export default function ChatPage() {
                         <p className="text-sm text-red-300">{error}</p>
                     </div>
                 )}
+                <div className="shrink-0 border-b border-white/5 bg-gradient-to-b from-white/[0.03] to-transparent px-4 py-4 sm:px-6">
+                    <div className="mb-3">
+                        <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-gray-300">Kisa Kullanim Rehberi</h2>
+                        <p className="mt-1 text-sm text-gray-400">Asistani daha rahat kullanmak icin once buraya goz atabilirsiniz.</p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                        {CHAT_GUIDE_CARDS.map((card) => (
+                            <div
+                                key={card.title}
+                                className="rounded-2xl border border-white/10 bg-[#111113] p-4 shadow-lg shadow-black/20"
+                            >
+                                <h3 className="text-sm font-semibold text-white">{card.title}</h3>
+                                <p className="mt-2 text-sm leading-6 text-gray-400">{card.description}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
                 <ChatView 
                     messages={chatMessages}
                     onSendMessage={handleSendChatMessage}

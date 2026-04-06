@@ -3,6 +3,7 @@ import type { ChatMessage } from '../types';
 import {
     buildRetryKeywords,
     extractContextFromChatHistory,
+    resolveSearchTopicFromMessage,
     stripSearchCommandPhrases,
 } from '../src/utils/chatSearchContext';
 
@@ -30,5 +31,15 @@ describe('chat search context helpers', () => {
             'iscilik',
             'alacaklari',
         ]);
+    });
+
+    it('falls back to prior chat context when the latest message is command-only', () => {
+        const messages: ChatMessage[] = [
+            { role: 'user', text: 'Fesih 01.01.2024, fazla mesai ve yillik izin alacaklari icin hesap raporu istiyorum.' },
+            { role: 'model', text: 'Zaman asimi ve iscilik alacaklari yonunden bakabiliriz.' },
+            { role: 'user', text: 'web aramasi yap' },
+        ];
+
+        expect(resolveSearchTopicFromMessage('web aramasi yap', messages)).toContain('fazla mesai');
     });
 });
