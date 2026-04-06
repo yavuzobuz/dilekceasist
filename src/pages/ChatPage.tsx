@@ -19,20 +19,20 @@ type AlternativeLegalSearchResult = NormalizedLegalDecision;
 
 const CHAT_GUIDE_CARDS = [
     {
-        title: 'Konuyu Kisa Anlatin',
-        description: 'Olayi 2-3 cumle ile yazin. Temel sorun, tarih ve talebi belirtmeniz daha iyi sonuc verir.',
+        title: 'Konuyu Kısa Anlatın',
+        description: 'Olayı 2-3 cümle ile yazın. Temel sorun, tarih ve talebi belirtmeniz daha iyi sonuç verir.',
     },
     {
         title: 'Ne İstediğinizi Net Söyleyin',
         description: '"Web araması yap", "emsal karar ara" veya "bunu düzelt" gibi kısa komutlar kullanabilirsiniz.\nTaraf bazlı arama istiyorsanız "sanık lehine karar ara", "davacı lehine emsal karar ara" ya da "davalı lehine web araması yap" diye yazabilirsiniz.',
     },
     {
-        title: 'Belge Yukleyebilirsiniz',
-        description: 'PDF, Word, TXT veya gorsel yukleyip belge uzerinden ozet, analiz veya yorum isteyebilirsiniz.',
+        title: 'Belge Yükleyebilirsiniz',
+        description: 'PDF, Word, TXT veya görsel yükleyip belge üzerinden özet, analiz veya yorum isteyebilirsiniz.',
     },
     {
-        title: 'Dilekce Oncesi Hazirlik Icin Uygun',
-        description: 'Bu alan; arastirma yapmak, strateji dusunmek ve dilekce oncesi fikri netlestirmek icin tasarlandi.',
+        title: 'Dilekçe Öncesi Hazırlık İçin Uygun',
+        description: 'Bu alan; araştırma yapmak, strateji düşünmek ve dilekçe öncesi fikri netleştirmek için tasarlandı.',
     },
 ];
 
@@ -359,7 +359,7 @@ export default function ChatPage() {
         if (!payload?.content?.trim()) return;
         writeTransientStorageItem(TRANSIENT_STORAGE_KEYS.templateContent, payload.content);
         writeTransientStorageItem(TRANSIENT_STORAGE_KEYS.editorReturnRoute, '/chat');
-        addToast(`${payload.title} editore gonderildi.`, 'success');
+        addToast(`${payload.title} editöre gönderildi.`, 'success');
         navigate('/alt-app');
     }, [addToast, navigate]);
 

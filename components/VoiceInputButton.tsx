@@ -104,17 +104,17 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
       disabled={disabled || !isSupported}
       title={
         !isSupported
-          ? 'Tarayici sesli girisi desteklemiyor'
+          ? 'Tarayıcı sesli girişi desteklemiyor'
           : isListening
-            ? 'Sesli girisi durdur'
-            : 'Sesli giris baslat'
+            ? 'Sesli girişi durdur'
+            : 'Sesli girişi başlat'
       }
       aria-label={
         !isSupported
-          ? 'Tarayici sesli girisi desteklemiyor'
+          ? 'Tarayıcı sesli girişi desteklemiyor'
           : isListening
-            ? 'Sesli girisi durdur'
-            : 'Sesli giris baslat'
+            ? 'Sesli girişi durdur'
+            : 'Sesli girişi başlat'
       }
       className={`inline-flex items-center justify-center p-2 rounded-lg border transition-colors ${
         isListening

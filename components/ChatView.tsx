@@ -90,38 +90,38 @@ const ChatContextPanel: React.FC<{
             value: localKeywords,
             onChange: setLocalKeywords,
             placeholder: 'tazminat, haksiz fesih, is hukuku...',
-            helpText: 'Virgulle ayirin',
+            helpText: 'Virgülle ayırın',
             rows: 10,
         },
         searchSummary: {
-            label: 'Web Arastirmasi Ozeti',
+            label: 'Web Araştırması Özeti',
             value: localSearchSummary,
             onChange: setLocalSearchSummary,
-            placeholder: 'Web arastirmasindan elde edilen hukuki bilgiler...',
-            helpText: 'AI tarafindan otomatik doldurulur',
+            placeholder: 'Web araştırmasından elde edilen hukuki bilgiler...',
+            helpText: 'AI tarafından otomatik doldurulur',
             rows: 14,
         },
         precedents: {
             label: 'Bulunan Emsal Karar Metinleri',
             value: localPrecedentContext,
             onChange: setLocalPrecedentContext,
-            placeholder: 'Bulunan emsal karar ozetleri ve karar metinleri burada gorunecek.',
-            helpText: 'Ictihat aramasindan otomatik doldurulur',
+            placeholder: 'Bulunan emsal karar özetleri ve karar metinleri burada görünecek.',
+            helpText: 'İçtihat aramasından otomatik doldurulur',
             rows: 16,
         },
         docContent: {
             label: 'Ek Metin ve Belgeler',
             value: localDocContent,
             onChange: setLocalDocContent,
-            placeholder: 'Ek belgelerden alinan metin icerikleri...',
+            placeholder: 'Ek belgelerden alınan metin içerikleri...',
             rows: 14,
         },
         specifics: {
-            label: 'Ozel Talimatlar',
+            label: 'Özel Talimatlar',
             value: localSpecifics,
             onChange: setLocalSpecifics,
-            placeholder: "AI'ya ozel talimatlariniz (orn: daha resmi bir dil kullan)...",
-            helpText: 'Istege bagli',
+            placeholder: "AI'ya özel talimatlarınız (örn: daha resmi bir dil kullan)...",
+            helpText: 'İsteğe bağlı',
             rows: 14,
         },
     };
@@ -182,9 +182,9 @@ const ChatContextPanel: React.FC<{
                         <ClipboardDocumentListIcon className="h-5 w-5 text-red-400" />
                     </div>
                     <div>
-                        <h3 className="font-semibold text-white">Dilekce Baglami</h3>
+                        <h3 className="font-semibold text-white">Dilekçe Bağlamı</h3>
                         <p className="text-xs text-gray-400">
-                            {hasContent ? 'AI bu bilgileri dilekce olustururken kullanacak' : 'Henuz baglam bilgisi eklenmedi'}
+                            {hasContent ? 'AI bu bilgileri dilekçe oluştururken kullanacak' : 'Henüz bağlam bilgisi eklenmedi'}
                         </p>
                     </div>
                 </div>
@@ -199,7 +199,7 @@ const ChatContextPanel: React.FC<{
                             className="flex items-center gap-2 rounded-lg border border-red-600/30 bg-red-600/10 px-3 py-1.5 text-sm text-red-400 transition-all hover:bg-red-600/20 hover:text-red-300"
                         >
                             <PencilIcon className="h-4 w-4" />
-                            <span>Duzenle</span>
+                            <span>Düzenle</span>
                         </button>
                     ) : (
                         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
@@ -207,7 +207,7 @@ const ChatContextPanel: React.FC<{
                                 onClick={handleCancel}
                                 className="rounded-lg bg-gray-700 px-3 py-1.5 text-sm text-gray-400 transition-colors hover:bg-gray-600 hover:text-white"
                             >
-                                Iptal
+                                İptal
                             </button>
                             <button
                                 onClick={handleSave}
@@ -234,7 +234,7 @@ const ChatContextPanel: React.FC<{
                     {isEditing && (
                         <div className="flex items-center gap-2 rounded-lg border border-red-600/30 bg-red-600/10 p-3">
                             <PencilIcon className="h-4 w-4 text-red-400" />
-                            <span className="text-sm text-red-300">Duzenleme modu aktif. Alanlara tiklayip tam ekranda duzenleyebilirsiniz.</span>
+                            <span className="text-sm text-red-300">Düzenleme modu aktif. Alanlara tiklayip tam ekranda duzenleyebilirsiniz.</span>
                         </div>
                     )}
 
@@ -245,18 +245,18 @@ const ChatContextPanel: React.FC<{
                         value={localKeywords}
                         onChange={setLocalKeywords}
                         placeholder="tazminat, haksiz fesih, is hukuku..."
-                        helpText="Virgulle ayirin"
+                        helpText="Virgülle ayırın"
                     />
 
                     <ContextItem
                         fieldKey="searchSummary"
                         icon={<GlobeAltIcon className="h-4 w-4" />}
-                        label="Web Arastirmasi Ozeti"
+                        label="Web Araştırması Özeti"
                         value={localSearchSummary}
                         onChange={setLocalSearchSummary}
                         rows={4}
-                        placeholder="Web arastirmasindan elde edilen hukuki bilgiler..."
-                        helpText="AI tarafindan otomatik doldurulur"
+                        placeholder="Web araştırmasından elde edilen hukuki bilgiler..."
+                        helpText="AI tarafından otomatik doldurulur"
                     />
 
                     <ContextItem
@@ -266,8 +266,8 @@ const ChatContextPanel: React.FC<{
                         value={localPrecedentContext}
                         onChange={setLocalPrecedentContext}
                         rows={5}
-                        placeholder="Bulunan emsal karar ozetleri ve karar metinleri burada gorunecek."
-                        helpText="Ictihat aramasindan otomatik doldurulur"
+                        placeholder="Bulunan emsal karar özetleri ve karar metinleri burada görünecek."
+                        helpText="İçtihat aramasından otomatik doldurulur"
                     />
 
                     <ContextItem
@@ -277,18 +277,18 @@ const ChatContextPanel: React.FC<{
                         value={localDocContent}
                         onChange={setLocalDocContent}
                         rows={3}
-                        placeholder="Ek belgelerden alinan metin icerikleri..."
+                        placeholder="Ek belgelerden alınan metin içerikleri..."
                     />
 
                     <ContextItem
                         fieldKey="specifics"
                         icon={<LightBulbIcon className="h-4 w-4" />}
-                        label="Ozel Talimatlar"
+                        label="Özel Talimatlar"
                         value={localSpecifics}
                         onChange={setLocalSpecifics}
                         rows={3}
-                        placeholder="AI'ya ozel talimatlariniz (orn: daha resmi bir dil kullan)..."
-                        helpText="Istege bagli"
+                        placeholder="AI'ya özel talimatlarınız (örn: daha resmi bir dil kullan)..."
+                        helpText="İsteğe bağlı"
                     />
                 </div>
             </div>
@@ -362,10 +362,10 @@ interface ChatViewProps {
 }
 
 const QUICK_PROMPTS = [
-    'Bu konuyu webde derin arastir, guncel mevzuat ve uygulamayi ozetle',
-    'Bu konuyla ilgili guclu emsal kararlar bul ve kisa kisa acikla',
-    'Elimdeki bilgilere gore resmi ve guclu bir dilekce taslagi hazirla',
-    'Yukledigim belgeyi incele, kritik noktalar ve riskleri ozetle',
+    'Bu konuyu webde derin araştır, güncel mevzuat ve uygulamayı özetle',
+    'Bu konuyla ilgili güçlü emsal kararlar bul ve kısa kısa açıkla',
+    'Elimdeki bilgilere göre resmi ve güçlü bir dilekçe taslağı hazırla',
+    'Yüklediğim belgeyi incele, kritik noktalar ve riskleri özetle',
 ];
 
 const CHAT_ALLOWED_EXTENSIONS = ['.pdf', '.udf', '.doc', '.docx', '.txt', '.jpg', '.jpeg', '.png', '.webp', '.tif', '.tiff'];
@@ -487,7 +487,7 @@ const GeneratedDocumentCard: React.FC<{
         <div className="rounded-2xl border border-red-500/20 bg-[#151518] p-4 shadow-lg shadow-black/20">
             <div className="flex items-start justify-between gap-3">
                 <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-300">Olusturulan Belge</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-300">Oluşturulan Belge</p>
                     <h4 className="mt-1 text-base font-semibold text-white">{title}</h4>
                 </div>
                 <DocumentTextIcon className="h-5 w-5 text-red-300" />
@@ -510,7 +510,7 @@ const GeneratedDocumentCard: React.FC<{
                     className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
                 >
                     <PencilIcon className="h-4 w-4" />
-                    Editore Gonder
+                    Editöre Gönder
                 </button>
             </div>
         </div>
@@ -601,11 +601,11 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
                 })
                 : '';
 
-            const resolvedText = content || 'Tam metin bulunamadi. Sadece karar bilgileri mevcut.';
+            const resolvedText = content || 'Tam metin bulunamadı. Sadece karar bilgileri mevcut.';
             setDecisionContentCache((prev) => ({ ...prev, [cacheKey]: resolvedText }));
             setSelectedDecision({ title: item.title, text: resolvedText });
         } catch {
-            setSelectedDecision({ title: item.title, text: 'Karar metni yuklenemedi.' });
+            setSelectedDecision({ title: item.title, text: 'Karar metni yüklenemedi.' });
         } finally {
             setDecisionLoadingIndex(null);
         }
@@ -620,7 +620,7 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
     // Yalnızca dilekçe istendiğinde veya bağlam doluysa göster
     const showContextPanel = isPetitionRequested || hasMeaningfulContext;
 
-    const introMessage = `Merhaba! Ben sizin hukuk asistaninizim. Dilekcenizi olusturmadan once konuyu netlestirmek, hukuki terimleri aciklamak veya dava stratejisi uzerine beyin firtinasi yapmak icin benimle sohbet edebilirsiniz.`;
+    const introMessage = `Merhaba! Ben sizin hukuk asistanınızım. Dilekçenizi oluşturmadan önce konuyu netleştirmek, hukuki terimleri açıklamak veya dava stratejisi üzerine beyin fırtınası yapmak için benimle sohbet edebilirsiniz.`;
 
     return (
         <div className="h-full min-h-0 flex flex-col p-4 ai-theme">
@@ -772,7 +772,7 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
                                     handleSend(e);
                                 }
                             }}
-                            placeholder={selectedFiles.length > 0 ? 'Bu belgeler hakkinda soru sorun...' : 'AI asistana bir mesaj gonder...'}
+                            placeholder={selectedFiles.length > 0 ? 'Bu belgeler hakkında soru sorun...' : 'AI asistana bir mesaj gönder...'}
                             className="min-h-[64px] flex-1 resize-none bg-transparent p-3 text-white placeholder-gray-400 focus:outline-none focus:ring-0 border-none overflow-y-auto outline-none shadow-none text-[15px]"
                             style={{ height: '64px', maxHeight: '200px' }}
                             disabled={isLoading}
@@ -806,8 +806,8 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
                     {props.guideCards && props.guideCards.length > 0 ? (
                         <div className="rounded-2xl border border-white/10 bg-[#111113] p-4">
                             <div className="mb-3">
-                                <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-gray-300">Kisa Kullanim Rehberi</h2>
-                                <p className="mt-1 text-sm text-gray-400">Asistani daha rahat kullanmak icin once buraya goz atabilirsiniz.</p>
+                                <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-gray-300">Kısa Kullanım Rehberi</h2>
+                                <p className="mt-1 text-sm text-gray-400">Asistanı daha rahat kullanmak için önce buraya göz atabilirsiniz.</p>
                             </div>
                             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                                 {props.guideCards.map((card) => (
