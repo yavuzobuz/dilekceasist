@@ -107,6 +107,41 @@ const summarizeAnalysis = (analysisPayload) => {
     }
 };
 
+/** Mesajdan taraf yönünü algılar (davacı lehine, davalı lehine vb.) */
+const detectPartyDirectionFromMessage = (message = '') => {
+    if (!message) return null;
+    const norm = String(message).toLowerCase();
+    // Davacı tarafı kalıpları
+    if (/\b(davac[ıi]|m[üu][şs]teki|ma[gğ]dur|alacakl[ıi]|ba[şs]vuran)\s*(lehine|taraf[ıi]ndan|a[çc][ıi]s[ıi]ndan)/i.test(norm)) {
+        const role = /davac/i.test(norm) ? 'Davacı'
+            : /m[üu][şs]teki/i.test(norm) ? 'Müşteki'
+            : /ma[gğ]dur/i.test(norm) ? 'Mağdur'
+            : /alacakl/i.test(norm) ? 'Alacaklı'
+            : /ba[şs]vuran/i.test(norm) ? 'Başvuran'
+            : 'Davacı';
+        return { role, direction: 'lehine' };
+    }
+    // Davalı tarafı kalıpları
+    if (/\b(daval[ıi]|san[ıi]k|[şs][üu]pheli|bor[çc]lu|m[üu]dahil)\s*(lehine|taraf[ıi]ndan|a[çc][ıi]s[ıi]ndan)/i.test(norm)) {
+        const role = /daval/i.test(norm) ? 'Davalı'
+            : /san[ıi]k/i.test(norm) ? 'Sanık'
+            : /[şs][üu]pheli/i.test(norm) ? 'Şüpheli'
+            : /bor[çc]lu/i.test(norm) ? 'Borçlu'
+            : /m[üu]dahil/i.test(norm) ? 'Müdahil'
+            : 'Davalı';
+        return { role, direction: 'aleyhine' };
+    }
+    // Kısa format: "davacı lehine" vb.
+    if (/\b(davac[ıi])\b.*\blehine\b/i.test(norm)) return { role: 'Davacı', direction: 'lehine' };
+    if (/\b(daval[ıi])\b.*\blehine\b/i.test(norm)) return { role: 'Davalı', direction: 'aleyhine' };
+    if (/\b(san[ıi]k)\b.*\blehine\b/i.test(norm)) return { role: 'Sanık', direction: 'aleyhine' };
+    if (/\b(m[üu][şs]teki)\b.*\blehine\b/i.test(norm)) return { role: 'Müşteki', direction: 'lehine' };
+    if (/\b(ma[gğ]dur)\b.*\blehine\b/i.test(norm)) return { role: 'Mağdur', direction: 'lehine' };
+    if (/\b(alacakl[ıi])\b.*\blehine\b/i.test(norm)) return { role: 'Alacaklı', direction: 'lehine' };
+    if (/\b(bor[çc]lu)\b.*\blehine\b/i.test(norm)) return { role: 'Borçlu', direction: 'aleyhine' };
+    return null;
+};
+
 const buildLegalSearchRequest = ({
     message = '',
     selectionText = '',
@@ -122,15 +157,29 @@ const buildLegalSearchRequest = ({
         documentAnalyzerResult?.hukukiMesele,
     ].filter(Boolean).join('\n\n'));
 
+    // Mesajdan taraf yönünü algıla ve rawQuery'yi zenginleştir
+    const partyDirection = detectPartyDirectionFromMessage(message || selectionText || '');
+    let enrichedRawQuery = rawQuery;
+    if (partyDirection) {
+        const directionHint = `${partyDirection.role} lehine karar`;
+        if (!rawQuery.toLowerCase().includes(directionHint.toLowerCase())) {
+            enrichedRawQuery = `${directionHint} ${rawQuery}`.trim();
+        }
+    }
+
     return {
         source: 'all',
-        keyword: compactSearchQuery(rawQuery) || rawQuery,
-        rawQuery,
+        keyword: compactSearchQuery(enrichedRawQuery) || enrichedRawQuery,
+        rawQuery: enrichedRawQuery,
         legalSearchPacket: analysisData?.legalSearchPacket || undefined,
         documentAnalyzerResult,
-        filters: { searchArea: 'auto' },
+        filters: {
+            searchArea: 'auto',
+            ...(partyDirection ? { searchDirection: partyDirection.direction } : {}),
+        },
         searchMode: 'pro',
         apiBaseUrl: '',
+        ...(partyDirection ? { userRole: partyDirection.role, searchDirection: partyDirection.direction } : {}),
     };
 };
 
@@ -161,8 +210,18 @@ const buildWebSearchRequest = ({
         cleanedMessage,
     ].filter(Boolean).join(' '));
 
+    // Mesajdan taraf yönünü algıla ve web aramasını da zenginleştir
+    const partyDirection = detectPartyDirectionFromMessage(message || selectionText || '');
+    let enrichedRawQuery = rawQuery || substantiveContext || cleanedMessage;
+    if (partyDirection) {
+        const directionHint = `${partyDirection.role} lehine`;
+        if (!enrichedRawQuery.toLowerCase().includes(directionHint.toLowerCase())) {
+            enrichedRawQuery = `${directionHint} ${enrichedRawQuery}`.trim();
+        }
+    }
+
     return {
-        rawQuery: rawQuery || substantiveContext || cleanedMessage,
+        rawQuery: enrichedRawQuery,
         keywords: compactSearchQuery(keywordSeed || rawQuery).split(/\s+/).filter(Boolean).slice(0, 8),
     };
 };

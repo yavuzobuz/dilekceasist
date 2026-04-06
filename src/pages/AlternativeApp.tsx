@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -1216,7 +1216,10 @@ export default function AlternativeApp() {
                 keyword: hybridKeyword,
                 rawQuery: effectiveRawQuery || hybridKeyword,
                 legalSearchPacket: normalizedPacket,
+                searchMode: 'pro',
+                filters: { searchArea: 'auto' },
                 apiBaseUrl: '',
+                userRole,
             });
             const normalizedResults = detailedResult.normalizedResults as AlternativeLegalSearchResult[];
 
@@ -1284,7 +1287,7 @@ export default function AlternativeApp() {
         } finally {
             setIsLegalSearching(false);
         }
-    }, [addToast, analysisData, mergeLegalResults, searchKeywords]);
+    }, [addToast, analysisData, mergeLegalResults, searchKeywords, userRole]);
 
 
     const handleSelectedFiles = useCallback((rawFiles: FileList | null) => {

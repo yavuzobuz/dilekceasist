@@ -1360,11 +1360,34 @@ const createLegalSearchPayload = ({
     searchMode?: 'pro';
     userRole?: import('../../types').UserRole;
 }): Record<string, any> => {
+    // Seçilen taraf rolüne göre arama yönünü belirle (lehine / aleyhine)
+    const searchDirection = getRoleSearchDirection(userRole);
+    const roleLabel = String(userRole || '').trim();
+
+    // rawQuery'yi taraf lehine bilgisiyle zenginleştir
+    let enrichedRawQuery = rawQuery;
+    if (searchDirection && roleLabel) {
+        const directionHint = searchDirection === 'lehine'
+            ? `${roleLabel} lehine karar`
+            : `${roleLabel} aleyhine karar`;
+        // Sorgunun başına yönlendirme ipucu ekle (zaten içermiyorsa)
+        const normalizedQuery = normalizeKeywordToken(rawQuery);
+        const normalizedHint = normalizeKeywordToken(directionHint);
+        if (!normalizedQuery.includes(normalizedHint)) {
+            enrichedRawQuery = `${directionHint} ${rawQuery}`.trim();
+        }
+    }
+
+    const enrichedFilters = { ...filters };
+    if (searchDirection) {
+        enrichedFilters.searchDirection = searchDirection;
+    }
+
     const payload: Record<string, any> = {
         source,
         keyword,
-        filters,
-        rawQuery,
+        filters: enrichedFilters,
+        rawQuery: enrichedRawQuery,
     };
 
     if (legalSearchPacket) {
@@ -1378,6 +1401,9 @@ const createLegalSearchPayload = ({
     }
     if (userRole) {
         payload.userRole = userRole;
+    }
+    if (searchDirection) {
+        payload.searchDirection = searchDirection;
     }
 
     // Use the same hybrid retrieval path for both pasted text and uploaded documents.
@@ -1497,6 +1523,7 @@ export const searchLegalDecisionsDetailed = async ({
     filters = {},
     searchMode = 'auto',
     apiBaseUrl = '',
+    userRole,
 }: SearchLegalDecisionsParams): Promise<LegalSearchDetailedResult> => {
     const {
         effectiveRawQuery,
@@ -1524,6 +1551,7 @@ export const searchLegalDecisionsDetailed = async ({
         documentAnalyzerResult,
         filters: effectiveFilters,
         searchMode: effectiveSearchMode,
+        userRole,
     });
     const responsePayload = await requestLegalSearchJson({ payload, apiBaseUrl });
 

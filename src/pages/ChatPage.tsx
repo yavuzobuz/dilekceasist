@@ -221,10 +221,44 @@ const normalizeSharedLegalSearchResultsWrapper = (payload: any): AlternativeLega
 let toastIdCounter = 0;
 const createToastId = (): string => `${Date.now()}-${++toastIdCounter}-${Math.random().toString(36).slice(2, 10)}`;
 
+/** Sohbet mesajından taraf yönünü algılar (davacı lehine, davalı lehine vb.) */
+const detectPartyRoleFromMessage = (message: string): UserRole | null => {
+    if (!message) return null;
+    const norm = message.toLocaleLowerCase('tr-TR');
+    // "davacı lehine" / "davaci lehine" vb. kalıpları algıla
+    if (/\b(davac[ıi]|m[üu][şs]teki|ma[gğ]dur|alacakl[ıi]|ba[şs]vuran|istinaf\s*eden|temyiz\s*eden)\s+(lehine|taraf[ıi]ndan|a[çc][ıi]s[ıi]ndan)/i.test(norm)) {
+        if (/davac/i.test(norm)) return UserRole.Davaci;
+        if (/m[üu][şs]teki/i.test(norm)) return UserRole.Musteki;
+        if (/ma[gğ]dur/i.test(norm)) return UserRole.Magdur;
+        if (/alacakl/i.test(norm)) return UserRole.Alacakli;
+        if (/ba[şs]vuran/i.test(norm)) return UserRole.Basvuran;
+        if (/istinaf/i.test(norm)) return UserRole.Istinafeden;
+        if (/temyiz/i.test(norm)) return UserRole.Temyizeden;
+        return UserRole.Davaci;
+    }
+    if (/\b(daval[ıi]|san[ıi]k|[şs][üu]pheli|bor[çc]lu|m[üu]dahil)\s+(lehine|taraf[ıi]ndan|a[çc][ıi]s[ıi]ndan)/i.test(norm)) {
+        if (/daval/i.test(norm)) return UserRole.Davali;
+        if (/san[ıi]k/i.test(norm)) return UserRole.Sanik;
+        if (/[şs][üu]pheli/i.test(norm)) return UserRole.Sanik;
+        if (/bor[çc]lu/i.test(norm)) return UserRole.Borclu;
+        if (/m[üu]dahil/i.test(norm)) return UserRole.Mudahil;
+        return UserRole.Davali;
+    }
+    // Kısa format: sadece "davacı lehine ara" gibi
+    if (/\b(davac[ıi])\b.*\blehine\b/i.test(norm)) return UserRole.Davaci;
+    if (/\b(daval[ıi])\b.*\blehine\b/i.test(norm)) return UserRole.Davali;
+    if (/\b(san[ıi]k)\b.*\blehine\b/i.test(norm)) return UserRole.Sanik;
+    if (/\b(m[üu][şs]teki)\b.*\blehine\b/i.test(norm)) return UserRole.Musteki;
+    if (/\b(ma[gğ]dur)\b.*\blehine\b/i.test(norm)) return UserRole.Magdur;
+    if (/\b(alacakl[ıi])\b.*\blehine\b/i.test(norm)) return UserRole.Alacakli;
+    if (/\b(bor[çc]lu)\b.*\blehine\b/i.test(norm)) return UserRole.Borclu;
+    return null;
+};
+
 export default function ChatPage() {
     const navigate = useNavigate();
     const { search: searchLegalFromIntent } = useLegalSearch();
-    const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
+    const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]); 
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
     const [isLoadingChat, setIsLoadingChat] = useState(false);
     const [chatProgressText, setChatProgressText] = useState('');
@@ -235,6 +269,7 @@ export default function ChatPage() {
     const [specifics, setSpecifics] = useState('');
     const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
     const [legalSearchResults, setLegalSearchResults] = useState<NormalizedLegalDecision[]>([]);
+    const [detectedUserRole, setDetectedUserRole] = useState<UserRole | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const addToast = useCallback((message: string, type: ToastType = 'info') => {
@@ -257,7 +292,8 @@ export default function ChatPage() {
             });
 
             const detailedResult = await searchLegalDecisionsDetailed({
-                keyword, rawQuery, legalSearchPacket, source: 'all', searchMode: 'pro', filters: { searchArea: 'auto' }
+                keyword, rawQuery, legalSearchPacket, source: 'all', searchMode: 'pro', filters: { searchArea: 'auto' },
+                ...(detectedUserRole ? { userRole: detectedUserRole } : {}),
             });
 
             if (detailedResult.normalizedResults && detailedResult.normalizedResults.length > 0) {
@@ -317,7 +353,7 @@ export default function ChatPage() {
             if (!options.suppressError && !options.silent) addToast(`Arama hatası: ${searchError.message}`, 'error');
             return [];
         }
-    }, [analysisData, searchKeywords, addToast]);
+    }, [analysisData, searchKeywords, detectedUserRole, addToast]);
 
     const handleSendGeneratedDocumentToEditor = useCallback((payload: { title: string; content: string }) => {
         if (!payload?.content?.trim()) return;
@@ -332,6 +368,14 @@ export default function ChatPage() {
         const chatSourceFiles = Array.isArray(files) ? files : [];
         let mergedAnalysisData = analysisData;
         let mergedAnalysisSummary = analysisData?.summary?.trim() || '';
+
+        // Mesajdan taraf yönünü algıla (davacı lehine, davalı lehine vb.)
+        const messagePartyRole = detectPartyRoleFromMessage(normalizedMessage);
+        if (messagePartyRole) {
+            setDetectedUserRole(messagePartyRole);
+        }
+        // Aktif taraf rolü: mesajdan yeni algılanan veya daha önce belirlenen
+        const activeUserRole = messagePartyRole || detectedUserRole;
 
         const userMessage: ChatMessage = { role: 'user', text: normalizedMessage || (chatSourceFiles.length > 0 ? `[Dosya] ${chatSourceFiles.length} dosya yüklendi` : '') };
         const newMessages = [...chatMessages, userMessage];
@@ -497,7 +541,7 @@ export default function ChatPage() {
                                 try {
                                     legalKeywords = await generateSearchKeywords(
                                         legalSearchSeedText || quickAnalysis?.summary || '',
-                                        UserRole.Vekil
+                                        activeUserRole || UserRole.Vekil
                                     );
                                 } catch { /* fallback to evidenceKeywords */ }
                             }
@@ -636,7 +680,7 @@ export default function ChatPage() {
             setIsLoadingChat(false);
             setChatProgressText('');
         }
-    }, [chatMessages, analysisData, searchKeywords, webSearchResult, legalSearchResults, docContent, specifics, runLegalSearch, addToast, searchLegalFromIntent]);
+    }, [chatMessages, analysisData, searchKeywords, webSearchResult, legalSearchResults, docContent, specifics, detectedUserRole, runLegalSearch, addToast, searchLegalFromIntent]);
 
     return (
         <div className="min-h-screen bg-[#0F0F11] font-sans flex flex-col text-gray-300">
