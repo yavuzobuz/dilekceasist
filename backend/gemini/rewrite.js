@@ -1,5 +1,6 @@
 import { applyCors, getSafeErrorMessage } from '../../lib/api/cors.js';
 import { GEMINI_MODEL_NAME, getGeminiClient } from './_shared.js';
+import { getCurrentDateContext } from './current-date.js';
 
 const MODEL_NAME = GEMINI_MODEL_NAME;
 
@@ -7,18 +8,18 @@ const REWRITE_MODE_CONFIG = {
     fix: {
         systemInstruction: 'Sen Turkce hukuk metni editorusun. Anlami degistirmeden yalnizca dil bilgisi, imla, noktalama ve anlatim netligini duzelt.',
         taskTitle: 'DUZELT',
-        taskDescription: 'Metnin anlamini koruyarak imla, noktalama ve ifade sorunlarini duzelt.'
+        taskDescription: 'Metnin anlamini koruyarak imla, noktalama ve ifade sorunlarini duzelt.',
     },
     strengthen: {
         systemInstruction: 'Sen Turkce hukuk metni editorusun. Metni daha ikna edici, tutarli ve profesyonel hale getir; yeni olgu uydurma.',
         taskTitle: 'GUCLENDIR',
-        taskDescription: 'Metni hukuki uslup ve ikna gucu acisindan guclendir.'
+        taskDescription: 'Metni hukuki uslup ve ikna gucu acisindan guclendir.',
     },
     rewrite: {
         systemInstruction: 'Sen Turkce hukuk metni editorusun. Metni profesyonel, acik ve resmi bir dille yeniden yaz.',
         taskTitle: 'YENIDEN_YAZ',
-        taskDescription: 'Metni profesyonel hukuki dille yeniden yaz.'
-    }
+        taskDescription: 'Metni profesyonel hukuki dille yeniden yaz.',
+    },
 };
 
 const normalizeRewriteMode = (mode) => {
@@ -49,10 +50,14 @@ export default async function handler(req, res) {
 
         const normalizedMode = normalizeRewriteMode(mode);
         const modeConfig = REWRITE_MODE_CONFIG[normalizedMode];
+        const currentDateContext = getCurrentDateContext();
 
         const promptText = `
 GOREV: ${modeConfig.taskTitle}
 ACIKLAMA: ${modeConfig.taskDescription}
+
+GUNCEL TARIH BAGLAMI:
+${currentDateContext.instruction}
 
 KURALLAR:
 - Turkce yaz.
@@ -66,7 +71,9 @@ METIN:
         const response = await ai.models.generateContent({
             model: MODEL_NAME,
             contents: promptText,
-            config: { systemInstruction: modeConfig.systemInstruction },
+            config: {
+                systemInstruction: `${currentDateContext.instruction}\n\n${modeConfig.systemInstruction}`,
+            },
         });
 
         const output = typeof response.text === 'string' ? response.text.trim() : '';

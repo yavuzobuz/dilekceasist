@@ -1,5 +1,6 @@
 import { applyCors, getSafeErrorMessage } from '../../lib/api/cors.js';
 import { GEMINI_MODEL_NAME, getGeminiClient } from './_shared.js';
+import { getCurrentDateContext } from './current-date.js';
 
 const MODEL_NAME = GEMINI_MODEL_NAME;
 
@@ -16,22 +17,28 @@ export default async function handler(req, res) {
 
     try {
         const ai = getGeminiClient();
-        const params = req.body;
+        const params = req.body || {};
+        const currentDateContext = getCurrentDateContext();
 
-        const systemInstruction = `Sen üst düzey bir Türk hukuk editörüsün. Dilekçeyi gözden geçir ve iyileştir.`;
+        const systemInstruction = `${currentDateContext.instruction}
+
+Sen ust duzey bir Turk hukuk editorusun. Dilekceyi gozden gecir ve iyilestir.`;
 
         const promptText = `
-**GÖREV: DİLEKÇE TASLAĞI İYİLEŞTİRME**
+**GOREV: DILEKCE TASLAGI IYILESTIRME**
 
-**MEVCUT DİLEKÇE:**
-${params.currentPetition}
+**GUNCEL TARIH BAGLAMI:**
+${currentDateContext.instruction}
 
-**BAĞLAM:**
-- Kullanıcı Rolü: ${params.userRole}
-- Dilekçe Türü: ${params.petitionType}
-- Olay Özeti: ${params.analysisSummary || '-'}
+**MEVCUT DILEKCE:**
+${params.currentPetition || ''}
 
-**İYİLEŞTİRİLMİŞ NİHAİ DİLEKÇE:**
+**BAGLAM:**
+- Kullanici Rolu: ${params.userRole || '-'}
+- Dilekce Turu: ${params.petitionType || '-'}
+- Olay Ozeti: ${params.analysisSummary || '-'}
+
+**IYILESTIRILMIS NIHAI DILEKCE:**
 `;
 
         const response = await ai.models.generateContent({
@@ -40,8 +47,7 @@ ${params.currentPetition}
             config: { systemInstruction },
         });
 
-        res.json({ text: response.text.trim() });
-
+        res.json({ text: String(response?.text || '').trim() });
     } catch (error) {
         console.error('Review Error:', error);
         res.status(500).json({ error: getSafeErrorMessage(error, 'Review API error') });

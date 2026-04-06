@@ -8,6 +8,7 @@ import {
     GEMINI_STABLE_FALLBACK_MODEL_NAME,
     getGeminiClient,
 } from './_shared.js';
+import { getCurrentDateContext } from './current-date.js';
 
 const MODEL_NAME = GEMINI_PETITION_MODEL_NAME || GEMINI_MODEL_NAME;
 const FALLBACK_MODEL_NAME = GEMINI_STABLE_FALLBACK_MODEL_NAME;
@@ -539,6 +540,7 @@ const DOCUMENT_REQUIREMENTS_HELP_TEXT = [
 const DOCUMENT_UPLOADED_BUT_ANALYSIS_MISSING_TEXT = 'Belge yuklenmis gorunuyor ancak analiz ozeti henuz olusmamis. Once "Belgeleri Analiz Et" adimini tamamla.';
 
 function buildGenerationPrompt(params) {
+    const currentDateContext = getCurrentDateContext();
     const legalEvidence = formatLegalResultsForPrompt(params);
     const detailedAnalysis = formatAnalysisInsightsForPrompt(params.analysisInsights);
     const mandatoryCitationChecklist = buildMandatoryCitationChecklist(params);
@@ -546,6 +548,9 @@ function buildGenerationPrompt(params) {
 
     return `
 ## DILEKCE OLUSTURMA TALIMATI
+
+### GUNCEL TARIH BAGLAMI
+${currentDateContext.instruction}
 
 ### GIRDILER
 **Dilekce Turu:** ${params.petitionType}
@@ -592,9 +597,13 @@ ${mandatoryCitationChecklist}
 }
 
 function buildRepairPrompt(params, draftText) {
+    const currentDateContext = getCurrentDateContext();
     const minimumRequiredLegalCitations = getMinimumRequiredLegalCitationCount(params);
     return `
 Asagidaki dilekce taslagi, saglanan web arastirmasini ve emsal kararlarini yeterince kullanmadigi icin revize edilecektir.
+
+## GUNCEL TARIH BAGLAMI
+${currentDateContext.instruction}
 
 ## DETAYLI HUKUKI ANALIZ
 ${formatAnalysisInsightsForPrompt(params.analysisInsights)}
@@ -661,7 +670,10 @@ export default async function handler(req, res) {
 
         const effectiveParams = await summarizeLegalResults(ai, params);
 
-        const systemInstruction = `Sen, Turk hukuk sisteminde 20+ yil deneyime sahip, ust duzey bir hukuk danismani ve dava dilekcesi yazim uzmansin.
+        const currentDateContext = getCurrentDateContext();
+        const systemInstruction = `${currentDateContext.instruction}
+
+Sen, Turk hukuk sisteminde 20+ yil deneyime sahip, ust duzey bir hukuk danismani ve dava dilekcesi yazim uzmansin.
 
 ## SENIN GOREVIN
 Saglanan ham verileri, profesyonel, detayli, gerekceli ve dava stratejisi kuran bir hukuki anlatia donusturmek.

@@ -4,6 +4,7 @@ import analyzeHandler from '../gemini/analyze.js';
 import rewriteHandler from '../gemini/rewrite.js';
 import webSearchHandler from '../gemini/web-search.js';
 import { buildSystemInstruction } from '../gemini/chat.js';
+import { getCurrentDateContext } from '../gemini/current-date.js';
 import { resolveWordAssistantIntent } from '../../lib/assistant/intent-routing.js';
 import { buildDocumentAnalyzerResult, buildLegalResultsPrompt } from '../../lib/assistant/legal-search-context.js';
 import { buildAssistantChatContext } from '../../lib/assistant/chat-context-builder.js';
@@ -174,7 +175,9 @@ const performAssistantChatCompletion = async ({
     analysisSummary = '',
 } = {}) => {
     const ai = getGeminiClient();
+    const currentDateContext = getCurrentDateContext();
     const userMessage = [
+        `Guncel tarih baglami:\n${currentDateContext.instruction}`,
         normalizeText(message),
         selectionText ? `Word secimi:\n${selectionText}` : '',
         documentText ? `Belge baglami:\n${documentText}` : '',

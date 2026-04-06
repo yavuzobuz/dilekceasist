@@ -1,6 +1,7 @@
 import { applyCors, getSafeErrorMessage } from '../../lib/api/cors.js';
 import { AI_CONFIG } from '../../config.js';
 import { GEMINI_STABLE_FALLBACK_MODEL_NAME, getGeminiClient } from './_shared.js';
+import { getCurrentDateContext } from './current-date.js';
 
 const MODEL_NAME = GEMINI_STABLE_FALLBACK_MODEL_NAME || 'gemini-2.5-flash';
 const SEARCH_TIMEOUT_MS = Number(process.env.GEMINI_WEB_SEARCH_TIMEOUT_MS || 45000);
@@ -86,10 +87,14 @@ const runWithRetry = async (task, { retries = SEARCH_MAX_RETRIES, initialDelayMs
 };
 
 const buildPrimaryPrompt = (keywords) => {
+    const currentDateContext = getCurrentDateContext();
     const mevzuatQueries = keywords.map((kw) => `"${kw}" kanun maddesi hukum`);
 
     return `
 ## ARAMA GOREVI: HUKUKI WEB ARASTIRMASI
+
+### GUNCEL TARIH BAGLAMI
+${currentDateContext.instruction}
 
 ### ANAHTAR KELIMELER
 ${keywords.join(', ')}
@@ -108,7 +113,9 @@ ${mevzuatQueries.map((q) => `- ${q}`).join('\n')}
 `;
 };
 
-const SYSTEM_INSTRUCTION = `Sen, Turk hukuku alaninda genel web arastirmasi yapan bir yardimci asistansin.
+const SYSTEM_INSTRUCTION = `${getCurrentDateContext().instruction}
+
+Sen, Turk hukuku alaninda genel web arastirmasi yapan bir yardimci asistansin.
 Uydurma karar veya kaynak verme.
 Konuyu kisa, net ve kullanisli sekilde ozetle.`;
 

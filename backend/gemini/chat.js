@@ -2,6 +2,7 @@ import { Type } from '@google/genai';
 import { consumeGenerationCredit, TRIAL_DAILY_GENERATION_LIMIT } from '../../lib/api/generationQuota.js';
 import { applyCors, getSafeErrorMessage } from '../../lib/api/cors.js';
 import { GEMINI_MODEL_NAME, getGeminiClient } from './_shared.js';
+import { getCurrentDateContext } from './current-date.js';
 
 const MODEL_NAME = GEMINI_MODEL_NAME;
 
@@ -21,6 +22,7 @@ const appendGeminiFileParts = (parts, files) => {
 
 export const buildSystemInstruction = ({ analysisSummary, context }) => {
     const safeContext = context && typeof context === 'object' ? context : {};
+    const currentDateContext = getCurrentDateContext();
     const summary = normalizeText(analysisSummary);
     const keywords = Array.isArray(safeContext.searchKeywords)
         ? safeContext.searchKeywords.filter(Boolean).join(', ')
@@ -82,6 +84,7 @@ export const buildSystemInstruction = ({ analysisSummary, context }) => {
 
     return [
         'Sen Turk hukuku konusunda uzman bir hukuk asistanisin.',
+        currentDateContext.instruction,
         'ONEMLI KURALLAR:',
         '- Dogrulanmamis kaynak uydurma.',
         '- Kullanici belge isterse generate_document fonksiyonunu kullan.',
