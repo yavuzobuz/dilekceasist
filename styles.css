@@ -1,0 +1,812 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+
+  /* Slide in animations */
+  @keyframes slide-in-right {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-out-right {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+
+    to {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+
+  .animate-slide-in-right {
+    animation: slide-in-right 0.3s ease-out forwards;
+  }
+
+  .animate-slide-out-right {
+    animation: slide-out-right 0.3s ease-in forwards;
+  }
+
+  /* Shimmer effect for loading */
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s infinite linear;
+    background: linear-gradient(to right,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.05) 50%,
+        rgba(255, 255, 255, 0) 100%);
+    background-size: 1000px 100%;
+  }
+
+  /* Bounce animation for icons */
+  @keyframes bounce-slow {
+
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(-5px);
+    }
+  }
+
+  .animate-bounce-slow {
+    animation: bounce-slow 2s ease-in-out infinite;
+  }
+
+  /* Glow pulse */
+  @keyframes glow-pulse {
+
+    0%,
+    100% {
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+    }
+
+    50% {
+      box-shadow: 0 0 40px rgba(59, 130, 246, 0.8);
+    }
+  }
+
+  .animate-glow-pulse {
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+
+  /* Breathing alert animation */
+  @keyframes breathe-attention {
+    0%,
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 rgba(245, 158, 11, 0.0);
+      opacity: 0.92;
+    }
+
+    50% {
+      transform: scale(1.012);
+      box-shadow: 0 0 24px rgba(245, 158, 11, 0.22);
+      opacity: 1;
+    }
+  }
+
+  .animate-breathe-attention {
+    animation: breathe-attention 2.8s ease-in-out infinite;
+    transform-origin: center;
+    will-change: transform, box-shadow, opacity;
+  }
+
+  /* Fade in up */
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in-up {
+    animation: fade-in-up 0.5s ease-out forwards;
+  }
+
+  /* Fade in */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out forwards;
+  }
+
+  /* Scale in */
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .animate-scale-in {
+    animation: scale-in 0.3s ease-out forwards;
+  }
+
+  /* Gradient animation */
+  @keyframes gradient-x {
+
+    0%,
+    100% {
+      background-size: 200% 200%;
+      background-position: left center;
+    }
+
+    50% {
+      background-size: 200% 200%;
+      background-position: right center;
+    }
+  }
+
+  .animate-gradient-x {
+    animation: gradient-x 3s ease infinite;
+  }
+
+  @keyframes legal-heartbeat {
+    0%,
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 rgba(248, 113, 113, 0);
+    }
+
+    18% {
+      transform: scale(1.04);
+      box-shadow: 0 0 0.65rem rgba(248, 113, 113, 0.18);
+    }
+
+    36% {
+      transform: scale(0.995);
+      box-shadow: 0 0 0 rgba(248, 113, 113, 0);
+    }
+
+    54% {
+      transform: scale(1.03);
+      box-shadow: 0 0 0.8rem rgba(251, 113, 133, 0.16);
+    }
+
+    72% {
+      transform: scale(1);
+      box-shadow: 0 0 0 rgba(248, 113, 113, 0);
+    }
+  }
+
+  .legal-match-highlight {
+    display: inline;
+    padding: 0.08rem 0.28rem;
+    margin: 0 0.03rem;
+    border-radius: 0.42rem;
+    color: #fecaca;
+    background: linear-gradient(135deg, rgba(153, 27, 27, 0.42), rgba(190, 24, 93, 0.18));
+    border: 1px solid rgba(248, 113, 113, 0.22);
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    animation: legal-heartbeat 2.6s ease-in-out infinite;
+  }
+
+  .legal-match-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 9999px;
+    color: #fecaca;
+    background: linear-gradient(135deg, rgba(127, 29, 29, 0.5), rgba(136, 19, 55, 0.28));
+    border: 1px solid rgba(248, 113, 113, 0.22);
+    font-size: 0.72rem;
+    line-height: 1;
+    animation: legal-heartbeat 2.8s ease-in-out infinite;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(31, 41, 55, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.7);
+}
+
+/* Smooth transitions for all interactive elements */
+button,
+input,
+select,
+textarea {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Petition Editor - Legal Document Formatting */
+.petition-editor {
+  font-family: "Times New Roman", Georgia, serif;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #1a1a1a;
+}
+
+.petition-editor p {
+  margin-bottom: 1.2em;
+  text-indent: 0;
+  text-align: justify;
+  orphans: 3;
+  widows: 3;
+}
+
+/* Section headers - legal document style */
+.petition-editor h1,
+.petition-editor h2 {
+  text-align: center;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2em;
+  margin-bottom: 1.5em;
+  border-bottom: 2px solid #333;
+  padding-bottom: 0.5em;
+}
+
+.petition-editor h3,
+.petition-editor h4 {
+  font-weight: bold;
+  margin-top: 1.5em;
+  margin-bottom: 1em;
+  text-decoration: underline;
+}
+
+.petition-editor h1 {
+  font-size: 1.4em;
+}
+
+.petition-editor h2 {
+  font-size: 1.3em;
+}
+
+.petition-editor h3 {
+  font-size: 1.1em;
+}
+
+.petition-editor h4 {
+  font-size: 1em;
+}
+
+/* Horizontal rule as section separator */
+.petition-editor hr {
+  border: none;
+  border-top: 1px solid #666;
+  margin: 2em 0;
+}
+
+/* Lists with proper legal numbering */
+.petition-editor ul,
+.petition-editor ol {
+  margin: 1em 0;
+  padding-left: 2.5em;
+}
+
+.petition-editor ol {
+  list-style-type: decimal;
+}
+
+.petition-editor li {
+  margin-bottom: 0.75em;
+  line-height: 1.8;
+  text-align: justify;
+}
+
+.petition-editor li::marker {
+  font-weight: bold;
+}
+
+/* Strong/Bold for important terms */
+.petition-editor strong,
+.petition-editor b {
+  font-weight: 700;
+}
+
+.petition-editor em,
+.petition-editor i {
+  font-style: italic;
+}
+
+.petition-editor u {
+  text-decoration: underline;
+}
+
+/* Blockquote for law citations */
+.petition-editor blockquote {
+  margin: 1.5em 2em;
+  padding: 1em 1.5em;
+  border-left: 4px solid #333;
+  background: #f9f9f9;
+  font-style: italic;
+  color: #333;
+}
+
+/* Line breaks and spacing */
+.petition-editor br {
+  content: "";
+  display: block;
+  margin: 0.5em 0;
+}
+
+/* Table styles for party information */
+.petition-editor table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.5em 0;
+}
+
+.petition-editor th,
+.petition-editor td {
+  border: 1px solid #333;
+  padding: 0.75em 1em;
+  text-align: left;
+}
+
+.petition-editor th {
+  background-color: #f0f0f0;
+  font-weight: 700;
+}
+
+/* Focus ring improvements */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+/* Petition Preview Editor - Same formatting as petition-editor */
+.petition-preview-editor {
+  font-family: "Times New Roman", Georgia, serif;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #1a1a1a;
+}
+
+.petition-preview-editor p {
+  margin-bottom: 1.2em;
+  text-indent: 0;
+  text-align: justify;
+  orphans: 3;
+  widows: 3;
+}
+
+.petition-preview-editor h1,
+.petition-preview-editor h2 {
+  text-align: center;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2em;
+  margin-bottom: 1.5em;
+  border-bottom: 2px solid #333;
+  padding-bottom: 0.5em;
+}
+
+.petition-preview-editor h3,
+.petition-preview-editor h4 {
+  font-weight: bold;
+  margin-top: 1.5em;
+  margin-bottom: 1em;
+  text-decoration: underline;
+}
+
+.petition-preview-editor h1 {
+  font-size: 1.4em;
+}
+
+.petition-preview-editor h2 {
+  font-size: 1.3em;
+}
+
+.petition-preview-editor h3 {
+  font-size: 1.1em;
+}
+
+.petition-preview-editor h4 {
+  font-size: 1em;
+}
+
+.petition-preview-editor hr {
+  border: none;
+  border-top: 1px solid #666;
+  margin: 2em 0;
+}
+
+.petition-preview-editor ul,
+.petition-preview-editor ol {
+  margin: 1em 0;
+  padding-left: 2.5em;
+}
+
+.petition-preview-editor ol {
+  list-style-type: decimal;
+}
+
+.petition-preview-editor li {
+  margin-bottom: 0.75em;
+  line-height: 1.8;
+  text-align: justify;
+}
+
+.petition-preview-editor li::marker {
+  font-weight: bold;
+}
+
+.petition-preview-editor strong,
+.petition-preview-editor b {
+  font-weight: 700;
+}
+
+.petition-preview-editor em,
+.petition-preview-editor i {
+  font-style: italic;
+}
+
+.petition-preview-editor u {
+  text-decoration: underline;
+}
+
+.petition-preview-editor blockquote {
+  margin: 1.5em 2em;
+  padding: 1em 1.5em;
+  border-left: 4px solid #333;
+  background: #f9f9f9;
+  font-style: italic;
+  color: #333;
+}
+
+.petition-preview-editor br {
+  content: "";
+  display: block;
+  margin: 0.5em 0;
+}
+
+.petition-preview-editor table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.5em 0;
+}
+
+.petition-preview-editor th,
+.petition-preview-editor td {
+  border: 1px solid #333;
+  padding: 0.75em 1em;
+  text-align: left;
+}
+
+.petition-preview-editor th {
+  background-color: #f0f0f0;
+  font-weight: 700;
+}
+
+/* =====================
+   AI Sohbet Tema (ai-*)
+   Kolayca değiştirilebilir renk değişkenleri ve yardımcı sınıflar
+   ===================== */
+:root {
+  --ai-surface: #1a0a0a;
+  /* Ana arka plan - koyu kırmızımsı */
+  --ai-surface-2: #2a1111;
+  /* Kart arka planı - daha açık */
+  --ai-border: #4d1919;
+  /* Kenarlık - kırmızımsı gri */
+  --ai-text: #ffeaea;
+  /* Metin - sıcak beyaz */
+  --ai-muted: #d4a5a5;
+  /* Soluk metin - pembımsı gri */
+  --ai-accent: #ef4444;
+  /* Vurgu - site temasına uygun kırmızı (red-500) */
+  --ai-accent-hover: #dc2626;
+  /* Vurgu hover - red-600 */
+  --ai-accent-contrast: #ffffff;
+  /* Vurgu üstü metin - beyaz */
+  --ai-soft: rgba(239, 68, 68, 0.15);
+  /* Yumuşak vurgu arka planı - kırmızı */
+}
+
+/***** Yardımcı sınıflar *****/
+.ai-theme {
+  color: var(--ai-text);
+}
+
+.ai-card {
+  background: var(--ai-surface-2);
+}
+
+.ai-bg {
+  background: var(--ai-surface);
+}
+
+.ai-border {
+  border: 1px solid var(--ai-border);
+}
+
+.ai-muted {
+  color: var(--ai-muted);
+}
+
+.ai-accent-text {
+  color: var(--ai-accent) !important;
+}
+
+.ai-accent-border {
+  border-color: var(--ai-accent) !important;
+}
+
+/* Buton */
+.ai-button {
+  background: var(--ai-accent);
+  color: var(--ai-accent-contrast);
+}
+
+.ai-button:hover {
+  background: var(--ai-accent-hover);
+}
+
+.ai-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Girdi */
+.ai-input {
+  background: #1f2937;
+  border: 2px solid #374151;
+  color: #f9fafb;
+  font-size: 0.95rem;
+}
+
+.ai-input::placeholder {
+  color: #9ca3af;
+}
+
+.ai-input:focus {
+  outline: none;
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+  background: #111827;
+}
+
+/* Sohbet balonları */
+.ai-bubble-user {
+  background: var(--ai-accent);
+  color: var(--ai-accent-contrast);
+}
+
+.ai-bubble-model {
+  background: var(--ai-surface-2);
+  color: var(--ai-text);
+}
+
+/* Link ve ikon vurgusu */
+.ai-link {
+  color: var(--ai-accent);
+}
+
+.ai-link:hover {
+  color: var(--ai-accent-hover);
+}
+
+.ai-icon-accent {
+  color: var(--ai-accent);
+}
+
+/* Yumuşak vurgu blokları */
+.ai-soft-bg {
+  background: var(--ai-soft);
+}
+
+/* Sadece AI Sohbet alanındaki scrollbar'ı özelleştir */
+.ai-theme .ai-scrollable::-webkit-scrollbar {
+  width: 10px;
+}
+
+.ai-theme .ai-scrollable::-webkit-scrollbar-track {
+  background: var(--ai-surface-2);
+  border-radius: 6px;
+}
+
+.ai-theme .ai-scrollable::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--ai-accent), var(--ai-accent-hover));
+  border-radius: 6px;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+}
+
+.ai-theme .ai-scrollable::-webkit-scrollbar-thumb:hover {
+  background: var(--ai-accent-hover);
+  box-shadow: 0 0 12px rgba(220, 38, 38, 0.5);
+}
+
+/* Premium topbar and back button style system */
+:root {
+  --premium-topbar-start: #081122;
+  --premium-topbar-end: #0c172a;
+  --premium-topbar-border: rgba(148, 163, 184, 0.26);
+  --premium-back-surface-a: rgba(15, 23, 42, 0.96);
+  --premium-back-surface-b: rgba(30, 41, 59, 0.92);
+  --premium-back-text: #e2e8f0;
+  --premium-back-muted: #94a3b8;
+  --premium-back-glow: rgba(96, 165, 250, 0.34);
+}
+
+.premium-topbar {
+  position: relative;
+  border-bottom: 1px solid var(--premium-topbar-border);
+  background: linear-gradient(120deg, var(--premium-topbar-start), var(--premium-topbar-end));
+  backdrop-filter: blur(12px);
+  box-shadow: 0 14px 28px rgba(2, 6, 23, 0.42);
+}
+
+.premium-topbar::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(96, 165, 250, 0),
+    rgba(96, 165, 250, 0.45),
+    rgba(96, 165, 250, 0)
+  );
+}
+
+.premium-back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.95rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  background: linear-gradient(135deg, var(--premium-back-surface-b), var(--premium-back-surface-a));
+  color: var(--premium-back-text);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  box-shadow:
+    0 8px 20px rgba(2, 6, 23, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
+}
+
+.premium-back-button:hover {
+  border-color: rgba(96, 165, 250, 0.55);
+  color: #f8fafc;
+  transform: translateY(-1px);
+  box-shadow:
+    0 12px 24px rgba(2, 6, 23, 0.48),
+    0 0 0 1px rgba(96, 165, 250, 0.2),
+    0 0 18px var(--premium-back-glow);
+}
+
+.premium-back-button:active {
+  transform: translateY(0);
+}
+
+.premium-back-button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px rgba(148, 163, 184, 0.9),
+    0 0 0 5px rgba(59, 130, 246, 0.35);
+}
+
+.premium-back-button .premium-back-icon {
+  color: var(--premium-back-muted);
+  transition: color 0.2s ease;
+}
+
+.premium-back-button:hover .premium-back-icon {
+  color: #dbeafe;
+}
+
+.premium-back-button .premium-back-label {
+  line-height: 1;
+}
+
+/* Premium CTA buttons for primary actions */
+:root {
+  --premium-cta-text: #f8fafc;
+  --premium-cta-brand-a: #dc2626;
+  --premium-cta-brand-b: #991b1b;
+  --premium-cta-brand-border: rgba(248, 113, 113, 0.62);
+}
+
+.premium-cta-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.95rem;
+  border-radius: 0.75rem;
+  border: 1px solid transparent;
+  color: var(--premium-cta-text);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow:
+    0 10px 20px rgba(2, 6, 23, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.premium-cta-button:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 14px 26px rgba(2, 6, 23, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.premium-cta-button:active {
+  transform: translateY(0);
+}
+
+.premium-cta-button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px rgba(15, 23, 42, 0.85),
+    0 0 0 5px rgba(148, 163, 184, 0.45);
+}
+
+.premium-cta-button--brand {
+  background: linear-gradient(135deg, var(--premium-cta-brand-a), var(--premium-cta-brand-b));
+  border-color: var(--premium-cta-brand-border);
+  box-shadow:
+    0 12px 26px rgba(127, 29, 29, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.premium-cta-button--brand:hover {
+  background: linear-gradient(135deg, #b91c1c, #7f1d1d);
+  box-shadow:
+    0 16px 30px rgba(127, 29, 29, 0.52),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}

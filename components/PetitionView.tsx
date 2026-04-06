@@ -1,0 +1,1032 @@
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
+import { PetitionViewProps } from '../types';
+import { LoadingSpinner } from './LoadingSpinner';
+import { DocumentTextIcon, LinkIcon, SparklesIcon, ArrowDownTrayIcon } from './Icon';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import { saveAs } from 'file-saver';
+import { marked } from 'marked';
+import { sanitizeHtml } from '../src/utils/sanitizeHtml';
+import { supabase } from '../lib/supabase';
+
+// Configure marked for proper line breaks and formatting
+marked.setOptions({
+  breaks: true, // Convert \n to <br>
+  gfm: true, // GitHub Flavored Markdown
+});
+
+// Extend Window interface for find method (non-standard but widely supported)
+declare global {
+  interface Window {
+    find(string: string, caseSensitive?: boolean, backwards?: boolean, wrapAround?: boolean): boolean;
+  }
+}
+
+// Helper function to convert markdown to HTML
+const convertMarkdownToHtml = (text: string): string => {
+  if (!text) return '';
+
+  // First, normalize newlines and ensure proper paragraph separation
+  const processed = text
+    .replace(/\r\n/g, '\n') // Normalize line endings
+    .replace(/\n{3,}/g, '\n\n') // Reduce multiple newlines to max 2
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>') // Bold
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>'); // Italic
+
+  // Use marked to convert to HTML
+  const html = sanitizeHtml(marked.parse(processed) as string);
+
+  return html;
+};
+
+const buildAuthorizedJsonHeaders = async (): Promise<Record<string, string>> => {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      headers.Authorization = `Bearer ${session.access_token}`;
+    }
+  } catch (error) {
+    console.error('Could not load auth session for DOCX download:', error);
+  }
+
+  return headers;
+};
+
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const FloatingToolbar: React.FC<{
+  position: { top: number; left: number } | null;
+  onRewrite: () => void;
+  isRewriting: boolean;
+}> = ({ position, onRewrite, isRewriting }) => {
+  if (!position) return null;
+
+  return (
+    <div
+      className="absolute z-10"
+      style={{ top: `${position.top}px`, left: `${position.left}px` }}
+    >
+      <button
+        onClick={onRewrite}
+        disabled={isRewriting}
+        className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 border border-blue-500 text-white rounded-lg shadow-xl hover:bg-gray-800 transition-all text-sm"
+      >
+        {isRewriting ? (
+          <LoadingSpinner className="h-4 w-4" />
+        ) : (
+          <SparklesIcon className="h-4 w-4 text-blue-400" />
+        )}
+        <span>Yeniden Yaz</span>
+      </button>
+    </div>
+  );
+};
+
+
+export const PetitionView: React.FC<PetitionViewProps> = ({ petition, setGeneratedPetition, sources, isLoading, onRewrite, onReview, isReviewing, petitionVersion, officeLogoUrl, corporateHeader }) => {
+  const editorRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [selectionRange, setSelectionRange] = useState<Range | null>(null);
+  const [toolbarPosition, setToolbarPosition] = useState<{ top: number, left: number } | null>(null);
+  const [isRewriting, setIsRewriting] = useState(false);
+  const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [showFormattingToolbar, setShowFormattingToolbar] = useState(true);
+  const [fontFamily, setFontFamily] = useState('Times New Roman');
+  const [fontSize, setFontSize] = useState('3');
+  const [textColor, setTextColor] = useState('#111827');
+  const [highlightColor, setHighlightColor] = useState('#fff59d');
+
+  // Find & Replace state
+  const [showFindReplace, setShowFindReplace] = useState(false);
+  const [findText, setFindText] = useState('');
+  const [replaceText, setReplaceText] = useState('');
+  const [matchCase, setMatchCase] = useState(false);
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(-1);
+  const [totalMatches, setTotalMatches] = useState(0);
+
+
+  // Keep the editable DOM in sync on first mount and subsequent remounts.
+  useLayoutEffect(() => {
+    const syncEditorContent = () => {
+      if (!editorRef.current) return;
+      editorRef.current.innerHTML = petition ? convertMarkdownToHtml(petition) : '';
+    };
+
+    syncEditorContent();
+
+    const frameId = window.requestAnimationFrame(syncEditorContent);
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [petition, petitionVersion, isLoading, isReviewing]);
+
+  const handleMouseUp = useCallback(() => {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      if (!range.collapsed) {
+        setSelectionRange(range.cloneRange());
+        const rect = range.getBoundingClientRect();
+        const editorBounds = editorRef.current?.getBoundingClientRect();
+        if (editorBounds) {
+          // Position toolbar above the selection
+          const top = rect.top - editorBounds.top - 40;
+          const left = rect.left - editorBounds.left + (rect.width / 2);
+          setToolbarPosition({ top, left });
+        }
+      } else {
+        setToolbarPosition(null);
+        setSelectionRange(null);
+      }
+    }
+  }, []);
+
+  const handleInput = (event: React.FormEvent<HTMLDivElement>) => {
+    // Sync state for direct edits
+    setGeneratedPetition(sanitizeHtml(event.currentTarget.innerHTML));
+  };
+
+  const handleRewrite = async () => {
+    if (!selectionRange) return;
+
+    const selectedText = selectionRange.toString();
+    setIsRewriting(true);
+    setToolbarPosition(null);
+
+    try {
+      const rewrittenText = await onRewrite(selectedText);
+
+      // Restore selection to ensure we're acting on the right part of the DOM
+      const selection = window.getSelection();
+      if (selection) {
+        selection.removeAllRanges();
+        selection.addRange(selectionRange);
+      }
+
+      // Use modern range manipulation instead of deprecated execCommand.
+      // This is safer and more reliable.
+      selectionRange.deleteContents();
+      selectionRange.insertNode(document.createTextNode(rewrittenText));
+
+      // Update the main state with the new editor content
+      if (editorRef.current) {
+        setGeneratedPetition(sanitizeHtml(editorRef.current.innerHTML));
+      }
+
+    } catch (error) {
+      console.error("Rewrite failed:", error);
+      // Optional: Show an error to the user
+    } finally {
+      setIsRewriting(false);
+      setSelectionRange(null);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!contentRef.current) return;
+    setIsDownloading(true);
+    setIsDownloadMenuOpen(false);
+    try {
+      const canvas = await html2canvas(contentRef.current, {
+        scale: 2, // Higher scale for better quality
+        backgroundColor: '#ffffff', // White background to match editor
+        useCORS: true,
+      });
+      const imgData = canvas.toDataURL('image/png');
+
+      const pdf = new jsPDF({
+        orientation: 'p',
+        unit: 'px',
+        format: [canvas.width, canvas.height]
+      });
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.save('dilekce.pdf');
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleDownloadDocx = async () => {
+    if (!editorRef.current) return;
+    setIsDownloading(true);
+    setIsDownloadMenuOpen(false);
+    try {
+      // Construct HTML with branding if available
+      let contentHtml = sanitizeHtml(editorRef.current.innerHTML);
+
+      if (officeLogoUrl || corporateHeader) {
+        let brandingHtml = '<div style="margin-bottom: 20px; display: flex; gap: 20px; align-items: center;">';
+        if (officeLogoUrl) {
+          brandingHtml += `<img src="${officeLogoUrl}" width="80" height="80" style="width: 80px; height: 80px; object-fit: contain;" />`;
+        }
+        if (corporateHeader) {
+          brandingHtml += `<div style="font-family: 'Times New Roman'; white-space: pre-line;">${sanitizeHtml(corporateHeader)}</div>`;
+        }
+        brandingHtml += '</div><hr />';
+        contentHtml = brandingHtml + contentHtml;
+      }
+
+      const htmlString = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${contentHtml}</body></html>`;
+
+      // Call API endpoint to generate DOCX
+      const response = await fetch('/api/html-to-docx', {
+        method: 'POST',
+        headers: await buildAuthorizedJsonHeaders(),
+        body: JSON.stringify({
+          html: htmlString,
+          options: {
+            font: 'Calibri',
+            fontSize: '22', // Corresponds to 11pt
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate DOCX');
+      }
+
+      const blob = await response.blob();
+      saveAs(blob, 'dilekce.docx');
+    } catch (error) {
+      console.error("Error generating DOCX:", error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleDownloadTxt = () => {
+    if (!editorRef.current) return;
+    setIsDownloading(true);
+    setIsDownloadMenuOpen(false);
+    try {
+      // Extract plain text from HTML content
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = sanitizeHtml(editorRef.current.innerHTML);
+      let textContent = tempDiv.innerText || tempDiv.textContent || '';
+
+      // Prepend corporate header to text content
+      if (corporateHeader) {
+        textContent = `${corporateHeader}\n\n${textContent}`;
+      }
+
+      // Create blob with UTF-8 encoding
+      const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+      saveAs(blob, 'dilekce.txt');
+    } catch (error) {
+      console.error("Error generating TXT:", error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const syncEditorContent = useCallback(() => {
+    if (editorRef.current) {
+      setGeneratedPetition(sanitizeHtml(editorRef.current.innerHTML));
+    }
+  }, [setGeneratedPetition]);
+
+  // Text formatting functions
+  const formatText = useCallback((command: string, value?: string) => {
+    if (!editorRef.current) return;
+
+    editorRef.current.focus();
+    document.execCommand('styleWithCSS', false, 'true');
+    document.execCommand(command, false, value);
+    syncEditorContent();
+  }, [syncEditorContent]);
+
+  const getSearchRanges = useCallback((searchTerm: string): Range[] => {
+    if (!editorRef.current || !searchTerm) return [];
+
+    const textNodes: Array<{ node: Text; start: number; end: number }> = [];
+    const walker = document.createTreeWalker(editorRef.current, NodeFilter.SHOW_TEXT);
+    let fullText = '';
+    let cursor = 0;
+
+    while (walker.nextNode()) {
+      const node = walker.currentNode as Text;
+      const value = node.nodeValue || '';
+      const start = cursor;
+      cursor += value.length;
+      textNodes.push({ node, start, end: cursor });
+      fullText += value;
+    }
+
+    if (!fullText) return [];
+
+    const flags = matchCase ? 'g' : 'gi';
+    const regex = new RegExp(escapeRegExp(searchTerm), flags);
+    const ranges: Range[] = [];
+
+    const resolvePosition = (index: number): { node: Text; offset: number } | null => {
+      for (const textNode of textNodes) {
+        if (index >= textNode.start && index <= textNode.end) {
+          return { node: textNode.node, offset: index - textNode.start };
+        }
+      }
+      return null;
+    };
+
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(fullText)) !== null) {
+      const start = match.index;
+      const end = start + match[0].length;
+
+      const startPos = resolvePosition(start);
+      const endPos = resolvePosition(end);
+      if (startPos && endPos) {
+        const range = document.createRange();
+        range.setStart(startPos.node, startPos.offset);
+        range.setEnd(endPos.node, endPos.offset);
+        ranges.push(range);
+      }
+
+      if (match[0].length === 0) {
+        regex.lastIndex += 1;
+      }
+    }
+
+    return ranges;
+  }, [matchCase]);
+
+  const focusRange = useCallback((range: Range) => {
+    const selection = window.getSelection();
+    if (!selection) return;
+
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    const container = range.startContainer.nodeType === Node.TEXT_NODE
+      ? (range.startContainer.parentElement as HTMLElement | null)
+      : (range.startContainer as HTMLElement);
+    container?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, []);
+
+  // Find & Replace functions
+  const highlightMatches = useCallback((searchTerm: string) => {
+    if (!searchTerm) {
+      setTotalMatches(0);
+      setCurrentMatchIndex(-1);
+      return;
+    }
+
+    const ranges = getSearchRanges(searchTerm);
+    setTotalMatches(ranges.length);
+    if (ranges.length === 0) {
+      setCurrentMatchIndex(-1);
+    } else if (currentMatchIndex >= ranges.length) {
+      setCurrentMatchIndex(ranges.length - 1);
+    }
+  }, [currentMatchIndex, getSearchRanges]);
+
+  const findNext = useCallback(() => {
+    if (!findText) return;
+
+    const ranges = getSearchRanges(findText);
+    if (ranges.length === 0) {
+      setTotalMatches(0);
+      setCurrentMatchIndex(-1);
+      return;
+    }
+
+    const nextIndex = (currentMatchIndex + 1) % ranges.length;
+    setCurrentMatchIndex(nextIndex);
+    setTotalMatches(ranges.length);
+    focusRange(ranges[nextIndex]);
+  }, [findText, currentMatchIndex, getSearchRanges, focusRange]);
+
+  const findPrevious = useCallback(() => {
+    if (!findText) return;
+
+    const ranges = getSearchRanges(findText);
+    if (ranges.length === 0) {
+      setTotalMatches(0);
+      setCurrentMatchIndex(-1);
+      return;
+    }
+
+    const prevIndex = currentMatchIndex <= 0 ? ranges.length - 1 : currentMatchIndex - 1;
+    setCurrentMatchIndex(prevIndex);
+    setTotalMatches(ranges.length);
+    focusRange(ranges[prevIndex]);
+  }, [findText, currentMatchIndex, getSearchRanges, focusRange]);
+
+  const replaceOne = useCallback(() => {
+    if (!findText) return;
+
+    const ranges = getSearchRanges(findText);
+    if (ranges.length === 0) {
+      setTotalMatches(0);
+      setCurrentMatchIndex(-1);
+      return;
+    }
+
+    const targetIndex = currentMatchIndex >= 0 ? Math.min(currentMatchIndex, ranges.length - 1) : 0;
+    const targetRange = ranges[targetIndex];
+    targetRange.deleteContents();
+    targetRange.insertNode(document.createTextNode(replaceText));
+
+    syncEditorContent();
+
+    const remainingRanges = getSearchRanges(findText);
+    setTotalMatches(remainingRanges.length);
+    if (remainingRanges.length === 0) {
+      setCurrentMatchIndex(-1);
+      return;
+    }
+
+    const nextIndex = targetIndex % remainingRanges.length;
+    setCurrentMatchIndex(nextIndex);
+    focusRange(remainingRanges[nextIndex]);
+  }, [findText, replaceText, currentMatchIndex, getSearchRanges, focusRange, syncEditorContent]);
+
+  const replaceAll = useCallback(() => {
+    if (!editorRef.current || !findText) return;
+
+    const flags = matchCase ? 'g' : 'gi';
+    const walker = document.createTreeWalker(editorRef.current, NodeFilter.SHOW_TEXT);
+    let replacements = 0;
+
+    while (walker.nextNode()) {
+      const node = walker.currentNode as Text;
+      const text = node.nodeValue || '';
+      if (!text) continue;
+
+      const regex = new RegExp(escapeRegExp(findText), flags);
+      const updated = text.replace(regex, () => {
+        replacements += 1;
+        return replaceText;
+      });
+
+      if (updated !== text) {
+        node.nodeValue = updated;
+      }
+    }
+
+    if (replacements > 0) {
+      syncEditorContent();
+    }
+
+    const remaining = getSearchRanges(findText);
+    setTotalMatches(remaining.length);
+    setCurrentMatchIndex(remaining.length > 0 ? 0 : -1);
+    if (remaining.length > 0) {
+      focusRange(remaining[0]);
+    }
+  }, [findText, replaceText, matchCase, syncEditorContent, getSearchRanges, focusRange]);
+
+  // Update matches when find text or match case changes
+  useEffect(() => {
+    if (findText) {
+      highlightMatches(findText);
+    }
+  }, [findText, matchCase, highlightMatches]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+F or Ctrl+H to open Find & Replace
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'h' || e.key === 'F' || e.key === 'H')) {
+        e.preventDefault();
+        setShowFindReplace(true);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleDownloadUdf = async () => {
+    if (!editorRef.current) return;
+    setIsDownloading(true);
+    setIsDownloadMenuOpen(false);
+    try {
+      const { generateUdfBlob } = await import('../services/udfGenerator');
+      const blob = await generateUdfBlob({
+        html: sanitizeHtml(editorRef.current.innerHTML),
+        title: 'Dilekçe',
+        corporateHeader: corporateHeader || undefined,
+      });
+      saveAs(blob, 'dilekce.udf');
+    } catch (error) {
+      console.error("Error generating UDF:", error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+
+  if (isLoading) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center text-gray-400 p-6">
+        <LoadingSpinner className="h-10 w-10 mb-4" />
+        <p className="text-lg font-semibold">Dilekçeniz oluşturuluyor...</p>
+        <p className="text-sm">AI, belgeleri analiz ediyor ve web'de araştırma yapıyor.</p>
+      </div>
+    );
+  }
+
+  if (!petition) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center text-center text-gray-500 p-6">
+        <DocumentTextIcon className="h-16 w-16 mb-4" />
+        <h3 className="text-xl font-bold text-gray-300">Dilekçeniz Burada Görüntülenecek</h3>
+        <p className="mt-2 max-w-md">Sol taraftaki bilgileri doldurduktan sonra "Dilekçeyi Oluştur" butonuna tıklayarak başlayın.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full flex flex-col relative bg-gradient-to-br from-gray-900 to-gray-800">
+      <FloatingToolbar
+        position={toolbarPosition}
+        onRewrite={handleRewrite}
+        isRewriting={isRewriting}
+      />
+
+      {/* Compact Toolbar */}
+      <div className="flex-shrink-0 bg-gray-800/50 border-b border-gray-700/50 backdrop-blur-sm">
+        <div className="max-w-[1400px] mx-auto px-3 sm:px-6 py-2 flex items-center justify-between gap-2">
+          {/* Left side - Tools */}
+          <div className="flex items-center gap-1 sm:gap-2">
+            <button
+              onClick={() => setShowFormattingToolbar(!showFormattingToolbar)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-gray-700/50 hover:bg-gray-600 text-gray-300 hover:text-white rounded-lg transition-all text-sm"
+              title="Biçimlendirme araçlarını göster/gizle"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              <span className="hidden sm:inline">Biçimlendirme</span>
+            </button>
+
+            <button
+              onClick={() => setShowFindReplace(!showFindReplace)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-gray-700/50 hover:bg-gray-600 text-gray-300 hover:text-white rounded-lg transition-all text-sm"
+              title="Bul ve Değiştir (Ctrl+H)"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <span className="hidden sm:inline">Bul & Değiştir</span>
+            </button>
+          </div>
+
+          {/* Right side - Actions */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onReview}
+              disabled={isReviewing}
+              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-all text-sm"
+              title="Taslağı iyileştir"
+            >
+              {isReviewing ? (
+                <LoadingSpinner className="h-4 w-4" />
+              ) : (
+                <SparklesIcon className="h-4 w-4" />
+              )}
+              <span className="hidden sm:inline">Taslağı İyileştir</span>
+            </button>
+            <div className="relative">
+              <button
+                onClick={() => setIsDownloadMenuOpen(!isDownloadMenuOpen)}
+                disabled={isDownloading}
+                className="flex items-center gap-2 px-3 py-1.5 bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 text-white font-medium rounded-lg transition-all text-sm"
+              >
+                {isDownloading ? (
+                  <LoadingSpinner className="h-4 w-4" />
+                ) : (
+                  <ArrowDownTrayIcon className="h-4 w-4" />
+                )}
+                <span className="hidden sm:inline">İndir</span>
+              </button>
+              {isDownloadMenuOpen && (
+                <div
+                  onMouseLeave={() => setIsDownloadMenuOpen(false)}
+                  className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-600 rounded-md shadow-lg z-20"
+                >
+                  <ul className="py-1">
+                    <li>
+                      <button
+                        onClick={handleDownloadPdf}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700"
+                      >
+                        📕 PDF olarak indir
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={handleDownloadDocx}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700"
+                      >
+                        📘 Word (.docx) olarak indir
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={handleDownloadUdf}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700"
+                      >
+                        📄 UDF olarak indir
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={handleDownloadTxt}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700"
+                      >
+                        📝 Metin (.txt) olarak indir
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Formatting Toolbar */}
+      {showFormattingToolbar && (
+        <div className="flex-shrink-0 border-b border-gray-700/50 bg-gray-800/30 overflow-x-auto">
+          <div className="max-w-[1400px] mx-auto px-3 sm:px-6 py-2 flex items-center gap-1 min-w-max">
+            {/* Undo / Redo */}
+            <div className="flex items-center gap-1 border-r border-gray-600 pr-2">
+              <button
+                onClick={() => formatText('undo')}
+                className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                title="Geri Al (Ctrl+Z)"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h11a4 4 0 110 8h-1M3 10l4-4m-4 4l4 4" />
+                </svg>
+              </button>
+              <button
+                onClick={() => formatText('redo')}
+                className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                title="Yinele (Ctrl+Y)"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H10a4 4 0 100 8h1m10-8l-4-4m4 4l-4 4" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Text Formatting */}
+            <div className="flex items-center gap-1 border-r border-gray-600 pr-2">
+              <button
+                onClick={() => formatText('bold')}
+                className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                title="Kalın (Ctrl+B)"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M3 5a1 1 0 011-1h5.5a3.5 3.5 0 110 7H4v5a1 1 0 11-2 0V5zm2 5h5.5a1.5 1.5 0 100-3H5v3z" />
+                </svg>
+              </button>
+              <button
+                onClick={() => formatText('italic')}
+                className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                title="İtalik (Ctrl+I)"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M8 5a1 1 0 100 2h1.586l-4.293 4.293a1 1 0 101.414 1.414L11 8.414V10a1 1 0 102 0V5H8z" transform="matrix(1 0 -0.3 1 0 0)" />
+                  <text x="7" y="14" fontSize="12" fontStyle="italic" fill="currentColor">I</text>
+                </svg>
+              </button>
+              <button
+                onClick={() => formatText('underline')}
+                className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                title="Altı Çizili (Ctrl+U)"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M4 3a1 1 0 011 1v6a5 5 0 0010 0V4a1 1 0 112 0v6a7 7 0 11-14 0V4a1 1 0 011-1z" />
+                  <path d="M2 17h16v1H2v-1z" />
+                </svg>
+              </button>
+              <button
+                onClick={() => formatText('strikeThrough')}
+                className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                title="Üstü Çizili"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12h18M9 5l-3 7m0 0l3 7m-3-7h12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Alignment */}
+            <div className="flex items-center gap-1 border-r border-gray-600 pr-2">
+              <button
+                onClick={() => formatText('justifyLeft')}
+                className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                title="Sola Hizala"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h10M4 18h16" />
+                </svg>
+              </button>
+              <button
+                onClick={() => formatText('justifyCenter')}
+                className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                title="Ortala"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M7 12h10M4 18h16" />
+                </svg>
+              </button>
+              <button
+                onClick={() => formatText('justifyRight')}
+                className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                title="Sağa Hizala"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M10 12h10M4 18h16" />
+                </svg>
+              </button>
+              <button
+                onClick={() => formatText('justifyFull')}
+                className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                title="İki Yana Yasla"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Lists */}
+            <div className="flex items-center gap-1 border-r border-gray-600 pr-2">
+              <button
+                onClick={() => formatText('insertUnorderedList')}
+                className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                title="Madde İşaretli Liste"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+                </svg>
+              </button>
+              <button
+                onClick={() => formatText('insertOrderedList')}
+                className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                title="Numaralı Liste"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5h12M9 12h12M9 19h12M3 5v4m0 4v4" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Font Family */}
+            <div className="flex items-center gap-1 border-r border-gray-600 pr-2">
+              <select
+                value={fontFamily}
+                onChange={(e) => {
+                  setFontFamily(e.target.value);
+                  formatText('fontName', e.target.value);
+                }}
+                className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded border border-gray-600 focus:border-red-500 focus:outline-none"
+                title="Yazi Tipi"
+              >
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Calibri">Calibri</option>
+                <option value="Arial">Arial</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Verdana">Verdana</option>
+              </select>
+            </div>
+
+            {/* Font Size */}
+            <div className="flex items-center gap-1 border-r border-gray-600 pr-2">
+              <select
+                value={fontSize}
+                onChange={(e) => {
+                  setFontSize(e.target.value);
+                  formatText('fontSize', e.target.value);
+                }}
+                className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded border border-gray-600 focus:border-red-500 focus:outline-none"
+                title="Font Boyutu"
+              >
+                <option value="1">10px</option>
+                <option value="2">12px</option>
+                <option value="3">14px</option>
+                <option value="4">16px</option>
+                <option value="5">18px</option>
+                <option value="6">24px</option>
+                <option value="7">32px</option>
+              </select>
+            </div>
+
+            {/* Text / Highlight Color */}
+            <div className="flex items-center gap-1">
+              <input
+                type="color"
+                value={textColor}
+                onChange={(e) => {
+                  setTextColor(e.target.value);
+                  formatText('foreColor', e.target.value);
+                }}
+                className="w-8 h-8 rounded cursor-pointer border border-gray-600"
+                title="Metin Rengi"
+              />
+              <input
+                type="color"
+                value={highlightColor}
+                onChange={(e) => {
+                  setHighlightColor(e.target.value);
+                  formatText('hiliteColor', e.target.value);
+                }}
+                className="w-8 h-8 rounded cursor-pointer border border-gray-600"
+                title="Vurgu Rengi"
+              />
+              <button
+                onClick={() => formatText('removeFormat')}
+                className="p-2 hover:bg-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+                title="Biçimlendirmeyi Temizle"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Find & Replace Panel */}
+      {showFindReplace && (
+        <div className="flex-shrink-0 border-b border-gray-700/50 bg-gray-800/50">
+          <div className="max-w-[1400px] mx-auto px-3 sm:px-6 py-3 sm:py-4 relative">
+            <div className="grid grid-cols-1 gap-3 sm:gap-4">
+              {/* Find Section */}
+              <div className="space-y-2">
+                <label className="text-xs text-gray-400 font-medium">Bul:</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={findText}
+                    onChange={(e) => setFindText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') findNext();
+                      if (e.key === 'Escape') setShowFindReplace(false);
+                    }}
+                    placeholder="Aranacak metin..."
+                    className="flex-1 px-3 py-2 bg-gray-700 text-white text-sm rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
+                  />
+                  <button
+                    onClick={findPrevious}
+                    disabled={!findText || totalMatches === 0}
+                    className="px-3 py-2 bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg transition-all"
+                    title="Önceki (Shift+Enter)"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={findNext}
+                    disabled={!findText || totalMatches === 0}
+                    className="px-3 py-2 bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg transition-all"
+                    title="Sonraki (Enter)"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
+                {findText && (
+                  <div className="text-xs text-gray-400">
+                    {totalMatches > 0 ? (
+                      <span>{currentMatchIndex + 1} / {totalMatches} sonuç</span>
+                    ) : (
+                      <span className="text-orange-400">Sonuç bulunamadı</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Replace Section */}
+              <div className="space-y-2">
+                <label className="text-xs text-gray-400 font-medium">Değiştir:</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={replaceText}
+                    onChange={(e) => setReplaceText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && e.ctrlKey) replaceAll();
+                      if (e.key === 'Escape') setShowFindReplace(false);
+                    }}
+                    placeholder="Yeni metin..."
+                    className="flex-1 px-3 py-2 bg-gray-700 text-white text-sm rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
+                  />
+                  <button
+                    onClick={replaceOne}
+                    disabled={!findText || totalMatches === 0}
+                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg transition-all text-sm font-medium whitespace-nowrap"
+                    title="Değiştir"
+                  >
+                    Değiştir
+                  </button>
+                  <button
+                    onClick={replaceAll}
+                    disabled={!findText || totalMatches === 0}
+                    className="px-3 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg transition-all text-sm font-medium whitespace-nowrap"
+                    title="Tümünü Değiştir (Ctrl+Enter)"
+                  >
+                    Tümünü
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={matchCase}
+                      onChange={(e) => setMatchCase(e.target.checked)}
+                      className="rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+                    />
+                    Büyük/küçük harf duyarlı
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Close button */}
+            <button
+              onClick={() => setShowFindReplace(false)}
+              className="absolute top-2 right-2 p-1 text-gray-400 hover:text-white transition-colors"
+              title="Kapat (Esc)"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Rich Text Editor Area - Spacious and Clean */}
+      <div className="flex-grow overflow-y-auto">
+        <div ref={contentRef} className="max-w-[1200px] mx-auto px-3 sm:px-6 py-4 sm:py-8">
+          {/* Office Branding Header */}
+          {(officeLogoUrl || corporateHeader) && (
+            <div
+              className="office-branding bg-white text-gray-900 shadow-lg rounded-xl p-6 mb-4 flex items-center gap-6"
+              style={{ fontFamily: '"Times New Roman", Georgia, serif' }}
+            >
+              {officeLogoUrl && (
+                <img
+                  src={officeLogoUrl}
+                  alt="Büro Logosu"
+                  className="w-20 h-20 object-contain flex-shrink-0"
+                />
+              )}
+              {corporateHeader && (
+                <div className="flex-1 whitespace-pre-line text-sm leading-relaxed">
+                  {corporateHeader}
+                </div>
+              )}
+            </div>
+          )}
+          <div
+            ref={editorRef}
+            contentEditable={!isLoading && !isReviewing}
+            onInput={handleInput}
+            onMouseUp={handleMouseUp}
+            className="petition-editor bg-white text-gray-900 shadow-2xl rounded-lg sm:rounded-xl p-4 sm:p-8 md:p-16 min-h-[calc(100vh-250px)] sm:min-h-[calc(100vh-300px)] focus:outline-none focus:ring-4 focus:ring-blue-500/20 transition-all"
+            style={{
+              fontFamily: '"Times New Roman", Georgia, serif',
+              fontSize: '12px',
+              lineHeight: '1.8',
+              letterSpacing: '0.02em',
+              textAlign: 'justify',
+              wordSpacing: '0.05em'
+            }}
+            suppressContentEditableWarning={true}
+          />
+        </div>
+      </div>
+      {sources.length > 0 && (
+        <div className="flex-shrink-0 p-4 border-t border-gray-700">
+          <h4 className="font-semibold text-white mb-2 flex items-center">
+            <LinkIcon className="h-5 w-5 mr-2 text-blue-400" />
+            Kullanılan Web Kaynakları
+          </h4>
+          <ul className="space-y-1 text-sm">
+            {sources.map((source, index) => (
+              <li key={index}>
+                <a href={source.uri} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 hover:underline break-all">
+                  {source.title || source.uri}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+

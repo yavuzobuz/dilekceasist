@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+.vercel
+ekranresmi
+mocap
+public/office/word
+templates-part*.js
+package-lock.json
+*.log

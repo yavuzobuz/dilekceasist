@@ -1,0 +1,162 @@
+[
+  {
+    "id": "ceza-uyusturucu-ticaret-kullanici-tanik",
+    "label": "Ceza - Uyusturucu ticareti ve kullanici tanik",
+    "source": "all",
+    "expectedDomain": "ceza",
+    "expectedFamily": "10. Ceza Dairesi",
+    "rawQuery": "Soruşturma evrakina gore sanigin ikametinde farkli turlerde uyusturucu maddeler, paketlemede kullanilan kagitlar ve satisa hazir halde maddeler ele gecirilmistir. Kolluk tarafindan yapilan kesintisiz fiziki takipte eve girip cikan uc farkli kisiden metamfetamin ve sentetik madde bulunmustur. Bu kisilerden bazilari saniktan madde aldiklarini, bazilari ise arkadas ziyareti icin gittiklerini soylemistir. Sanik ise maddeleri kendi kullanimi icin bulundurdugunu, baskalarina vermedigini savunmaktadir. Kriminal rapor, materyal mukayese tutanagi ve kullanici tanik beyanlari birlikte degerlendirilince eylemin TCK 188 kapsaminda uyusturucu madde ticareti mi yoksa kullanmak icin bulundurma mi oldugu, ticaret kastinin hangi delillerle kabul edilecegi ve kullanici tanik anlatimlarinin mahkumiyete yeterli olup olmayacagi konusunda Yargitay ceza kararlari araniyor."
+  },
+  {
+    "id": "ceza-uyusturucu-terazi-paketleme",
+    "label": "Ceza - Hassas terazi ve paketleme delili",
+    "source": "all",
+    "expectedDomain": "ceza",
+    "expectedFamily": "10. Ceza Dairesi",
+    "rawQuery": "Bir ceza dosyasinda sanigin aracinda ve evinde birden fazla paket halinde uyusturucu madde, hassas terazi, kilitli posetler ve not kagitlari bulunmustur. Sanik ele gecen miktarin kendisinin uzun sureli kullanimi icin oldugunu, paketlemenin ise baskasina ait oldugunu ileri surmektedir. Savcilik ise ele gecen miktar, hassas terazi, paraya cevirebilecek sekilde paketleme ve iletisim kayitlarina dayanarak uyusturucu madde ticareti sucunun olustugunu savunmaktadir. TCK 188 uygulamasinda hassas terazi, paketleme materyali ve miktar birlikte nasil degerlendirilir, hangi durumda kullanmak icin bulundurma savunmasi asilir, buna iliskin Yargitay ceza dairesi kararlari lazim."
+  },
+  {
+    "id": "ceza-silah-meskun-mahal",
+    "label": "Ceza - Meskun mahalde silahla ates etme",
+    "source": "all",
+    "expectedDomain": "ceza",
+    "expectedFamily": "8. Ceza Dairesi",
+    "rawQuery": "Olayda sanik gece saatlerinde mahalle arasinda havaya ve apartman cephesine dogru birden fazla el ates etmistir. Olay yerinde bos kovalar bulunmus, apartman duvarinda ve park halindeki bir arac uzerinde isabet izleri tespit edilmistir. Sanik kimseyi hedef almadigini, korkutma amaci bulunmadigini, eglence amacli davrandigini soylemektedir. Buna karsin savcilik meskun mahalde silahla ates etme, genel guvenligin kasten tehlikeye sokulmasi ve mala zarar verme ihtimallerini tartismaktadir. Ceza dairesi kararlarinda meskun mahalde ates etme sucu hangi kriterlerle kurulur, hedef alma bulunmamasi sonucu degistirir mi, bu konuda emsal araniyor."
+  },
+  {
+    "id": "ceza-hakaret-sosyal-medya",
+    "label": "Ceza - Sosyal medya uzerinden hakaret",
+    "source": "all",
+    "expectedDomain": "ceza",
+    "expectedFamily": "4. Ceza Dairesi",
+    "rawQuery": "Sanik sosyal medya hesabindan katilana yonelik kucuk dusurucu ve onur kirici oldugu ileri surulen ifadeler paylasmistir. Paylasimlar herkese acik hesapta yer almis, bir kisminin ekran goruntuleri alinmis, bir kismi sonradan silinmistir. Sanik sozlerinin elestiri sinirlari icinde kaldigini ve katilanin kamuoyuna acik aciklamalari nedeniyle agir elestiriye katlanmasi gerektigini savunmaktadir. Ceza yargilamasinda sosyal medya hakaret sucu ile ifade ozgurlugu siniri nasil cizilir, ekran goruntusunun delil degeri nedir, alenen hakaret unsuru hangi durumda vardir, buna iliskin Yargitay ceza kararlari araniyor."
+  },
+  {
+    "id": "icra-itirazin-iptali-cari-hesap",
+    "label": "Icra - Itirazin iptali ve cari hesap",
+    "source": "all",
+    "expectedDomain": "icra",
+    "expectedFamily": "11. Hukuk Dairesi",
+    "rawQuery": "Tacir taraflar arasinda uzun sureli ticari iliski bulunmakta olup mal teslimleri ve odemeler cari hesap seklinde yurutulmustur. Davaci alacakli ilamsiz icra takibi baslatmis, borclu cari hesabin dogru tutulmadigini, teslim edilmeyen mallar icin fatura kesildigini ve borcun bulunmadigini ileri surerek takibe itiraz etmistir. Davaci ise ticari defter, irsaliye ve e-fatura kayitlarina dayanarak IIK 67 kapsaminda itirazin iptali ve icra inkar tazminati istemektedir. Cari hesap alacaginda itirazin iptali, ticari defterlerin delil degeri ve icra inkar tazminati kosullari hakkinda Yargitay hukuk kararlari lazim."
+  },
+  {
+    "id": "icra-menfi-tespit-teminat",
+    "label": "Icra - Menfi tespit ve teminat",
+    "source": "all",
+    "expectedDomain": "icra",
+    "expectedFamily": "12. Hukuk Dairesi",
+    "rawQuery": "Borclu hakkinda kambiyo senedine dayali takip baslatilmis, borclu senedin teminat senedi oldugunu, asil iliski dogmadan takibe konuldugunu ve borclu olmadigini ileri surerek menfi tespit davasi acmistir. Takip devam ettigi icin ihtiyati tedbir ve teminat tartismasi da dosyada yer almaktadir. Menfi tespit davasinda teminat senedi savunmasi, takibin durdurulmasi, ihtiyati tedbir ve kotu niyet tazminati meselelerine iliskin emsal Yargitay icra ve hukuk kararlari araniyor."
+  },
+  {
+    "id": "aile-bosanma-velayet-nafaka",
+    "label": "Aile - Bosanma, velayet ve nafaka",
+    "source": "all",
+    "expectedDomain": "aile",
+    "expectedFamily": "2. Hukuk Dairesi",
+    "rawQuery": "Taraflar uzun sureli evliliklerinde siddetli gecimsizlik yasadiklarini, birlikte yasamanin cekilmez hale geldigini ileri surmektedir. Davaci es fiziksel siddet, ekonomik kisitlama ve surekli hakaret nedeniyle bosanma istemekte; kucuk cocugun velayetinin kendisine verilmesini, yoksulluk ve istirak nafakasi baglanmasini talep etmektedir. Davali ise asil kusurlu tarafin karsi taraf oldugunu, cocukla fiilen kendisinin ilgilendigini savunmaktadir. Bosanma davalarinda kusur degerlendirmesi, velayetin ustun yarar ilkesi, yoksulluk ve istirak nafakasinin sartlari konusunda Yargitay aile hukuku kararlarina ihtiyac var."
+  },
+  {
+    "id": "aile-6284-uzaklastirma-ihlali",
+    "label": "Aile - 6284 ve tedbir ihlali",
+    "source": "all",
+    "expectedDomain": "aile",
+    "expectedFamily": "2. Hukuk Dairesi",
+    "rawQuery": "Korunan es lehine 6284 sayili Kanun uyarinca uzaklastirma, iletisim kurmama ve ortak konuta yaklasmama tedbirleri verilmis; buna ragmen davalinin birden fazla kez telefonla rahatsiz ettigi ve konut cevresine geldigi iddia edilmistir. Dosyada mesaj kayitlari, polis tutanaklari ve tanik anlatimlari bulunmaktadir. Tedbirin ihlali halinde zorlama hapsi uygulanip uygulanmayacagi, mesaj ve cagrilarin ihlal icin yeterli delil sayilip sayilmayacagi ve aile mahkemesi uygulamasina dair Yargitay emsalleri araniyor."
+  },
+  {
+    "id": "is-ise-iade-gecersiz-fesih",
+    "label": "Is - Ise iade ve gecersiz fesih",
+    "source": "all",
+    "expectedDomain": "is_hukuku",
+    "expectedFamily": "9. Hukuk Dairesi",
+    "rawQuery": "Isveren performans dusuklugu ve isyerindeki uyumsuz davranislar gerekcesiyle davacinin is sozlesmesini feshetmistir. Davaci ise savunmasinin alinmadigini, objektif performans olcutu bulunmadigini, benzer durumdaki diger calisanlar hakkinda ayni uygulamanin yapilmadigini ve feshin son care ilkesi gozetilmeden gerceklestirildigini ileri surmektedir. Davaci ise iade, bos gecen sure ucreti ve ise baslatmama tazminati talep etmektedir. Gecersiz fesih, savunma alinmasi, performans dusuklugu ve son care ilkesi acisindan Yargitay is hukuku emsalleri araniyor."
+  },
+  {
+    "id": "is-fazla-mesai-bordro",
+    "label": "Is - Fazla mesai ve ihtirazi kayit",
+    "source": "all",
+    "expectedDomain": "is_hukuku",
+    "expectedFamily": "9. Hukuk Dairesi",
+    "rawQuery": "Davaci isci uzun yillar vardiyali calistigini, hafta ici gunluk calisma suresinin asildigini, hafta tatili ve resmi tatillerde de calistirildigini ileri surmektedir. Isveren ise bordrolarda fazla mesai tahakkuku bulundugunu, davacinin bordrolari ihtirazi kayitsiz imzaladigini ve puantaj kayitlarinin duzenli oldugunu savunmaktadir. Fazla mesai alacaginda bordro, puantaj, tanik beyanlari, ihtirazi kayit ve 270 saat siniri nasil degerlendirilir, buna dair Yargitay is hukuku kararlari lazim."
+  },
+  {
+    "id": "borclar-kira-temerrut-tahliye",
+    "label": "Borclar - Kira temerrut nedeniyle tahliye",
+    "source": "all",
+    "expectedDomain": "borclar",
+    "expectedFamily": "3. Hukuk Dairesi",
+    "rawQuery": "Kiraci uzun suredir kira bedellerini duzensiz odemekte, bir kisim aylari eksik yatirmakta ve ihtarnameye ragmen borcunu tam olarak kapatmamaktadir. Kiraya veren TBK 315 kapsaminda sureli ihtar gonderdigini, borcun verilen surede odenmedigini belirterek temerrut nedeniyle tahliye talep etmektedir. Kiraci ise bir kisim odemelerin elden yapildigini, banka dekontlarinin aciklamasiz oldugunu ve ihtarnamenin usulune uygun olmadigini savunmaktadir. Temerrut nedeniyle tahliyede ihtar, sure, odeme ispati ve tahliye kosullarina iliskin Yargitay kararlarini ariyorum."
+  },
+  {
+    "id": "borclar-arsa-payi-eksik-ifa",
+    "label": "Borclar - Arsa payi karsiligi insaat ve eksik ifa",
+    "source": "all",
+    "expectedDomain": "borclar",
+    "expectedFamily": "6. Hukuk Dairesi",
+    "rawQuery": "Arsa payi karsiligi insaat sozlesmesinde yuklenici bagimsiz bolumleri sozlesmede kararlastirilan surede ve teknik sartnameye uygun sekilde teslim etmemistir. Arsa sahibi gec teslim, eksik ve ayipli imalat, ortak alan kusurlari ve ruhsat islerinin tamamlanmamasi nedeniyle tazminat talep etmektedir. Yuklenici ise teslimin buyuk olcude yapildigini, kalan eksiklerin cuzi nitelikte oldugunu ve arsa sahibinin bagimsiz bolumleri kullanmaya basladigini savunmaktadir. Eksik ifa, ayipli is, gecikme tazminati ve arsa payi karsiligi insaat sozlesmesine iliskin Yargitay emsalleri gerekli."
+  },
+  {
+    "id": "gayrimenkul-muris-muvazaasi",
+    "label": "Gayrimenkul - Muris muvazaasi",
+    "source": "all",
+    "expectedDomain": "gayrimenkul",
+    "expectedFamily": "1. Hukuk Dairesi",
+    "rawQuery": "Miras birakan olumunden kisa sure once tek bir cocugu uzerine tasinmaz devretmis, tapuda satis gosterilmis ancak mirasci diger kardesler gercekte bagis amaci bulundugunu ve murisin mal kacirma saikiyle hareket ettigini ileri surmustur. Davalilar satis bedelinin odenmis oldugunu ve devirde gercek iradenin satis oldugunu savunmaktadir. Muris muvazaasi nedeniyle tapu iptali ve tescil davasinda bedelsiz devir, aile ici iliski, murisin ekonomik durumu ve satis bedelinin gercekligi nasil degerlendirilir, buna dair Yargitay tapu emsalleri lazim."
+  },
+  {
+    "id": "gayrimenkul-ortakligin-giderilmesi",
+    "label": "Gayrimenkul - Ortakligin giderilmesi",
+    "source": "all",
+    "expectedDomain": "gayrimenkul",
+    "expectedFamily": "7. Hukuk Dairesi",
+    "rawQuery": "Payli mulkiyete konu tasinmaz uzerinde birden fazla hissedar bulunmakta, taraflar tasinmazdan yararlanma konusunda anlasamamaktadir. Bir kisim paydas aynen taksim mumkun oldugunu, digerleri ise tasinmazin ancak satis suretiyle ortakliginin giderilebilecegini savunmaktadir. Ortakligin giderilmesi davasinda aynen taksim kosullari, muhdesat, paydaslar arasinda fiili kullanim ve satis suretiyle izalei suyu konularinda Yargitay gayrimenkul kararlarini ariyorum."
+  },
+  {
+    "id": "miras-tenkis-sakli-pay",
+    "label": "Miras - Tenkis ve sakli pay",
+    "source": "all",
+    "expectedDomain": "miras",
+    "expectedFamily": "7. Hukuk Dairesi",
+    "rawQuery": "Miras birakan sagliginda bir cocuguna yuksek degerli tasinmazlar devretmis, diger mirascilar sakli paylarinin zedelendigini ileri surerek tenkis davası acmistir. Davali devirlerin bakim, destek ve fiili emek karsiligi oldugunu, miras birakanin serbest tasarruf nisabi icinde kaldigini savunmaktadir. Tenkis davasinda sakli pay ihlali, tenkis sirasi, tasarruf nisabi ve hesaplama yontemine iliskin Yargitay miras hukuku emsalleri lazim."
+  },
+  {
+    "id": "tuketici-ayipli-arac-iade",
+    "label": "Tuketici - Ayipli arac ve bedel iadesi",
+    "source": "all",
+    "expectedDomain": "tuketici",
+    "expectedFamily": "3. Hukuk Dairesi",
+    "rawQuery": "Davaci sifir kilometre olarak satin aldigi aracta surekli tekrarlayan elektronik arizalar, motor ikazlari ve serviste cozumlenemeyen kusurlar bulundugunu ileri surerek sozlesmeden donme ve bedel iadesi istemektedir. Satici ve uretici ise arizalarin giderildigini, kullanim hatasi ihtimalini ve ayibin aracin kullanimini esasli derecede etkilemedigini savunmaktadir. Tuketici hukukunda ayipli mal, secimlik haklar, bedel iadesi ve servis kayitlarinin delil degeri acisindan Yargitay emsalleri araniyor."
+  },
+  {
+    "id": "ticaret-marka-iltibas",
+    "label": "Ticaret - Marka iltibas ve haksiz rekabet",
+    "source": "all",
+    "expectedDomain": "ticaret",
+    "expectedFamily": "11. Hukuk Dairesi",
+    "rawQuery": "Davaci sirket tescilli markasina benzer ibare ve logo kullanan davalinin e-ticaret platformlarinda satis yaptigini, tuketiciler nezdinde karistirilma ihtimali dogurdugunu ve markaya tecavuz ile haksiz rekabete yol actigini ileri surmektedir. Davali ise ibarelerin ayirt edici oldugunu, piyasada cok sayida benzer kullanim bulundugunu ve hedef kitlenin yanilmayacagini savunmaktadir. Marka hakkinin ihlali, iltibas, karistirilma ihtimali ve haksiz rekabet konularinda Yargitay ticaret hukuku emsalleri araniyor."
+  },
+  {
+    "id": "ticaret-genel-kurul-iptal",
+    "label": "Ticaret - Genel kurul karari iptali",
+    "source": "all",
+    "expectedDomain": "ticaret",
+    "expectedFamily": "11. Hukuk Dairesi",
+    "rawQuery": "Anonim sirkette yapilan genel kurul toplantisinda sermaye artirimi ve yonetim kurulu secimi kararları alinmistir. Azinlik pay sahibi davaci cagri usulsuzlugu, gundem disina cikilmasi ve bilgi alma hakkının kisitlanmasi nedenleriyle genel kurul kararlarinin iptalini talep etmektedir. Sirket ise toplantinin usulune uygun oldugunu ve davacinin pay sahipligi hakkini kotuye kullandigini savunmaktadir. Genel kurul karari iptali, cagri usulsuzlugu ve pay sahipligi haklarina iliskin Yargitay ticaret emsalleri araniyor."
+  },
+  {
+    "id": "idare-imar-yikim-iptal",
+    "label": "Idare - Imar para cezasi ve yikim",
+    "source": "danistay",
+    "expectedDomain": "idare",
+    "expectedFamily": "Danistay",
+    "rawQuery": "Belediye encumeni tarafindan ruhsatsiz oldugu ileri surulen yapi hakkinda imar para cezasi ve yikim karari verilmistir. Davaci yapinin mevcut plana ve onceki ruhsata uygun oldugunu, teknik incelemenin eksik yapildigini ve savunma hakkinin taninmadigini belirterek islemlerin iptalini istemektedir. Idare ise yapi tatil tutanagi, fen elemani raporu ve encumen kararina dayanmaktadir. Imar para cezasi, yikim karari, savunma hakki ve idari islem iptaline dair Danistay emsalleri araniyor."
+  },
+  {
+    "id": "is-sgk-hizmet-tespiti",
+    "label": "Is - Hizmet tespiti ve SGK bildirimi",
+    "source": "all",
+    "expectedDomain": "is_hukuku",
+    "expectedFamily": "10. Hukuk Dairesi",
+    "rawQuery": "Davaci uzun yillar fiilen calistigi halde isveren tarafindan sigorta girisinin gec yapildigini, bir kisim calisma surelerinin de SGK'ya eksik bildirildigini ileri surmektedir. Isveren ise davacinin kesintisiz calismadigini, donemsel ve arizi olarak yardim ettigini, tanik anlatimlarinin soyut kaldigini savunmaktadir. Hizmet tespiti davalarinda tanik ispatı, bordro, puantaj ve SGK kayitlarinin degerlendirilmesine iliskin Yargitay is hukuku emsalleri araniyor."
+  }
+]

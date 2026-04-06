@@ -1,0 +1,68 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+coverage
+.eslintcache
+*.local
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.*
+!.env.example
+!.env.template
+!.env.sample
+*.pem
+*.key
+*.p12
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+.vercel
+
+# Test dosyaları
+test_*.js
+test_*.json
+test_*.html
+mcp_keyword_test_result.json
+
+# Ekran görüntüleri
+ekranresmi/
+
+# Eski yedek dosyalar
+old_*.js
+old_*.ts
+old_*.tsx
+*_old.js
+*_old.tsx
+action_old.js
+alternative_old.tsx
+
+# Geçici dosyalar
+.codex_tmp_*
+.skill-builds/
+.vercel-backup-*/
+output/
+turk-hukuku-karar-arama/
+turk-hukuku-karar-arama.zip
+nul
+doc/CODEX_SKILL_CHEATSHEET.md
+*.mjs.json
+*.test.ts-prompt-results.json
