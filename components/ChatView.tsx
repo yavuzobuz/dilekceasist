@@ -816,7 +816,7 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
                                         className="rounded-2xl border border-white/10 bg-[#151518] p-4 shadow-lg shadow-black/10"
                                     >
                                         <h3 className="text-sm font-semibold text-white">{card.title}</h3>
-                                        <p className="mt-2 text-sm leading-6 text-gray-400">{card.description}</p>
+                                        <p className="mt-2 whitespace-pre-line text-sm leading-6 text-gray-400">{card.description}</p>
                                     </div>
                                 ))}
                             </div>

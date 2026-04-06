@@ -24,7 +24,7 @@ const CHAT_GUIDE_CARDS = [
     },
     {
         title: 'Ne Istediginizi Net Soyleyin',
-        description: '"Web aramasi yap", "emsal karar ara" veya "bunu duzelt" gibi kisa komutlar kullanabilirsiniz.',
+        description: '"Web aramasi yap", "emsal karar ara" veya "bunu duzelt" gibi kisa komutlar kullanabilirsiniz.\nTaraf bazli arama istiyorsaniz "sanik lehine karar ara", "davaci lehine emsal karar ara" ya da "davali lehine web aramasi yap" diye yazabilirsiniz.',
     },
     {
         title: 'Belge Yukleyebilirsiniz',
