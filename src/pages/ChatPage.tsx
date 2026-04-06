@@ -23,8 +23,8 @@ const CHAT_GUIDE_CARDS = [
         description: 'Olayi 2-3 cumle ile yazin. Temel sorun, tarih ve talebi belirtmeniz daha iyi sonuc verir.',
     },
     {
-        title: 'Ne Istediginizi Net Soyleyin',
-        description: '"Web aramasi yap", "emsal karar ara" veya "bunu duzelt" gibi kisa komutlar kullanabilirsiniz.\nTaraf bazli arama istiyorsaniz "sanik lehine karar ara", "davaci lehine emsal karar ara" ya da "davali lehine web aramasi yap" diye yazabilirsiniz.',
+        title: 'Ne İstediğinizi Net Söyleyin',
+        description: '"Web araması yap", "emsal karar ara" veya "bunu düzelt" gibi kısa komutlar kullanabilirsiniz.\nTaraf bazlı arama istiyorsanız "sanık lehine karar ara", "davacı lehine emsal karar ara" ya da "davalı lehine web araması yap" diye yazabilirsiniz.',
     },
     {
         title: 'Belge Yukleyebilirsiniz',

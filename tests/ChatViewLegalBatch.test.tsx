@@ -66,16 +66,16 @@ describe('ChatView legal research batch', () => {
                 setSpecifics={() => undefined}
                 guideCards={[
                     {
-                        title: 'Ne Istediginizi Net Soyleyin',
-                        description: '"Web aramasi yap", "emsal karar ara" veya "bunu duzelt" gibi kisa komutlar kullanabilirsiniz.\nTaraf bazli arama istiyorsaniz "sanik lehine karar ara", "davaci lehine emsal karar ara" ya da "davali lehine web aramasi yap" diye yazabilirsiniz.',
+                        title: 'Ne İstediğinizi Net Söyleyin',
+                        description: '"Web araması yap", "emsal karar ara" veya "bunu düzelt" gibi kısa komutlar kullanabilirsiniz.\nTaraf bazlı arama istiyorsanız "sanık lehine karar ara", "davacı lehine emsal karar ara" ya da "davalı lehine web araması yap" diye yazabilirsiniz.',
                     },
                 ]}
             />
         );
 
-        expect(screen.getByText('Ne Istediginizi Net Soyleyin')).toBeInTheDocument();
-        expect(screen.getByText(/sanik lehine karar ara/i)).toBeInTheDocument();
-        expect(screen.getByText(/davaci lehine emsal karar ara/i)).toBeInTheDocument();
-        expect(screen.getByText(/davali lehine web aramasi yap/i)).toBeInTheDocument();
+        expect(screen.getByText('Ne İstediğinizi Net Söyleyin')).toBeInTheDocument();
+        expect(screen.getByText(/sanık lehine karar ara/i)).toBeInTheDocument();
+        expect(screen.getByText(/davacı lehine emsal karar ara/i)).toBeInTheDocument();
+        expect(screen.getByText(/davalı lehine web araması yap/i)).toBeInTheDocument();
     });
 });
