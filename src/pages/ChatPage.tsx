@@ -602,8 +602,13 @@ export default function ChatPage() {
             
             setChatMessages(prev => [...prev, { role: 'model', text: '' }]);
             
+            let functionCallDetected = false;
+            let addedKeywordsCount = 0;
+
             for await (const chunk of responseStream) {
-                const text = typeof chunk.text === 'string' ? chunk.text : chunk.candidates?.[0]?.content?.parts?.filter((p: any) => p.text).map((p: any) => p.text).join('') || '';
+                // Function call result chunk'larında ham metin gösterme
+                const suppressFunctionCallResultText = Boolean(chunk.functionCallResults && chunk.searchResults);
+                const text = suppressFunctionCallResultText ? '' : (typeof chunk.text === 'string' ? chunk.text : chunk.candidates?.[0]?.content?.parts?.filter((p: any) => p.text).map((p: any) => p.text).join('') || '');
                 
                 if (chunk.functionCallResults && chunk.searchResults && (allowWebSearch || allowLegalSearch)) {
                     setChatProgressText('Emsal karar bağlama ekleniyor...');
@@ -620,6 +625,76 @@ export default function ChatPage() {
 
                 const functionCalls = Array.isArray(chunk.functionCalls) ? chunk.functionCalls : chunk.candidates?.[0]?.content?.parts?.filter((p: any) => p.functionCall).map((p: any) => p.functionCall) || [];
                 for (const fc of functionCalls) {
+                    // update_search_keywords: Modelin önerdiği anahtar kelimeleri bağlama ekle
+                    if (fc.name === 'update_search_keywords') {
+                        functionCallDetected = true;
+                        setChatProgressText('Anahtar kelimeler bağlama ekleniyor...');
+
+                        const args = parseFunctionCallArgs(fc.args);
+                        const rawKeywords = Array.isArray(args.keywordsToAdd) ? args.keywordsToAdd : [];
+                        const cleanedKeywords = rawKeywords
+                            .map((keyword: unknown) => typeof keyword === 'string' ? keyword.trim() : '')
+                            .filter(Boolean);
+
+                        if (cleanedKeywords.length > 0) {
+                            const nextKeywords = Array.from(new Set([...mergedKeywords, ...cleanedKeywords]));
+                            addedKeywordsCount += nextKeywords.length - mergedKeywords.length;
+                            mergedKeywords = nextKeywords;
+                            setSearchKeywords(nextKeywords);
+
+                            // Anahtar kelimeler eklendiyse otomatik emsal karar araması yap
+                            if (!hasLegalEvidenceForChat(mergedLegalResults)) {
+                                setChatProgressText('Emsal karar aranıyor...');
+                                try {
+                                    const searchedResults = await runLegalSearch(cleanedKeywords, { silent: true, suppressError: true });
+                                    if (searchedResults.length > 0) {
+                                        mergedLegalResults = mergeUniqueLegalResults(mergedLegalResults, searchedResults);
+                                        setLegalSearchResults(mergedLegalResults);
+                                        setPrecedentContext(buildLegalResultsPrompt(mergedLegalResults));
+                                    }
+                                } catch (e) { console.warn('Auto legal search after keyword update failed', e); }
+                            }
+                        }
+                        continue;
+                    }
+
+                    // search_yargitay: Modelin tetiklediği emsal karar araması
+                    if (fc.name === 'search_yargitay') {
+                        functionCallDetected = true;
+                        setChatProgressText('Emsal kararlar aranıyor...');
+
+                        const args = parseFunctionCallArgs(fc.args);
+                        const queryKeywords = typeof args.searchQuery === 'string'
+                            ? extractKeywordCandidates(args.searchQuery)
+                            : [];
+                        const explicitKeywords = Array.isArray(args.keywords)
+                            ? args.keywords
+                                .map((keyword: unknown) => typeof keyword === 'string' ? keyword.trim() : '')
+                                .filter(Boolean)
+                            : [];
+                        const mergedFromCall = Array.from(new Set([...queryKeywords, ...explicitKeywords]));
+
+                        if (mergedFromCall.length > 0) {
+                            mergedKeywords = Array.from(new Set([...mergedKeywords, ...mergedFromCall]));
+                            setSearchKeywords(mergedKeywords);
+
+                            try {
+                                const searchedResults = await runLegalSearch(mergedFromCall, { silent: false, suppressError: true });
+                                if (searchedResults.length > 0) {
+                                    mergedLegalResults = mergeUniqueLegalResults(mergedLegalResults, searchedResults);
+                                    setLegalSearchResults(mergedLegalResults);
+                                    setPrecedentContext(buildLegalResultsPrompt(mergedLegalResults));
+
+                                    const batchMessage = buildLegalResearchBatchMessage(searchedResults);
+                                    if (batchMessage) {
+                                        setChatMessages(prev => [...prev, { role: 'model', text: batchMessage }]);
+                                    }
+                                }
+                            } catch (e) { console.warn('search_yargitay call failed', e); }
+                        }
+                        continue;
+                    }
+
                     if (fc.name === 'generate_document') {
                         const payload = extractGeneratedDocumentPayload(fc.args);
                         if (payload) {
@@ -672,6 +747,15 @@ export default function ChatPage() {
                         }
                     }
                 }
+            }
+
+            // Fonksiyon çağrısı ile anahtar kelime eklendiyse ve model metin üretmediyse onay mesajı göster
+            if (functionCallDetected && addedKeywordsCount > 0 && assistantText.trim() === '') {
+                const confirmation = `Tamam, ${addedKeywordsCount} adet anahtar kelime bağlama eklendi.`;
+                assistantText += confirmation;
+                setChatMessages(prev => prev.map((msg, idx) =>
+                    idx === prev.length - 1 ? { ...msg, text: confirmation } : msg
+                ));
             }
         } catch (e: any) {
             setError(e.message);
