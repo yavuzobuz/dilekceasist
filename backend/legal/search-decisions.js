@@ -330,13 +330,13 @@ export default async function handler(req, res) {
         }
     };
 
-    // Global safety timeout: respond before Vercel kills the function (60s limit)
-    const GLOBAL_TIMEOUT_MS = 55000;
+    // Global safety timeout. Keep this below any platform hard limit in production.
+    const GLOBAL_TIMEOUT_MS = 110000;
     let globalTimedOut = false;
     const globalTimer = setTimeout(() => {
         globalTimedOut = true;
         abortRequest();
-        console.warn('[LEGAL_SEARCH] Global 55s safety timeout triggered');
+        console.warn('[LEGAL_SEARCH] Global 110s safety timeout triggered');
         if (!res.headersSent) {
             return res.status(200).json({
                 results: [],
@@ -344,7 +344,7 @@ export default async function handler(req, res) {
                 retrievalDiagnostics: {
                     backendMode: 'timeout_safety',
                     fallbackUsed: false,
-                    fallbackReason: 'global_timeout_55s',
+                    fallbackReason: 'global_timeout_110s',
                     upstream: 'none',
                     zeroResultReason: 'global_timeout',
                 },
