@@ -143,8 +143,12 @@ describe('useLegalSearch', () => {
         expect(result.current.fullTextCache['doc-1']).toBe('Kararin tam metni');
     });
 
-    it('fills error state and resolves without throwing when search fails', async () => {
+    it('falls back to text-only search when analyzer fails', async () => {
         hookMocks.analyzeDocuments.mockRejectedValueOnce(new Error('Analyzer failed'));
+        hookMocks.searchLegalDecisionsDetailed.mockResolvedValueOnce({
+            normalizedResults: [],
+            diagnostics: {},
+        });
 
         const { result } = renderHook(() => useLegalSearch());
 
@@ -160,7 +164,60 @@ describe('useLegalSearch', () => {
         });
 
         expect(resolved).toEqual([]);
-        expect(result.current.error).toBe('Analyzer failed');
+        expect(hookMocks.searchLegalDecisionsDetailed).toHaveBeenCalledWith(expect.objectContaining({
+            rawQuery: 'hatali arama',
+        }));
+        expect(result.current.error).toBeNull();
         expect(result.current.decisions).toEqual([]);
+    });
+
+    it('prefers packet search seed over instruction-like command text when available', async () => {
+        hookMocks.analyzeDocuments.mockResolvedValueOnce(analysisPayload);
+        hookMocks.searchLegalDecisionsDetailed.mockResolvedValueOnce(searchResponse);
+
+        const { result } = renderHook(() => useLegalSearch());
+
+        await act(async () => {
+            await result.current.search({
+                text: 'davali isveren lehine belgeyi analiz edip strateji gelistir guclu ve zayif yonleri tespit et',
+                documentBase64: 'JVBERi0xLjQK',
+                mimeType: 'application/pdf',
+            });
+        });
+
+        expect(hookMocks.searchLegalDecisionsDetailed).toHaveBeenCalledWith(expect.objectContaining({
+            rawQuery: 'kira temerrut tahliye',
+        }));
+    });
+
+    it('ignores meta-analysis summaries and falls back to concrete core issue', async () => {
+        hookMocks.analyzeDocuments.mockResolvedValueOnce({
+            ...analysisPayload,
+            summary: 'Analiz edilen metin parçası, iş hukuku alanında işveren lehine sonuçlanan veya işverenin haklılığını vurgulayan bir hukuki değerlendirme talep etmektedir.',
+            legalSearchPacket: {
+                ...analysisPayload.legalSearchPacket,
+                searchSeedText: '',
+                searchVariants: [],
+            },
+            analysisInsights: {
+                ...analysisPayload.analysisInsights,
+                coreIssue: 'Isletme gereklilikleri feshi ve feshin son care ilkesi',
+            },
+        });
+        hookMocks.searchLegalDecisionsDetailed.mockResolvedValueOnce(searchResponse);
+
+        const { result } = renderHook(() => useLegalSearch());
+
+        await act(async () => {
+            await result.current.search({
+                text: 'davali isveren lehine belgeyi analiz edip strateji gelistir guclu ve zayif yonleri tespit et',
+                documentBase64: 'JVBERi0xLjQK',
+                mimeType: 'application/pdf',
+            });
+        });
+
+        expect(hookMocks.searchLegalDecisionsDetailed).toHaveBeenCalledWith(expect.objectContaining({
+            rawQuery: 'Isletme gereklilikleri feshi ve feshin son care ilkesi',
+        }));
     });
 });

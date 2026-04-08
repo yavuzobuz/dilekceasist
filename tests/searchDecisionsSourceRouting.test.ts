@@ -20,6 +20,19 @@ const aiPlanMocks = vi.hoisted(() => ({
     generateLegalSearchPlanWithDiagnostics: vi.fn().mockResolvedValue(null),
 }));
 
+const multiStrategyMocks = vi.hoisted(() => ({
+    multiStrategySearch: vi.fn().mockResolvedValue({ results: [], _metadata: {} }),
+    buildSearchStrategies: vi.fn().mockResolvedValue([]),
+}));
+
+const evaluatorMocks = vi.hoisted(() => ({
+    evaluatePrecedents: vi.fn(async ({ decisions = [] }) => ({
+        evaluated: decisions,
+        groups: {},
+        _metadata: { ok: true },
+    })),
+}));
+
 vi.mock('../lib/legal/simpleBedestenService.js', () => ({
     searchLegalDecisionsViaSimpleBedesten: simpleMocks.searchLegalDecisionsViaSimpleBedesten,
     supportsSimpleBedestenSearch: simpleMocks.supportsSimpleBedestenSearch,
@@ -35,11 +48,15 @@ vi.mock('../backend/gemini/legal-search-plan-core.js', () => ({
 }));
 
 vi.mock('../lib/legal/legal-multi-search.js', () => ({
-    multiStrategySearch: vi.fn().mockResolvedValue({ results: [], _metadata: {} }),
+    multiStrategySearch: multiStrategyMocks.multiStrategySearch,
 }));
 
 vi.mock('../lib/legal/legal-strategy-builder.js', () => ({
-    buildSearchStrategies: vi.fn().mockResolvedValue([]),
+    buildSearchStrategies: multiStrategyMocks.buildSearchStrategies,
+}));
+
+vi.mock('../backend/gemini/legal-precedent-evaluator.js', () => ({
+    evaluatePrecedents: evaluatorMocks.evaluatePrecedents,
 }));
 
 import handler from '../backend/legal/search-decisions.js';
@@ -73,6 +90,11 @@ describe('search-decisions source routing', () => {
         mcpMocks.searchLegalDecisionsViaMcp.mockReset();
         aiPlanMocks.generateLegalSearchPlanWithDiagnostics.mockReset();
         aiPlanMocks.generateLegalSearchPlanWithDiagnostics.mockResolvedValue(null);
+        multiStrategyMocks.multiStrategySearch.mockReset();
+        multiStrategyMocks.multiStrategySearch.mockResolvedValue({ results: [], _metadata: {} });
+        multiStrategyMocks.buildSearchStrategies.mockReset();
+        multiStrategyMocks.buildSearchStrategies.mockResolvedValue([]);
+        evaluatorMocks.evaluatePrecedents.mockClear();
         simpleMocks.searchLegalDecisionsViaSimpleBedesten.mockResolvedValue({
             results: [],
             retrievalDiagnostics: {
@@ -176,5 +198,61 @@ describe('search-decisions source routing', () => {
             selectedBirimAdi: 'H3',
             totalCandidates: 5,
         });
+    });
+
+    it('keeps pro multi-strategy active for document-driven searches unless hybrid is explicitly requested', async () => {
+        multiStrategyMocks.buildSearchStrategies.mockResolvedValue([
+            {
+                name: 'Packet guided strategy',
+                plan: {
+                    strategyCode: 'packet-guided',
+                    domain: 'is_hukuku',
+                    searchQuery: 'isletme gerekliligi fesih son care somutlastirma',
+                },
+            },
+        ]);
+        multiStrategyMocks.multiStrategySearch.mockResolvedValue({
+            results: [
+                {
+                    documentId: '123',
+                    daire: '9. Hukuk Dairesi',
+                    esasNo: '2024/1',
+                    tarih: '01.01.2024',
+                    source: 'yargitay',
+                },
+            ],
+            retrievalDiagnostics: {
+                backendMode: 'multi_strategy',
+            },
+            _metadata: {},
+        });
+
+        const req = {
+            method: 'POST',
+            body: {
+                source: 'all',
+                rawQuery: 'Rol niyeti: Davali/Isveren lehine Bu belge, 01.06.2017 - 15.02.2024 tarihleri arasinda Teknoloji AS bunyesinde kidemli yazilim gelistirici olarak calisan iscinin isletme gerekleri gerekcesiyle feshedildigini ve feshin son care ilkesine uyulmadigini anlatmaktadir.',
+                searchMode: 'pro',
+                filters: {},
+                legalSearchPacket: {
+                    primaryDomain: 'is_hukuku',
+                    caseType: 'ise iade',
+                    requiredConcepts: ['isletme gerekliligi', 'fesih son care'],
+                    supportConcepts: ['somutlastirma', 'alternatif pozisyon'],
+                    searchSeedText: 'isletme gerekliligi fesih son care somutlastirma',
+                },
+            },
+            once: vi.fn(),
+            aborted: false,
+        };
+        const res = createMockRes();
+
+        await handler(req as any, res as any);
+
+        expect(multiStrategyMocks.buildSearchStrategies).toHaveBeenCalledTimes(1);
+        expect(multiStrategyMocks.multiStrategySearch).toHaveBeenCalledTimes(1);
+        expect(simpleMocks.searchLegalDecisionsViaSimpleBedesten).not.toHaveBeenCalled();
+        expect(res.statusCode).toBe(200);
+        expect(res.payload?.retrievalDiagnostics?.backendMode).toBe('multi_strategy');
     });
 });

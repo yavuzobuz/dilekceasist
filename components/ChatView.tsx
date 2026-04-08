@@ -18,6 +18,7 @@ import { Paperclip, X, FileText, Image as ImageIcon, Loader2, Scale, Plus } from
 import { VoiceInputButton } from './VoiceInputButton';
 import { parseLegalResearchBatchMessage } from '../lib/legal/chatLegalIntent';
 import { getLegalDocument } from '../src/utils/legalSearch';
+import { sanitizeHtml } from '../src/utils/sanitizeHtml';
 
 type ExpandedFieldKey = 'keywords' | 'searchSummary' | 'precedents' | 'docContent' | 'specifics';
 
@@ -356,7 +357,16 @@ interface ChatViewProps {
     specifics: string;
     setSpecifics: React.Dispatch<React.SetStateAction<string>>;
     onUseDecision?: (text: string) => void;
+    guideCards?: Array<{ title: string; description: string }>;
+    onSendGeneratedDocumentToEditor?: (payload: { title: string; content: string }) => void;
 }
+
+const QUICK_PROMPTS = [
+    'Bu konuyu webde derin arastir, guncel mevzuat ve uygulamayi ozetle',
+    'Bu konuyla ilgili guclu emsal kararlar bul ve kisa kisa acikla',
+    'Elimdeki bilgilere gore resmi ve guclu bir dilekce taslagi hazirla',
+    'Yukledigim belgeyi incele, kritik noktalar ve riskleri ozetle',
+];
 
 const CHAT_ALLOWED_EXTENSIONS = ['.pdf', '.udf', '.doc', '.docx', '.txt', '.jpg', '.jpeg', '.png', '.webp', '.tif', '.tiff'];
 
@@ -400,7 +410,7 @@ const LegalResearchBatchCards: React.FC<{
                             rel="noreferrer"
                             className="mt-3 inline-flex items-center text-xs font-medium text-red-300 underline-offset-2 hover:underline"
                         >
-                            Kaynak ↗
+                            Kaynak linki
                         </a>
                     ) : null}
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -410,7 +420,7 @@ const LegalResearchBatchCards: React.FC<{
                             className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10"
                         >
                             {loadingIndex === index ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <EyeIcon className="h-3.5 w-3.5" />}
-                            Kararı gör
+                            Karari gor
                         </button>
                         <button
                             type="button"
@@ -418,11 +428,91 @@ const LegalResearchBatchCards: React.FC<{
                             className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-700"
                         >
                             <Plus className="h-3.5 w-3.5" />
-                            Kararı kullan
+                            Karari kullan
                         </button>
                     </div>
                 </article>
             ))}
+        </div>
+    );
+};
+
+const GENERATED_DOCUMENT_REGEX = /\[Dilekçe\/Belge Oluşturuldu:\s*([^\]]+)\]\s*([\s\S]*)$/i;
+
+const extractGeneratedDocumentPayload = (message: string): { beforeText: string; title: string; content: string } | null => {
+    const text = String(message || '');
+    const match = text.match(GENERATED_DOCUMENT_REGEX);
+    if (!match) return null;
+
+    const markerIndex = match.index ?? text.length;
+    const beforeText = text.slice(0, markerIndex).trim();
+    const title = String(match[1] || '').trim();
+    const content = String(match[2] || '').trim();
+    if (!title || !content) return null;
+    return { beforeText, title, content };
+};
+
+const formatAssistantText = (message: string): string => {
+    return String(message || '')
+        .replace(/^#{1,6}\s*/gm, '')
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/^\s*\*\s+/gm, '• ')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+};
+
+const renderAssistantText = (message: string): { __html: string } => {
+    const formatted = formatAssistantText(message)
+        .split('\n')
+        .map((line) => line.trim())
+        .map((line) => line ? `<p>${sanitizeHtml(line)}</p>` : '<br />')
+        .join('');
+    return { __html: formatted };
+};
+
+const GeneratedDocumentCard: React.FC<{
+    title: string;
+    content: string;
+    onSendToEditor?: (payload: { title: string; content: string }) => void;
+}> = ({ title, content, onSendToEditor }) => {
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(content);
+        } catch (error) {
+            console.error('Document copy failed:', error);
+        }
+    };
+
+    return (
+        <div className="rounded-2xl border border-red-500/20 bg-[#151518] p-4 shadow-lg shadow-black/20">
+            <div className="flex items-start justify-between gap-3">
+                <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-300">Olusturulan Belge</p>
+                    <h4 className="mt-1 text-base font-semibold text-white">{title}</h4>
+                </div>
+                <DocumentTextIcon className="h-5 w-5 text-red-300" />
+            </div>
+            <div className="mt-4 max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-[#0f1115] px-4 py-4 font-serif text-[15px] leading-7 text-gray-100">
+                <div dangerouslySetInnerHTML={renderAssistantText(content)} />
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                    type="button"
+                    onClick={handleCopy}
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+                >
+                    <ClipboardDocumentListIcon className="h-4 w-4" />
+                    Kopyala
+                </button>
+                <button
+                    type="button"
+                    onClick={() => onSendToEditor?.({ title, content })}
+                    className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+                >
+                    <PencilIcon className="h-4 w-4" />
+                    Editore Gonder
+                </button>
+            </div>
         </div>
     );
 };
@@ -466,6 +556,11 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
             setSelectedFiles((prev) => [...prev, ...validFiles].slice(0, 5));
         }
         e.target.value = '';
+    };
+
+    const applyQuickPrompt = (prompt: string) => {
+        setInput(prompt);
+        textareaRef.current?.focus();
     };
 
     const removeFile = (index: number) => {
@@ -556,12 +651,35 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
                                 {msg.role === 'model' && <AiIcon className="mt-1 h-6 w-6 flex-shrink-0 ai-icon-accent" />}
                                 <div className={`max-w-[85%] rounded-xl px-3 py-2 sm:max-w-lg sm:px-4 ${msg.role === 'user' ? 'ai-bubble-user' : 'ai-bubble-model'}`}>
                                 {msg.role === 'model' ? (
-                                    <LegalResearchBatchCards
-                                        message={msg.text}
-                                        onOpenDecision={handleOpenDecision}
-                                        onUseDecision={handleUseDecision}
-                                        loadingIndex={decisionLoadingIndex}
-                                    />
+                                    (() => {
+                                        const generatedDocument = extractGeneratedDocumentPayload(msg.text);
+                                        if (generatedDocument) {
+                                            return (
+                                                <div className="space-y-3 py-1">
+                                                    {generatedDocument.beforeText ? (
+                                                        <div
+                                                            className="text-sm leading-7 text-gray-100"
+                                                            dangerouslySetInnerHTML={renderAssistantText(generatedDocument.beforeText)}
+                                                        />
+                                                    ) : null}
+                                                    <GeneratedDocumentCard
+                                                        title={generatedDocument.title}
+                                                        content={generatedDocument.content}
+                                                        onSendToEditor={props.onSendGeneratedDocumentToEditor}
+                                                    />
+                                                </div>
+                                            );
+                                        }
+
+                                        return (
+                                            <LegalResearchBatchCards
+                                                message={formatAssistantText(msg.text)}
+                                                onOpenDecision={handleOpenDecision}
+                                                onUseDecision={handleUseDecision}
+                                                loadingIndex={decisionLoadingIndex}
+                                            />
+                                        );
+                                    })()
                                 ) : (
                                         <p className="break-words whitespace-pre-wrap text-sm">{msg.text}</p>
                                     )}
@@ -655,7 +773,7 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
                                 }
                             }}
                             placeholder={selectedFiles.length > 0 ? 'Bu belgeler hakkinda soru sorun...' : 'AI asistana bir mesaj gonder...'}
-                            className="min-h-[48px] flex-1 resize-none bg-transparent p-3 text-white placeholder-gray-400 focus:outline-none focus:ring-0 border-none overflow-y-auto outline-none shadow-none"
+                            className="min-h-[58px] flex-1 resize-none bg-transparent p-3 text-white placeholder-gray-400 focus:outline-none focus:ring-0 border-none overflow-y-auto outline-none shadow-none"
                             style={{ height: '48px', maxHeight: '200px' }}
                             disabled={isLoading}
                             rows={1}
@@ -670,6 +788,40 @@ export const ChatView: React.FC<ChatViewProps> = (props) => {
                             </button>
                         </div>
                     </div>
+                </div>
+                <div className="space-y-3 pt-1">
+                    <div className="flex flex-wrap gap-2">
+                        {QUICK_PROMPTS.map((prompt) => (
+                            <button
+                                key={prompt}
+                                type="button"
+                                onClick={() => applyQuickPrompt(prompt)}
+                                className="rounded-lg border border-white/10 bg-[#111113] px-3 py-2 text-xs font-medium text-gray-300 transition hover:border-red-500/30 hover:text-white"
+                            >
+                                {prompt}
+                            </button>
+                        ))}
+                    </div>
+
+                    {props.guideCards && props.guideCards.length > 0 ? (
+                        <div className="rounded-2xl border border-white/10 bg-[#111113] p-4">
+                            <div className="mb-3">
+                                <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-gray-300">Kisa Kullanim Rehberi</h2>
+                                <p className="mt-1 text-sm text-gray-400">Asistani daha rahat kullanmak icin once buraya goz atabilirsiniz.</p>
+                            </div>
+                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                                {props.guideCards.map((card) => (
+                                    <div
+                                        key={card.title}
+                                        className="rounded-2xl border border-white/10 bg-[#151518] p-4 shadow-lg shadow-black/10"
+                                    >
+                                        <h3 className="text-sm font-semibold text-white">{card.title}</h3>
+                                        <p className="mt-2 text-sm leading-6 text-gray-400">{card.description}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : null}
                 </div>
             </form>
 

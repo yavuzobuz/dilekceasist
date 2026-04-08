@@ -63,6 +63,12 @@ vi.mock('../components/OutputPanel', () => ({
             <button type="button" onClick={() => onSendMessage('emsal ara kira temerrut tahliye')}>
                 Send Legal
             </button>
+            <button type="button" onClick={() => onSendMessage('Muvekkil performans dusuklugu bahanesiyle isten cikarildi, ise iade ve bos gecen sure ucreti talep ediyor.')}>
+                Send Facts
+            </button>
+            <button type="button" onClick={() => onSendMessage('davaci lehine karar ara')}>
+                Send Directional Legal
+            </button>
             <button type="button" onClick={() => onSendMessage('normal sohbet mesaji')}>
                 Send Normal
             </button>
@@ -154,7 +160,7 @@ describe('AppMain legal intent wiring', () => {
 
         await waitFor(() => {
             expect(appMainMocks.searchLegalFromChat).toHaveBeenCalledWith(expect.objectContaining({
-                text: 'emsal ara kira temerrut tahliye',
+                text: 'kira temerrut tahliye',
             }));
         });
 
@@ -178,5 +184,30 @@ describe('AppMain legal intent wiring', () => {
             expect(appMainMocks.streamChatResponse).toHaveBeenCalled();
         });
         expect(appMainMocks.searchLegalFromChat).not.toHaveBeenCalled();
+    });
+
+    it('uses prior factual context instead of a side-direction command fragment', async () => {
+        render(
+            <MemoryRouter>
+                <AppMain />
+            </MemoryRouter>
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /send facts/i }));
+
+        await waitFor(() => {
+            expect(appMainMocks.streamChatResponse).toHaveBeenCalledTimes(1);
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: /send directional legal/i }));
+
+        await waitFor(() => {
+            expect(appMainMocks.searchLegalFromChat).toHaveBeenCalledWith(expect.objectContaining({
+                text: expect.stringContaining('performans dusuklugu'),
+            }));
+        });
+        expect(appMainMocks.searchLegalFromChat).not.toHaveBeenCalledWith(expect.objectContaining({
+            text: 'davaci lehine karar ara',
+        }));
     });
 });

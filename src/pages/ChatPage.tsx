@@ -10,9 +10,10 @@ import { analyzeDocuments, generateSearchKeywords, performWebSearch, streamChatR
 import { prepareChatAttachmentsForAnalysis, mergeAnalysisData } from '../utils/chatAttachmentProcessing';
 import { buildHybridSearchVariants, buildLegalSearchInputs, normalizeLegalSearchResults as normalizeSharedLegalSearchResults, searchLegalDecisionsDetailed, getLegalDocument, type NormalizedLegalDecision } from '../utils/legalSearch';
 import { resolveLegalSourceForQuery } from '../utils/legalSource';
-import { buildLegalResearchBatchMessage, detectLegalSearchIntent } from '../lib/legal/chatLegalIntent';
+import { buildLegalResearchBatchMessage, detectLegalSearchIntent, isGenericLegalSearchCommand } from '../lib/legal/chatLegalIntent';
 import { useLegalSearch } from '../hooks/useLegalSearch';
-import { buildRetryKeywords, extractContextFromChatHistory, resolveSearchTopicFromMessage } from '../utils/chatSearchContext';
+import { buildLegalIntentSearchQuery, buildRetryKeywords, extractContextFromChatHistory, extractLatestIntentSegment, resolveSearchTopicFromMessage } from '../utils/chatSearchContext';
+import { TRANSIENT_STORAGE_KEYS, writeTransientStorageItem } from '../utils/transientStorage';
 
 type AlternativeLegalSearchResult = NormalizedLegalDecision;
 
@@ -161,7 +162,8 @@ const isExplicitWebSearchRequest = (raw: string): boolean => {
 
 const isLikelyPetitionRequest = (rawMessage: string): boolean => {
     if (!rawMessage) return false;
-    return /(dilekce|dilekçe|belge|taslak|template|ihtarname|itiraz|temyiz|feragat|talep|sozlesme|sözleşme)/i.test(rawMessage) && /(olustur|olutur|hazirla|hazırla|yaz)/i.test(rawMessage);
+    return /(dilekce|dilekçe|belge|taslak|template|ihtarname|itiraz|temyiz|feragat|talep|sozlesme|sözleşme)/i.test(rawMessage)
+        && /(olustur|olutur|hazirla|hazırla|yaz|duzenle|düzenle|revize|guncelle|iyilestir)/i.test(rawMessage);
 };
 
 const hasWebEvidence = (result: WebSearchResult | null): boolean => {
@@ -316,6 +318,42 @@ export default function ChatPage() {
         }
     }, [analysisData, searchKeywords, addToast]);
 
+    const handleSendGeneratedDocumentToEditor = useCallback((payload: { title: string; content: string }) => {
+        if (!payload?.content?.trim()) return;
+        writeTransientStorageItem(TRANSIENT_STORAGE_KEYS.templateContent, payload.content);
+        writeTransientStorageItem(TRANSIENT_STORAGE_KEYS.templateContext, JSON.stringify({
+            source: 'chat-page',
+            templateTitle: payload.title,
+            createdAt: new Date().toISOString(),
+            bulkPackagePending: false,
+            bulkPackageStorageKey: '',
+            bulkRowCount: 0,
+            editableTemplateContent: payload.content,
+            templateVariables: [],
+            enableVariableEditor: false,
+            variableValues: {},
+            selectedDecisions: legalSearchResults.map(result => ({
+                title: result.title,
+                esasNo: result.esasNo,
+                kararNo: result.kararNo,
+                tarih: result.tarih,
+                daire: result.daire,
+                ozet: typeof result.ozet === 'string' ? result.ozet : typeof result.snippet === 'string' ? result.snippet : '',
+                relevanceScore: typeof result.relevanceScore === 'number' ? result.relevanceScore : undefined,
+            })),
+            searchKeywords,
+            docContent,
+            specifics,
+            analysisData,
+            webSearchResult,
+            legalSearchResults,
+            chatHistory: chatMessages,
+        }));
+        writeTransientStorageItem(TRANSIENT_STORAGE_KEYS.editorReturnRoute, '/alt-app');
+        addToast(`${payload.title} editore gonderildi.`, 'success');
+        navigate('/app');
+    }, [addToast, analysisData, chatMessages, docContent, legalSearchResults, navigate, searchKeywords, specifics, webSearchResult]);
+
     const handleSendChatMessage = useCallback(async (message: string, files?: File[]) => {
         const normalizedMessage = (message || '').trim();
         const chatSourceFiles = Array.isArray(files) ? files : [];
@@ -324,6 +362,7 @@ export default function ChatPage() {
 
         const userMessage: ChatMessage = { role: 'user', text: normalizedMessage || (chatSourceFiles.length > 0 ? `[Dosya] ${chatSourceFiles.length} dosya yüklendi` : '') };
         const newMessages = [...chatMessages, userMessage];
+        const latestIntentText = extractLatestIntentSegment(normalizedMessage);
         const chatHistoryContext = extractContextFromChatHistory(newMessages);
         const resolvedSearchTopic = resolveSearchTopicFromMessage(normalizedMessage, newMessages);
         setChatMessages(newMessages);
@@ -338,12 +377,23 @@ export default function ChatPage() {
         let assistantText = '';
 
         try {
-            if (detectLegalSearchIntent(normalizedMessage)) {
+            if (
+                detectLegalSearchIntent(latestIntentText)
+                && !isGenericLegalSearchCommand(latestIntentText)
+                && !isExplicitWebSearchRequest(latestIntentText)
+                && !isLikelyPetitionRequest(latestIntentText)
+            ) {
                 setChatProgressText('Emsal karar aranıyor...');
                 const firstAttachment = chatSourceFiles[0];
+                const contextualLegalQuery = buildLegalIntentSearchQuery({
+                    message: normalizedMessage,
+                    docContent: mergedDocContent,
+                    resolvedSearchTopic,
+                    chatHistoryContext,
+                });
                 const documentBase64 = firstAttachment ? await fileToBase64(firstAttachment) : undefined;
                 const searchedResults = await searchLegalFromIntent({
-                    text: normalizedMessage || undefined,
+                    text: contextualLegalQuery || undefined,
                     documentBase64,
                     mimeType: firstAttachment ? inferMimeType(firstAttachment) : undefined,
                 });
@@ -389,9 +439,9 @@ export default function ChatPage() {
                 if (explicitKeys.length > 0) setSearchKeywords(mergedKeywords = Array.from(new Set([...mergedKeywords, ...explicitKeys])));
             }
 
-            let isWebExplicit = isExplicitWebSearchRequest(normalizedMessage);
-            let isLegalExplicit = detectLegalSearchIntent(normalizedMessage);
-            const isPetition = isLikelyPetitionRequest(normalizedMessage);
+            let isWebExplicit = isExplicitWebSearchRequest(latestIntentText);
+            let isLegalExplicit = detectLegalSearchIntent(latestIntentText);
+            const isPetition = isLikelyPetitionRequest(latestIntentText);
 
             // Sadece biri isteniyorsa diğerini eziyoruz, böylece her ikisi de aynı anda gereksiz yere çalışmaz. 
             // Belge istenirse her ikisine de izin veriyoruz.
@@ -403,7 +453,7 @@ export default function ChatPage() {
                 // Ya da basitçe ikisini de koruruz ancak biz burada en ağır basanı seçeceğiz,
                 // Ama genellikle biri açıkça istendiği için diğerinin "false positive" olma ihtimali yüksektir. 
                 // Örn: "Yargıtay kararını webden araştır" cümlesinde legal search ağırlıklıdır.
-                if (/(web aramasi yap|sadece web|internetten ara)/i.test(normalizeKeywordText(normalizedMessage))) {
+                if (/(web aramasi yap|sadece web|internetten ara)/i.test(normalizeKeywordText(latestIntentText))) {
                     isLegalExplicit = false;
                 }
             }
@@ -427,7 +477,7 @@ export default function ChatPage() {
                 );
             }
 
-            if (allowWebSearch && evidenceKeywords.length > 0) {
+            if (allowWebSearch && evidenceKeywords.length > 0 && !hasWebEvidence(mergedWebSearchResult)) {
                 setChatProgressText('Web araştırması yapılıyor...');
                 try {
                     mergedWebSearchResult = mergeWebSearchResults(mergedWebSearchResult, await performWebSearch(evidenceKeywords));
@@ -447,7 +497,7 @@ export default function ChatPage() {
                 } catch (e) { console.error('Web search error', e); }
             }
 
-            if (allowLegalSearch && evidenceKeywords.length > 0) {
+            if (allowLegalSearch && evidenceKeywords.length > 0 && !hasLegalEvidenceForChat(mergedLegalResults)) {
                 setChatProgressText('Emsal karar aranıyor...');
                 try {
                     // Orijinal mesajı rawQuery olarak gönder, ayrıca son mesajlardan oluşan bağlamı (context) AI asistanının anlaması için ekle
@@ -602,23 +652,6 @@ export default function ChatPage() {
                         <p className="text-sm text-red-300">{error}</p>
                     </div>
                 )}
-                <div className="shrink-0 border-b border-white/5 bg-gradient-to-b from-white/[0.03] to-transparent px-4 py-4 sm:px-6">
-                    <div className="mb-3">
-                        <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-gray-300">Kisa Kullanim Rehberi</h2>
-                        <p className="mt-1 text-sm text-gray-400">Asistani daha rahat kullanmak icin once buraya goz atabilirsiniz.</p>
-                    </div>
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-                        {CHAT_GUIDE_CARDS.map((card) => (
-                            <div
-                                key={card.title}
-                                className="rounded-2xl border border-white/10 bg-[#111113] p-4 shadow-lg shadow-black/20"
-                            >
-                                <h3 className="text-sm font-semibold text-white">{card.title}</h3>
-                                <p className="mt-2 text-sm leading-6 text-gray-400">{card.description}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
                 <ChatView 
                     messages={chatMessages}
                     onSendMessage={handleSendChatMessage}
@@ -634,6 +667,8 @@ export default function ChatPage() {
                     setDocContent={setDocContent}
                     specifics={specifics}
                     setSpecifics={setSpecifics}
+                    guideCards={CHAT_GUIDE_CARDS}
+                    onSendGeneratedDocumentToEditor={handleSendGeneratedDocumentToEditor}
                 />
             </div>
             

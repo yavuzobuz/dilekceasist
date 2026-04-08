@@ -9,7 +9,11 @@ import {
     type NormalizedLegalDecision,
 } from '../utils/legalSearch';
 import { resolveLegalSourceForQuery } from '../utils/legalSource';
-import { buildDocumentAnalyzerResult as buildSharedDocumentAnalyzerResult } from '../../lib/assistant/legal-search-context.js';
+import {
+    buildDocumentAnalyzerResult as buildSharedDocumentAnalyzerResult,
+    sanitizeAnalyzerSearchText,
+} from '../../lib/assistant/legal-search-context.js';
+import { isWeakSearchTopicText, stripSearchCommandPhrases } from '../utils/chatSearchContext';
 
 export interface UseLegalSearchParams {
     text?: string;
@@ -84,11 +88,16 @@ export const useLegalSearch = () => {
                     documentAnalyzerResult,
                 }
                 : null;
+            const cleanedText = stripSearchCommandPhrases(text);
+            const shouldDeprioritizeText = isWeakSearchTopicText(cleanedText || text);
+            const sanitizedSummary = sanitizeAnalyzerSearchText(analysisData?.summary || '');
             const rawQuery =
-                text
-                || analysisData?.summary
+                (!shouldDeprioritizeText ? text : '')
                 || documentAnalyzerResult?.aramaIfadeleri?.[0]
                 || documentAnalyzerResult?.hukukiMesele
+                || sanitizedSummary
+                || cleanedText
+                || text
                 || '';
             const keyword = compactLegalSearchQuery(rawQuery) || rawQuery;
 

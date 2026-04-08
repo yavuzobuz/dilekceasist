@@ -32,8 +32,20 @@ vi.mock('../components/ChatView', () => ({
             <button type="button" onClick={() => onSendMessage('emsal ara kira temerrut tahliye')}>
                 Send Legal
             </button>
+            <button
+                type="button"
+                onClick={() => onSendMessage(`Daha detayli bir savunma dilekcesi hazirlatmak isterseniz "belge olustur" diyebilir veya bu konuyla ilgili benzer davalarin sonuclarini incelemek icin "emsal karar ara" komutunu verebilirsiniz.\n\nBu konuyu webde derin arastir, guncel mevzuat ve uygulamayi ozetle`)}
+            >
+                Send Mixed
+            </button>
             <button type="button" onClick={() => onSendMessage('normal sohbet mesaji')}>
                 Send Normal
+            </button>
+            <button
+                type="button"
+                onClick={() => onSendMessage('Bu konuyla ilgili guclu emsal kararlar bul ve kisa kisa acikla')}
+            >
+                Send Generic Legal Followup
             </button>
             {messages.map((message, index) => (
                 <div key={`${message.role}-${index}`}>{message.text}</div>
@@ -137,7 +149,7 @@ describe('ChatPage legal intent parity', () => {
 
         await waitFor(() => {
             expect(chatPageMocks.searchLegalFromIntent).toHaveBeenCalledWith(expect.objectContaining({
-                text: 'emsal ara kira temerrut tahliye',
+                text: 'kira temerrut tahliye',
             }));
         });
 
@@ -159,6 +171,49 @@ describe('ChatPage legal intent parity', () => {
 
         await waitFor(() => {
             expect(chatPageMocks.streamChatResponse).toHaveBeenCalled();
+        });
+        expect(chatPageMocks.searchLegalFromIntent).not.toHaveBeenCalled();
+    });
+
+    it('prefers the latest web intent when pasted text earlier contains legal-search phrases', async () => {
+        chatPageMocks.performWebSearch.mockResolvedValue({
+            summary: 'Guncel mevzuat ozeti',
+            sources: [{ uri: 'https://example.com', title: 'Kaynak' }],
+        });
+
+        render(
+            <MemoryRouter>
+                <ChatPage />
+            </MemoryRouter>
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /send mixed/i }));
+
+        await waitFor(() => {
+            expect(chatPageMocks.streamChatResponse).toHaveBeenCalled();
+        });
+        expect(chatPageMocks.searchLegalFromIntent).not.toHaveBeenCalled();
+        await waitFor(() => {
+            expect(chatPageMocks.performWebSearch).toHaveBeenCalled();
+        });
+    });
+
+    it('does not use the shortcut legal-search path for generic follow-up commands', async () => {
+        render(
+            <MemoryRouter>
+                <ChatPage />
+            </MemoryRouter>
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /send normal/i }));
+        await waitFor(() => {
+            expect(chatPageMocks.streamChatResponse).toHaveBeenCalledTimes(1);
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: /send generic legal followup/i }));
+
+        await waitFor(() => {
+            expect(chatPageMocks.streamChatResponse).toHaveBeenCalledTimes(2);
         });
         expect(chatPageMocks.searchLegalFromIntent).not.toHaveBeenCalled();
     });

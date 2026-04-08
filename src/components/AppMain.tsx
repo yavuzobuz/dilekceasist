@@ -30,6 +30,7 @@ import {
   writeTransientStorageItem,
 } from '../utils/transientStorage';
 import { mergeAnalysisData, prepareChatAttachmentsForAnalysis } from '../utils/chatAttachmentProcessing';
+import { buildLegalIntentSearchQuery, extractContextFromChatHistory, extractLatestIntentSegment, resolveSearchTopicFromMessage } from '../utils/chatSearchContext';
 import {
   buildMissingInfoQuestions,
   getMissingInfoAnswerCounts,
@@ -194,6 +195,7 @@ export const AppMain: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isFullPageEditorMode, setIsFullPageEditorMode] = useState(false);
   const [editorReturnRoute, setEditorReturnRoute] = useState('/app');
+  const [editorTemplateContext, setEditorTemplateContext] = useState<string | null>(null);
   const [isLegalSearchOpen, setIsLegalSearchOpen] = useState(false);
   const [isEmsalPanelOpen, setIsEmsalPanelOpen] = useState(false);
 
@@ -223,13 +225,16 @@ export const AppMain: React.FC = () => {
   useEffect(() => {
     const templateContent = readTransientStorageItem(TRANSIENT_STORAGE_KEYS.templateContent);
     const storedEditorReturnRoute = readTransientStorageItem(TRANSIENT_STORAGE_KEYS.editorReturnRoute);
+    const storedTemplateContext = readTransientStorageItem(TRANSIENT_STORAGE_KEYS.templateContext);
     if (templateContent) {
       setGeneratedPetition(templateContent);
       setPetitionVersion(v => v + 1);
       setIsFullPageEditorMode(true);
       setEditorReturnRoute(storedEditorReturnRoute === '/alt-app' ? '/alt-app' : '/app');
+      setEditorTemplateContext(storedTemplateContext);
       clearTransientStorageItem(TRANSIENT_STORAGE_KEYS.templateContent);
       clearTransientStorageItem(TRANSIENT_STORAGE_KEYS.editorReturnRoute);
+      clearTransientStorageItem(TRANSIENT_STORAGE_KEYS.templateContext);
       addToast('Şablon yüklendi! ?', 'success');
     } else if (petitionFromState) {
       setGeneratedPetition(petitionFromState.content || '');
@@ -262,13 +267,27 @@ export const AppMain: React.FC = () => {
     if (editorReturnRoute === '/alt-app') {
       if (generatedPetition?.trim()) {
         writeTransientStorageItem(TRANSIENT_STORAGE_KEYS.templateContent, generatedPetition);
+        if (editorTemplateContext) {
+          try {
+            const parsedContext = JSON.parse(editorTemplateContext);
+            writeTransientStorageItem(
+              TRANSIENT_STORAGE_KEYS.templateContext,
+              JSON.stringify({
+                ...parsedContext,
+                editableTemplateContent: generatedPetition,
+              })
+            );
+          } catch {
+            writeTransientStorageItem(TRANSIENT_STORAGE_KEYS.templateContext, editorTemplateContext);
+          }
+        }
       }
       navigate('/alt-app');
       return;
     }
 
     setIsFullPageEditorMode(false);
-  }, [editorReturnRoute, generatedPetition, navigate]);
+  }, [editorReturnRoute, editorTemplateContext, generatedPetition, navigate]);
 
   const handleAnalyze = useCallback(async () => {
     if (files.length === 0 && !docContent.trim()) {
@@ -713,6 +732,9 @@ export const AppMain: React.FC = () => {
       text: message || (chatSourceFiles.length > 0 ? `${chatSourceFiles.length} dosya yüklendi${message ? ': ' + message : ''}` : ''),
     };
     const newMessages: ChatMessage[] = [...chatMessages, userMessage];
+    const latestIntentText = extractLatestIntentSegment(normalizedMessage);
+    const chatHistoryContext = extractContextFromChatHistory(newMessages);
+    const resolvedSearchTopic = resolveSearchTopicFromMessage(normalizedMessage, newMessages);
     setChatMessages(newMessages);
     setIsLoadingChat(true);
     setError(null);
@@ -792,8 +814,14 @@ export const AppMain: React.FC = () => {
       if (detectLegalSearchIntent(normalizedMessage)) {
         const firstAttachment = chatSourceFiles[0];
         const documentBase64 = firstAttachment ? await fileToBase64(firstAttachment) : undefined;
+        const contextualLegalQuery = buildLegalIntentSearchQuery({
+          message: normalizedMessage,
+          docContent: mergedDocContent,
+          resolvedSearchTopic,
+          chatHistoryContext,
+        });
         const searchedResults = await searchLegalFromChat({
-          text: normalizedMessage || undefined,
+          text: contextualLegalQuery || undefined,
           documentBase64,
           mimeType: firstAttachment?.type || undefined,
         });
